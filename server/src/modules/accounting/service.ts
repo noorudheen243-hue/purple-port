@@ -433,7 +433,7 @@ export const syncEntityLedgers = async () => {
         const l = await ensureLedger('CLIENT', c.id, '1000');
         if (l.createdAt > new Date(Date.now() - 5000)) count++;
     }
-    const staff = await prisma.user.findMany({ where: { role: { not: 'ADMIN' } } });
+    const staff = await prisma.user.findMany();
     for (const u of staff) {
         if (!u.id) continue;
         const l = await ensureLedger('USER', u.id, '6000');

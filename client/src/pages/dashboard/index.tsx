@@ -21,6 +21,7 @@ const TeamProfile = lazy(() => import('../team/TeamProfile'));
 const SystemRoleManagement = lazy(() => import('../team/SystemRoleManagement'));
 const OnboardingPage = lazy(() => import('../team/OnboardingPage'));
 const DataSync = lazy(() => import('../admin/DataSync')); // [New Route]
+const SettingsPage = lazy(() => import('../settings/index'));
 
 
 // Advanced Task Views
@@ -97,6 +98,7 @@ const Dashboard = () => {
 
                     {/* Admin Tools */}
                     <Route path="admin/sync" element={<DataSync />} />
+                    <Route path="settings" element={<SettingsPage />} />
                 </Routes>
             </Suspense>
         </DashboardLayout>

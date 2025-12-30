@@ -1,6 +1,6 @@
 import express from 'express';
 import multer from 'multer';
-import { downloadBackup, exportDataJson, importDataJson } from './controller';
+import { downloadBackup, exportFullBackupZip, importFullBackupZip } from './controller';
 
 const router = express.Router();
 const upload = multer({ dest: 'uploads/temp/' });
@@ -9,7 +9,7 @@ const upload = multer({ dest: 'uploads/temp/' });
 router.get('/download', downloadBackup);
 
 // JSON Sync Endpoints
-router.get('/export-json', exportDataJson);
-router.post('/import-json', upload.single('file'), importDataJson);
+router.get('/export-json', exportFullBackupZip);
+router.post('/import-json', upload.single('file'), importFullBackupZip);
 
 export default router;

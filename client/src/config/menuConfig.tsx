@@ -103,6 +103,11 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
         children: [
             { label: "Data Sync", path: "/dashboard/admin/sync", icon: TrendingUp }
         ]
+    },
+    {
+        label: "Settings",
+        path: "/dashboard/settings",
+        icon: Settings
     }
 ];
 
@@ -133,5 +138,10 @@ export const STAFF_MENU: MenuItem[] = [
             { label: "My Payslips", path: "/dashboard/payroll/payslips", icon: FileText },
             { label: "Leaves", path: "/dashboard/payroll/leaves", icon: Calendar }
         ]
+    },
+    {
+        label: "Settings",
+        path: "/dashboard/settings",
+        icon: Settings
     }
 ];

@@ -73,3 +73,16 @@ export const updateUser = async (id: string, data: Prisma.UserUpdateInput) => {
         data
     });
 };
+
+export const updateUserPassword = async (id: string, passwordHash: string) => {
+    return await prisma.user.update({
+        where: { id },
+        data: { password_hash: passwordHash }
+    });
+};
+
+export const findUserByIdWithPassword = async (id: string) => {
+    return await prisma.user.findUnique({
+        where: { id }
+    });
+};

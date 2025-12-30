@@ -25,7 +25,7 @@ async function importData() {
     await prisma.task.deleteMany();
 
     await prisma.invoiceItem.deleteMany();
-    await prisma.item.deleteMany().catch(() => { }); // Legacy if exists
+    // await prisma.item.deleteMany().catch(() => { }); // Legacy removed
     await prisma.invoice.deleteMany();
 
     await prisma.journalLine.deleteMany();

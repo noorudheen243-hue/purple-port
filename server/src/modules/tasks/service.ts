@@ -221,7 +221,7 @@ export const getTaskStats = async (filters: {
             },
             client: {
                 select: {
-                    brand_name: true
+                    name: true
                 }
             },
             due_date: true
@@ -239,7 +239,7 @@ export const getTaskStats = async (filters: {
         } else if (filters.groupBy === 'department') {
             key = task.assignee?.department || 'Unassigned';
         } else if (filters.groupBy === 'client') {
-            key = task.client?.brand_name || 'No Client';
+            key = task.client?.name || 'No Client';
         } else if (filters.groupBy === 'status') {
             key = task.status;
         }

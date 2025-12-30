@@ -3,6 +3,7 @@ import archiver from 'archiver';
 import path from 'path';
 import fs from 'fs';
 import { PrismaClient } from '@prisma/client';
+import AdmZip from 'adm-zip';
 
 const prisma = new PrismaClient();
 

@@ -3,211 +3,211 @@
     {
       "id": "7a3b5d83-6f1f-49b4-b52b-fc4fce876b89",
       "email": "admin@qix.com",
-      "password_hash": "$2a$10$xthjH3QVf7K7bJddl1lB8ekoyjotdvN.SgrlY/7AmN5D54k8OqPBu",
+      "password_hash": "$2a$10$Tg.CZk4CyQydq2dG93S6S.8vM9PbbeV/D4O7pmrGym0G5t455ohB2",
       "full_name": "Admin User",
       "role": "ADMIN",
       "department": "MANAGEMENT",
       "avatar_url": null,
       "createdAt": "2025-12-14T21:47:47.922Z",
-      "updatedAt": "2025-12-21T05:21:40.251Z"
+      "updatedAt": "2025-12-30T07:31:13.687Z"
     },
     {
       "id": "9c2c3b09-1a4d-4e9f-a00a-fdcae89806a1",
       "email": "noorudheen243@gmail.com",
-      "password_hash": "$2a$10$xthjH3QVf7K7bJddl1lB8ekoyjotdvN.SgrlY/7AmN5D54k8OqPBu",
+      "password_hash": "$2a$10$Tg.CZk4CyQydq2dG93S6S.8vM9PbbeV/D4O7pmrGym0G5t455ohB2",
       "full_name": "Noorudheen",
       "role": "ADMIN",
       "department": "MANAGEMENT",
       "avatar_url": "/uploads/file-1765959085375-794696454.jpg",
       "createdAt": "2025-12-14T22:49:24.489Z",
-      "updatedAt": "2025-12-21T05:21:40.251Z"
+      "updatedAt": "2025-12-30T07:31:13.687Z"
     },
     {
       "id": "829d953a-4c5a-44dd-b060-5bb6c7d773a7",
       "email": "nidhinnidhu41@gmail.com",
-      "password_hash": "$2a$10$tdjGHQ64rw/RgB283OvNDeSHPTMbW6YkNn4lZFhz1nXHdoghpi5oy",
+      "password_hash": "$2a$10$Tg.CZk4CyQydq2dG93S6S.8vM9PbbeV/D4O7pmrGym0G5t455ohB2",
       "full_name": "Nidhin K (Edited)",
       "role": "CREATIVE_DESIGNER",
       "department": "CREATIVE",
       "avatar_url": "/uploads/file-1765957522909-391598567.png",
       "createdAt": "2025-12-14T23:24:02.534Z",
-      "updatedAt": "2025-12-20T16:54:45.614Z"
+      "updatedAt": "2025-12-30T07:31:13.687Z"
     },
     {
       "id": "a0ab8140-69aa-41e8-ba49-b580c3175628",
       "email": "mohammedfarisalikkal@gmail.com",
-      "password_hash": "$2a$10$rGoOYyUt4xJpjL/mGG1oae8ceAzm8Lkqa5sl0PDwxWwuHpW5qp2bK",
+      "password_hash": "$2a$10$Tg.CZk4CyQydq2dG93S6S.8vM9PbbeV/D4O7pmrGym0G5t455ohB2",
       "full_name": "Faris",
       "role": "CREATIVE_DESIGNER",
       "department": "CREATIVE",
       "avatar_url": "/uploads/file-1765964946667-937208610.png",
       "createdAt": "2025-12-14T23:27:43.148Z",
-      "updatedAt": "2025-12-20T16:54:49.539Z"
+      "updatedAt": "2025-12-30T07:31:13.687Z"
     },
     {
       "id": "4ce1fee1-86dc-4ed9-9857-d91539a0e5f6",
       "email": "irfanmekkoden@gmail.com",
-      "password_hash": "$2a$10$uOt75Xdwt1/XB4f6pQaDC.lERwyjY.pSJ12CMYCG.7zU/g640RS4G",
+      "password_hash": "$2a$10$Tg.CZk4CyQydq2dG93S6S.8vM9PbbeV/D4O7pmrGym0G5t455ohB2",
       "full_name": "Irfan",
       "role": "CREATIVE_DESIGNER",
       "department": "CREATIVE",
       "avatar_url": "/uploads/file-1765965520536-630679757.png",
       "createdAt": "2025-12-14T23:28:41.943Z",
-      "updatedAt": "2025-12-20T16:54:55.394Z"
+      "updatedAt": "2025-12-30T07:31:13.687Z"
     },
     {
       "id": "9c7779e4-3195-4021-b506-0514587e0cdc",
       "email": "muhammedsajmal953@gmail.com",
-      "password_hash": "$2a$10$7WzFOu4sah6cUdQwiT9.W.UTfD/pAnx4wKc8mWcF2Jg.23I7hfZIW",
+      "password_hash": "$2a$10$Tg.CZk4CyQydq2dG93S6S.8vM9PbbeV/D4O7pmrGym0G5t455ohB2",
       "full_name": "Sajmal",
       "role": "CREATIVE_DESIGNER",
       "department": "CREATIVE",
       "avatar_url": "/uploads/file-1766228834634-870515894.jpeg",
       "createdAt": "2025-12-14T23:29:41.849Z",
-      "updatedAt": "2025-12-20T11:08:31.695Z"
+      "updatedAt": "2025-12-30T07:31:13.687Z"
     },
     {
       "id": "30cb2f1a-8caf-412d-926a-aebaac6a4eaa",
       "email": "syedsujaidsst@gmail.com",
-      "password_hash": "$2a$10$xXJAR0T3aZUTBWA8t58Tju8cgbqI2uDuuzTL0ClJoQy1qm5lG7.mq",
+      "password_hash": "$2a$10$Tg.CZk4CyQydq2dG93S6S.8vM9PbbeV/D4O7pmrGym0G5t455ohB2",
       "full_name": "Sujaid",
       "role": "MARKETING_EXEC",
       "department": "MARKETING",
       "avatar_url": null,
       "createdAt": "2025-12-14T23:31:08.857Z",
-      "updatedAt": "2025-12-14T23:31:17.371Z"
+      "updatedAt": "2025-12-30T07:31:13.687Z"
     },
     {
       "id": "a41556ef-260e-4dc5-8ee7-371fa3b31c6b",
       "email": "fidhamandayi@gmail.com",
-      "password_hash": "$2a$10$JJPu7vA626U3uu5ILqhKEuSVROk52U4ZpLfaCFEDNRGkUEikWycMu",
+      "password_hash": "$2a$10$Tg.CZk4CyQydq2dG93S6S.8vM9PbbeV/D4O7pmrGym0G5t455ohB2",
       "full_name": "Fida",
       "role": "MARKETING_EXEC",
       "department": "MARKETING",
       "avatar_url": null,
       "createdAt": "2025-12-14T23:31:48.884Z",
-      "updatedAt": "2025-12-14T23:31:48.884Z"
+      "updatedAt": "2025-12-30T07:31:13.687Z"
     },
     {
       "id": "d57727fe-667f-4be7-a6c9-a98d12f7be26",
       "email": "sandrasabu63@gmail.com",
-      "password_hash": "$2a$10$3AjEPcU.o/DK3dYRRl..ge6TtGI9nYo6TQsmpY1jMAr3Y7BmLTb/y",
+      "password_hash": "$2a$10$Tg.CZk4CyQydq2dG93S6S.8vM9PbbeV/D4O7pmrGym0G5t455ohB2",
       "full_name": "Sandra",
       "role": "WEB_SEO_EXECUTIVE",
       "department": "WEB_SEO",
       "avatar_url": "/uploads/file-1765965960028-250146435.png",
       "createdAt": "2025-12-14T23:32:34.547Z",
-      "updatedAt": "2025-12-20T16:54:25.634Z"
+      "updatedAt": "2025-12-30T07:31:13.687Z"
     },
     {
       "id": "ecd0e572-e055-4f20-84e6-7d2b60fed47f",
       "email": "Arjunkp258@gmail.com",
-      "password_hash": "$2a$10$4AArzYESsdwJiLbigaPvFe8XFrBXU3mMTjewHS7KuWmcstnKWlMJy",
+      "password_hash": "$2a$10$Tg.CZk4CyQydq2dG93S6S.8vM9PbbeV/D4O7pmrGym0G5t455ohB2",
       "full_name": "Arjun",
       "role": "WEB_SEO",
       "department": "WEB",
       "avatar_url": null,
       "createdAt": "2025-12-14T23:33:47.197Z",
-      "updatedAt": "2025-12-14T23:33:47.197Z"
+      "updatedAt": "2025-12-30T07:31:13.687Z"
     },
     {
       "id": "d1511158-2c99-4a08-ae73-14bfeb209512",
       "email": "sali@gmail.com",
-      "password_hash": "$2a$10$yRCGQrp8Sr5Zt4s2qrRuFeR3vVg3DSnX83TQttaPbbV28JuZZjS1q",
+      "password_hash": "$2a$10$Tg.CZk4CyQydq2dG93S6S.8vM9PbbeV/D4O7pmrGym0G5t455ohB2",
       "full_name": "Sali",
       "role": "MARKETING_EXEC",
       "department": "MARKETING",
       "avatar_url": null,
       "createdAt": "2025-12-14T23:35:05.797Z",
-      "updatedAt": "2025-12-14T23:35:05.797Z"
+      "updatedAt": "2025-12-30T07:31:13.687Z"
     },
     {
       "id": "0f602110-d76e-4f21-8bcf-c71959dd4015",
       "email": "shihabckm@gmail.com",
-      "password_hash": "$2a$10$xthjH3QVf7K7bJddl1lB8ekoyjotdvN.SgrlY/7AmN5D54k8OqPBu",
+      "password_hash": "$2a$10$Tg.CZk4CyQydq2dG93S6S.8vM9PbbeV/D4O7pmrGym0G5t455ohB2",
       "full_name": "Shihabudheen",
       "role": "ADMIN",
       "department": "MANAGEMENT",
       "avatar_url": null,
       "createdAt": "2025-12-14T23:35:55.930Z",
-      "updatedAt": "2025-12-21T05:21:40.251Z"
+      "updatedAt": "2025-12-30T07:31:13.687Z"
     },
     {
       "id": "a3baaaa3-03a7-494b-8422-1e568d106d3b",
       "email": "admin@qixads.com",
-      "password_hash": "$2a$10$xthjH3QVf7K7bJddl1lB8ekoyjotdvN.SgrlY/7AmN5D54k8OqPBu",
+      "password_hash": "$2a$10$Tg.CZk4CyQydq2dG93S6S.8vM9PbbeV/D4O7pmrGym0G5t455ohB2",
       "full_name": "Admin User",
       "role": "ADMIN",
       "department": "MANAGEMENT",
       "avatar_url": null,
       "createdAt": "2025-12-16T11:47:53.889Z",
-      "updatedAt": "2025-12-21T05:21:40.251Z"
+      "updatedAt": "2025-12-30T07:31:13.687Z"
     },
     {
       "id": "0c94b346-9a55-48f2-8d0b-fd9f9f3edd0c",
       "email": "basilwork21@gmail.com",
-      "password_hash": "$2a$10$NYeM4m39p5LAitZ20Eys8uY7Pmlr.AuMgE0aeluKJgk7cmyrKLoZK",
+      "password_hash": "$2a$10$Tg.CZk4CyQydq2dG93S6S.8vM9PbbeV/D4O7pmrGym0G5t455ohB2",
       "full_name": "Basil",
       "role": "MARKETING_EXEC",
       "department": "MARKETING",
       "avatar_url": "/uploads/file-1765959101162-109036791.png",
       "createdAt": "2025-12-17T08:15:56.115Z",
-      "updatedAt": "2025-12-17T08:15:56.115Z"
+      "updatedAt": "2025-12-30T07:31:13.687Z"
     },
     {
       "id": "4163bd69-d8a8-45e9-b2f3-8e9ad7f49786",
       "email": "swalihmuhammed5093@gmail.com",
-      "password_hash": "$2a$10$Z8YVetcfPnJdWGIrWF14YunC3ddQHUEiOtaBeznUOGw/oGi8Z0Oiq",
+      "password_hash": "$2a$10$Tg.CZk4CyQydq2dG93S6S.8vM9PbbeV/D4O7pmrGym0G5t455ohB2",
       "full_name": "Salih",
       "role": "MARKETING_EXEC",
       "department": "MARKETING",
       "avatar_url": "/uploads/file-1765960173758-494735605.webp",
       "createdAt": "2025-12-17T08:35:24.710Z",
-      "updatedAt": "2025-12-17T08:35:24.710Z"
+      "updatedAt": "2025-12-30T07:31:13.687Z"
     },
     {
       "id": "9d35b443-86ba-4efd-8681-e5f8daee7cc7",
       "email": "arjunkp259@gmail.com",
-      "password_hash": "$2a$10$IUEzMCq5LedLAxPYuHYituZsSJ3PRS28DQvDWCbqNVW67KWCyMfFW",
+      "password_hash": "$2a$10$Tg.CZk4CyQydq2dG93S6S.8vM9PbbeV/D4O7pmrGym0G5t455ohB2",
       "full_name": "Arjun",
       "role": "WEB_SEO_EXECUTIVE",
       "department": "WEB_SEO",
       "avatar_url": "/uploads/file-1765965981088-508208305.png",
       "createdAt": "2025-12-17T10:10:18.138Z",
-      "updatedAt": "2025-12-20T16:54:32.704Z"
+      "updatedAt": "2025-12-30T07:31:13.687Z"
     },
     {
       "id": "6a71cb3f-0fb5-4c2e-90d2-bc88304d5536",
       "email": "admin@antigravity.com",
-      "password_hash": "$2a$10$s/G5mmbb.bg9iSmoG3bpluAIkRyuzVvBF72HIfAl97RibFsmr5uAO",
+      "password_hash": "$2a$10$Tg.CZk4CyQydq2dG93S6S.8vM9PbbeV/D4O7pmrGym0G5t455ohB2",
       "full_name": "Admin User Updated",
       "role": "MARKETING_EXEC",
       "department": "MARKETING",
       "avatar_url": null,
       "createdAt": "2025-12-18T09:47:51.280Z",
-      "updatedAt": "2025-12-18T14:47:21.361Z"
+      "updatedAt": "2025-12-30T07:31:13.687Z"
     },
     {
       "id": "481e9b58-88b1-4470-9016-aeade9c2798e",
       "email": "admin@example.com",
-      "password_hash": "$2a$10$BK4yBGlTr2eyD21OlFzeDuNXPykC1fjLsV7qfMxQK7ZYoGloyGPUK",
+      "password_hash": "$2a$10$Tg.CZk4CyQydq2dG93S6S.8vM9PbbeV/D4O7pmrGym0G5t455ohB2",
       "full_name": "Admin User",
       "role": "ADMIN",
       "department": "MANAGEMENT",
       "avatar_url": null,
       "createdAt": "2025-12-21T05:09:40.403Z",
-      "updatedAt": "2025-12-21T05:09:40.403Z"
+      "updatedAt": "2025-12-30T07:31:13.687Z"
     },
     {
       "id": "991243c8-db08-4e4b-a746-bcbc0981f2de",
       "email": "testuser@gmail.com",
-      "password_hash": "$2a$10$CA9zp0IdB.NZgzNbM2I5MuwC.mrd0eC1Zg27mSy/4wqvPINzW3SeS",
+      "password_hash": "$2a$10$Tg.CZk4CyQydq2dG93S6S.8vM9PbbeV/D4O7pmrGym0G5t455ohB2",
       "full_name": "test user",
       "role": "ADMIN",
       "department": "MARKETING",
       "avatar_url": null,
       "createdAt": "2025-12-21T05:30:22.896Z",
-      "updatedAt": "2025-12-21T05:30:22.896Z"
+      "updatedAt": "2025-12-30T07:31:13.687Z"
     }
   ],
   "staffProfiles": [

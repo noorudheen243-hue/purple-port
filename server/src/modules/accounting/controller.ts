@@ -1,0 +1,153 @@
+import { Request, Response } from 'express';
+import * as AccountingService from './service';
+import { z } from 'zod';
+
+const createLedgerSchema = z.object({
+    name: z.string().min(3),
+    head_id: z.string().uuid(),
+    entity_type: z.enum(['CLIENT', 'VENDOR', 'BANK', 'CASH', 'INCOME', 'EXPENSE', 'ADJUSTMENT', 'INTERNAL']),
+    description: z.string().optional(),
+    opening_balance: z.number().min(0).default(0),
+    opening_balance_date: z.string().optional().transform(str => str ? new Date(str) : undefined)
+});
+
+const transactionSchema = z.object({
+    date: z.string().transform(str => new Date(str)),
+    description: z.string().min(3),
+    amount: z.number().positive(),
+    type: z.enum(['PAYMENT', 'RECEIPT', 'CONTRA', 'EXPENSE', 'INCOME', 'JOURNAL']),
+    from_ledger_id: z.string().uuid(), // Credit
+    to_ledger_id: z.string().uuid(),   // Debit
+    reference: z.string().optional()
+});
+
+export const getLedgers = async (req: Request, res: Response) => {
+    try {
+        const ledgers = await AccountingService.getLedgers();
+        res.json(ledgers);
+    } catch (error) {
+        res.status(500).json({ message: "Failed to fetch ledgers" });
+    }
+};
+
+export const createLedger = async (req: Request, res: Response) => {
+    try {
+        const data = createLedgerSchema.parse(req.body);
+        const ledger = await AccountingService.createLedger(data);
+        res.status(201).json(ledger);
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({ errors: error.errors });
+        }
+        res.status(500).json({ message: "Failed to create ledger", error: (error as Error).message });
+    }
+};
+
+export const recordTransaction = async (req: Request, res: Response) => {
+    try {
+        const data = transactionSchema.parse(req.body);
+        // @ts-ignore - user is attached by auth middleware
+        const userId = req.user?.id || 'SYSTEM';
+
+        const entry = await AccountingService.recordTransaction({
+            ...data,
+            user_id: userId
+        });
+        res.status(201).json(entry);
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({ errors: error.errors });
+        }
+        res.status(500).json({ message: "Failed to record transaction", error: (error as Error).message });
+    }
+};
+
+export const getAccountHeads = async (req: Request, res: Response) => {
+    try {
+        const heads = await AccountingService.getAccountHeads();
+        res.json(heads);
+    } catch (error) {
+        res.status(500).json({ message: "Failed to fetch heads" });
+    }
+};
+
+export const updateLedger = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const result = await AccountingService.updateLedger(id, req.body);
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ message: "Failed to update ledger", error: (error as Error).message });
+    }
+};
+
+export const deleteLedger = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        await AccountingService.deleteLedger(id);
+        res.status(200).json({ message: "Ledger deleted successfully" });
+    } catch (error) {
+        res.status(400).json({ message: (error as Error).message });
+    }
+};
+
+export const getStatement = async (req: Request, res: Response) => {
+    try {
+        const { ledger_id, start_date, end_date } = req.body;
+        const stmt = await AccountingService.getAccountStatement(ledger_id, new Date(start_date), new Date(end_date));
+        res.json(stmt);
+    } catch (error) {
+        res.status(500).json({ message: (error as Error).message });
+    }
+};
+
+export const getOverview = async (req: Request, res: Response) => {
+    try {
+        const data = await AccountingService.getFinancialOverview();
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ message: (error as Error).message });
+    }
+};
+
+export const syncLedgers = async (req: Request, res: Response) => {
+    try {
+        const result = await AccountingService.syncEntityLedgers();
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ message: (error as Error).message });
+    }
+};
+
+export const getTransactions = async (req: Request, res: Response) => {
+    try {
+        const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
+        const startDate = req.query.start_date ? new Date(req.query.start_date as string) : undefined;
+        const endDate = req.query.end_date ? new Date(req.query.end_date as string) : undefined;
+
+        const transactions = await AccountingService.getTransactions(limit, startDate, endDate);
+        res.json(transactions);
+    } catch (error) {
+        res.status(500).json({ message: "Failed to fetch transactions", error: (error as Error).message });
+    }
+};
+
+export const deleteTransaction = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const result = await AccountingService.deleteTransaction(id);
+        res.status(200).json(result);
+    } catch (error) {
+        res.status(400).json({ message: (error as Error).message });
+    }
+};
+
+export const updateTransaction = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const result = await AccountingService.updateTransaction(id, req.body);
+        res.status(200).json(result);
+    } catch (error) {
+        res.status(400).json({ message: (error as Error).message });
+    }
+};

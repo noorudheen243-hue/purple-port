@@ -1,0 +1,36 @@
+{
+    "name": "purple-port-desktop",
+    "version": "1.0.0",
+    "description": "Purple Port Desktop Application",
+    "main": "out/main.js",
+    "scripts": {
+        "start": "electron .",
+        "build": "tsc",
+        "dist": "npm run build && electron-builder"
+    },
+    "author": "Antigravity",
+    "license": "ISC",
+    "devDependencies": {
+        "electron": "^33.2.1",
+        "electron-builder": "^25.1.8",
+        "typescript": "^5.7.2"
+    },
+    "dependencies": {
+        "electron-updater": "^6.3.9"
+    },
+    "build": {
+        "appId": "com.purpleport.desktop",
+        "productName": "Purple Port",
+        "directories": {
+            "output": "dist"
+        },
+        "win": {
+            "target": "nsis",
+            "signAndEditExecutable": false
+        },
+        "nsis": {
+            "oneClick": false,
+            "allowToChangeInstallationDirectory": true
+        }
+    }
+}

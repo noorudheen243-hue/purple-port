@@ -1,0 +1,93 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Credentials Report</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 40px; background-color: #f9fafb; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 40px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border-radius: 8px; }
+        h1 { color: #111827; border-bottom: 2px solid #e5e7eb; padding-bottom: 16px; margin-bottom: 24px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #e5e7eb; padding: 12px 16px; text-align: left; }
+        th { background-color: #f3f4f6; color: #374151; font-weight: 600; text-transform: uppercase; font-size: 0.85em; }
+        tr:nth-child(even) { background-color: #f9fafb; }
+        .footer { margin-top: 40px; font-size: 0.8em; color: #6b7280; text-align: center; border-top: 1px solid #e5e7eb; padding-top: 20px; }
+        .warning { background-color: #fef2f2; color: #991b1b; padding: 16px; border-radius: 6px; margin-bottom: 24px; border-left: 4px solid #ef4444; }
+        .cred-box { font-family: monospace; background: #eff6ff; padding: 2px 6px; rounded: 4px; color: #1e40af; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>System Admin Users Report</h1>
+        <p><strong>Generated on:</strong> 21/12/2025, 10:51:40 am</p>
+        
+        <div class="warning">
+            <strong>Action Taken:</strong> Passwords for all admins (except 'admin@example.com') have been reset to default values using a secure hashing algorithm.
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Full Name</th>
+                    <th>Email</th>
+                    <th>Department</th>
+                    <th>Current Password</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                    <tr>
+                        <td>Admin User</td>
+                        <td>admin@qix.com</td>
+                        <td>MANAGEMENT</td>
+                        <td><span class="cred-box">admin@123</span></td>
+                    </tr>
+                    
+                    <tr>
+                        <td>Noorudheen</td>
+                        <td>noorudheen243@gmail.com</td>
+                        <td>MANAGEMENT</td>
+                        <td><span class="cred-box">admin@123</span></td>
+                    </tr>
+                    
+                    <tr>
+                        <td>Shihabudheen</td>
+                        <td>shihabckm@gmail.com</td>
+                        <td>MANAGEMENT</td>
+                        <td><span class="cred-box">admin@123</span></td>
+                    </tr>
+                    
+                    <tr>
+                        <td>Admin User</td>
+                        <td>admin@qixads.com</td>
+                        <td>MANAGEMENT</td>
+                        <td><span class="cred-box">admin@123</span></td>
+                    </tr>
+                    
+                    <tr>
+                        <td>Test User</td>
+                        <td>test@example.com</td>
+                        <td>MARKETING</td>
+                        <td><span class="cred-box">admin@123</span></td>
+                    </tr>
+                    
+                    <tr>
+                        <td>Admin User</td>
+                        <td>admin@example.com</td>
+                        <td>MANAGEMENT</td>
+                        <td><span class="cred-box">admin123</span> (Unchanged)</td>
+                    </tr>
+                    
+            </tbody>
+        </table>
+
+        <div class="footer">
+            Confidential Document - Qix Ads Work Management System<br>
+            Please distribute securely.
+        </div>
+    </div>
+</body>
+</html>
+    

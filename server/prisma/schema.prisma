@@ -1,0 +1,593 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String     @id @default(uuid())
+  email         String     @unique
+  password_hash String
+  full_name     String
+  role          String     // Enum: ADMIN, MANAGER, DM_EXECUTIVE, WEB_SEO_EXECUTIVE, CREATIVE_DESIGNER, OPERATIONS_EXECUTIVE
+  department    String     // Enum: CREATIVE, MARKETING, WEB, MANAGEMENT
+  avatar_url    String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  // Relations
+  clientsManaged Client[]  @relation("AccountManager")
+  clientsAssigned Client[] @relation("ClientStaff") // New Many-to-Many
+  
+  // Task Relations
+  tasksAssigned  Task[]   @relation("TaskAssignee")
+  tasksAssignedBy Task[]  @relation("TaskAssignedBy") // New: Tasks delegated by this user
+  tasksReported  Task[]   @relation("TaskReporter")
+  
+  // Campaign Relations
+  campaignsDefaulted Campaign[] @relation("CampaignDefaultAssignee")
+
+  timeLogs       TimeLog[]
+  comments       Comment[]
+  notifications  Notification[]
+  assetsUploaded Asset[]
+
+  // Team Management Relations
+  staffProfile   StaffProfile?
+  attendance     AttendanceRecord[]
+  leaveRequests  LeaveRequest[]
+  payrollSlips   PayrollSlip[]
+  
+  // Managerial Relations
+  subordinates   StaffProfile[] @relation("ReportingManager")
+  leaveApprovals LeaveRequest[] @relation("LeaveApprover")
+}
+
+// --- MODULE 5: TEAM & HR MANAGEMENT ---
+
+model StaffProfile {
+  id               String   @id @default(uuid())
+  staff_number     String   @unique // Immutable Staff ID
+  designation      String
+  department       String   // Enum: MARKETING, CREATIVE, WEB_SEO, MANAGEMENT, ADMIN
+  date_of_joining  DateTime
+  
+  // Productivity & Performance
+  productivity_score Float  @default(0.0) // 0-100 scale (calculated daily/weekly)
+  sla_breach_count   Int    @default(0)   // Total tasks breached
+  
+  // Contact & Personal
+  personal_contact String?
+  official_contact String?
+  whatsapp_number  String?
+  personal_email   String?
+  official_email   String?  // Should match User.email usually, but specific to HR
+  address          String?
+  city             String?
+  state            String?
+  pincode          String?
+  date_of_birth    DateTime?
+  marital_status   String?
+  blood_group      String?  // NEW
+  current_address  String?  // NEW
+  permanent_address String? // NEW
+  work_shift       String?  // NEW
+  
+  // Emergency
+  emergency_contact_name   String?
+  emergency_contact_number String?
+  
+  // Professional
+  previous_company String?
+  total_experience_years Float? @default(0.0)
+  
+  // Payroll & Financial
+  salary_type      String?  // MONTHLY, DAILY, CONTRACT
+  base_salary      Float?
+  hra             Float?
+  allowances      Float?
+  // New Allowances
+  conveyance_allowance   Float?
+  accommodation_allowance Float?
+  
+  incentive_eligible Boolean @default(false)
+  payroll_status   String   @default("ACTIVE") // ACTIVE, HOLD
+
+  // Bank Details
+  bank_name           String?
+  account_holder_name String?
+  account_number      String?
+  ifsc_code           String?
+  account_type        String? // SAVINGS, CURRENT
+  pan_number          String?
+  aadhar_number       String?  // NEW
+  shift_timing        String?  // NEW
+  payment_method      String?  // NEW
+
+  // UPI Details
+  upi_id              String?
+  upi_linked_mobile   String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user_id         String @unique
+  user            User   @relation(fields: [user_id], references: [id])
+  
+  reporting_manager_id String?
+  reporting_manager    User?   @relation("ReportingManager", fields: [reporting_manager_id], references: [id])
+}
+
+model AttendanceRecord {
+  id          String   @id @default(uuid())
+  date        DateTime // Normalized to midnight
+  status      String   // PRESENT, ABSENT, HALF_DAY, WFH, LEAVE
+  check_in    DateTime?
+  check_out   DateTime?
+  work_hours  Float?
+  method      String   @default("WEB") // WEB, BIOMETRIC_SYNC
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user_id     String
+  user        User     @relation(fields: [user_id], references: [id])
+
+  @@unique([user_id, date])
+}
+
+model LeaveRequest {
+  id          String   @id @default(uuid())
+  type        String   // CASUAL, SICK, EARNED, UNPAID, MATERNITY/PATERNITY
+  start_date  DateTime
+  end_date    DateTime
+  reason      String
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  rejection_reason String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user_id     String
+  user        User     @relation(fields: [user_id], references: [id])
+  
+  approver_id String?
+  approver    User?    @relation("LeaveApprover", fields: [approver_id], references: [id])
+}
+
+model Holiday {
+  id          String   @id @default(uuid())
+  name        String
+  date        DateTime @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model PayrollRun {
+  id          String   @id @default(uuid())
+  month       Int
+  year        Int
+  status      String   @default("DRAFT") // DRAFT, LOCKED, PAID
+  total_payout Float   @default(0.0)
+  processed_at DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  slips       PayrollSlip[]
+
+  
+  @@unique([month, year])
+}
+
+model PayrollSlip {
+  id              String   @id @default(uuid())
+  basic_salary    Float
+  hra             Float
+  allowances      Float
+  incentives      Float    @default(0.0)
+  deductions      Float    @default(0.0) // Tax, PF, Leave Deductions
+  net_pay         Float
+  payment_date    DateTime?
+  status          String   @default("PENDING") // PENDING, PAID
+  createdAt       DateTime @default(now())
+  
+  payroll_run_id  String
+  run             PayrollRun @relation(fields: [payroll_run_id], references: [id])
+  
+  // Detailed Breakdown
+  conveyance_allowance   Float   @default(0.0)
+  accommodation_allowance Float   @default(0.0)
+  
+  advance_salary         Float   @default(0.0)
+  
+  // LOP & Deductions
+  lop_days               Float   @default(0.0) // Auto-calculated
+  lop_deduction          Float   @default(0.0) // lop_days * daily_wage
+  
+  other_deductions       Float   @default(0.0) // Tax, PF, etc.
+  
+  total_working_days     Int     @default(0)
+  
+  user_id         String
+  user            User       @relation(fields: [user_id], references: [id])
+}
+
+model Client {
+  id           String   @id @default(uuid())
+  name         String
+  brand_colors String?    // Stored as JSON string
+  logo_url     String?
+  industry     String?
+  status       String   @default("LEAD") // Changed default to LEAD
+  
+  // New Core Fields
+  contact_person String?
+  contact_number String?
+  company_email  String?
+
+  // Operating Location
+  operating_country String?
+  operating_state   String?
+
+  // New JSON Fields for Extended Data
+  service_engagement String? // JSON Array of Strings
+  social_links       String? // JSON Object
+  competitor_info    String? // JSON Array of Objects
+  customer_avatar    String? // JSON Object
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  account_manager_id String?
+  account_manager    User?   @relation("AccountManager", fields: [account_manager_id], references: [id])
+  
+  assigned_staff     User[]  @relation("ClientStaff") // Many-to-Many
+
+  campaigns Campaign[]
+  directTasks Task[] // Tasks linked directly (e.g. Internal)
+  ad_accounts AdAccount[]
+  invoices    Invoice[]
+}
+model Campaign {
+  id         String   @id @default(uuid())
+  title      String
+  start_date DateTime
+  end_date   DateTime
+  status     String   @default("PLANNING")
+  budget     Float?
+  goals      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  client_id String
+  client    Client @relation(fields: [client_id], references: [id])
+  
+  // Automation Rules
+  default_assignee_id String?
+  default_assignee    User?   @relation("CampaignDefaultAssignee", fields: [default_assignee_id], references: [id])
+
+  tasks       Task[]
+  ledgers     Ledger[]
+  spend_snapshots SpendSnapshot[]
+}
+
+model Task {
+  id              String       @id @default(uuid())
+  title           String
+  description     String?
+  status          String       @default("PLANNED") // Enum: TaskStatus
+  priority        String       @default("MEDIUM")  // Enum: TaskPriority
+  type            String       @default("GENERIC") // Enum: TaskType
+  nature          String       @default("NEW")     // Enum: NEW, REWORK
+  category        String       @default("CAMPAIGN") // Enum: CAMPAIGN, INTERNAL
+  due_date        DateTime?
+  start_date      DateTime?
+  
+  // Advanced Task Fields
+  sla_target         DateTime?
+  sla_status         String    @default("ON_TRACK") // ON_TRACK, AT_RISK, BREACHED
+  actual_start_date  DateTime?
+  completed_date     DateTime?
+  
+  estimated_hours    Float?    // Manual Estimate
+  ai_estimated_minutes Int?    // AI Suggestion
+  actual_time_minutes  Int     @default(0)
+  
+  completion_rating    Int?    // 1-5 Stars (Quality Score)
+  
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  campaign_id String?
+  campaign    Campaign? @relation(fields: [campaign_id], references: [id])
+
+  client_id   String?
+  client      Client?   @relation(fields: [client_id], references: [id])
+
+  parent_task_id String?
+  parent_task    Task?   @relation("SubTasks", fields: [parent_task_id], references: [id])
+  sub_tasks      Task[]  @relation("SubTasks")
+  dependencies   TaskDependency[] @relation("TaskBlocking")
+  dependents     TaskDependency[] @relation("TaskBlockedBy")
+
+  assignee_id String?
+  assignee    User?   @relation("TaskAssignee", fields: [assignee_id], references: [id])
+  
+  assigned_by_id String?
+  assigned_by    User?   @relation("TaskAssignedBy", fields: [assigned_by_id], references: [id])
+
+  reporter_id String
+  reporter    User   @relation("TaskReporter", fields: [reporter_id], references: [id])
+
+  assets   Asset[]
+  comments Comment[]
+  timeLogs TimeLog[]
+}
+
+model TaskDependency {
+  id              String   @id @default(uuid())
+  blocking_task_id String
+  blocking_task    Task     @relation("TaskBlocking", fields: [blocking_task_id], references: [id], onDelete: Cascade)
+  
+  blocked_task_id  String
+  blocked_task     Task     @relation("TaskBlockedBy", fields: [blocked_task_id], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime @default(now())
+
+  @@unique([blocking_task_id, blocked_task_id])
+}
+
+model Asset {
+  id          String   @id @default(uuid())
+  original_name String
+  file_url    String
+  file_type   String
+  size_bytes  Int?
+  version     Int      @default(1)
+  is_approved Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  task_id String
+  task    Task   @relation(fields: [task_id], references: [id], onDelete: Cascade)
+
+  uploader_id String
+  uploader    User   @relation(fields: [uploader_id], references: [id])
+}
+
+model Comment {
+  id                  String   @id @default(uuid())
+  content             String
+  is_revision_request Boolean  @default(false)
+  createdAt           DateTime @default(now())
+
+  task_id String
+  task    Task   @relation(fields: [task_id], references: [id], onDelete: Cascade)
+
+  author_id String
+  author    User   @relation(fields: [author_id], references: [id])
+
+  parent_comment_id String?
+  parent_comment    Comment?  @relation("ThreadedComments", fields: [parent_comment_id], references: [id])
+  replies           Comment[] @relation("ThreadedComments")
+}
+
+model TimeLog {
+  id               String    @id @default(uuid())
+  start_time       DateTime
+  end_time         DateTime?
+  duration_minutes Int?
+  createdAt        DateTime  @default(now())
+
+  task_id String
+  task    Task   @relation(fields: [task_id], references: [id], onDelete: Cascade)
+
+  user_id String
+  user    User   @relation(fields: [user_id], references: [id])
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  type      String           // Enum: NotificationType
+  message   String
+  read      Boolean          @default(false)
+  link      String?
+  createdAt DateTime         @default(now())
+
+  user_id String
+  user    User   @relation(fields: [user_id], references: [id])
+}
+
+// --- MODULE 3: ACCOUNTING ---
+
+model AccountHead {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  code        String   @unique
+  type        String   // Enum: ASSET, LIABILITY, EQUITY, INCOME, EXPENSE
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  ledgers Ledger[]
+}
+
+model Ledger {
+  id          String   @id @default(uuid())
+  name        String   // Unique constraint handled in logic or compound unique
+  entity_type String?  // Enum: CLIENT, USER, INTERNAL, VENDOR, BANK, CASH, INCOME, EXPENSE, ADJUSTMENT
+  entity_id   String?  // Optional link to Client/User ID
+  
+  description String?
+  status      String   @default("ACTIVE") // ACTIVE, INACTIVE
+
+  balance     Float    @default(0.0)
+  currency    String   @default("INR")
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  head_id String
+  head    AccountHead @relation(fields: [head_id], references: [id])
+
+  // Relations
+  campaign_id String?
+  campaign    Campaign? @relation(fields: [campaign_id], references: [id])
+
+  journalLines JournalLine[]
+  
+  @@unique([name, head_id]) // Ensure unique names within a head? Or globally? Prompt says "Ledger Name (Unique)".
+  // Making name globally unique might be too strict if same name in different heads? 
+  // "Ledger Name (Unique)" usually implies globally.
+}
+
+model JournalEntry {
+  id           String   @id @default(uuid())
+  date         DateTime @default(now())
+  description  String
+  reference    String?  // Invoice #, Receipt #, etc.
+  amount       Float
+  type         String   // Enum: RECEIPT, PAYMENT, JOURNAL, CONTRA, INVOICE, EXPENSE
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  created_by_id String
+  // created_by User ... 
+
+  lines JournalLine[]
+  
+  invoice Invoice?
+}
+
+model JournalLine {
+  id        String   @id @default(uuid())
+  debit     Float    @default(0.0)
+  credit    Float    @default(0.0)
+  createdAt DateTime @default(now())
+
+  entry_id String
+  entry    JournalEntry @relation(fields: [entry_id], references: [id])
+
+  ledger_id String
+  ledger    Ledger @relation(fields: [ledger_id], references: [id])
+}
+
+// --- INVOICING MODULE (Restored) ---
+
+model Invoice {
+  id           String   @id @default(uuid())
+  invoice_number String @unique
+  date         DateTime
+  due_date     DateTime
+  status       String   @default("DRAFT")
+  
+  // Financials
+  subtotal     Float
+  tax_rate     Float    @default(18.0)
+  tax_amount   Float
+  discount     Float    @default(0.0)
+  total_amount Float
+  balance_due  Float
+  
+  notes        String?
+  terms        String?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  client_id    String
+  client       Client   @relation(fields: [client_id], references: [id])
+  
+  items        InvoiceItem[]
+  
+  journal_entry_id String? @unique
+  journal_entry    JournalEntry? @relation(fields: [journal_entry_id], references: [id])
+}
+
+model InvoiceItem {
+  id          String   @id @default(uuid())
+  description String
+  quantity    Float    @default(1.0)
+  unit_price  Float
+  amount      Float
+  
+  invoice_id  String
+  invoice     Invoice  @relation(fields: [invoice_id], references: [id], onDelete: Cascade)
+}
+
+
+
+
+
+
+
+
+
+
+// --- MODULE 4: AD INTELLIGENCE ---
+
+model AdAccount {
+  id           String   @id @default(uuid())
+  platform     String   // Enum: GOOGLE, META
+  external_id  String   // e.g., 'act_123456789'
+  name         String
+  status       String   @default("ACTIVE")
+  currency     String   @default("INR")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  client_id String
+  client    Client @relation(fields: [client_id], references: [id])
+
+  // Credentials are stored in a secure separate vault or encrypted field
+  // For MVP, we might store a simple token reference or env var key
+}
+
+model SpendSnapshot {
+  id              String   @id @default(uuid())
+  date            DateTime // Normalized to midnight UTC or Asia/Kolkata
+  spend_micros    BigInt   // Store as BigInt to avoid float precision errors
+  impressions     Int      @default(0)
+  clicks          Int      @default(0)
+  conversions     Int      @default(0)
+  revenue         Float    @default(0.0)
+  currency        String   @default("INR")
+  createdAt       DateTime @default(now())
+  
+  // Linkage
+  campaign_id     String?
+  campaign        Campaign? @relation(fields: [campaign_id], references: [id])
+  
+  ad_account_id   String?
+  // ad_account AdAccount...
+
+  @@unique([date, campaign_id]) // One snapshot per campaign per day
+}
+
+model Lead {
+  id              String   @id @default(uuid())
+  email           String?
+  phone           String?
+  name            String?
+  source          String?  // 'Facebook', 'Google', 'Organic'
+  utm_campaign    String?
+  utm_medium      String?
+  utm_source      String?
+  click_id        String?  // gclid / fbclid
+  status          String   @default("NEW") // NEW, CONTACTED, QUALIFIED, CLOSED
+  conversion_value Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  client_id       String?
+  // client Client...
+}
+
+// --- INVOICING MODULE ---
+
+
+
+

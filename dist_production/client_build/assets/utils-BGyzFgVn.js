@@ -1,0 +1,1 @@
+import{ac as e,Y as c}from"./index-BJPAJU8j.js";function o(...t){return e(c(t))}const a=t=>{if(!t)return"";if(t.startsWith("http")||t.startsWith("blob:"))return t;const r="http://localhost:4001/api".replace("/api",""),s=t.startsWith("/")?t:`/${t}`;return`${r}${s}`};export{o as c,a as g};

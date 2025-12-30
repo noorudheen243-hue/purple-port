@@ -223,9 +223,27 @@ export const ensureLedger = async (entityType: string, entityId: string, headCod
         }
     }
 
-    // Ensure Name Uniqueness
-    // Append (Client) or something if duplicate?
-    // "Prevent duplicate ledgers" - we mean we shouldn't create 2 ledgers for same client.
+    // Check for Name Conflict (Unique constraint on name + head_id)
+    const duplicate = await prisma.ledger.findFirst({
+        where: { name: ledgerName, head_id: head.id }
+    });
+
+    if (duplicate) {
+        // If it belongs to THIS entity, return it (Success)
+        if (duplicate.entity_id === entityId) return duplicate;
+
+        // Conflict: Same name but different entity or global ledger.
+        // Resolve by appending entity info
+        const safeSuffix = entityId.substring(0, 4);
+        ledgerName = `${ledgerName} (${safeSuffix})`;
+
+        // Final sanity check (recursive?) No, single retry is enough for MVP.
+        const doubleCheck = await prisma.ledger.findFirst({ where: { name: ledgerName, head_id: head.id } });
+        if (doubleCheck) {
+            // Second collision, fallback to full random
+            ledgerName = `${name} (Ref: ${entityId.substring(0, 6)})`;
+        }
+    }
 
     return createLedger({
         name: ledgerName || "New Ledger",

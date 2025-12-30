@@ -121,3 +121,19 @@ export const deleteTask = async (req: Request, res: Response) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+export const getStats = async (req: Request, res: Response) => {
+    try {
+        const { start, end, view } = req.query;
+
+        const stats = await taskService.getTaskStats({
+            startDate: start ? new Date(start as string) : undefined,
+            endDate: end ? new Date(end as string) : undefined,
+            groupBy: (view as any) || 'staff'
+        });
+
+        res.json(stats);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};

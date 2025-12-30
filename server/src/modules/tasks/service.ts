@@ -190,3 +190,81 @@ export const deleteTask = async (id: string) => {
         where: { id }
     });
 };
+
+export const getTaskStats = async (filters: {
+    startDate?: Date;
+    endDate?: Date;
+    groupBy?: 'staff' | 'department' | 'status' | 'client';
+}) => {
+    const whereClause: Prisma.TaskWhereInput = {};
+
+    if (filters.startDate && filters.endDate) {
+        whereClause.createdAt = {
+            gte: filters.startDate,
+            lte: filters.endDate
+        };
+    }
+
+    // Fetch all relevant tasks with assignee info
+    const tasks = await prisma.task.findMany({
+        where: whereClause,
+        select: {
+            id: true,
+            status: true,
+            priority: true,
+            assignee: {
+                select: {
+                    id: true,
+                    full_name: true,
+                    department: true
+                }
+            },
+            client: {
+                select: {
+                    brand_name: true
+                }
+            },
+            due_date: true
+        }
+    });
+
+    // Aggregation Logic
+    const stats: Record<string, { total: number; completed: number; pending: number; overdue: number }> = {};
+
+    tasks.forEach(task => {
+        let key = 'Unassigned';
+
+        if (filters.groupBy === 'staff') {
+            key = task.assignee?.full_name || 'Unassigned';
+        } else if (filters.groupBy === 'department') {
+            key = task.assignee?.department || 'Unassigned';
+        } else if (filters.groupBy === 'client') {
+            key = task.client?.brand_name || 'No Client';
+        } else if (filters.groupBy === 'status') {
+            key = task.status;
+        }
+
+        if (!stats[key]) {
+            stats[key] = { total: 0, completed: 0, pending: 0, overdue: 0 };
+        }
+
+        stats[key].total++;
+
+        if (task.status === 'COMPLETED') {
+            stats[key].completed++;
+        } else {
+            stats[key].pending++;
+            // Check Overdue
+            if (task.due_date && new Date(task.due_date) < new Date() && task.status !== 'COMPLETED') {
+                stats[key].overdue++;
+            }
+        }
+    });
+
+    // Convert to Array
+    return Object.entries(stats).map(([key, value]) => ({
+        name: key,
+        ...value,
+        rate: value.total > 0 ? Math.round((value.completed / value.total) * 100) : 0
+    }));
+};

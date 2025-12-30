@@ -28,6 +28,7 @@ const SettingsPage = lazy(() => import('../settings/index'));
 const TaskDashboard = lazy(() => import('../tasks/TaskDashboard'));
 const MyTasks = lazy(() => import('../tasks/MyTasks'));
 const TaskBoard = lazy(() => import('../tasks/TaskBoard'));
+const TaskReports = lazy(() => import('../tasks/reports/index'));
 const TeamPerformance = lazy(() => import('../tasks/TeamPerformance'));
 
 // Payroll Modules
@@ -64,6 +65,7 @@ const Dashboard = () => {
                     <Route path="tasks/:id" element={<TaskDetail />} />
                     <Route path="tasks/calendar" element={<CalendarView />} />
                     <Route path="tasks/performance" element={<TeamPerformance />} />
+                    <Route path="tasks/reports" element={<TaskReports />} />
                     <Route path="calendar" element={<CalendarView />} />
 
                     {/* Module 3: Accounting Routes */}

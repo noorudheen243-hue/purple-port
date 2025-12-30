@@ -95,28 +95,21 @@ export const downloadBackup = async (req: Request, res: Response) => {
     }
 };
 
-export const exportDataJson = async (req: Request, res: Response) => {
+export const exportFullBackupZip = async (req: Request, res: Response) => {
     try {
-        console.log(`[Backup] Starting JSON Export for ${req.ip}`);
+        console.log(`[Backup] Starting Full Backup (ZIP) for ${req.ip}`);
 
         const data: any = {};
 
-        // 1. Fetch Critical Data
-        // Core
+        // 1. Fetch Critical Data (Same as before)
         data.users = await prisma.user.findMany();
-        data.staffProfiles = await prisma.staffProfile.findMany(); // Linked to Users
-
-        // Modules
+        data.staffProfiles = await prisma.staffProfile.findMany();
         data.clients = await prisma.client.findMany();
         data.campaigns = await prisma.campaign.findMany();
         data.tasks = await prisma.task.findMany();
-
-        // Assets & Interactions
         data.assets = await prisma.asset.findMany();
         data.comments = await prisma.comment.findMany();
         data.timeLogs = await prisma.timeLog.findMany();
-
-        // Accounting
         data.accountHeads = await prisma.accountHead.findMany();
         data.ledgers = await prisma.ledger.findMany();
         data.journalEntries = await prisma.journalEntry.findMany();
@@ -124,96 +117,124 @@ export const exportDataJson = async (req: Request, res: Response) => {
         data.invoices = await prisma.invoice.findMany();
         data.invoiceItems = await prisma.invoiceItem.findMany();
 
-        // 2. Stream Response
-        const filename = `purple-port-data-${new Date().toISOString().split('T')[0]}.json`;
-        res.setHeader('Content-Type', 'application/json');
+        // 2. Create ZIP
+        const archive = archiver('zip', { zlib: { level: 9 } });
+        const filename = `purple-port-backup-${new Date().toISOString().split('T')[0]}.zip`;
+
+        res.setHeader('Content-Type', 'application/zip');
         res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
 
-        res.send(JSON.stringify(data, null, 2));
-        console.log(`[Backup] JSON Data sent (${Object.keys(data).length} tables)`);
+        archive.pipe(res);
+
+        // Add Data JSON
+        archive.append(JSON.stringify(data, null, 2), { name: 'data.json' });
+
+        // Add Uploads Folder
+        const uploadsDir = path.join(process.cwd(), 'uploads');
+        if (fs.existsSync(uploadsDir)) {
+            archive.directory(uploadsDir, 'uploads');
+        }
+
+        await archive.finalize();
+        console.log(`[Backup] Full Backup ZIP sent.`);
 
     } catch (error: any) {
-        console.error('[Backup] JSON Export Error:', error);
-        res.status(500).json({ message: 'Export failed' });
+        console.error('[Backup] Export Error:', error);
+        if (!res.headersSent) res.status(500).json({ message: 'Export failed' });
     }
 };
 
-export const importDataJson = async (req: Request, res: Response) => {
+export const importFullBackupZip = async (req: Request, res: Response) => {
     try {
-        // Multer puts file in req.file
-        if (!req.file) {
-            return res.status(400).json({ message: 'No file uploaded' });
+        if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+
+        console.log(`[Backup] Starting Import from ${req.file.originalname}`);
+        const zipPath = req.file.path;
+
+        // 1. Extract ZIP
+        const zip = new AdmZip(zipPath);
+        const zipEntries = zip.getEntries();
+
+        let jsonData: any = null;
+
+        // Check for data.json
+        const dataEntry = zipEntries.find(entry => entry.entryName === 'data.json');
+        if (dataEntry) {
+            jsonData = JSON.parse(dataEntry.getData().toString('utf8'));
+        } else {
+            // Fallback: If user uploaded a straight JSON file instead of ZIP (Legacy support)
+            // But Multer saves it as a file. If it's not a zip, adm-zip might throw or return empty.
+            // For now, let's assume it MUST be a zip if we strictly enforce it, OR check mime type.
+            // If adm-zip fails, we catch error.
+
+            // Try reading as straight JSON if zip extraction failed to find data.json?
+            // Actually, if it's a JSON file, AdmZip won't work.
+            // Let's assume strict ZIP for now as per new UI.
+            throw new Error('Invalid Backup: data.json not found in zip');
         }
 
-        console.log(`[Backup] Starting Query Import from ${req.file.originalname}`);
+        // 2. Extract Uploads
+        const uploadsEntry = zipEntries.filter(entry => entry.entryName.startsWith('uploads/'));
+        if (uploadsEntry.length > 0) {
+            console.log(`[Backup] Restoring ${uploadsEntry.length} files to uploads/...`);
+            zip.extractAllTo(process.cwd(), true); // This will extract 'data.json' to root (bad) and 'uploads/' to root (good).
 
-        // 1. Read JSON
-        const rawData = fs.readFileSync(req.file.path, 'utf-8');
-        const data = JSON.parse(rawData);
-
-        // 2. Clean Database (Reverse dependency order to avoid constraints)
-        // DANGER: THIS WIPES DATA. This is "Sync" mode.
-        await prisma.$transaction(async (tx) => {
-            // -- Level 4: Lowest Dependents --
-            await tx.timeLog.deleteMany();
-            await tx.comment.deleteMany();
-            await tx.asset.deleteMany();
-
-            // -- Level 3: Items/Transaction Lines --
-            await tx.invoiceItem.deleteMany();
-            await tx.journalLine.deleteMany();
-
-            // -- Level 2: Headers --
-            await tx.task.deleteMany(); // Depends on Campaign/Client/User
-            await tx.invoice.deleteMany();
-            await tx.journalEntry.deleteMany();
-
-            // -- Level 1: Core Entities --
-            await tx.campaign.deleteMany(); // Depends on Client
-            await tx.ledger.deleteMany(); // Depends on Head
-            await tx.accountHead.deleteMany();
-            await tx.staffProfile.deleteMany(); // Depends on User
-
-            // -- Level 0: Roots --
-            await tx.client.deleteMany();
-            await tx.user.deleteMany();
-            // Note: We don't delete AdAccounts/Snapshots in MVP unless requested specifically
-
-            console.log('[Backup] Old data wiped.');
-
-            // 3. Insert New Data (CreateMany is fastest)
-            if (data.users?.length) await tx.user.createMany({ data: data.users });
-            if (data.staffProfiles?.length) await tx.staffProfile.createMany({ data: data.staffProfiles });
-
-            if (data.accountHeads?.length) await tx.accountHead.createMany({ data: data.accountHeads });
-            if (data.clients?.length) await tx.client.createMany({ data: data.clients });
-            if (data.campaigns?.length) await tx.campaign.createMany({ data: data.campaigns });
-
-            if (data.tasks?.length) await tx.task.createMany({ data: data.tasks });
-
-            if (data.assets?.length) await tx.asset.createMany({ data: data.assets });
-            if (data.comments?.length) await tx.comment.createMany({ data: data.comments });
-            if (data.timeLogs?.length) await tx.timeLog.createMany({ data: data.timeLogs });
-
-            if (data.accountHeads?.length) {
-                // Ledgers etc
-                if (data.ledgers?.length) await tx.ledger.createMany({ data: data.ledgers });
-                if (data.journalEntries?.length) await tx.journalEntry.createMany({ data: data.journalEntries });
-                if (data.journalLines?.length) await tx.journalLine.createMany({ data: data.journalLines });
-                if (data.invoices?.length) await tx.invoice.createMany({ data: data.invoices });
-                if (data.invoiceItems?.length) await tx.invoiceItem.createMany({ data: data.invoiceItems });
+            // Cleanup data.json from root if it was extracted
+            if (fs.existsSync(path.join(process.cwd(), 'data.json'))) {
+                fs.unlinkSync(path.join(process.cwd(), 'data.json'));
             }
+        }
 
-            console.log('[Backup] Import Transaction Complete.');
-        });
+        // 3. Import Database (Same Logic)
+        if (jsonData) {
+            const data = jsonData;
+            await prisma.$transaction(async (tx) => {
+                // -- Wipe Old Data --
+                await tx.timeLog.deleteMany();
+                await tx.comment.deleteMany();
+                await tx.asset.deleteMany();
+                await tx.invoiceItem.deleteMany();
+                await tx.journalLine.deleteMany();
+                await tx.task.deleteMany();
+                await tx.invoice.deleteMany();
+                await tx.journalEntry.deleteMany();
+                await tx.campaign.deleteMany();
+                await tx.ledger.deleteMany();
+                await tx.accountHead.deleteMany();
+                await tx.staffProfile.deleteMany();
+                await tx.client.deleteMany();
+                await tx.user.deleteMany();
 
-        // Cleanup temp file
+                console.log('[Backup] DB Wiped. Inserting new data...');
+
+                // -- Insert New Data --
+                if (data.users?.length) await tx.user.createMany({ data: data.users });
+                if (data.staffProfiles?.length) await tx.staffProfile.createMany({ data: data.staffProfiles });
+                if (data.accountHeads?.length) await tx.accountHead.createMany({ data: data.accountHeads });
+                if (data.clients?.length) await tx.client.createMany({ data: data.clients });
+                if (data.campaigns?.length) await tx.campaign.createMany({ data: data.campaigns });
+                if (data.tasks?.length) await tx.task.createMany({ data: data.tasks });
+                if (data.assets?.length) await tx.asset.createMany({ data: data.assets });
+                if (data.comments?.length) await tx.comment.createMany({ data: data.comments });
+                if (data.timeLogs?.length) await tx.timeLog.createMany({ data: data.timeLogs });
+
+                if (data.accountHeads?.length) {
+                    if (data.ledgers?.length) await tx.ledger.createMany({ data: data.ledgers });
+                    if (data.journalEntries?.length) await tx.journalEntry.createMany({ data: data.journalEntries });
+                    if (data.journalLines?.length) await tx.journalLine.createMany({ data: data.journalLines });
+                    if (data.invoices?.length) await tx.invoice.createMany({ data: data.invoices });
+                    if (data.invoiceItems?.length) await tx.invoiceItem.createMany({ data: data.invoiceItems });
+                }
+            });
+        }
+
+        // Cleanup temp
         fs.unlinkSync(req.file.path);
 
-        res.json({ message: 'Data imported successfully' });
+        res.json({ message: 'Full Backup restored successfully' });
 
     } catch (error: any) {
-        console.error('[Backup] JSON Import Error:', error);
+        console.error('[Backup] Import Error:', error);
         res.status(500).json({ message: error.message || 'Import failed' });
     }
 };

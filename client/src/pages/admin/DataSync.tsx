@@ -18,7 +18,7 @@ const DataSync = () => {
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
             link.href = url;
-            link.setAttribute('download', `purple-port-data-${new Date().toISOString().split('T')[0]}.json`);
+            link.setAttribute('download', `purple-port-backup-${new Date().toISOString().split('T')[0]}.zip`);
             document.body.appendChild(link);
             link.click();
             link.remove();
@@ -100,7 +100,7 @@ const DataSync = () => {
 
                     <input
                         type="file"
-                        accept=".json"
+                        accept=".zip,.json"
                         onChange={(e) => setFile(e.target.files?.[0] || null)}
                         className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100 mb-4"
                     />

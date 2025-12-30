@@ -95,6 +95,14 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
             { label: "Leave & LOP Summary", path: "/dashboard/payroll/leaves", icon: Calendar },
             { label: "Payroll Settings", path: "/dashboard/payroll/settings", icon: Settings, roles: ['ADMIN'] }
         ]
+    },
+    {
+        label: "System",
+        icon: Shield,
+        roles: ['ADMIN'],
+        children: [
+            { label: "Data Sync", path: "/dashboard/admin/sync", icon: TrendingUp }
+        ]
     }
 ];
 

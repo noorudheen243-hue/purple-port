@@ -369,17 +369,46 @@ export const deleteStaff = async (staffId: string) => {
     return await prisma.$transaction(async (tx) => {
         const profile = await tx.staffProfile.findUnique({
             where: { id: staffId },
-            select: { user_id: true }
+            select: { user_id: true, user: { select: { email: true } } }
         });
 
         if (!profile) throw new Error("Staff profile not found");
+        const userId = profile.user_id;
 
-        // Delete Profile first (FK constraints usually require this, or Cascade)
+        // 1. Delete Staff Profile (Removes them from Team List & Payroll)
         await tx.staffProfile.delete({ where: { id: staffId } });
 
-        // Delete User
-        await tx.user.delete({ where: { id: profile.user_id } });
+        // 2. Handle User Account (Cannot hard delete due to History/Tasks)
+        // Strategy: Anonymize and Deactivate (Scramble Password)
+        // Check if they have critical history
+        const hasHistory = await tx.task.count({ where: { OR: [{ assignee_id: userId }, { reporter_id: userId }] } });
 
-        return { message: "Deleted successfully" };
+        if (hasHistory === 0) {
+            // Safe to hard delete if no tasks
+            // Check other relations? Comments? 
+            // Simplest: Anonymize always to be safe against random FKs (Logs, etc.)
+            await tx.user.delete({ where: { id: userId } }).catch(() => {
+                // Fallback to anonymize if delete fails
+                console.log("Hard delete failed, falling back to anonymize");
+            });
+        }
+
+        // If still exists (or we skipped delete), Anonymize
+        const stillExists = await tx.user.findUnique({ where: { id: userId } });
+        if (stillExists) {
+            await tx.user.update({
+                where: { id: userId },
+                data: {
+                    full_name: "Deleted User",
+                    email: `deleted_${userId.substring(0, 8)}@deleted.com`, // Ensure unique email
+                    password_hash: crypto.randomBytes(32).toString('hex'), // Lock account
+                    avatar_url: null,
+                    role: 'DM_EXECUTIVE', // Downgrade role
+                    department: 'ADMIN' // Dump in Admin or specific 'ARCHIVE' dept if exists
+                }
+            });
+        }
+
+        return { message: "Staff deleted successfully (History preserved)" };
     });
 };

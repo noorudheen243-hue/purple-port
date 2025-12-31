@@ -17,7 +17,6 @@ export const generateToken = (res: Response, userId: string, role: string) => {
         httpOnly: true,
         secure: false, // FORCE FALSE for HTTP VPS compatibility
         sameSite: 'lax',
-        sameSite: 'lax',
         maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     });
 

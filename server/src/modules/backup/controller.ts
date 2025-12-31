@@ -103,11 +103,13 @@ export const exportFullBackupZip = async (req: Request, res: Response) => {
         const data: any = {};
 
         // 1. Fetch Critical Data (Same as before)
+        // 1. Fetch Critical Data (Same as before)
         data.users = await prisma.user.findMany();
         data.staffProfiles = await prisma.staffProfile.findMany();
         data.clients = await prisma.client.findMany();
         data.campaigns = await prisma.campaign.findMany();
         data.tasks = await prisma.task.findMany();
+        data.taskDependencies = await prisma.taskDependency.findMany(); // NEW
         data.assets = await prisma.asset.findMany();
         data.comments = await prisma.comment.findMany();
         data.timeLogs = await prisma.timeLog.findMany();
@@ -117,6 +119,22 @@ export const exportFullBackupZip = async (req: Request, res: Response) => {
         data.journalLines = await prisma.journalLine.findMany();
         data.invoices = await prisma.invoice.findMany();
         data.invoiceItems = await prisma.invoiceItem.findMany();
+
+        // NEW: Extended Data
+        data.notifications = await prisma.notification.findMany();
+        data.attendanceRecords = await prisma.attendanceRecord.findMany();
+        data.leaveRequests = await prisma.leaveRequest.findMany();
+        data.holidays = await prisma.holiday.findMany();
+        data.payrollRuns = await prisma.payrollRun.findMany();
+        data.payrollSlips = await prisma.payrollSlip.findMany();
+
+        data.stickyNotes = await prisma.stickyNote.findMany();
+        data.stickyTasks = await prisma.stickyTask.findMany();
+        data.stickyNotePermissions = await prisma.stickyNotePermission.findMany();
+
+        data.adAccounts = await prisma.adAccount.findMany();
+        data.spendSnapshots = await prisma.spendSnapshot.findMany();
+        data.leads = await prisma.lead.findMany();
 
         // 2. Create ZIP
         const archive = archiver('zip', { zlib: { level: 9 } });
@@ -163,14 +181,7 @@ export const importFullBackupZip = async (req: Request, res: Response) => {
         if (dataEntry) {
             jsonData = JSON.parse(dataEntry.getData().toString('utf8'));
         } else {
-            // Fallback: If user uploaded a straight JSON file instead of ZIP (Legacy support)
-            // But Multer saves it as a file. If it's not a zip, adm-zip might throw or return empty.
-            // For now, let's assume it MUST be a zip if we strictly enforce it, OR check mime type.
-            // If adm-zip fails, we catch error.
-
-            // Try reading as straight JSON if zip extraction failed to find data.json?
-            // Actually, if it's a JSON file, AdmZip won't work.
-            // Let's assume strict ZIP for now as per new UI.
+            // Fallback: If user uploaded a straight JSON file
             throw new Error('Invalid Backup: data.json not found in zip');
         }
 
@@ -178,7 +189,7 @@ export const importFullBackupZip = async (req: Request, res: Response) => {
         const uploadsEntry = zipEntries.filter(entry => entry.entryName.startsWith('uploads/'));
         if (uploadsEntry.length > 0) {
             console.log(`[Backup] Restoring ${uploadsEntry.length} files to uploads/...`);
-            zip.extractAllTo(process.cwd(), true); // This will extract 'data.json' to root (bad) and 'uploads/' to root (good).
+            zip.extractAllTo(process.cwd(), true);
 
             // Cleanup data.json from root if it was extracted
             if (fs.existsSync(path.join(process.cwd(), 'data.json'))) {
@@ -190,35 +201,76 @@ export const importFullBackupZip = async (req: Request, res: Response) => {
         if (jsonData) {
             const data = jsonData;
             await prisma.$transaction(async (tx) => {
-                // -- Wipe Old Data --
+                console.log('[Backup] Wiping tables...');
+
+                // -- Wipe Old Data (Order matters for FK) --
+                // 1. Level: Leaf nodes (depend on others but nobody depends on them)
+                await tx.stickyTask.deleteMany();
+                await tx.stickyNotePermission.deleteMany();
+                await tx.taskDependency.deleteMany();
+                await tx.invoiceItem.deleteMany();
+                await tx.journalLine.deleteMany();
                 await tx.timeLog.deleteMany();
                 await tx.comment.deleteMany();
                 await tx.asset.deleteMany();
-                await tx.invoiceItem.deleteMany();
-                await tx.journalLine.deleteMany();
+                await tx.notification.deleteMany();
+                await tx.leaveRequest.deleteMany();
+                await tx.attendanceRecord.deleteMany();
+                await tx.payrollSlip.deleteMany();
+                await tx.spendSnapshot.deleteMany();
+                await tx.lead.deleteMany();
+
+                // 2. Level: Mid dependencies
+                await tx.stickyNote.deleteMany();
                 await tx.task.deleteMany();
                 await tx.invoice.deleteMany();
                 await tx.journalEntry.deleteMany();
-                await tx.campaign.deleteMany();
                 await tx.ledger.deleteMany();
-                await tx.accountHead.deleteMany();
+                await tx.adAccount.deleteMany();
+                await tx.campaign.deleteMany();
+                await tx.payrollRun.deleteMany();
+                await tx.holiday.deleteMany();
                 await tx.staffProfile.deleteMany();
+
+                // 3. Level: Roots
+                await tx.accountHead.deleteMany();
                 await tx.client.deleteMany();
                 await tx.user.deleteMany();
 
                 console.log('[Backup] DB Wiped. Inserting new data...');
 
-                // -- Insert New Data --
+                // -- Insert New Data (Order: Roots -> Leaves) --
                 if (data.users?.length) await tx.user.createMany({ data: data.users });
                 if (data.staffProfiles?.length) await tx.staffProfile.createMany({ data: data.staffProfiles });
                 if (data.accountHeads?.length) await tx.accountHead.createMany({ data: data.accountHeads });
                 if (data.clients?.length) await tx.client.createMany({ data: data.clients });
+                if (data.adAccounts?.length) await tx.adAccount.createMany({ data: data.adAccounts });
+                if (data.leads?.length) await tx.lead.createMany({ data: data.leads });
+
                 if (data.campaigns?.length) await tx.campaign.createMany({ data: data.campaigns });
+                if (data.spendSnapshots?.length) await tx.spendSnapshot.createMany({ data: data.spendSnapshots });
+
                 if (data.tasks?.length) await tx.task.createMany({ data: data.tasks });
+                if (data.taskDependencies?.length) await tx.taskDependency.createMany({ data: data.taskDependencies });
+
                 if (data.assets?.length) await tx.asset.createMany({ data: data.assets });
                 if (data.comments?.length) await tx.comment.createMany({ data: data.comments });
                 if (data.timeLogs?.length) await tx.timeLog.createMany({ data: data.timeLogs });
 
+                // Notifications & Sticky Notes
+                if (data.notifications?.length) await tx.notification.createMany({ data: data.notifications });
+                if (data.stickyNotes?.length) await tx.stickyNote.createMany({ data: data.stickyNotes });
+                if (data.stickyTasks?.length) await tx.stickyTask.createMany({ data: data.stickyTasks });
+                if (data.stickyNotePermissions?.length) await tx.stickyNotePermission.createMany({ data: data.stickyNotePermissions });
+
+                // HR & Payroll
+                if (data.holidays?.length) await tx.holiday.createMany({ data: data.holidays });
+                if (data.attendanceRecords?.length) await tx.attendanceRecord.createMany({ data: data.attendanceRecords });
+                if (data.leaveRequests?.length) await tx.leaveRequest.createMany({ data: data.leaveRequests });
+                if (data.payrollRuns?.length) await tx.payrollRun.createMany({ data: data.payrollRuns });
+                if (data.payrollSlips?.length) await tx.payrollSlip.createMany({ data: data.payrollSlips });
+
+                // Accounting
                 if (data.accountHeads?.length) {
                     if (data.ledgers?.length) await tx.ledger.createMany({ data: data.ledgers });
                     if (data.journalEntries?.length) await tx.journalEntry.createMany({ data: data.journalEntries });

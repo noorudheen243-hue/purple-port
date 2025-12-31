@@ -1,0 +1,1 @@
+import{t as f,a7 as u}from"./index-DG6laMbl.js";function d(s){const e=f(s);return e.setDate(1),e.setHours(0,0,0,0),e}function p(s,e){var r,c;const o=u(),n=o.weekStartsOn??((c=(r=o.locale)==null?void 0:r.options)==null?void 0:c.weekStartsOn)??0,t=f(s),a=t.getDay(),i=(a<n?-7:0)+6-(a-n);return t.setDate(t.getDate()+i),t.setHours(23,59,59,999),t}export{p as e,d as s};

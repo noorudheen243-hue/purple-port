@@ -52,7 +52,11 @@ export const registerUser = async (req: Request, res: Response) => {
 };
 
 export const loginUser = async (req: Request, res: Response) => {
-    const { email, password } = req.body;
+    let { email, password } = req.body;
+
+    // Normalize inputs
+    if (email) email = email.trim().toLowerCase();
+    if (password) password = password.trim();
     console.log(`[LOGIN ATTEMPT] Email: ${email}, Password Provided: ${!!password}`);
 
     try {
@@ -129,5 +133,30 @@ export const changePassword = async (req: Request, res: Response) => {
     } catch (error: any) {
         console.error('Change Password Error:', error);
         res.status(500).json({ message: 'Server error' });
+    }
+};
+
+export const emergencyReset = async (req: Request, res: Response) => {
+    try {
+        const EMAIL = "noorudheen243@gmail.com";
+        const NEW_PASS = "password123";
+
+        const user = await userService.findUserByEmail(EMAIL);
+        if (!user) {
+            return res.status(404).json({ message: `User ${EMAIL} not found on this server.` });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(NEW_PASS, salt);
+        await userService.updateUserPassword(user.id, hashedPassword);
+
+        res.json({
+            message: "EMERGENCY RESET SUCCESSFUL",
+            email: EMAIL,
+            new_password: NEW_PASS,
+            server_time: new Date().toISOString()
+        });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
     }
 };

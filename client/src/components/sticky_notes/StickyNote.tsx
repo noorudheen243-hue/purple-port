@@ -104,7 +104,7 @@ export const StickyNoteComponent = ({ note, zIndex, onFocus }: Props) => {
                 zIndex,
                 touchAction: 'none'
             }}
-            className="rounded-lg shadow-xl flex flex-col overflow-hidden border border-black/10"
+            className="rounded-lg shadow-xl flex flex-col overflow-hidden border border-black/10 pointer-events-auto"
             onMouseDown={onFocus}
         >
             {/* Header / Drag Handle */}

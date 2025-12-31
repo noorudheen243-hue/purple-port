@@ -1,0 +1,23 @@
+DEPLOYMENT INSTRUCTIONS
+=======================
+
+1. UPLOAD
+   - Upload 'deploy_package.zip' to your VPS (IP: 72.61.246.22).
+   - Recommended tool: FileZilla or WinSCP.
+   - Destination: /var/www/purple-port (or any folder you prefer).
+
+2. EXTRACT
+   - Login to your VPS via SSH or Terminal.
+   - Navigate to the folder where you uploaded the zip.
+   - Run: unzip deploy_package.zip
+
+3. INSTALL
+   - Enter the unzipped folder.
+   - Run: npm install --production
+
+4. DATABASE SETUP
+   - Run: npx prisma db push
+
+5. START SERVER
+   - Run: node dist/server.js
+   - (Optional) using PM2: pm2 start dist/server.js --name purple-port

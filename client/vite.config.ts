@@ -17,7 +17,7 @@ export default defineConfig({
         proxy: {
             '/api': {
                 target: 'http://localhost:4001',
-                changeOrigin: true,
+                changeOrigin: false, // Keep origin as localhost:5173 which is whitelisted
                 secure: false,
             }
         }

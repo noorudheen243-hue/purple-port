@@ -4,6 +4,11 @@ pnpm-lock.yaml
 yarn.lock
 package-lock.json
 
+
+# Database
+*.db
+*.sqlite
+
 # Environment Variables
 .env
 .env.local

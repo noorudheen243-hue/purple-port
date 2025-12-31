@@ -53,23 +53,33 @@ export const registerUser = async (req: Request, res: Response) => {
 
 export const loginUser = async (req: Request, res: Response) => {
     const { email, password } = req.body;
+    console.log(`[LOGIN ATTEMPT] Email: ${email}, Password Provided: ${!!password}`);
 
     try {
         const user = await userService.findUserByEmail(email);
+        console.log(`[LOGIN DEBUG] User found: ${!!user}`);
 
-        if (user && (await bcrypt.compare(password, user.password_hash))) {
-            generateToken(res, user.id, user.role);
-            res.json({
-                id: user.id,
-                full_name: user.full_name,
-                email: user.email,
-                role: user.role,
-                department: user.department,
-            });
-        } else {
-            res.status(401).json({ message: 'Invalid email or password' });
+        if (user) {
+            const isMatch = await bcrypt.compare(password, user.password_hash);
+            console.log(`[LOGIN DEBUG] Password Match: ${isMatch}`);
+
+            if (isMatch) {
+                generateToken(res, user.id, user.role);
+                res.json({
+                    id: user.id,
+                    full_name: user.full_name,
+                    email: user.email,
+                    role: user.role,
+                    department: user.department,
+                });
+                return;
+            }
         }
+
+        console.log('[LOGIN FAILED] Invalid credentials');
+        res.status(401).json({ message: 'Invalid email or password' });
     } catch (error: any) {
+        console.error('[LOGIN ERROR]', error);
         res.status(500).json({ message: error.message });
     }
 };

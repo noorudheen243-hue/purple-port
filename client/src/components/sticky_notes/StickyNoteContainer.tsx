@@ -15,9 +15,10 @@ export const StickyNoteContainer = () => {
     }, []);
 
     // Active notes that are NOT minimized
-    const activeNotes = notes.filter(n => !n.is_minimized && n.is_visible);
+    const safeNotes = Array.isArray(notes) ? notes : [];
+    const activeNotes = safeNotes.filter(n => !n.is_minimized && n.is_visible);
     // Minimized notes sit in the tray
-    const minimizedNotes = notes.filter(n => n.is_minimized && n.is_visible);
+    const minimizedNotes = safeNotes.filter(n => n.is_minimized && n.is_visible);
 
     const bringToFront = (id: string) => setFocusedId(id);
 

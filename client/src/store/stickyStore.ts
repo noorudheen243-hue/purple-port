@@ -32,7 +32,12 @@ export const useStickyStore = create<StickyState>((set, get) => ({
         set({ isLoading: true });
         try {
             const res = await axios.get('/sticky-notes');
-            set({ notes: res.data });
+            if (Array.isArray(res.data)) {
+                set({ notes: res.data });
+            } else {
+                console.error("API returned non-array for sticky notes:", res.data);
+                set({ notes: [] });
+            }
         } catch (error) {
             console.error("Failed to fetch notes", error);
         } finally {

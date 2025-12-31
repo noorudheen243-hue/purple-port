@@ -17,5 +17,6 @@ router.put('/tasks/:taskId', StickyController.updateTask);
 router.delete('/tasks/:taskId', StickyController.deleteTask);
 
 router.post('/:id/share', StickyController.shareNote);
+router.delete('/:id/share', StickyController.removeShare);
 
 export default router;

@@ -18,6 +18,10 @@ interface StickyState {
 
     // UI Local Updates (Optimistic)
     updateLocalNote: (id: string, data: Partial<StickyNote>) => void;
+
+    // Sharing
+    shareNote: (noteId: string, targetUserId: string, role: string) => Promise<void>;
+    removeShare: (noteId: string, targetUserId: string) => Promise<void>;
 }
 
 export const useStickyStore = create<StickyState>((set, get) => ({
@@ -125,5 +129,25 @@ export const useStickyStore = create<StickyState>((set, get) => ({
         set(state => ({
             notes: state.notes.map(n => n.id === id ? { ...n, ...data } : n)
         }));
+    },
+
+    shareNote: async (noteId, targetUserId, role) => {
+        try {
+            await axios.post(`/sticky-notes/${noteId}/share`, { targetUserId, role });
+            get().fetchNotes(); // Reload to get updated permissions
+        } catch (error) {
+            console.error("Failed to share note", error);
+            throw error;
+        }
+    },
+
+    removeShare: async (noteId, targetUserId) => {
+        try {
+            await axios.delete(`/sticky-notes/${noteId}/share`, { data: { targetUserId } });
+            get().fetchNotes();
+        } catch (error) {
+            console.error("Failed to remove share", error);
+            throw error;
+        }
     }
 }));

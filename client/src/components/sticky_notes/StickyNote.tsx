@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, useDragControls } from 'framer-motion';
-import { X, Minus, Plus, Trash2, Check, GripVertical, GripHorizontal } from 'lucide-react';
+import { X, Minus, Plus, Trash2, Check, GripVertical, GripHorizontal, Share2 } from 'lucide-react';
 import { StickyNote, StickyTask } from '../../types/sticky';
 import { useStickyStore } from '../../store/stickyStore';
 import { cn } from '../../lib/utils';
 import { format } from 'date-fns';
+import { ShareNoteModal } from './ShareNoteModal';
 
 interface Props {
     note: StickyNote;
@@ -26,6 +27,7 @@ export const StickyNoteComponent = ({ note, zIndex, onFocus }: Props) => {
     const { updateNote, deleteNote, addTask, toggleTask, deleteTask, updateLocalNote } = useStickyStore();
     const [newTask, setNewTask] = useState('');
     const [isEditingTitle, setIsEditingTitle] = useState(false);
+    const [isShareOpen, setIsShareOpen] = useState(false);
 
     // Local State for smooth Drag/Resize
     // We sync to Global Store on interaction end
@@ -133,6 +135,12 @@ export const StickyNoteComponent = ({ note, zIndex, onFocus }: Props) => {
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
+                        onClick={() => setIsShareOpen(true)}
+                        className="p-1 hover:bg-blue-500/20 hover:text-blue-600 rounded" title="Share"
+                    >
+                        <Share2 size={14} />
+                    </button>
+                    <button
                         onClick={() => updateNote(note.id, { is_minimized: true })}
                         className="p-1 hover:bg-black/10 rounded" title="Minimize"
                     >
@@ -146,6 +154,8 @@ export const StickyNoteComponent = ({ note, zIndex, onFocus }: Props) => {
                     </button>
                 </div>
             </div>
+
+            <ShareNoteModal note={note} isOpen={isShareOpen} onClose={() => setIsShareOpen(false)} />
 
             {/* Toolbar (Colors) */}
             <div className="h-6 bg-white/30 flex items-center px-2 gap-1 shrink-0">

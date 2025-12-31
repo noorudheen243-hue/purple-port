@@ -118,3 +118,16 @@ export const shareNote = async (req: Request, res: Response) => {
         res.status(400).json({ message: (error as Error).message });
     }
 };
+
+export const removeShare = async (req: Request, res: Response) => {
+    try {
+        // @ts-ignore
+        const userId = req.user.id;
+        const { id } = req.params;
+        const { targetUserId } = req.body;
+        await StickyService.removeShare(userId, id, targetUserId);
+        res.json({ message: "Share removed" });
+    } catch (error) {
+        res.status(400).json({ message: (error as Error).message });
+    }
+};

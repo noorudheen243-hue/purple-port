@@ -235,6 +235,7 @@ model Client {
   // Operating Location
   operating_country String?
   operating_state   String?
+  operating_locations_json String? // JSON Array of { country, state? }
 
   // New JSON Fields for Extended Data
   service_engagement String? // JSON Array of Strings
@@ -250,10 +251,26 @@ model Client {
   
   assigned_staff     User[]  @relation("ClientStaff") // Many-to-Many
 
+  // Content Strategies
+  content_strategies ClientContentStrategy[]
+
   campaigns Campaign[]
   directTasks Task[] // Tasks linked directly (e.g. Internal)
   ad_accounts AdAccount[]
   invoices    Invoice[]
+}
+
+model ClientContentStrategy {
+  id        String   @id @default(uuid())
+  type      String   // Poster, Reel, etc.
+  quantity  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  client_id String
+  client    Client   @relation(fields: [client_id], references: [id], onDelete: Cascade)
+  
+  @@unique([client_id, type])
 }
 model Campaign {
   id         String   @id @default(uuid())

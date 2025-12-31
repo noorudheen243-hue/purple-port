@@ -1,135 +1,109 @@
-# Hostinger Deployment Guide (VPS Method)
+# Hostinger VPS Deployment Guide (Clean Install)
 
-This guide takes you from "No Account" to "Live App" on Hostinger.
-Since your application uses **Node.js** and **PostgreSQL**, the best and most reliable option on Hostinger is a **VPS (Virtual Private Server)**.
+This guide assumes you have a brand new or existing Hostinger VPS (Ubuntu/Debian recommended) and you want to host the Qix Ads application on it.
+
+## Prerequisites
+- **IP Address**: 72.61.246.22
+- **Username**: `root`
+- **Password**: (Your VPS Password)
+- **Deployment Package**: `f:\Antigravity\deploy_package.zip` (On your local computer)
 
 ---
 
-## Phase 1: Purchase & Account Setup
-1.  Go to [hostinger.com](https://www.hostinger.com/).
-2.  Click on **VPS Hosting** in the menu.
-3.  Choose a plan.
-    *   **KVM 1**: Good for testing/small traffic. (Cheapest)
-    *   **KVM 2**: Recommended for production (Better RAM for build processes).
-4.  Click **Add to Cart** and complete the purchase.
-5.  **Create your Account** during checkout.
+## 1. Connect to VPS
+Open your terminal (or Command Prompt / PowerShell) on your computer and run:
+```bash
+ssh root@72.61.246.22
+```
+*Enter your password when prompted.*
 
-## Phase 2: VPS Configuration
-Once purchased, you will see the "Setup" wizard in your Hostinger Dashboard.
-1.  **Location**: Choose a server location closest to your users (e.g., USA, India, Europe).
-2.  **Operating System**: Select **Application** -> **Ubuntu 22.04 64bit**.
-3.  **Password**: Create a strong "root" password. **WRITE THIS DOWN.**
-4.  Finish setup and wait 5-10 minutes for the server to start.
+---
 
-## Phase 3: Connect to your Server
-You need a terminal to talk to your new server.
-*   **Windows**: Use **PowerShell** or **PuTTY**.
-*   **Mac/Linux**: Use **Terminal**.
+## 2. Reset & Clean Server (⚠️ DANGER)
+To remove **ALL** existing data and clean the deployment folder:
+```bash
+# 1. Stop any running processes
+pm2 delete all || true
 
-1.  Find your **SSH IP Address** in the Hostinger VPS Dashboard (e.g., `192.168.1.50`).
-2.  Open your terminal on your computer.
-3.  Run command:
-    ```bash
-    ssh root@YOUR_SERVER_IP
-    ```
-4.  Type `yes` if asked to verify fingerprint.
-5.  Enter the **root password** you created in Phase 2. (You won't see typing, just hit Enter).
-6.  You are now "inside" your remote server!
+# 2. Delete the application folder
+rm -rf /var/www/purple-port
 
-## Phase 4: Server Environment Setup
-I have created a script to automate the heavy lifting. Run these commands inside your **VPS terminal**:
+# 3. Re-create the folder
+mkdir -p /var/www/purple-port
+```
 
-1.  **Download the Setup Script**:
-    ```bash
-    nano setup.sh
-    ```
-2.  **Paste the Content**:
-    *   Open `f:\Antigravity\devops\hostinger_setup.sh` on your local computer.
-    *   Copy *all* the text.
-    *   Paste it into the VPS terminal window (Right-click usually pastes).
-3.  **Save & Exit**:
-    *   Press `Ctrl + X`, then `Y`, then `Enter`.
-4.  **Run the Script**:
-    ```bash
-    bash setup.sh
-    ```
-    *Wait for it to finish installing Node, Database, etc.*
+---
 
-## Phase 5: Deploy Your Code
-1.  **Clone your Code**:
-    *   (Make sure you pushed your code to GitHub first - see `GITHUB_SETUP.md`).
-    *   Run:
-        ```bash
-        git clone https://github.com/YOUR_USERNAME/purple-port.git
-        cd purple-port
-        ```
+## 3. Install Environment (If not already installed)
+If this is a fresh server, you need Node.js. Run these commands:
 
-2.  **Install & Build Backend**:
-    ```bash
-    cd server
-    npm install
-    cp .env.example .env
-    nano .env
-    # EDIT DATABASE_URL to: postgresql://postgres:im_secure_changeme@localhost:5432/qix_ads_db
-    # Save (Ctrl+X, Y, Enter)
-    npx prisma db push  # Sets up database tables
-    npm run build
-    ```
+```bash
+# Update System
+apt update
 
-3.  **Start Backend**:
-    ```bash
-    pm2 start dist/server.js --name "qix-api"
-    cd ..
-    ```
+# Install Node.js (Version 18+)
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt-get install -y nodejs
 
-4.  **Install & Build Frontend**:
-    ```bash
-    cd client
-    npm install
-    nano .env
-    # Add: VITE_API_URL=http://YOUR_SERVER_IP:10000
-    # Save (Ctrl+X, Y, Enter)
-    npm run build
-    ```
+# Install PM2 (Process Manager)
+npm install -g pm2
 
-## Phase 6: Expose to the Web (Nginx)
-We need to tell the web server to show your Frontend and pass API requests to the Backend.
+# Install Unzip
+apt install -y unzip
+```
 
-1.  **Edit Nginx Config**:
-    ```bash
-    nano /etc/nginx/sites-available/default
-    ```
-2.  **Delete everything and paste this**:
-    ```nginx
-    server {
-        listen 80;
-        server_name _;  # Or your domain.com
+---
 
-        # Frontend Files
-        location / {
-            root /root/purple-port/client/dist;
-            index index.html;
-            try_files $uri $uri/ /index.html;
-        }
+## 4. Upload Application
+You need to transfer the `deploy_package.zip` from your computer to the VPS.
 
-        # Backend API Proxy
-        location /api {
-            proxy_pass http://localhost:10000;
-            proxy_http_version 1.1;
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection 'upgrade';
-            proxy_set_header Host $host;
-            proxy_cache_bypass $http_upgrade;
-        }
-    }
-    ```
-    *Note: Adjust paths if you cloned somewhere else than `/root/`.*
-3.  **Restart Nginx**:
-    ```bash
-    sudo systemctl restart nginx
-    ```
+**On your LOCAL Computer (open a NEW terminal window):**
+```bash
+# Navigate to file location
+cd f:\Antigravity
 
-## Phase 7: You are Live!
-Open your browser and visit: `http://YOUR_SERVER_IP`
+# Upload file (Replace PASSWORD if prompted, or use FileZilla)
+scp deploy_package.zip root@72.61.246.22:/var/www/purple-port/
+```
+*Alternatively, use **FileZilla**: Connect to `72.61.246.22`, navigate to `/var/www/purple-port`, and drag-and-drop the zip file.*
 
-You should see your application running!
+---
+
+## 5. Install & Setup
+**Back on your VPS Terminal:**
+
+```bash
+cd /var/www/purple-port
+
+# Unzip the package
+unzip deploy_package.zip
+
+# Install Dependencies
+npm install --production
+
+# Initialize Database (This creates a fresh empty DB)
+npx prisma db push
+```
+
+---
+
+## 6. Start Application
+```bash
+# Start the server using PM2 (Run in background)
+pm2 start dist/server.js --name "qix-ads"
+
+# Save the process list so it restarts on reboot
+pm2 save
+pm2 startup
+```
+
+---
+
+## 7. Access Application
+Your application is now running!
+- **Frontend/Backend**: `http://72.61.246.22:4001` (API)
+- **Frontend Access**: The current build serves the frontend statically through the backend port 4001 for simplicity in this configuration, OR usually port 5173 if running separate dev server.
+- **Production Mode**: In this production build, the frontend is inside `public/` and served by the Express server on port **4001**.
+- **URL**: Open **`http://72.61.246.22:4001`** in your browser.
+
+*(Note: If you want port 80 (standard http), you would need to setup Nginx or change the PORT in .env to 80, but 4001 is safe for now).*

@@ -39,7 +39,8 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
         icon: User,
         children: [
             { label: "View Clients", path: "/dashboard/clients", icon: List },
-            { label: "Add New Client", path: "/dashboard/clients?action=new", icon: PlusCircle }
+            { label: "Add New Client", path: "/dashboard/clients?action=new", icon: PlusCircle },
+            { label: "Content Status", path: "/dashboard/clients/content-status", icon: BarChart3 }
         ]
     },
     {

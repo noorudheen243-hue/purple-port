@@ -8,6 +8,7 @@ const TaskList = lazy(() => import('../tasks/TaskList'));
 const CalendarView = lazy(() => import('../calendar/CalendarView'));
 const ClientList = lazy(() => import('../clients/ClientList'));
 const ClientDetail = lazy(() => import('../clients/ClientDetail'));
+const ClientContentStatus = lazy(() => import('../clients/ClientContentStatus'));
 const TaskDetail = lazy(() => import('../tasks/TaskDetail'));
 const AccountsDashboard = lazy(() => import('../accounts/AccountsDashboard'));
 const TransactionEntry = lazy(() => import('../accounts/TransactionEntry'));
@@ -54,6 +55,7 @@ const Dashboard = () => {
                     {/* ... other routes ... */}
                     <Route index element={<Overview />} />
                     <Route path="clients" element={<ClientList />} />
+                    <Route path="clients/content-status" element={<ClientContentStatus />} />
                     <Route path="clients/:id" element={<ClientDetail />} />
 
                     {/* Advanced Task Module */}

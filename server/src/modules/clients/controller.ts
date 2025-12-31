@@ -43,6 +43,11 @@ const createClientSchema = z.object({
         external_id: z.string(),
         status: z.enum(['ACTIVE', 'INACTIVE']).default('ACTIVE')
     })).optional(),
+
+    content_strategies: z.array(z.object({
+        type: z.string(),
+        quantity: z.number().min(0)
+    })).optional()
 });
 
 export const createClient = async (req: Request, res: Response) => {
@@ -67,10 +72,18 @@ export const createClient = async (req: Request, res: Response) => {
         };
 
         // Remove the virtual field 'assigned_staff_ids' and 'ad_accounts' from direct mapping, handle in service
+        // Remove relations from direct mapping
         delete dbData.assigned_staff_ids;
         delete dbData.ad_accounts;
+        delete dbData.content_strategies; // Prevent Prisma Unknown Argument Error
 
         const client = await clientService.createClient(dbData, validatedData.assigned_staff_ids, validatedData.ad_accounts);
+
+        // Handle Content Strategy Creation
+        if (validatedData.content_strategies && validatedData.content_strategies.length > 0) {
+            await clientService.upsertContentStrategy(client.id, validatedData.content_strategies);
+        }
+
         res.status(201).json(client);
     } catch (error: any) {
         if (error instanceof z.ZodError) {
@@ -122,6 +135,12 @@ export const updateClient = async (req: Request, res: Response) => {
         if (validatedData.ad_accounts) dbData.ad_accounts = validatedData.ad_accounts;
 
         const client = await clientService.updateClient(req.params.id, dbData);
+
+        // Handle Content Strategy Upsert
+        if (validatedData.content_strategies) {
+            await clientService.upsertContentStrategy(req.params.id, validatedData.content_strategies);
+        }
+
         res.json(client);
     } catch (error: any) {
         res.status(500).json({ message: error.message });

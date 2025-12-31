@@ -73,7 +73,8 @@ export const getClients = async () => {
             assigned_staff: {
                 select: { id: true, full_name: true, avatar_url: true }
             },
-            ad_accounts: true // Include Ad Accounts in list view if needed, or lightweight
+            ad_accounts: true,
+            content_strategies: true
         }
     });
 };
@@ -92,14 +93,15 @@ export const getClientById = async (id: string) => {
             assigned_staff: {
                 select: { id: true, full_name: true, email: true, avatar_url: true }
             },
-            ad_accounts: true
+            ad_accounts: true,
+            content_strategies: true
         }
     });
 };
 
 export const updateClient = async (id: string, data: any) => {
     // If assigned_staff_ids is present, we need to manage the relation
-    const { assigned_staff_ids, ad_accounts, ...updateData } = data;
+    const { assigned_staff_ids, ad_accounts, content_strategies, ...updateData } = data;
 
     if (assigned_staff_ids) {
         updateData.assigned_staff = {
@@ -175,6 +177,22 @@ export const updateClient = async (id: string, data: any) => {
     return await prisma.client.update({
         where: { id },
         data: updateData,
+    });
+};
+
+export const upsertContentStrategy = async (clientId: string, strategies: { type: string, quantity: number }[]) => {
+    return await prisma.$transaction(async (tx) => {
+        for (const s of strategies) {
+            await tx.clientContentStrategy.upsert({
+                where: { client_id_type: { client_id: clientId, type: s.type } },
+                update: { quantity: s.quantity },
+                create: {
+                    client_id: clientId,
+                    type: s.type,
+                    quantity: s.quantity
+                }
+            });
+        }
     });
 };
 

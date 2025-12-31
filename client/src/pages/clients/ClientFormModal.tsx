@@ -60,7 +60,12 @@ const clientSchema = z.object({
     customer_avatar: z.object({
         description: z.string().optional(),
         pain_points: z.string().optional(),
-    }).optional()
+    }).optional(),
+
+    content_strategies: z.array(z.object({
+        type: z.string(),
+        quantity: z.number().min(0)
+    })).default([])
 });
 
 type ClientFormValues = z.infer<typeof clientSchema>;
@@ -68,7 +73,8 @@ type ClientFormValues = z.infer<typeof clientSchema>;
 const SERVICE_OPTIONS = [
     "Meta Ads", "Google Ads", "SEO", "Web Development",
     "Graphic Design", "Video Production", "Video Editing",
-    "AI Video Making", "Motion Graphics", "Branding & Logo Design"
+    "AI Video Making", "Motion Graphics", "Branding & Logo Design",
+    "Content Creation & Page Handling"
 ];
 
 const COUNTRY_LIST = [
@@ -131,7 +137,8 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
             competitor_info: [],
             social_links: {},
             operating_country: '',
-            operating_state: ''
+            operating_state: '',
+            content_strategies: []
         }
     });
 
@@ -184,6 +191,12 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
         name: "ad_accounts"
     });
 
+    // Content Strategy Array
+    const { fields: contentStrategyFields, append: appendContentStrategy, remove: removeContentStrategy } = useFieldArray({
+        control,
+        name: "content_strategies"
+    });
+
     // Populate form if editing
     useEffect(() => {
         if (clientToEdit) {
@@ -205,6 +218,7 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
                 social_links: parseJsonSafe(clientToEdit.social_links, {}),
                 competitor_info: parseJsonSafe(clientToEdit.competitor_info, []),
                 customer_avatar: parseJsonSafe(clientToEdit.customer_avatar, { description: '', pain_points: '' }),
+                content_strategies: clientToEdit.content_strategies || []
             });
         } else {
             reset({
@@ -215,7 +229,8 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
                 ad_accounts: [],
                 competitor_info: [],
                 social_links: {},
-                customer_avatar: { description: '', pain_points: '' }
+                customer_avatar: { description: '', pain_points: '' },
+                content_strategies: []
             });
         }
     }, [clientToEdit, reset, isOpen]);
@@ -382,24 +397,26 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
                                         </div>
                                     </div>
 
-                                    <h4 className="font-medium text-gray-900 border-b pb-2 mt-2">Operating Location</h4>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <label className="label">Country</label>
-                                            <select {...register('operating_country')} className="input">
-                                                <option value="">Select Country...</option>
-                                                {COUNTRY_LIST.map(c => <option key={c} value={c}>{c}</option>)}
-                                            </select>
-                                        </div>
-                                        {watch('operating_country') === 'India' && (
-                                            <div className="space-y-2 animate-in fade-in">
-                                                <label className="label">State</label>
-                                                <select {...register('operating_state')} className="input">
-                                                    <option value="">Select State...</option>
-                                                    {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                                    <h4 className="font-medium text-gray-900 border-b pb-2 mt-2">Operating Locations</h4>
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="label">Primary Country</label>
+                                                <select {...register('operating_country')} className="input">
+                                                    <option value="">Select Country...</option>
+                                                    {COUNTRY_LIST.map(c => <option key={c} value={c}>{c}</option>)}
                                                 </select>
                                             </div>
-                                        )}
+                                            {watch('operating_country') === 'India' && (
+                                                <div className="space-y-2 animate-in fade-in">
+                                                    <label className="label">State</label>
+                                                    <select {...register('operating_state')} className="input">
+                                                        <option value="">Select State...</option>
+                                                        {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                                                    </select>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -647,27 +664,72 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
 
                     {/* STRATEGY TAB */}
                     {currentStep === 'strategy' && (
-                        <div className="animate-in fade-in">
-                            <div className="flex justify-between items-center mb-4">
-                                <h4 className="font-medium">Competitor Analysis</h4>
-                                <button type="button" onClick={() => appendCompetitor({ name: '', website: '' })} className="text-sm text-primary flex items-center gap-1 hover:underline">
-                                    <Plus size={14} /> Add Competitor
-                                </button>
+                        <div className="animate-in fade-in space-y-6">
+                            {/* CONTENT STRATEGY SECTION */}
+                            <div>
+                                <h4 className="font-medium text-gray-900 mb-3 border-b pb-2">Content Strategy (Monthly Commitments)</h4>
+                                <div className="space-y-3">
+                                    {contentStrategyFields.map((field, index) => (
+                                        <div key={field.id} className="flex gap-3 items-center bg-gray-50 p-3 rounded-md border border-gray-100">
+                                            <div className="flex-1">
+                                                <label className="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Content Type</label>
+                                                <select {...register(`content_strategies.${index}.type`)} className="input text-sm py-1.5">
+                                                    <option value="Poster Design">Poster Design</option>
+                                                    <option value="Reel Video">Reel Video</option>
+                                                    <option value="Motion Graphic Video">Motion Graphic Video</option>
+                                                    <option value="AI Video">AI Video</option>
+                                                    <option value="Anchor Ads">Anchor Ads</option>
+                                                    <option value="Carousel">Carousel</option>
+                                                    <option value="Logo Design">Logo Design</option>
+                                                    <option value="Brochure Design">Brochure Design</option>
+                                                    <option value="Flyer Design">Flyer Design</option>
+                                                    <option value="Flex / Billboard Design">Flex / Billboard Design</option>
+                                                    <option value="Business Card">Business Card</option>
+                                                    <option value="Letter Head">Letter Head</option>
+                                                </select>
+                                            </div>
+                                            <div className="w-24">
+                                                <label className="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Quantity</label>
+                                                <input
+                                                    type="number"
+                                                    {...register(`content_strategies.${index}.quantity`, { valueAsNumber: true })}
+                                                    className="input text-sm py-1.5"
+                                                    min={0}
+                                                />
+                                            </div>
+                                            <button type="button" onClick={() => removeContentStrategy(index)} className="text-red-500 hover:text-red-700 p-2 mt-4 bg-white rounded border border-gray-200">
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    <button type="button" onClick={() => appendContentStrategy({ type: 'Poster Design', quantity: 0 })} className="text-sm bg-primary/10 text-primary px-3 py-1.5 rounded-md flex items-center gap-1 hover:bg-primary/20 transition-colors">
+                                        <Plus size={14} /> Add Content Type
+                                    </button>
+                                </div>
                             </div>
 
-                            <div className="space-y-3">
-                                {competitorFields.map((field, index) => (
-                                    <div key={field.id} className="flex gap-3 items-start bg-gray-50 p-3 rounded-md">
-                                        <div className="flex-1">
-                                            <input {...register(`competitor_info.${index}.name`)} className="input mb-2" placeholder="Competitor Name" />
-                                            <input {...register(`competitor_info.${index}.website`)} className="input" placeholder="Competitor Website" />
+                            <div className="pt-4 border-t">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h4 className="font-medium">Competitor Analysis</h4>
+                                    <button type="button" onClick={() => appendCompetitor({ name: '', website: '' })} className="text-sm text-primary flex items-center gap-1 hover:underline">
+                                        <Plus size={14} /> Add Competitor
+                                    </button>
+                                </div>
+
+                                <div className="space-y-3">
+                                    {competitorFields.map((field, index) => (
+                                        <div key={field.id} className="flex gap-3 items-start bg-gray-50 p-3 rounded-md">
+                                            <div className="flex-1">
+                                                <input {...register(`competitor_info.${index}.name`)} className="input mb-2" placeholder="Competitor Name" />
+                                                <input {...register(`competitor_info.${index}.website`)} className="input" placeholder="Competitor Website" />
+                                            </div>
+                                            <button type="button" onClick={() => removeCompetitor(index)} className="text-red-500 hover:text-red-700 p-1">
+                                                <Trash2 size={16} />
+                                            </button>
                                         </div>
-                                        <button type="button" onClick={() => removeCompetitor(index)} className="text-red-500 hover:text-red-700 p-1">
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </div>
-                                ))}
-                                {competitorFields.length === 0 && <p className="text-sm text-gray-500 italic">No competitors added.</p>}
+                                    ))}
+                                    {competitorFields.length === 0 && <p className="text-sm text-gray-500 italic">No competitors added.</p>}
+                                </div>
                             </div>
                         </div>
                     )}

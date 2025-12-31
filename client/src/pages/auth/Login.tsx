@@ -14,8 +14,12 @@ const Login = () => {
         try {
             await login({ email, password });
             navigate('/dashboard');
+            navigate('/dashboard');
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Login failed');
+            console.error(err);
+            const status = err.response?.status;
+            const message = err.response?.data?.message || err.message || 'Unknown error';
+            setError(`Login Failed (${status || 'Net'}): ${message}`);
         }
     };
 

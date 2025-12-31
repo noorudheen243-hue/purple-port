@@ -24,7 +24,13 @@ app.use(helmet({
 }));
 app.use(limiter);
 app.use(cors({
-    origin: ['http://localhost:5173', 'http://localhost:5174', process.env.CLIENT_URL || ''],
+    origin: [
+        'http://localhost:5173',
+        'http://localhost:5174',
+        'http://72.61.246.22', // VPS IP
+        'http://72.61.246.22:4001',
+        process.env.CLIENT_URL || ''
+    ].filter(Boolean),
     credentials: true
 }));
 app.use(morgan('dev'));

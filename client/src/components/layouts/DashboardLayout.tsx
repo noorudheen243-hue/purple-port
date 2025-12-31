@@ -193,7 +193,10 @@ const Sidebar = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) 
     );
 };
 
+import { StickyNoteContainer } from '../sticky_notes/StickyNoteContainer';
+
 const DashboardLayout = ({ children }: { children: ReactNode }) => {
+    // ... hooks
     const { user, logout } = useAuthStore();
     const navigate = useNavigate();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -227,6 +230,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
 
     return (
         <div className="min-h-screen bg-background transition-colors duration-300">
+            <StickyNoteContainer />
             <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
             <main className="ml-0 md:ml-64 p-4 md:p-8 transition-[margin] duration-300">

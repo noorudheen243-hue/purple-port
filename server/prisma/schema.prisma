@@ -44,6 +44,10 @@ model User {
   // Managerial Relations
   subordinates   StaffProfile[] @relation("ReportingManager")
   leaveApprovals LeaveRequest[] @relation("LeaveApprover")
+
+  // Sticky Notes
+  stickyNotesOwned StickyNote[] @relation("NoteOwner")
+  stickyNotePermissions StickyNotePermission[]
 }
 
 // --- MODULE 5: TEAM & HR MANAGEMENT ---
@@ -587,6 +591,63 @@ model Lead {
 }
 
 // --- INVOICING MODULE ---
+
+// --- MODULE 6: STICKY NOTES SYSTEM ---
+
+model StickyNote {
+  id          String   @id @default(uuid())
+  title       String?  @default("New Note")
+  color       String   @default("#feff9c") // Default Yellow
+  
+  // Positioning & Sizing (Desktop)
+  position_x  Float    @default(50)  
+  position_y  Float    @default(50)
+  width       Float    @default(250)
+  height      Float    @default(300)
+  
+  is_minimized Boolean @default(false)
+  is_visible   Boolean @default(true)
+  is_shared    Boolean @default(false)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user_id     String
+  user        User     @relation("NoteOwner", fields: [user_id], references: [id])
+  
+  team_id     String? 
+
+  tasks       StickyTask[]
+  permissions StickyNotePermission[]
+}
+
+model StickyTask {
+  id           String   @id @default(uuid())
+  content      String
+  is_completed Boolean  @default(false)
+  completed_at DateTime?
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  note_id      String
+  note         StickyNote @relation(fields: [note_id], references: [id], onDelete: Cascade)
+}
+
+model StickyNotePermission {
+  id        String   @id @default(uuid())
+  role      String   // EDITOR, VIEWER
+  
+  createdAt DateTime @default(now())
+
+  note_id   String
+  note      StickyNote @relation(fields: [note_id], references: [id], onDelete: Cascade)
+  
+  user_id   String
+  user      User     @relation(fields: [user_id], references: [id])
+  
+  @@unique([note_id, user_id])
+}
 
 
 

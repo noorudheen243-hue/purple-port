@@ -71,6 +71,8 @@ app.use('/api/users', userRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/payroll', payrollRoutes);
 app.use('/api/backup', backupRoutes);
+import stickyNoteRoutes from './modules/sticky_notes/routes';
+app.use('/api/sticky-notes', stickyNoteRoutes);
 
 // --- Production: Serve Frontend ---
 // In production, we assume the React build is copied to a 'public' folder in the root

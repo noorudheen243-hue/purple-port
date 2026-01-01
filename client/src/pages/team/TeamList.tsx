@@ -294,8 +294,12 @@ const TeamList = () => {
                                                                 <select
                                                                     value={currentRole}
                                                                     onChange={(e) => handleRoleChange(member.id, e.target.value)}
-                                                                    className={`bg-transparent border-none text-xs font-medium focus:ring-0 cursor-pointer hover:bg-gray-100 rounded px-1 py-0.5 ${isChanged ? 'text-amber-600 font-bold' : 'text-gray-700'}`}
+                                                                    className={`bg-transparent border-none text-xs font-medium focus:ring-0 cursor-pointer hover:bg-gray-100 rounded px-1 py-0.5 ${currentRole === 'DEVELOPER_ADMIN'
+                                                                            ? 'bg-red-600 text-white font-bold px-2 py-1 rounded shadow-sm hover:bg-red-700'
+                                                                            : (isChanged ? 'text-amber-600 font-bold' : 'text-gray-700')
+                                                                        }`}
                                                                 >
+                                                                    <option value="DEVELOPER_ADMIN" className="font-bold text-red-600">★ Developer Admin</option>
                                                                     <option value="ADMIN">Admin</option>
                                                                     <option value="MANAGER">Manager</option>
                                                                     <option value="MARKETING_EXEC">Marketing Exec</option>

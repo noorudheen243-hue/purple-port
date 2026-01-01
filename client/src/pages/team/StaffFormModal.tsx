@@ -50,7 +50,7 @@ const staffSchema = z.object({
     full_name: z.string().min(2, "Full Name is required"),
     email: z.string().email("Valid email is required"),
     password: z.string().optional(),
-    role: z.enum(['ADMIN', 'MANAGER', 'DM_EXECUTIVE', 'WEB_SEO_EXECUTIVE', 'CREATIVE_DESIGNER', 'OPERATIONS_EXECUTIVE']),
+    role: z.enum(['ADMIN', 'MANAGER', 'DM_EXECUTIVE', 'WEB_SEO_EXECUTIVE', 'CREATIVE_DESIGNER', 'OPERATIONS_EXECUTIVE', 'DEVELOPER_ADMIN']),
     avatar_url: z.string().optional(),
 
     // Professional
@@ -324,6 +324,7 @@ const StaffFormModal = ({ isOpen, onClose, initialData }: StaffFormModalProps) =
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">System Role <span className="text-red-500">*</span></label>
                                         <select {...register('role')} className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all bg-white">
+                                            <option value="DEVELOPER_ADMIN" className="font-bold text-red-600">Developer Admin (Super User)</option>
                                             <option value="ADMIN">Admin (Full Access)</option>
                                             <option value="MANAGER">Manager (Team & Clients)</option>
                                             <option value="DM_EXECUTIVE">DM Executive</option>

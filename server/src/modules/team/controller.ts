@@ -206,7 +206,27 @@ export const updateStaffFull = async (req: Request, res: Response) => {
         const userData: any = {};
         if (data.full_name) userData.full_name = data.full_name;
         if (data.email) userData.email = data.email;
-        if (data.password) userData.password_hash = data.password; // Note: Hashing should happen in service if raw
+        if (data.email) userData.email = data.email;
+        if (data.password) userData.password_hash = data.password;
+
+        // --- DEVELOPER ADMIN PROTECTION START ---
+        // 1. Check if we are trying to set DEVELOPER_ADMIN
+        if (data.role === 'DEVELOPER_ADMIN') {
+            if (req.user!.role !== 'DEVELOPER_ADMIN') {
+                return res.status(403).json({ message: "Only Developer Admins can assign this role." });
+            }
+        }
+
+        // 2. Check if we are trying to modify an existing DEVELOPER_ADMIN
+        // We need to fetch the current profile/user to check their current role
+        const targetStaff = await teamService.getStaffProfile(id);
+        if (targetStaff && targetStaff.user.role === 'DEVELOPER_ADMIN') {
+            if (req.user!.role !== 'DEVELOPER_ADMIN') {
+                return res.status(403).json({ message: "You cannot modify a Developer Admin account." });
+            }
+        }
+        // --- DEVELOPER ADMIN PROTECTION END ---
+
         if (data.role) userData.role = data.role;
         if (data.department) userData.department = data.department;
         if (data.avatar_url !== undefined) userData.avatar_url = data.avatar_url;

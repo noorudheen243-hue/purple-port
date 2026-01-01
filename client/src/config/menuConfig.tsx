@@ -46,7 +46,7 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
     {
         label: "Financial Management",
         icon: Wallet,
-        roles: ['ADMIN'],
+        roles: ['ADMIN', 'DEVELOPER_ADMIN'],
         children: [
             { label: "Account Overview", path: "/dashboard/accounts/overview", icon: BarChart3 },
             { label: "Ledger Master", path: "/dashboard/accounts", icon: List },
@@ -100,7 +100,7 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
     {
         label: "System",
         icon: Shield,
-        roles: ['ADMIN'],
+        roles: ['ADMIN', 'DEVELOPER_ADMIN'],
         children: [
             { label: "Data Sync", path: "/dashboard/admin/sync", icon: TrendingUp }
         ]

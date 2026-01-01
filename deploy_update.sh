@@ -21,10 +21,15 @@ npx prisma generate
 npx prisma db push # Or migrate deploy
 # Ensure Developer Admin Role
 # Ensure Developer Admin Role
-npx ts-node scripts/set_developer_admin.ts
-# Force Production Mode for Backend to serve static files
+# Force Production Mode for Backend
 export NODE_ENV=production
-pm2 restart all --update-env # Restart backend with new env
+
+# PM2 RESCUE: Delete old process and start fresh to fix path issues
+# We are currently in /var/www/purple-port/server
+echo ">>> Resetting PM2 Process..."
+pm2 delete all || true
+pm2 start dist/server.js --name "purple-port-api"
+pm2 save
 
 # 3. Update Frontend
 echo ">>> Building Client..."

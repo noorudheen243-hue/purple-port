@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { useNavigate, Link } from 'react-router-dom';
+import { APP_VERSION } from '../../version';
 
 const Login = () => {
     const [email, setEmail] = useState('');
@@ -91,6 +92,10 @@ const Login = () => {
                 <div className="text-center text-sm">
                     <span className="text-muted-foreground">Don't have an account? </span>
                     <Link to="/register" className="text-primary hover:underline">Register</Link>
+                </div>
+                {/* Version Tag for Debugging */}
+                <div className="text-center text-xs text-gray-300 mt-4">
+                    v{APP_VERSION}
                 </div>
             </div>
         </div>

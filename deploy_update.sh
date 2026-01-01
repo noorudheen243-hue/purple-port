@@ -18,8 +18,11 @@ npm install
 npx prisma generate
 npx prisma db push # Or migrate deploy
 # Ensure Developer Admin Role
+# Ensure Developer Admin Role
 npx ts-node scripts/set_developer_admin.ts
-pm2 restart all # Restart backend
+# Force Production Mode for Backend to serve static files
+export NODE_ENV=production
+pm2 restart all --update-env # Restart backend with new env
 
 # 3. Update Frontend
 echo ">>> Building Client..."

@@ -13,6 +13,7 @@ router.delete('/holidays/:id', protect, authorize('ADMIN'), payrollController.de
 router.get('/draft', protect, authorize('ADMIN'), payrollController.getSalaryDraft);
 router.post('/slip', protect, authorize('ADMIN'), payrollController.savePayrollSlip);
 router.post('/confirm', protect, authorize('ADMIN'), payrollController.confirmPayrollRun);
+router.get('/run', protect, authorize('ADMIN'), payrollController.getPayrollRun);
 router.get('/history', protect, authorize('ADMIN'), payrollController.getPayrollHistory);
 
 export default router;

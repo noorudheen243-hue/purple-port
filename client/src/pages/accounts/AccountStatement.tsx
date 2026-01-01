@@ -7,8 +7,11 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 
+import { useSearchParams } from 'react-router-dom';
+
 const AccountStatement = () => {
-    const [selectedLedger, setSelectedLedger] = useState('');
+    const [searchParams] = useSearchParams();
+    const [selectedLedger, setSelectedLedger] = useState(searchParams.get('ledger_id') || '');
     const [dateRange, setDateRange] = useState({ start: '', end: '' });
     const [statementData, setStatementData] = useState<any>(null);
 
@@ -17,6 +20,22 @@ const AccountStatement = () => {
         queryKey: ['ledgers'],
         queryFn: async () => (await api.get('/accounting/ledgers')).data
     });
+
+    // Auto-select ledger from URL params
+    React.useEffect(() => {
+        if (ledgers) {
+            const ledgerIdParam = searchParams.get('ledger_id');
+            const entityIdParam = searchParams.get('entity_id');
+            const entityTypeParam = searchParams.get('entity_type');
+
+            if (ledgerIdParam) {
+                setSelectedLedger(ledgerIdParam);
+            } else if (entityIdParam && entityTypeParam) {
+                const found = ledgers.find((l: any) => l.entity_id === entityIdParam && l.entity_type === entityTypeParam);
+                if (found) setSelectedLedger(found.id);
+            }
+        }
+    }, [ledgers, searchParams]);
 
     // Fetch Statement
     const generateMutation = useMutation({

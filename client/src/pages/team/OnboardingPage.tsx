@@ -38,42 +38,43 @@ const STEPS = [
 // --- Extended Schema with "New Fields" ---
 const onboardingSchema = z.object({
     // Step 1: Personal
-    full_name: z.string().min(2, "Full Name is required"),
-    email: z.string().email("Valid email is required"),
+    full_name: z.string().min(1, "Name is required"), // Keep minimal check
+    email: z.string().email().optional().or(z.literal('')),
     avatar_url: z.string().optional(),
-    personal_contact: z.string().min(10, "Valid phone required"),
+    personal_contact: z.string().optional(),
     whatsapp_number: z.string().optional(),
-    date_of_birth: z.string().min(1, "DOB is required"),
-    gender: z.enum(['MALE', 'FEMALE', 'OTHER']).optional(),
-    blood_group: z.string().optional(), // NEW Field
-    current_address: z.string().min(5, "Current Address is required"), // Detailed
-    permanent_address: z.string().optional(), // Detailed
+    date_of_birth: z.string().optional(), // Relaxed
+    gender: z.string().optional().nullable(),
+    blood_group: z.string().optional().nullable(),
+    current_address: z.string().optional().nullable(), // Relaxed & Nullable
+    permanent_address: z.string().optional().nullable(), // Relaxed & Nullable
 
     // Step 2: Professional
-    staff_number: z.string().min(1, "Staff ID is required"),
-    designation: z.string().min(1, "Designation is required"),
+    staff_number: z.string().optional(),
+    designation: z.string().optional(),
     custom_designation: z.string().optional(),
-    department: z.enum(['CREATIVE', 'MARKETING', 'WEB_SEO', 'WEB', 'MANAGEMENT', 'ADMIN']),
-    date_of_joining: z.string().min(1, "Joining Date is required"),
+    department: z.string().optional(),
+    date_of_joining: z.string().optional(),
     reporting_manager_id: z.string().optional(),
-    shift_timing: z.string().optional(), // NEW: Specific Shift Timing Dropdown
+    shift_timing: z.string().optional(),
 
     // Step 3: Payroll
-    base_salary: z.coerce.number().min(0),
-    salary_type: z.enum(['MONTHLY', 'DAILY', 'CONTRACT']),
-    payment_method: z.enum(['BANK_TRANSFER', 'CASH', 'UPI']).optional(),
+    base_salary: z.any().optional(),
+    salary_type: z.string().optional(),
+    payment_method: z.string().optional(),
     bank_name: z.string().optional(),
     account_number: z.string().optional(),
     ifsc_code: z.string().optional(),
     pan_number: z.string().optional(),
-    aadhar_number: z.string().optional(), // NEW Field
+    aadhar_number: z.string().optional(),
+    create_ledger: z.boolean().optional(),
 
-    // Step 4: Documents (Placeholders for now)
+    // Step 4: Documents
     resume_url: z.string().optional(),
     id_proof_url: z.string().optional(),
-    password: z.string().optional(), // Optional for Edit
+    password: z.string().optional(),
     confirm_password: z.string().optional(),
-    role: z.enum(['ADMIN', 'MANAGER', 'DM_EXECUTIVE', 'WEB_SEO_EXECUTIVE', 'CREATIVE_DESIGNER', 'OPERATIONS_EXECUTIVE']),
+    role: z.string().optional(),
 }).refine(data => {
     if (data.password || data.confirm_password) {
         return data.password === data.confirm_password;
@@ -106,7 +107,8 @@ const OnboardingPage = () => {
             salary_type: 'MONTHLY',
             department: 'MARKETING',
             staff_number: '',
-            designation: ''
+            designation: '',
+            create_ledger: true
         }
     });
 
@@ -117,7 +119,7 @@ const OnboardingPage = () => {
         let fieldsToValidate: any[] = [];
         if (currentStep === 1) fieldsToValidate = ['full_name', 'email', 'personal_contact', 'date_of_birth', 'current_address'];
         if (currentStep === 2) fieldsToValidate = ['staff_number', 'designation', 'department', 'date_of_joining', 'role'];
-        if (currentStep === 3) fieldsToValidate = ['base_salary', 'salary_type'];
+        if (currentStep === 3) fieldsToValidate = ['base_salary', 'salary_type', 'create_ledger'];
 
         const isValid = await trigger(fieldsToValidate);
         if (isValid) {
@@ -311,9 +313,14 @@ const OnboardingPage = () => {
                                             </select>
                                         </div>
                                         <div className="md:col-span-2">
-                                            <label className="label">Current Address <span className="text-red-500">*</span></label>
+                                            <label className="label">Current Address</label>
                                             <textarea {...register('current_address')} className="input-field" rows={2} placeholder="Full residential address" />
                                             {errors.current_address && <span className="error">{errors.current_address.message}</span>}
+                                        </div>
+                                        <div className="md:col-span-2">
+                                            <label className="label">Permanent Address</label>
+                                            <textarea {...register('permanent_address')} className="input-field" rows={2} placeholder="Same as current if applicable" />
+                                            {errors.permanent_address && <span className="error">{errors.permanent_address.message}</span>}
                                         </div>
                                     </div>
                                 </div>
@@ -437,6 +444,22 @@ const OnboardingPage = () => {
                                     <div>
                                         <label className="label">Aadhar Number (New)</label>
                                         <input {...register('aadhar_number')} className="input-field" placeholder="XXXX-XXXX-XXXX" />
+                                    </div>
+                                    <div className="md:col-span-2 mt-4 bg-gray-50 p-4 rounded-lg flex items-center gap-3 border border-gray-200">
+                                        <input
+                                            type="checkbox"
+                                            {...register('create_ledger')}
+                                            id="create_ledger"
+                                            className="w-5 h-5 text-primary rounded border-gray-300 focus:ring-primary"
+                                        />
+                                        <div>
+                                            <label htmlFor="create_ledger" className="font-semibold text-gray-800 cursor-pointer">
+                                                Create Staff Ledger Account
+                                            </label>
+                                            <p className="text-xs text-gray-500">
+                                                Automatically creates a Liability/Payable account in Accounting to track salary dues.
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                             )}

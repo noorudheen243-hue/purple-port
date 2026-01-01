@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../lib/api';
-import { ArrowLeft, Calendar } from 'lucide-react';
+import { ArrowLeft, Calendar, FileText } from 'lucide-react';
 import CreateCampaignModal from '../../components/campaigns/CreateCampaignModal';
 
 const ClientDetail = () => {
@@ -28,6 +28,12 @@ const ClientDetail = () => {
                 </Link>
                 <h1 className="text-3xl font-bold">{client.name}</h1>
                 <span className="px-3 py-1 bg-muted rounded-full text-sm">{client.industry}</span>
+                <Link
+                    to={`/dashboard/accounts?tab=statements&entity_id=${client.id}&entity_type=CLIENT`}
+                    className="ml-auto flex items-center gap-2 text-sm text-primary border border-primary px-3 py-1.5 rounded-md hover:bg-primary/5"
+                >
+                    <FileText size={16} /> View Ledger
+                </Link>
             </div>
 
             <div>

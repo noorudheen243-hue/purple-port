@@ -159,7 +159,7 @@ export const exportFullBackupZip = async (req: Request, res: Response) => {
 
     } catch (error: any) {
         console.error('[Backup] Export Error:', error);
-        if (!res.headersSent) res.status(500).json({ message: 'Export failed' });
+        if (!res.headersSent) res.status(500).json({ message: `Export failed: ${error.message}` });
     }
 };
 

@@ -82,6 +82,18 @@ export const confirmPayrollRun = async (req: Request, res: Response) => {
     }
 };
 
+export const getPayrollRun = async (req: Request, res: Response) => {
+    try {
+        const { month, year } = req.query;
+        if (!month || !year) return res.status(400).json({ message: "Month and Year required" });
+
+        const data = await payrollService.getPayrollRunDetails(parseInt(month as string), parseInt(year as string));
+        res.json(data);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 export const getPayrollHistory = async (req: Request, res: Response) => {
     try {
         // TODO: Implement list of past runs

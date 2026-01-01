@@ -25,6 +25,18 @@ export const createClient = async (data: Prisma.ClientCreateInput, assignedStaff
         };
     }
 
+    // Handle Service Engagement JSON serialization
+    if ((data as any).service_engagement && Array.isArray((data as any).service_engagement)) {
+        createData.service_engagement = JSON.stringify((data as any).service_engagement);
+    }
+
+    // Handle Operating Locations JSON serialization
+    if ((data as any).operating_locations && Array.isArray((data as any).operating_locations)) {
+        createData.operating_locations_json = JSON.stringify((data as any).operating_locations);
+        // Clean up UI-only field if passed
+        delete createData.operating_locations;
+    }
+
     // Verify Account Manager exists and has correct role
     const accountManagerId = (data as any).account_manager_id;
     if (accountManagerId) {
@@ -174,6 +186,15 @@ export const updateClient = async (id: string, data: any) => {
         });
     }
 
+    if (updateData.operating_locations && Array.isArray(updateData.operating_locations)) {
+        updateData.operating_locations_json = JSON.stringify(updateData.operating_locations);
+        delete updateData.operating_locations;
+    }
+
+    if (updateData.service_engagement && Array.isArray(updateData.service_engagement)) {
+        updateData.service_engagement = JSON.stringify(updateData.service_engagement);
+    }
+
     return await prisma.client.update({
         where: { id },
         data: updateData,
@@ -207,48 +228,35 @@ export const deleteClient = async (id: string) => {
 
     // Simplest approach: Transaction
     return await prisma.$transaction(async (tx) => {
-        // Find campaigns
+        // 1. Find campaigns
         const campaigns = await tx.campaign.findMany({ where: { client_id: id }, select: { id: true } });
         const campaignIds = campaigns.map(c => c.id);
 
         if (campaignIds.length > 0) {
-            // Delete related Tasks
+            // Delete Tasks linked to these Campaigns
             await tx.task.deleteMany({ where: { campaign_id: { in: campaignIds } } });
 
-            // Delete SpendSnapshots
+            // Delete SpendSnapshots linked to these Campaigns
             await tx.spendSnapshot.deleteMany({ where: { campaign_id: { in: campaignIds } } });
 
             // Delete Campaigns
             await tx.campaign.deleteMany({ where: { client_id: id } });
         }
 
-        // Delete AdAccounts
+        // 2. Delete Direct Tasks (Tasks linked to Client directly, e.g. Internal/General)
+        // Note: We deliberately delete these. In some systems, we might want to unlink them (set client_id = null),
+        // but for a hard delete of a client, we usually remove their data.
+        await tx.task.deleteMany({ where: { client_id: id } });
+
+        // 3. Delete Invoices
+        // (InvoiceItems cascade delete from Invoice, so just deleting Invoice is enough)
+        await tx.invoice.deleteMany({ where: { client_id: id } });
+
+        // 4. Delete AdAccounts
         await tx.adAccount.deleteMany({ where: { client_id: id } });
 
-        // Delete Ledgers? 
-        // We should ideally check if they have non-zero balance. 
-        // For MVP/Dev, we delete them to allow client deletion.
-        // We need to delete JournalLines first if we delete Ledgers.
-        // This is getting deep. 
-        // Alternative: Set client_id to NULL on Ledgers? No, strict relation?
-        // Let's check Ledger model. 
-
-        // Ledger has optional entity_id. 
-        // But JournalLine -> Ledger (Restrict).
-        // If we delete Client, we don't necessarily delete Ledger rows in DB structure unless linked by ID?
-        // Ledger model: entity_id String? 
-        // If it's just a string, it's not a FK constraint usually unless @relation is there.
-        // In schema: `entity_id` is just a string? No, check schema.
-
-        // Checking schema: 
-        // model Ledger { entity_id String? ... } 
-        // There is NO @relation to Client on entity_id.
-        // However, there is: `client_id String?`? No.
-        // Wait, earlier schema: `model Client { ... }`
-        // `model Ledger { ... }`
-        // Let's assume Ledgers rely on manual application logic for now.
-
-        // BUT: Campaign has `client Client ...`
+        // 5. Delete ClientContentStrategies (Handled by Cascade in Schema, but good to be explicit if needed. Schema has onDelete: Cascade)
+        // await tx.clientContentStrategy.deleteMany({ where: { client_id: id } });
 
         return await tx.client.delete({
             where: { id },

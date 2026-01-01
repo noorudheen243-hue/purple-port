@@ -28,9 +28,13 @@ export const createTask = async (data: Prisma.TaskCreateInput) => {
     const isCampaignTask = (createData as any).category === 'CAMPAIGN';
 
     // Campaign is strictly required ONLY for Campaign Tasks.
+    // MODIFIED: User requested removing Campaign Selector, so we relax this check.
+    // Tasks can now be 'CAMPAIGN' category (client work) without a specific campaign_id.
+    /*
     if (isCampaignTask && !createData.campaign?.connect?.id) {
         throw new Error("Campaign Task MUST be linked to a Campaign.");
     }
+    */
 
     // 1. Hierarchy & Automation (Auto-Assign from Campaign)
     if (createData.campaign?.connect?.id) {
@@ -89,12 +93,14 @@ export const createTask = async (data: Prisma.TaskCreateInput) => {
 export const getTasks = async (filters: {
     campaign_id?: string;
     assignee_id?: string;
+    client_id?: string; // Added
     status?: string;
     priority?: string;
 }) => {
     const whereClause: Prisma.TaskWhereInput = {};
 
     if (filters.campaign_id) whereClause.campaign_id = filters.campaign_id;
+    if (filters.client_id) whereClause.client_id = filters.client_id; // Added
     if (filters.assignee_id) whereClause.assignee_id = filters.assignee_id;
     if (filters.status) whereClause.status = filters.status;
     if (filters.priority) whereClause.priority = filters.priority;

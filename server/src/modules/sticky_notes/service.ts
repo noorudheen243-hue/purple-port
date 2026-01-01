@@ -2,7 +2,7 @@
 import prisma from '../../utils/prisma';
 import { Prisma } from '@prisma/client';
 
-export const createNote = async (userId: string, data: { title?: string, color?: string }) => {
+export const createNote = async (userId: string, data: { title?: string, color?: string, position_x?: number, position_y?: number }) => {
     // Check limit? Maybe limit to 20 active notes to prevent spam.
     const count = await prisma.stickyNote.count({ where: { user_id: userId, is_visible: true } });
     if (count > 50) throw new Error("Sticky Note limit reached. Please archive or delete old notes.");
@@ -12,7 +12,8 @@ export const createNote = async (userId: string, data: { title?: string, color?:
             user: { connect: { id: userId } },
             title: data.title || "New Note",
             color: data.color || "#feff9c",
-            // Position defaults handled by schema
+            position_x: data.position_x ?? 50, // Default handled by DB usually, or here
+            position_y: data.position_y ?? 50,
         },
         include: { tasks: true, permissions: true }
     });

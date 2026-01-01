@@ -7,7 +7,7 @@ interface StickyState {
     notes: StickyNote[];
     isLoading: boolean;
     fetchNotes: () => Promise<void>;
-    addNote: () => Promise<void>;
+    addNote: (position?: { x: number, y: number }) => Promise<void>;
     updateNote: (id: string, data: Partial<StickyNote>) => Promise<void>;
     deleteNote: (id: string) => Promise<void>;
 
@@ -45,11 +45,13 @@ export const useStickyStore = create<StickyState>((set, get) => ({
         }
     },
 
-    addNote: async () => {
+    addNote: async (position?: { x: number, y: number }) => {
         try {
             const res = await axios.post('/sticky-notes', {
                 title: 'New Note',
-                color: '#feff9c'
+                color: '#feff9c',
+                position_x: position?.x,
+                position_y: position?.y
             });
             set(state => ({ notes: [...state.notes, res.data] }));
         } catch (error) {

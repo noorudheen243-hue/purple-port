@@ -5,7 +5,9 @@ import { z } from 'zod';
 
 const createNoteSchema = z.object({
     title: z.string().optional(),
-    color: z.string().optional()
+    color: z.string().optional(),
+    position_x: z.number().optional(),
+    position_y: z.number().optional()
 });
 
 const updateNoteSchema = z.object({

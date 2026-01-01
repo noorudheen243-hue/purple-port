@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
     User, Mail, Phone, Calendar, MapPin, Briefcase,
@@ -171,9 +171,17 @@ const TeamProfile = () => {
 
             {activeTab === 'payroll' && (
                 <div className="bg-card border rounded-lg p-6 animate-in fade-in slide-in-from-bottom-2">
-                    <h3 className="font-semibold flex items-center gap-2 border-b pb-2 mb-4">
-                        <CreditCard size={18} /> Salary & Banking
-                    </h3>
+                    <div className="flex justify-between items-center border-b pb-2 mb-4">
+                        <h3 className="font-semibold flex items-center gap-2">
+                            <CreditCard size={18} /> Salary & Banking
+                        </h3>
+                        <Link
+                            to={`/dashboard/accounts?tab=statements&entity_id=${profile.user.id}&entity_type=USER`}
+                            className="bg-primary/10 text-primary hover:bg-primary/20 px-3 py-1 rounded-md text-xs font-medium flex items-center gap-1"
+                        >
+                            <FileText size={14} /> View Ledger
+                        </Link>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-3">
                             <div className="flex justify-between text-sm p-3 bg-gray-50 rounded">

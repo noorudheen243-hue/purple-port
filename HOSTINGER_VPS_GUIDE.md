@@ -76,25 +76,34 @@ scp deploy_package.zip root@72.61.246.22:/var/www/purple-port/
 cd /var/www/purple-port
 
 # Unzip the package
-unzip deploy_package.zip
+unzip -o deploy_package.zip
 
 # Install Dependencies
+cd server
 npm install --production
-
-# Initialize Database (This creates a fresh empty DB)
+# Force Schema Update (Important for new Content Type field)
 npx prisma db push
+npx prisma generate
+cd ..
+
+# Build Frontend (if not already built locally)
+# cd client && npm install && npm run build && cd ..
+
+# --- CRITICAL STEP: CONNECT FRONTEND TO SERVER ---
+# Copy the built client files to the server's public folder
+mkdir -p server/public
+cp -r client/dist/* server/public/
 ```
 
 ---
 
 ## 6. Start Application
 ```bash
-# Start the server using PM2 (Run in background)
-pm2 start dist/server.js --name "qix-ads"
+# Restart the server to apply changes and release file locks
+pm2 restart qix-api
 
 # Save the process list so it restarts on reboot
 pm2 save
-pm2 startup
 ```
 
 ---
@@ -102,8 +111,5 @@ pm2 startup
 ## 7. Access Application
 Your application is now running!
 - **Frontend/Backend**: `http://72.61.246.22:4001` (API)
-- **Frontend Access**: The current build serves the frontend statically through the backend port 4001 for simplicity in this configuration, OR usually port 5173 if running separate dev server.
-- **Production Mode**: In this production build, the frontend is inside `public/` and served by the Express server on port **4001**.
-- **URL**: Open **`http://72.61.246.22:4001`** in your browser.
-
-*(Note: If you want port 80 (standard http), you would need to setup Nginx or change the PORT in .env to 80, but 4001 is safe for now).*
+- **Frontend Access**: `http://72.61.246.22:4001` (served by Express)
+- **Important**: hard refresh (Ctrl+F5) to see new Content Status features.

@@ -197,7 +197,8 @@ export const actionLeaveRequest = async (requestId: string, approverId: string, 
 
 export const onboardStaff = async (
     userData: Prisma.UserCreateInput,
-    profileData: any // Relaxed from Prisma.StaffProfileCreateInput to allow reporting_manager_id transformation
+    profileData: any, // Relaxed from Prisma.StaffProfileCreateInput
+    createLedger: boolean = true
 ) => {
     // 1. Check if user exists
     const existingUser = await prisma.user.findUnique({
@@ -248,20 +249,16 @@ export const onboardStaff = async (
             }
         });
 
-        // Auto-create Ledger under Salary & Wages (Use a standard code or lookup)
-        // Assuming '6000' is the Head Code for Salaries.
-        // We need to ensure the ledger is created.
-        // inside transaction is tricky for ensureLedger if it uses separate prisma instance, 
-        // but ensureLedger usually does check-then-create. 
-        // We'll do it AFTER transaction or assume ensureLedger is safe to call independently.
-
         return { user, profile };
     });
 
     // Post-Transaction Actions
     try {
-        // Create Ledger
-        await ensureLedger('USER', result.user.id, '6000'); // Ensure this matches your Chart of Accounts
+        // Create Ledger if requested (Default: True)
+        // Using Head Code 2000 (Liabilities) for Staff Payable Account
+        if (createLedger) {
+            await ensureLedger('USER', result.user.id, '2000');
+        }
 
         // EMAIL STUB
         console.log(`\n[EMAIL STUB] TO: ${result.user.email}`);

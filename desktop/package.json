@@ -31,6 +31,16 @@
         "nsis": {
             "oneClick": false,
             "allowToChangeInstallationDirectory": true
-        }
+        },
+        "files": [
+            "out/**/*",
+            "package.json",
+            "offline.html",
+            "icon.png"
+        ],
+        "extraResources": [
+            "src/offline.html",
+            "icon.png"
+        ]
     }
 }

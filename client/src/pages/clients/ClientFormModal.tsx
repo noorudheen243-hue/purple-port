@@ -23,9 +23,13 @@ const clientSchema = z.object({
     contact_number: z.string().optional(),
     company_email: z.string().email("Invalid email").optional().or(z.literal('')),
 
-    // Operating Location
-    operating_country: z.string().optional(),
-    operating_state: z.string().optional(),
+    // Operating Locations (Multi)
+    operating_locations: z.array(z.object({
+        country: z.string().min(1, "Country required"),
+        state: z.string().optional()
+    })).default([]),
+    // operating_country: z.string().optional(), // REMOVED
+    // operating_state: z.string().optional(), // REMOVED
 
     // Team
     account_manager_id: z.string().optional().or(z.literal('')),
@@ -117,7 +121,7 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
 
     // Define fields validation per step
     const STEP_FIELDS: Record<string, any[]> = {
-        'core': ['name', 'industry', 'status', 'brand_colors', 'logo_url', 'contact_person', 'contact_number', 'company_email', 'operating_country', 'operating_state'],
+        'core': ['name', 'industry', 'status', 'brand_colors', 'logo_url', 'contact_person', 'contact_number', 'company_email', 'operating_locations'],
         'services': ['service_engagement'],
         'team': ['account_manager_id', 'assigned_staff_ids'],
         'ad_accounts': ['ad_accounts'],
@@ -136,8 +140,8 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
             ad_accounts: [],
             competitor_info: [],
             social_links: {},
-            operating_country: '',
-            operating_state: '',
+            operating_locations: [],
+            customer_avatar: { description: '', pain_points: '' },
             content_strategies: []
         }
     });
@@ -197,6 +201,11 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
         name: "content_strategies"
     });
 
+    const { fields: locationFields, append: appendLocation, remove: removeLocation } = useFieldArray({
+        control,
+        name: "operating_locations"
+    });
+
     // Populate form if editing
     useEffect(() => {
         if (clientToEdit) {
@@ -218,7 +227,8 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
                 social_links: parseJsonSafe(clientToEdit.social_links, {}),
                 competitor_info: parseJsonSafe(clientToEdit.competitor_info, []),
                 customer_avatar: parseJsonSafe(clientToEdit.customer_avatar, { description: '', pain_points: '' }),
-                content_strategies: clientToEdit.content_strategies || []
+                content_strategies: clientToEdit.content_strategies || [],
+                operating_locations: parseJsonSafe(clientToEdit.operating_locations_json, [])
             });
         } else {
             reset({
@@ -264,14 +274,6 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
             alert("Failed: " + (err.response?.data?.message || err.message));
         }
     });
-
-    const selectedCountry = watch('operating_country');
-
-    useEffect(() => {
-        if (selectedCountry !== "India") {
-            setValue('operating_state', '');
-        }
-    }, [selectedCountry, setValue]);
 
     // Reset step on open
     useEffect(() => {
@@ -397,26 +399,48 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
                                         </div>
                                     </div>
 
-                                    <h4 className="font-medium text-gray-900 border-b pb-2 mt-2">Operating Locations</h4>
-                                    <div className="space-y-4">
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <label className="label">Primary Country</label>
-                                                <select {...register('operating_country')} className="input">
-                                                    <option value="">Select Country...</option>
-                                                    {COUNTRY_LIST.map(c => <option key={c} value={c}>{c}</option>)}
-                                                </select>
-                                            </div>
-                                            {watch('operating_country') === 'India' && (
-                                                <div className="space-y-2 animate-in fade-in">
-                                                    <label className="label">State</label>
-                                                    <select {...register('operating_state')} className="input">
-                                                        <option value="">Select State...</option>
-                                                        {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                                    <div className="flex justify-between items-center border-b pb-2 mt-2">
+                                        <h4 className="font-medium text-gray-900">Operating Locations</h4>
+                                        <button type="button" onClick={() => appendLocation({ country: '', state: '' })} className="text-xs text-primary flex items-center gap-1 hover:underline">
+                                            <Plus size={12} /> Add Location
+                                        </button>
+                                    </div>
+                                    <div className="space-y-3 mt-3">
+                                        {locationFields.map((field, index) => (
+                                            <div key={field.id} className="grid grid-cols-[1fr,1fr,auto] gap-3 items-end bg-gray-50 p-2 rounded relative group animate-in slide-in-from-bottom-2">
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] uppercase font-bold text-gray-500">Country</label>
+                                                    <select {...register(`operating_locations.${index}.country`)} className="input text-sm py-1.5 h-9">
+                                                        <option value="">Select...</option>
+                                                        {COUNTRY_LIST.map(c => <option key={c} value={c}>{c}</option>)}
                                                     </select>
                                                 </div>
-                                            )}
-                                        </div>
+
+                                                {watch(`operating_locations.${index}.country`) === 'India' ? (
+                                                    <div className="space-y-1 animate-in fade-in">
+                                                        <label className="text-[10px] uppercase font-bold text-gray-500">State</label>
+                                                        <select {...register(`operating_locations.${index}.state`)} className="input text-sm py-1.5 h-9">
+                                                            <option value="">Select...</option>
+                                                            {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                                                        </select>
+                                                    </div>
+                                                ) : (
+                                                    <div className="space-y-1 opacity-50 pointer-events-none">
+                                                        <label className="text-[10px] uppercase font-bold text-gray-500">State</label>
+                                                        <input disabled className="input text-sm py-1.5 h-9 bg-gray-100" placeholder="N/A" />
+                                                    </div>
+                                                )}
+
+                                                <button type="button" onClick={() => removeLocation(index)} className="text-gray-400 hover:text-red-500 p-2 hover:bg-gray-100 rounded-lg mb-0.5">
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                        {locationFields.length === 0 && (
+                                            <div className="text-center p-4 border-2 border-dashed rounded text-sm text-gray-400">
+                                                No locations added. <button type="button" onClick={() => appendLocation({ country: '', state: '' })} className="text-primary hover:underline">Add Primary Location</button>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -453,7 +477,7 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
                                 <select {...register('account_manager_id')} className={`input ${errors.account_manager_id ? 'border-red-500' : ''}`}>
                                     <option value="">Select Manager...</option>
                                     {staffList?.sort((a: any, b: any) => a.user?.full_name.localeCompare(b.user?.full_name))
-                                        .filter((s: any) => s.department === 'MANAGEMENT' && s.payroll_status === 'ACTIVE')
+                                        .filter((s: any) => (s.department === 'MANAGEMENT' || s.user?.role === 'ADMIN' || s.user?.role === 'MANAGER') && s.payroll_status === 'ACTIVE')
                                         .map((s: any) => (
                                             <option key={s.id} value={s.user_id}>{s.user?.full_name} ({s.user?.role})</option>
                                         ))}
@@ -470,7 +494,7 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
                                         type="button"
                                         className="input text-left flex justify-between items-center bg-white min-h-[42px]"
                                         onClick={() => setIsTeamDropdownOpen(!isTeamDropdownOpen)}
-                                        disabled={user?.role !== 'ADMIN'}
+                                        disabled={user?.role !== 'ADMIN' && user?.role !== 'MANAGER'}
                                     >
                                         <span className="text-sm truncate">
                                             {watch('assigned_staff_ids').length === 0
@@ -481,7 +505,7 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
                                         <Users size={16} className="text-gray-400 flex-shrink-0" />
                                     </button>
 
-                                    {isTeamDropdownOpen && user?.role === 'ADMIN' && (
+                                    {isTeamDropdownOpen && (user?.role === 'ADMIN' || user?.role === 'MANAGER') && (
                                         <>
                                             <div className="fixed inset-0 z-10" onClick={() => setIsTeamDropdownOpen(false)}></div>
                                             <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-md shadow-lg z-20 max-h-60 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100">

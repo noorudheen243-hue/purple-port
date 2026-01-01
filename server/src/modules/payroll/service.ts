@@ -197,6 +197,34 @@ export const getSalaryDraft = async (userId: string, month: number, year: number
     };
 };
 
+export const getPayrollRunDetails = async (month: number, year: number) => {
+    const run = await prisma.payrollRun.findFirst({
+        where: { month, year },
+        include: {
+            slips: {
+                include: { user: { select: { full_name: true } } }
+            }
+        }
+    });
+
+    if (!run) return { slips: [], total_payout: 0, total_deductions: 0 };
+
+    const slips = run.slips.map(s => ({
+        ...s,
+        name: s.user?.full_name || 'Unknown'
+    }));
+
+    const total_payout = slips.reduce((sum, s) => sum + s.net_pay, 0);
+    const total_deductions = slips.reduce((sum, s) => sum + s.lop_deduction + (s.advance_salary || 0) + (s.other_deductions || 0), 0);
+
+    return {
+        run,
+        slips,
+        total_payout,
+        total_deductions
+    };
+};
+
 export const savePayrollSlip = async (month: number, year: number, data: any) => {
     // 1. Get/Create Draft Run
     let run = await prisma.payrollRun.findFirst({ where: { month, year } });
@@ -260,34 +288,105 @@ export const confirmPayrollRun = async (month: number, year: number) => {
     });
 
     // 2. Post to Ledger
+    // 2. Post to Ledger (Detailed)
     const slips = await prisma.payrollSlip.findMany({ where: { payroll_run_id: run.id } });
+
+    // Calculate Totals
     const totalPayout = slips.reduce((sum, s) => sum + s.net_pay, 0);
+    const totalAdvanceDed = slips.reduce((sum, s) => sum + (s.advance_salary || 0), 0);
+    // const totalLopDed = slips.reduce((sum, s) => sum + (s.lop_deduction || 0), 0); // LOP reduces Expense directly usually? Or Expense is Gross - LOP.
 
-    // Get Ledgers
-    const wageLedger = await ensureLedger('INTERNAL', 'SALARY_EXPENSE', '6000'); // Use ID or Code? Assuming ensureLedger handles by Code/Name
-    // We need specific implementation of ensureLedger. Assuming it returns ID.
-    // Actually `ensureLedger` (from accounting) creates for User/Client.
-    // We need "General Ledger" accounts. 
-    // For now, let's look up by name:
-    const debitLedger = await prisma.ledger.findFirst({ where: { name: 'Salary & Wages' } });
-    const creditLedger = await prisma.ledger.findFirst({ where: { name: 'Salary Payable' } }); // Or Bank directly if paid immediate
+    // Actually, Expense = Earnings (Basic + Allowances).
+    // Deductions: Advance (Asset Credit), LOP (Reduced Expense or Income?), TDS (Liability Credit).
+    // Our 'slips' usually store Net Pay.
+    // Let's assume Salary Expense = Total Earnings (Gross).
+    // But slips might not have 'Gross' explicitly summed? 
+    // Gross = Net + Deductions.
+    // Let's sum up Gross from components.
 
-    if (debitLedger && creditLedger) {
-        await prisma.journalEntry.create({
-            data: {
-                description: `Payroll Run ${month}/${year}`,
-                amount: totalPayout,
-                type: 'EXPENSE',
-                created_by_id: 'SYSTEM',
-                lines: {
-                    create: [
-                        { ledger_id: debitLedger.id, debit: totalPayout },
-                        { ledger_id: creditLedger.id, credit: totalPayout }
-                    ]
-                }
+    let totalGross = 0;
+    const staffEntries: any[] = [];
+    const advanceEntries: any[] = [];
+
+    // Pre-fetch Generic Ledgers
+    const salaryExpenseLedger = await ensureLedger('INTERNAL', 'SALARY_EXPENSE', '6000');
+
+    // Iterate slips to build lines
+    for (const slip of slips) {
+        const gross = slip.basic_salary + slip.hra + slip.allowances + slip.conveyance_allowance + slip.accommodation_allowance + slip.incentives;
+        const deductions = slip.lop_deduction + slip.advance_salary + slip.other_deductions;
+        // net_pay should be approx gross - deductions.
+
+        totalGross += gross;
+
+        // Staff Ledger (Liability - Credit) - Net Pay
+        // We need to find the Staff Ledger.
+        try {
+            const staffLedger = await ensureLedger('USER', slip.user_id, '2000'); // Liability
+            staffEntries.push({
+                ledger_id: staffLedger.id,
+                credit: slip.net_pay
+            });
+
+            // Advance Deduction (Credit Asset)
+            if (slip.advance_salary > 0) {
+                // Try to find the Advance Ledger for this user, OR use a central Advance Ledger?
+                // Usually Advance is tracked per user.
+                // Let's try to find their Advance Ledger (Asset '1000')
+                const advanceLedger = await ensureLedger('USER', slip.user_id, '1000', `Salary Advance - User ${slip.user_id}`);
+                advanceEntries.push({
+                    ledger_id: advanceLedger.id,
+                    credit: slip.advance_salary
+                });
             }
-        });
+
+            // LOP is just reduced expense? 
+            // If Gross = 1000, LOP = 100. Net = 900.
+            // If we debit Expense 1000? Then LOP is Income (or negative expense)?
+            // OR we just Debit Expense = 1000 - 100 = 900?
+            // "Loss of Pay" means they didn't earn it.
+            // So Expense should be Actual Earnings (Gross - LOP).
+            // Let's adjust totalGross to subtract LOP?
+            // "Gross Earning" in slip calculation (getSalaryDraft) is "standardEarnings + allowances".
+            // Then Net = Gross - LOP - Advance.
+            // So Real Expense = Gross - LOP.
+
+            totalGross -= slip.lop_deduction;
+
+        } catch (e) {
+            console.error(`Failed to prepare ledger entry for staff ${slip.user_id}`, e);
+        }
     }
+
+    // Lines Construction
+    // Dr Salary Expense (Total Real Expense)
+    // Cr Staff Ledgers (Net Pay)
+    // Cr Advance Ledgers (Recovered Advance)
+    // (We ignore Other Deductions destination for now, assuming they go to... where? Maybe just reduce Net Pay. 
+    // If 'Other Deductions' are penalties, they reduce Expense. If they are TDS, they are Liability.
+    // For simplicity, we treat 'other_deductions' as reducing Expense (like LOP) unless specified.
+    // Let's subtract other_deductions from Gross too for balance.)
+
+    // Re-calc Total Gross (Expense) to balance:
+    // Expense = Sum(Net Pay) + Sum(Advance Recovered)
+    const balancedExpense = slips.reduce((sum, s) => sum + s.net_pay + (s.advance_salary || 0), 0);
+
+    // Create Journal
+    await prisma.journalEntry.create({
+        data: {
+            description: `Payroll Run ${month}/${year}`,
+            amount: balancedExpense,
+            type: 'EXPENSE',
+            created_by_id: 'SYSTEM',
+            lines: {
+                create: [
+                    { ledger_id: salaryExpenseLedger.id, debit: balancedExpense, credit: 0 },
+                    ...staffEntries.map(e => ({ ledger_id: e.ledger_id, credit: e.credit, debit: 0 })),
+                    ...advanceEntries.map(e => ({ ledger_id: e.ledger_id, credit: e.credit, debit: 0 }))
+                ]
+            }
+        }
+    });
 
     return { message: "Payroll Processed and Posted", totalPayout };
 };

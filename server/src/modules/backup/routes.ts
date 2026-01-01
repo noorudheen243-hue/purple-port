@@ -5,11 +5,13 @@ import { downloadBackup, exportFullBackupZip, importFullBackupZip } from './cont
 const router = express.Router();
 const upload = multer({ dest: 'uploads/temp/' });
 
-// GET /api/backup/download?secret=XYZ
+import { protect, authorize } from '../../modules/auth/middleware';
+
+// GET /api/backup/download?secret=XYZ (Legacy/External)
 router.get('/download', downloadBackup);
 
-// JSON Sync Endpoints
-router.get('/export-json', exportFullBackupZip);
-router.post('/import-json', upload.single('file'), importFullBackupZip);
+// JSON Sync Endpoints (Admin Only)
+router.get('/export-json', protect, authorize('ADMIN'), exportFullBackupZip);
+router.post('/import-json', protect, authorize('ADMIN'), upload.single('file'), importFullBackupZip);
 
 export default router;

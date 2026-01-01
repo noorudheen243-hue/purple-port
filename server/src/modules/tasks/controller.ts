@@ -9,7 +9,7 @@ const createTaskSchema = z.object({
     assignee_id: z.string().optional(),
     client_id: z.string().optional(), // Added
     category: z.string().optional(),  // Added
-    nature: z.string().optional(),    // Added
+    content_type: z.string().optional(), // Added: Link to Client Content Strategy
     priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).default('MEDIUM'),
     type: z.enum([
         'GRAPHIC', 'VIDEO', 'MOTION', 'BRANDING', 'CONTENT_CREATION',
@@ -28,6 +28,8 @@ const isCreative = (req: Request) => req.user?.department === 'CREATIVE';
 
 export const createTask = async (req: Request, res: Response) => {
     try {
+        console.log("Create Task Payload:", JSON.stringify(req.body, null, 2)); // DEBUG LOG
+
         if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
         if (isCreative(req)) return res.status(403).json({ message: 'Creative team cannot create tasks.' });
 
@@ -46,6 +48,7 @@ export const createTask = async (req: Request, res: Response) => {
 
         res.status(201).json(task);
     } catch (error: any) {
+        console.error("Task Creation Error:", error); // DEBUG LOG
         if (error instanceof z.ZodError) res.status(400).json({ errors: error.errors });
         else res.status(500).json({ message: error.message });
     }
@@ -53,10 +56,11 @@ export const createTask = async (req: Request, res: Response) => {
 
 export const getTasks = async (req: Request, res: Response) => {
     try {
-        const { campaign_id, assignee_id, status, priority } = req.query;
+        const { campaign_id, assignee_id, client_id, status, priority } = req.query;
 
         const tasks = await taskService.getTasks({
             campaign_id: campaign_id as string,
+            client_id: client_id as string,
             assignee_id: assignee_id as string,
             status: status as any,
             priority: priority as any,

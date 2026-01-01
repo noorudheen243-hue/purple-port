@@ -302,6 +302,7 @@ model Task {
   status          String       @default("PLANNED") // Enum: TaskStatus
   priority        String       @default("MEDIUM")  // Enum: TaskPriority
   type            String       @default("GENERIC") // Enum: TaskType
+  content_type    String?      // Enum: Content Strategy Type (Poster, Reel, etc.)
   nature          String       @default("NEW")     // Enum: NEW, REWORK
   category        String       @default("CAMPAIGN") // Enum: CAMPAIGN, INTERNAL
   due_date        DateTime?

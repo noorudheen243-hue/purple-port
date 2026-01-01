@@ -74,7 +74,13 @@ export const StickyNoteContainer = () => {
                     )}
 
                     <button
-                        onClick={() => addNote()}
+                        onClick={(e) => {
+                            // Calculate position relative to button (center of screen or near button)
+                            // Button is bottom-right. Let's make note appear slightly above-left of it.
+                            const x = window.innerWidth - 320; // 250px width + margin
+                            const y = window.innerHeight - 400; // 300px height + margin
+                            addNote({ x, y });
+                        }}
                         className="w-14 h-14 bg-gradient-to-br from-yellow-300 to-yellow-500 rounded-full shadow-xl flex items-center justify-center text-yellow-900 hover:scale-110 active:scale-95 transition-all group"
                         title="Create Sticky Note"
                     >

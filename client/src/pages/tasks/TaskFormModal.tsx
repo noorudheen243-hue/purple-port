@@ -19,6 +19,7 @@ const schema = z.object({
     category: z.enum(['CAMPAIGN', 'INTERNAL']),
     nature: z.enum(['NEW', 'REWORK']),
     campaign_id: z.string().optional(),
+    content_type: z.string().optional(), // Added
     client_id: z.string().min(1, "Client is required"), // Mandatory for ALL
     assignee_id: z.string().min(1, "Assigned To is required"), // Mandatory for ALL
     due_date: z.string().optional(), // Soft optional
@@ -64,14 +65,11 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose }) => {
         mutationFn: async (data: TaskFormData) => {
             const payload: any = { ...data };
 
-            if (data.campaign_id) {
-                payload.campaign = { connect: { id: data.campaign_id } };
-                delete payload.campaign_id;
-            }
-            if (data.campaign_id) {
-                payload.campaign = { connect: { id: data.campaign_id } };
-                delete payload.campaign_id;
-            }
+            // Campaign ID Logic Removed as per request (or kept optional if needed, but UI hidden)
+            // if (data.campaign_id) ...
+
+            // Content Type is passed directly
+            if (data.content_type) payload.content_type = data.content_type;
             // Client ID is now handled by backend
             // payload.client_id is already in data/payload
 
@@ -236,26 +234,26 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose }) => {
                                 {errors.client_id && <p className="text-red-500 text-xs mt-1">{errors.client_id.message}</p>}
                             </div>
 
-                            {/* Campaign (Mandatory for Campaign Tasks) */}
-                            {category === 'CAMPAIGN' && (
+                            {/* Content Strategy (Visual Selection of Pending Commitments) */}
+                            {selectedClientId && (
                                 <div className="space-y-1 animate-in fade-in slide-in-from-top-1">
-                                    <label className="text-sm font-medium text-gray-700">Select Campaign <span className="text-red-500">*</span></label>
+                                    <label className="text-sm font-medium text-gray-700">Content Type (Strategy) <span className="text-red-500">*</span></label>
                                     <div className="relative">
                                         <Layers className="absolute left-3 top-3 text-gray-400" size={18} />
                                         <select
-                                            {...register('campaign_id')}
-                                            disabled={!selectedClientId}
-                                            className={`w-full pl-10 pr-4 py-2.5 border rounded-lg appearance-none bg-white focus:ring-2 focus:ring-purple-200 outline-none ${errors.campaign_id ? 'border-red-300' : 'border-gray-300'} disabled:bg-gray-100 disabled:text-gray-400`}
+                                            {...register('content_type')}
+                                            className={`w-full pl-10 pr-4 py-2.5 border rounded-lg appearance-none bg-white focus:ring-2 focus:ring-purple-200 outline-none border-gray-300`}
                                         >
-                                            <option value="">
-                                                {!selectedClientId ? '-- Select Client First --' : '-- Choose Campaign --'}
-                                            </option>
-                                            {filteredCampaigns.map((c: any) => (
-                                                <option key={c.id} value={c.id}>{c.title}</option>
+                                            <option value="">-- Select Content Type --</option>
+                                            {clients?.find((c: any) => c.id === selectedClientId)?.content_strategies?.map((strategy: any) => (
+                                                <option key={strategy.type} value={strategy.type}>
+                                                    {strategy.type} (Qty: {strategy.quantity})
+                                                </option>
                                             ))}
+                                            <option value="General">General / Other</option>
                                         </select>
                                     </div>
-                                    {errors.campaign_id && <p className="text-red-500 text-xs mt-1">{errors.campaign_id.message}</p>}
+                                    <p className="text-xs text-muted-foreground">Select from agreed monthly deliverables.</p>
                                 </div>
                             )}
                         </div>

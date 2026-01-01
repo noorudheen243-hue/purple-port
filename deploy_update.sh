@@ -15,6 +15,8 @@ git pull origin main
 echo ">>> Updating Server..."
 cd server || exit
 npm install
+# COMPILE TYPESCRIPT (Important!)
+npm run build
 npx prisma generate
 npx prisma db push # Or migrate deploy
 # Ensure Developer Admin Role

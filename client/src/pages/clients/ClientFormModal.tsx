@@ -217,8 +217,8 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
                 contact_person: clientToEdit.contact_person || '',
                 contact_number: clientToEdit.contact_number || '',
                 company_email: clientToEdit.company_email || '',
-                operating_country: clientToEdit.operating_country || '',
-                operating_state: clientToEdit.operating_state || '',
+                // operating_country: clientToEdit.operating_country || '', // DEPRECATED
+                // operating_state: clientToEdit.operating_state || '', // DEPRECATED
                 account_manager_id: clientToEdit.account_manager_id || '',
                 assigned_staff_ids: clientToEdit.assigned_staff?.map((s: any) => s.id) || [],
                 ad_accounts: clientToEdit.ad_accounts || [], // Ensure backend includes this

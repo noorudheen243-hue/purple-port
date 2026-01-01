@@ -58,7 +58,8 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
 
 export const authorize = (...roles: string[]) => {
     return (req: Request, res: Response, next: NextFunction) => {
-        if (req.user && roles.includes(req.user.role)) {
+        // Developer Admin has access to everything
+        if (req.user && (req.user.role === 'DEVELOPER_ADMIN' || roles.includes(req.user.role))) {
             next();
         } else {
             res.status(403).json({ message: 'Not authorized to access this route' });

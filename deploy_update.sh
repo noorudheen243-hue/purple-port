@@ -17,6 +17,8 @@ cd server || exit
 npm install
 npx prisma generate
 npx prisma db push # Or migrate deploy
+# Ensure Developer Admin Role
+npx ts-node scripts/set_developer_admin.ts
 pm2 restart all # Restart backend
 
 # 3. Update Frontend

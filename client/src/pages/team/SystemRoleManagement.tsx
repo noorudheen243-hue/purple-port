@@ -99,8 +99,8 @@ const SystemRoleManagement = () => {
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-2">
-                                            <Shield size={14} className={staff.user.role === 'ADMIN' ? 'text-purple-600' : 'text-gray-400'} />
-                                            <span className={`font-medium ${staff.user.role === 'ADMIN' ? 'text-purple-700' : 'text-gray-700'}`}>
+                                            <Shield size={14} className={(staff.user.role === 'ADMIN' || staff.user.role === 'DEVELOPER_ADMIN') ? 'text-purple-600' : 'text-gray-400'} />
+                                            <span className={`font-medium ${(staff.user.role === 'ADMIN' || staff.user.role === 'DEVELOPER_ADMIN') ? 'text-purple-700' : 'text-gray-700'}`}>
                                                 {staff.user.role}
                                             </span>
                                         </div>

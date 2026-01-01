@@ -390,7 +390,7 @@ export const getLeaveSummary = async (req: Request, res: Response) => {
         }
 
         // Auth check: Admin/Manager or Self
-        if (req.user!.role !== 'ADMIN' && req.user!.role !== 'MANAGER' && req.user!.id !== userId) {
+        if (req.user!.role !== 'ADMIN' && req.user!.role !== 'MANAGER' && req.user!.role !== 'DEVELOPER_ADMIN' && req.user!.id !== userId) {
             return res.status(403).json({ message: "Forbidden" });
         }
 
@@ -420,7 +420,7 @@ export const getKPIs = async (req: Request, res: Response) => {
             res.json(kpis);
         } else {
             // Team Overview (Admin/Manager only)
-            if (req.user!.role !== 'ADMIN' && req.user!.role !== 'MANAGER') {
+            if (req.user!.role !== 'ADMIN' && req.user!.role !== 'MANAGER' && req.user!.role !== 'DEVELOPER_ADMIN') {
                 return res.status(403).json({ message: "Forbidden" });
             }
             const kpis = await kpiService.calculateTeamKPIs(m, y);

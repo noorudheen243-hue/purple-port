@@ -477,7 +477,7 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
                                 <select {...register('account_manager_id')} className={`input ${errors.account_manager_id ? 'border-red-500' : ''}`}>
                                     <option value="">Select Manager...</option>
                                     {staffList?.sort((a: any, b: any) => a.user?.full_name.localeCompare(b.user?.full_name))
-                                        .filter((s: any) => (s.department === 'MANAGEMENT' || s.user?.role === 'ADMIN' || s.user?.role === 'MANAGER') && s.payroll_status === 'ACTIVE')
+                                        .filter((s: any) => (s.department === 'MANAGEMENT' || s.user?.role === 'ADMIN' || s.user?.role === 'MANAGER' || s.user?.role === 'DEVELOPER_ADMIN') && s.payroll_status === 'ACTIVE')
                                         .map((s: any) => (
                                             <option key={s.id} value={s.user_id}>{s.user?.full_name} ({s.user?.role})</option>
                                         ))}
@@ -505,7 +505,7 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
                                         <Users size={16} className="text-gray-400 flex-shrink-0" />
                                     </button>
 
-                                    {isTeamDropdownOpen && (user?.role === 'ADMIN' || user?.role === 'MANAGER') && (
+                                    {isTeamDropdownOpen && (user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'DEVELOPER_ADMIN') && (
                                         <>
                                             <div className="fixed inset-0 z-10" onClick={() => setIsTeamDropdownOpen(false)}></div>
                                             <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-md shadow-lg z-20 max-h-60 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100">
@@ -564,7 +564,7 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
                                                         <div className="w-4 h-4 rounded-full bg-gray-100 flex items-center justify-center text-[8px] font-bold text-gray-600">{staff.user?.full_name?.charAt(0)}</div>
                                                     )}
                                                     <span className="font-medium text-gray-700 group-hover:text-red-600">{staff.user?.full_name}</span>
-                                                    {user?.role === 'ADMIN' && (
+                                                    {(user?.role === 'ADMIN' || user?.role === 'DEVELOPER_ADMIN') && (
                                                         <button
                                                             type="button"
                                                             onClick={() => {

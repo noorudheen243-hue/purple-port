@@ -60,7 +60,7 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
         icon: Users,
         children: [
             { label: "Team", path: "/dashboard/team", icon: List },
-            { label: "Systems Roles", path: "/dashboard/team/roles", icon: Shield, roles: ['ADMIN'] }
+            { label: "Systems Roles", path: "/dashboard/team/roles", icon: Shield, roles: ['ADMIN', 'DEVELOPER_ADMIN'] }
         ]
     },
     {
@@ -72,9 +72,9 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
             { label: "New Task", path: "/dashboard/tasks?action=new", icon: PlusCircle },
             { label: "Task Board", path: "/dashboard/tasks/board", icon: KanbanSquare },
             { label: "Calendar", path: "/dashboard/tasks/calendar", icon: Calendar },
-            { label: "Automation", path: "/dashboard/tasks/automation", icon: Zap, roles: ['ADMIN', 'MANAGER'] },
-            { label: "Team Performance", path: "/dashboard/tasks/performance", icon: UsersIcon, roles: ['ADMIN', 'MANAGER'] },
-            { label: "Reports", path: "/dashboard/tasks/reports", icon: BarChart3, roles: ['ADMIN', 'MANAGER'] }
+            { label: "Automation", path: "/dashboard/tasks/automation", icon: Zap, roles: ['ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'] },
+            { label: "Team Performance", path: "/dashboard/tasks/performance", icon: UsersIcon, roles: ['ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'] },
+            { label: "Reports", path: "/dashboard/tasks/reports", icon: BarChart3, roles: ['ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'] }
         ]
     },
     {
@@ -90,11 +90,11 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
         label: "Payroll",
         icon: Banknote,
         children: [
-            { label: "Salary Calculator", path: "/dashboard/payroll/calculator", icon: Banknote, roles: ['ADMIN'] },
+            { label: "Salary Calculator", path: "/dashboard/payroll/calculator", icon: Banknote, roles: ['ADMIN', 'DEVELOPER_ADMIN'] },
             { label: "Salary Slip & Statements", path: "/dashboard/payroll/history", icon: FileText },
-            { label: "Payroll Reports", path: "/dashboard/payroll/reports", icon: BarChart3, roles: ['ADMIN'] },
+            { label: "Payroll Reports", path: "/dashboard/payroll/reports", icon: BarChart3, roles: ['ADMIN', 'DEVELOPER_ADMIN'] },
             { label: "Leave & LOP Summary", path: "/dashboard/payroll/leaves", icon: Calendar },
-            { label: "Payroll Settings", path: "/dashboard/payroll/settings", icon: Settings, roles: ['ADMIN'] }
+            { label: "Payroll Settings", path: "/dashboard/payroll/settings", icon: Settings, roles: ['ADMIN', 'DEVELOPER_ADMIN'] }
         ]
     },
     {

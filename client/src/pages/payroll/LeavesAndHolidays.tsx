@@ -147,7 +147,7 @@ const LeavesAndHolidays: React.FC = () => {
                         {dayHolidays.map((h: any) => (
                             <div key={h.id} className="text-xs bg-green-100 text-green-800 p-1 rounded border border-green-200 truncate group relative">
                                 {h.name}
-                                {currentUser?.user.role === 'ADMIN' && (
+                                {(currentUser?.user.role === 'ADMIN' || currentUser?.user.role === 'DEVELOPER_ADMIN') && (
                                     <button
                                         onClick={(e) => { e.stopPropagation(); if (confirm('Delete holiday?')) deleteHolidayMutation.mutate(h.id); }}
                                         className="absolute right-1 top-0.5 hidden group-hover:block text-red-600 font-bold"
@@ -349,7 +349,7 @@ const LeavesAndHolidays: React.FC = () => {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                 {/* Allow Action only if PENDING and User is Admin/Manager */}
-                                                {req.status === 'PENDING' && (currentUser?.user.role === 'ADMIN' || currentUser?.user.role === 'MANAGER') && (
+                                                {req.status === 'PENDING' && (currentUser?.user.role === 'ADMIN' || currentUser?.user.role === 'MANAGER' || currentUser?.user.role === 'DEVELOPER_ADMIN') && (
                                                     <div className="flex justify-end space-x-2">
                                                         <button
                                                             onClick={() => actionMutation.mutate({ id: req.id, status: 'APPROVED' })}
@@ -400,7 +400,7 @@ const LeavesAndHolidays: React.FC = () => {
                                 <button onClick={() => setCurrentMonth(m => m === 11 ? 0 : m + 1)} className="px-2 hover:bg-white rounded">&gt;</button>
                             </div>
                         </div>
-                        {currentUser?.user.role === 'ADMIN' && (
+                        {(currentUser?.user.role === 'ADMIN' || currentUser?.user.role === 'DEVELOPER_ADMIN') && (
                             <button
                                 onClick={() => setIsAddHolidayOpen(true)}
                                 className="flex items-center gap-2 bg-primary text-primary-foreground px-3 py-2 rounded-md text-sm hover:bg-primary/90 transition"

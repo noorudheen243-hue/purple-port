@@ -112,6 +112,10 @@ export const getOverview = async (req: Request, res: Response) => {
 
 export const syncLedgers = async (req: Request, res: Response) => {
     try {
+        // Admin Only
+        if (req.user!.role !== 'ADMIN' && req.user!.role !== 'DEVELOPER_ADMIN') {
+            return res.status(403).json({ message: "Forbidden" });
+        }
         const result = await AccountingService.syncEntityLedgers();
         res.json(result);
     } catch (error) {

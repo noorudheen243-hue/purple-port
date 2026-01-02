@@ -7,6 +7,8 @@ echo This script will FORCE RESYNC your online server with GitHub.
 echo It fixes issues where "updates are not showing".
 echo.
 echo Step 1: Pushing local changes (just in case)...
+git add .
+git commit -m "chore: Force Repair Triggered"
 git push origin main
 echo.
 

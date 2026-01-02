@@ -264,14 +264,49 @@ const DataSyncTab = () => {
                     This feature is intended for syncing <b>Local Development → Production VPS</b>.
                 </p>
             </div>
+
+            <div className="border-t pt-6 mt-6">
+                <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <RefreshCw size={18} className="text-gray-500" /> Maintenance & Migration
+                </h3>
+                <div className="border border-gray-200 rounded-xl p-6 bg-gray-50 flex items-center justify-between">
+                    <div>
+                        <h4 className="font-bold text-gray-900">Sync Ledger Accounts</h4>
+                        <p className="text-xs text-gray-500 mt-1 max-w-sm">
+                            Auto-generates missing ledgers for existing Clients and Staff. Safe to run at any time (Idempotent).
+                        </p>
+                    </div>
+                    <SyncLedgersButton />
+                </div>
+            </div>
         </div>
     );
 };
 
+const SyncLedgersButton = () => {
+    const mutation = useMutation({
+        mutationFn: async () => await api.post('/accounting/sync-ledgers'),
+        onSuccess: (res) => alert(`Sync Complete: ${res.data.message}`),
+        onError: (err: any) => alert("Sync Failed: " + err.message)
+    });
+
+    return (
+        <button
+            onClick={() => mutation.mutate()}
+            disabled={mutation.isPending}
+            className="px-4 py-2 bg-white border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 text-sm flex items-center gap-2"
+        >
+            {mutation.isPending ? <RefreshCw className="animate-spin" size={16} /> : <RefreshCw size={16} />}
+            {mutation.isPending ? 'Syncing...' : 'Run Sync'}
+        </button>
+    );
+};
+
+
 // --- Main Modal ---
 const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOpen, onClose }) => {
     const { user } = useAuthStore();
-    const isAdmin = user?.role === 'ADMIN';
+    const isAdmin = user?.role === 'ADMIN' || user?.role === 'DEVELOPER_ADMIN';
     const [activeTab, setActiveTab] = useState<'profile' | 'team' | 'sync'>('profile');
 
     // Reset tab on close

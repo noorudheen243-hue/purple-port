@@ -50,7 +50,7 @@ const SystemRoleManagement = () => {
     if (isLoading) return <div className="p-8 text-center">Loading staff list...</div>;
 
     // Strict Access Control
-    if (!user || user.role !== 'ADMIN') {
+    if (!user || (user.role !== 'ADMIN' && user.role !== 'DEVELOPER_ADMIN')) {
         return <Navigate to="/dashboard" replace />;
     }
 

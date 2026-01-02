@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import * as teamService from './service';
 import * as kpiService from './kpi.service';
+import { ensureLedger } from '../accounting/service';
 
 
 // Schemas
@@ -206,7 +207,6 @@ export const updateStaffFull = async (req: Request, res: Response) => {
         const userData: any = {};
         if (data.full_name) userData.full_name = data.full_name;
         if (data.email) userData.email = data.email;
-        if (data.email) userData.email = data.email;
         if (data.password) userData.password_hash = data.password;
 
         // --- DEVELOPER ADMIN PROTECTION START ---
@@ -288,6 +288,18 @@ export const updateStaffFull = async (req: Request, res: Response) => {
         console.log(`[UpdateStaff] Final ProfileData:`, JSON.stringify(profileData, null, 2));
 
         const result = await teamService.updateStaffFull(id, userData, profileData);
+
+        // --- LEDGER AUTOMATION ---
+        if (data.create_ledger) {
+            try {
+                // Ensure Ledger exists (Payable)
+                await ensureLedger('USER', result.profile.user_id, '2000');
+                console.log(`[UpdateStaff] Ledger ensured for ${result.profile.user_id}`);
+            } catch (err) {
+                console.error("[UpdateStaff] Failed to ensure ledger:", err);
+            }
+        }
+
         res.json(result);
     } catch (error: any) {
         if (error instanceof z.ZodError) {

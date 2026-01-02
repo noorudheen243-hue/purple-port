@@ -46,4 +46,14 @@ echo ">>> Deploying Client Build..."
 rm -rf ../server/public
 cp -r dist ../server/public
 
+# 5. PERMISSIONS & NGINX FIX
+# Ensure Nginx (www-data) can read the new files
+echo ">>> Fixing Permissions..."
+chown -R www-data:www-data /var/www/purple-port
+chmod -R 755 /var/www/purple-port
+
+# Restart Nginx to clear cache
+echo ">>> Restarting Nginx..."
+systemctl restart nginx || echo "Warning: Could not restart Nginx (maybe not installed?)"
+
 echo ">>> Deployment Complete!"

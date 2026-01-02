@@ -142,7 +142,7 @@ const Sidebar = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) 
             }));
     };
 
-    const rawMenuItems = (user?.role === 'ADMIN' || user?.role === 'MANAGER')
+    const rawMenuItems = (user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'DEVELOPER_ADMIN')
         ? ADMIN_MANAGER_MENU
         : STAFF_MENU;
 

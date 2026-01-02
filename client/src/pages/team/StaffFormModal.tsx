@@ -83,6 +83,7 @@ const staffSchema = z.object({
     salary_type: z.enum(['MONTHLY', 'DAILY', 'CONTRACT']).optional(),
     incentive_eligible: z.boolean().optional(),
     payroll_status: z.enum(['ACTIVE', 'HOLD']).optional(),
+    create_ledger: z.boolean().optional(), // NEW: Ledger Automation
 
     // Banking
     bank_name: z.string().optional(),
@@ -123,7 +124,8 @@ const StaffFormModal = ({ isOpen, onClose, initialData }: StaffFormModalProps) =
             date_of_joining: new Date().toISOString().split('T')[0],
             marital_status: 'SINGLE',
             staff_number: '',
-            designation: ''
+            designation: '',
+            create_ledger: true // Default to true for new staff
         }
     });
 
@@ -151,7 +153,8 @@ const StaffFormModal = ({ isOpen, onClose, initialData }: StaffFormModalProps) =
                 date_of_birth: initialData.date_of_birth ? new Date(initialData.date_of_birth).toISOString().split('T')[0] : '',
                 reporting_manager_id: initialData.reporting_manager_id || '',
                 shift_timing: initialData.shift_timing || '',
-                password: undefined // Don't pre-fill password usually
+                password: undefined, // Don't pre-fill password usually
+                create_ledger: false,
             });
         }
     }, [initialData, reset]);
@@ -521,10 +524,14 @@ const StaffFormModal = ({ isOpen, onClose, initialData }: StaffFormModalProps) =
                                             <option value="HOLD">Hold (No Payout)</option>
                                         </select>
                                     </div>
-                                    <div className="md:col-span-3">
+                                    <div className="md:col-span-3 space-y-3">
                                         <div className="flex items-center gap-2">
                                             <input type="checkbox" {...register('incentive_eligible')} className="w-4 h-4 text-blue-600 rounded" />
                                             <span className="text-sm text-gray-700">Eligible for Performance Incentives/Commissions</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <input type="checkbox" {...register('create_ledger')} className="w-4 h-4 text-green-600 rounded" />
+                                            <span className="text-sm font-medium text-gray-900 bg-green-50 px-2 py-0.5 rounded border border-green-200">Add to Payroll Accounts (Auto-Create Ledger)</span>
                                         </div>
                                     </div>
                                 </div>

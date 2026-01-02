@@ -494,7 +494,7 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
                                         type="button"
                                         className="input text-left flex justify-between items-center bg-white min-h-[42px]"
                                         onClick={() => setIsTeamDropdownOpen(!isTeamDropdownOpen)}
-                                        disabled={user?.role !== 'ADMIN' && user?.role !== 'MANAGER'}
+                                        disabled={user?.role !== 'ADMIN' && user?.role !== 'MANAGER' && user?.role !== 'DEVELOPER_ADMIN'}
                                     >
                                         <span className="text-sm truncate">
                                             {watch('assigned_staff_ids').length === 0

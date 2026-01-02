@@ -222,7 +222,7 @@ const LeavesAndHolidays: React.FC = () => {
                                         value={selectedStaffId}
                                         onChange={(e) => setSelectedStaffId(e.target.value)}
                                         // Allow selection only if Admin/Manager, else locked to self usually (logic in hook, but UI can restrict)
-                                        disabled={currentUser?.user.role !== 'ADMIN' && currentUser?.user.role !== 'MANAGER'}
+                                        disabled={currentUser?.user.role !== 'ADMIN' && currentUser?.user.role !== 'MANAGER' && currentUser?.user.role !== 'DEVELOPER_ADMIN'}
                                     >
                                         {staffList?.map((s: any) => (
                                             <option key={s.user_id} value={s.user_id}>{s.user.full_name}</option>

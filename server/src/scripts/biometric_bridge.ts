@@ -30,6 +30,7 @@ async function main() {
             const loginResp = await axios.post(`${SERVER_URL}/auth/login`, BRIDGE_USER);
             token = loginResp.data.token;
             console.log("Authentication Successful.");
+            console.log("DEBUG: Received Token:", token ? (token.substring(0, 10) + "...") : "UNDEFINED/NULL");
         } catch (error: any) {
             console.error("Server Authentication Failed:", error.message);
             console.error("Check SERVER_URL and BRIDGE_USER credentials.");

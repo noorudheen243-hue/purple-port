@@ -84,6 +84,9 @@ export class BiometricControlService {
                 });
 
                 if (recentLog) {
+                    const dbUserCount = await prisma.staffProfile.count();
+                    const dbLogCount = await prisma.attendanceRecord.count({ where: { method: 'BIOMETRIC' } });
+
                     return {
                         status: 'ONLINE',
                         deviceName: 'Bridge Device (VPS Mode)',
@@ -91,8 +94,8 @@ export class BiometricControlService {
                         firmware: 'N/A',
                         platform: 'Bridge',
                         deviceTime: new Date(),
-                        userCount: 999,
-                        logCount: await prisma.attendanceRecord.count({ where: { method: 'BIOMETRIC' } })
+                        userCount: dbUserCount,
+                        logCount: dbLogCount
                     };
                 }
 
@@ -174,18 +177,21 @@ export class BiometricControlService {
                 });
 
                 if (recentLog) {
-                    return {
-                        data: [
-                            {
-                                uid: 1,
-                                userId: 'BRIDGE',
-                                name: 'Device Managed Locally',
-                                role: 0,
-                                cardno: 0,
-                                fingerCount: 0
-                            }
-                        ]
-                    };
+                    // Fetch real staff list from DB to show as "Enrolled Users" in Bridge Mode
+                    const dbStaff = await prisma.staffProfile.findMany({
+                        include: { user: { select: { full_name: true } } }
+                    });
+
+                    const mappedUsers = dbStaff.map(s => ({
+                        uid: parseInt(s.staff_number.replace(/\D/g, '')) || 0, // Extract number from QIX001
+                        userId: s.staff_number,
+                        name: s.user?.full_name || 'Unknown',
+                        role: 0,
+                        cardno: 0,
+                        fingerCount: 0
+                    }));
+
+                    return { data: mappedUsers };
                 }
 
                 // 2. Physical Connect

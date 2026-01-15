@@ -550,6 +550,13 @@ export const processBiometricLogs = async (logs: any[]) => {
                     where: { id: existing.id },
                     data: updateData
                 });
+            } else {
+                // FORCE HEARTBEAT: Even if data didn't change, update 'updatedAt' 
+                // so the Smart Check knows the bridge is active.
+                await prisma.attendanceRecord.update({
+                    where: { id: existing.id },
+                    data: { updatedAt: new Date() }
+                });
             }
         }
         processed++;

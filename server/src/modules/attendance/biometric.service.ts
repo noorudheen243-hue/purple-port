@@ -545,17 +545,22 @@ export const processBiometricLogs = async (logs: any[]) => {
                 shouldUpdate = true;
             }
 
+            // Ensure we claim this record as BIOMETRIC so the Status Check finds it
+            updateData.method = 'BIOMETRIC';
+
             if (shouldUpdate) {
                 await prisma.attendanceRecord.update({
                     where: { id: existing.id },
                     data: updateData
                 });
             } else {
-                // FORCE HEARTBEAT: Even if data didn't change, update 'updatedAt' 
-                // so the Smart Check knows the bridge is active.
+                // FORCE HEARTBEAT: Update updatedAt AND method
                 await prisma.attendanceRecord.update({
                     where: { id: existing.id },
-                    data: { updatedAt: new Date() }
+                    data: {
+                        updatedAt: new Date(),
+                        method: 'BIOMETRIC'
+                    }
                 });
             }
         }
@@ -568,6 +573,24 @@ export const processBiometricLogs = async (logs: any[]) => {
 export const syncBiometrics = async () => {
     try {
         console.log('Starting Biometric Sync...');
+
+        // 1. SMART CHECK: Am I in Bridge Mode?
+        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const recentLog = await prisma.attendanceRecord.findFirst({
+            where: {
+                method: 'BIOMETRIC',
+                updatedAt: { gte: yesterday }
+            }
+        });
+
+        if (recentLog) {
+            // In Bridge Mode, we don't need to manually pull. 
+            // The bridge pushes automatically. 
+            // Just return success to stop the UI from spinning.
+            return { message: 'Sync managed by Bridge Agent. Status: ACTIVE.' };
+        }
+
+        // 2. Physical Pull (Only for Local Server)
         const logs = await biometricControl.getAttendanceLogs();
         if (logs.length === 0) return { message: 'No logs found on device.' };
 

@@ -97,6 +97,116 @@
   }
 }
 
+/* Unified Ultra-Compact Payslip Styles */
+.payslip-compact {
+  /* Container adjustments */
+  width: 100% !important;
+  height: auto !important;
+  overflow: visible !important;
+  background: white !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Hide elements in compact mode */
+.payslip-compact .print-hidden {
+  display: none !important;
+}
+
+/* Logo & Header */
+.payslip-compact .print-logo {
+  height: 40px !important;
+  width: auto !important;
+}
+
+.payslip-compact .print-header-text,
+.payslip-compact .print-header-text * {
+  font-size: 8px !important;
+  line-height: 1.2 !important;
+}
+
+/* Grid & Spacing */
+.payslip-compact .print-grid {
+  display: grid !important;
+  gap: 4px !important;
+  margin-bottom: 8px !important;
+  align-items: center !important;
+}
+
+.payslip-compact .print-grid p {
+  font-size: 9px !important;
+  line-height: 1.3 !important;
+}
+
+/* Table Compactness */
+.payslip-compact .print-table-header {
+  background-color: #581c87 !important;
+  /* purple-900 */
+  color: white !important;
+  padding: 2px !important;
+  font-size: 10px !important;
+}
+
+.payslip-compact .print-table-row {
+  padding: 4px 2px !important;
+  min-height: 0 !important;
+}
+
+.payslip-compact .print-table-row span,
+.payslip-compact .print-table-row div {
+  font-size: 10px !important;
+  line-height: 1.4 !important;
+}
+
+.payslip-compact .print-table-text {
+  font-size: 10px !important;
+}
+
+/* Net Pay Box - Yellow */
+.payslip-compact .print-net-pay {
+  background-color: #FFD700 !important;
+  color: black !important;
+  border: 2px solid #000 !important;
+  padding: 4px !important;
+  box-shadow: none !important;
+  margin-bottom: 0 !important;
+}
+
+.payslip-compact .print-net-pay *,
+.payslip-compact .print-net-pay div {
+  color: black !important;
+  font-size: 10px !important;
+}
+
+.payslip-compact .print-net-pay .text-4xl {
+  font-size: 14px !important;
+}
+
+@layer base {
+  @media print {
+    @page {
+      size: A4;
+      margin: 10mm;
+    }
+
+    body {
+      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact;
+      background-color: white !important;
+    }
+
+    /* Ensure print hides elements even if not in compact mode wrapper (redundancy) */
+    .print-hidden {
+      display: none !important;
+    }
+  }
+}
+
+/* PDF Mode just extends compact now */
+.pdf-mode {
+  /* Inherits everything from payslip-compact if applied */
+}
+
 @layer base {
   * {
     @apply border-border;

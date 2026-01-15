@@ -19,6 +19,7 @@ router.get('/heads', authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'), Accountin
 // Transactions
 router.post('/transactions', authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'), AccountingController.recordTransaction);
 router.get('/transactions', authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'), AccountingController.getTransactions);
+// router.get('/invoices', AccountingController.getInvoices); // Moved to Billing
 router.put('/transactions/:id', authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'), AccountingController.updateTransaction);
 router.delete('/transactions/:id', authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'), AccountingController.deleteTransaction);
 

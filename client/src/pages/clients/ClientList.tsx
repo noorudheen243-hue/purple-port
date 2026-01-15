@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/api';
 // import { Link } from 'react-router-dom'; // Using Link for name only? No, requirement says "clicking the client... popup".
-import { Link } from 'react-router-dom'; // Keep Link for other navigations if needed, but row click is modal.
-import { Users, Pencil, Trash2, Plus, ArrowRight } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom'; // Keep Link for other navigations if needed, but row click is modal.
+import { Users, Pencil, Trash2, Plus, ArrowRight, CheckCircle } from 'lucide-react';
 import ClientFormModal from './ClientFormModal';
 import ClientProfileModal from './ClientProfileModal';
 import { useLocation } from 'react-router-dom';
@@ -33,11 +33,13 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, type = 'dang
 const ClientList = () => {
     const queryClient = useQueryClient();
     const location = useLocation();
+    const navigate = useNavigate();
 
     // Modals state
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+
 
     // Data state
     const [clientToEdit, setClientToEdit] = useState<any>(null);
@@ -129,66 +131,98 @@ const ClientList = () => {
                 <table className="w-full text-left text-sm">
                     <thead className="bg-gray-50 border-b border-gray-200">
                         <tr>
+                            <th className="px-6 py-4 font-semibold text-gray-700 w-24">ID</th>
                             <th className="px-6 py-4 font-semibold text-gray-700">Client Name</th>
                             <th className="px-6 py-4 font-semibold text-gray-700">Industry</th>
                             <th className="px-6 py-4 font-semibold text-gray-700">Status</th>
+                            <th className="px-6 py-4 font-semibold text-gray-700">Active Services</th>
+                            <th className="px-6 py-4 font-semibold text-gray-700 text-center">Ledger</th>
                             <th className="px-6 py-4 font-semibold text-gray-700">Campaigns</th>
                             <th className="px-6 py-4 font-semibold text-gray-700 text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                        {clients?.map((client: any) => (
-                            <tr
-                                key={client.id}
-                                className="hover:bg-gray-50 transition-colors group cursor-pointer"
-                                onClick={() => handleViewProfile(client)}
-                            >
-                                <td className="px-6 py-4 font-medium text-gray-900">
-                                    <div className="flex items-center gap-3">
-                                        {client.logo_url ? (
-                                            <img
-                                                src={(client.logo_url.startsWith('http') || client.logo_url.startsWith('blob:'))
-                                                    ? client.logo_url
-                                                    : `${(import.meta as any).env.VITE_API_URL?.replace('/api', '') || 'http://localhost:4000'}${client.logo_url}`}
-                                                alt={client.name}
-                                                className="w-8 h-8 rounded-full object-cover border border-gray-200"
-                                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                                            />
+                        {clients?.map((client: any) => {
+                            const services = client.service_engagement ? (typeof client.service_engagement === 'string' ? JSON.parse(client.service_engagement) : client.service_engagement) : [];
+                            return (
+                                <tr
+                                    key={client.id}
+                                    className="hover:bg-gray-50 transition-colors group cursor-pointer"
+                                    onClick={() => handleViewProfile(client)}
+                                >
+                                    <td className="px-6 py-4 font-mono text-xs text-gray-500 font-semibold">
+                                        {client.client_code || '-'}
+                                    </td>
+                                    <td className="px-6 py-4 font-medium text-gray-900">
+                                        <div className="flex items-center gap-3">
+                                            {client.logo_url ? (
+                                                <img
+                                                    src={(client.logo_url.startsWith('http') || client.logo_url.startsWith('blob:'))
+                                                        ? client.logo_url
+                                                        : `${(import.meta as any).env.VITE_API_URL?.replace('/api', '') || 'http://localhost:4000'}${client.logo_url}`}
+                                                    alt={client.name}
+                                                    className="w-8 h-8 rounded-full object-cover border border-gray-200"
+                                                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                                />
+                                            ) : (
+                                                <div className="p-2 bg-primary/10 rounded-full text-primary">
+                                                    <Users size={16} />
+                                                </div>
+                                            )}
+                                            {client.name}
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4 text-gray-500">{client.industry || '-'}</td>
+                                    <td className="px-6 py-4">
+                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${client.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+                                            {client.status}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <div className="flex flex-wrap gap-1">
+                                            {services.length > 0 ? services.slice(0, 3).map((s: string) => (
+                                                <span key={s} className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px] border border-blue-100 font-medium whitespace-nowrap">
+                                                    {s.replace('_', ' ')}
+                                                </span>
+                                            )) : <span className="text-gray-300 text-xs">-</span>}
+                                            {services.length > 3 && (
+                                                <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] border border-gray-200 font-medium">
+                                                    +{services.length - 3}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4 text-center">
+                                        {client.ledger_options?.create ? (
+                                            <span className="inline-flex items-center gap-1 bg-green-50 text-green-700 text-[10px] px-2 py-0.5 rounded-full border border-green-200 font-medium">
+                                                <CheckCircle size={10} className="fill-green-600 text-white" /> Active
+                                            </span>
                                         ) : (
-                                            <div className="p-2 bg-primary/10 rounded-full text-primary">
-                                                <Users size={16} />
-                                            </div>
+                                            <span className="text-gray-300 text-[10px]">-</span>
                                         )}
-                                        {client.name}
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4 text-gray-500">{client.industry || '-'}</td>
-                                <td className="px-6 py-4">
-                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${client.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
-                                        {client.status}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 text-gray-500">{client._count?.campaigns || 0}</td>
-                                <td className="px-6 py-4 text-right">
-                                    <div className="flex items-center justify-end gap-2 isolate z-10"> {/* Added z-10 isolate */}
-                                        <button
-                                            onClick={(e) => initiateEdit(e, client)}
-                                            className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                                            title="Edit"
-                                        >
-                                            <Pencil size={16} />
-                                        </button>
-                                        <button
-                                            onClick={(e) => initiateDelete(e, client.id)}
-                                            className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                                            title="Delete"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
+                                    </td>
+                                    <td className="px-6 py-4 text-gray-500">{client._count?.campaigns || 0}</td>
+                                    <td className="px-6 py-4 text-right">
+                                        <div className="flex items-center justify-end gap-2 isolate z-10">
+                                            <button
+                                                onClick={(e) => initiateEdit(e, client)}
+                                                className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                                title="Edit"
+                                            >
+                                                <Pencil size={16} />
+                                            </button>
+                                            <button
+                                                onClick={(e) => initiateDelete(e, client.id)}
+                                                className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                                title="Delete"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
                 {clients?.length === 0 && (

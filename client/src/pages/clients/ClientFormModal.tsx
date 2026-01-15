@@ -6,6 +6,7 @@ import { X, Save, Building, Users, Globe, Target, Briefcase, Plus, Trash2, Dolla
 import api from '../../lib/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/authStore';
+import Swal from 'sweetalert2';
 
 import ImageUpload from '../../components/ui/ImageUpload';
 import FormErrorAlert from '../../components/ui/FormErrorAlert';
@@ -22,6 +23,7 @@ const clientSchema = z.object({
     contact_person: z.string().optional(),
     contact_number: z.string().optional(),
     company_email: z.string().email("Invalid email").optional().or(z.literal('')),
+    address: z.string().optional(), // Added Address
 
     // Operating Locations (Multi)
     operating_locations: z.array(z.object({
@@ -69,7 +71,13 @@ const clientSchema = z.object({
     content_strategies: z.array(z.object({
         type: z.string(),
         quantity: z.number().min(0)
-    })).default([])
+    })).default([]),
+
+    // Ledger Options
+    ledger_options: z.object({
+        create: z.boolean(),
+        head_id: z.string().optional()
+    }).optional()
 });
 
 type ClientFormValues = z.infer<typeof clientSchema>;
@@ -104,6 +112,36 @@ const INDIAN_STATES = [
     "Andaman and Nicobar Islands", "Chandigarh", "Dadra and Nagar Haveli and Daman and Diu", "Delhi", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry"
 ];
 
+const ClientCodeField = ({ clientToEdit }: { clientToEdit?: any }) => {
+    const { data: nextCodeData, isLoading } = useQuery({
+        queryKey: ['next-client-code'],
+        queryFn: async () => (await api.get('/clients/next-code')).data,
+        enabled: !clientToEdit,
+        staleTime: 0
+    });
+
+    const displayValue = clientToEdit
+        ? clientToEdit.client_code
+        : isLoading
+            ? "Loading..."
+            : nextCodeData?.code || "Auto-Generated";
+
+    return (
+        <div className="relative">
+            <input
+                value={displayValue}
+                disabled
+                className="input bg-gray-100 text-gray-600 font-mono font-bold"
+            />
+            {!clientToEdit && (
+                <span className="absolute right-3 top-2.5 text-[10px] text-gray-400">
+                    PREVIEW
+                </span>
+            )}
+        </div>
+    );
+};
+
 interface ClientFormModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -114,17 +152,18 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
     const queryClient = useQueryClient();
     const { user } = useAuthStore();
     const [currentStepIndex, setCurrentStepIndex] = useState(0);
-    const STEPS = ['core', 'services', 'team', 'ad_accounts', 'extended', 'strategy'];
+    const STEPS = ['core', 'services', 'team', 'ad_accounts', 'finance', 'extended', 'strategy'];
 
     // Helper to get current step name
     const currentStep = STEPS[currentStepIndex];
 
     // Define fields validation per step
     const STEP_FIELDS: Record<string, any[]> = {
-        'core': ['name', 'industry', 'status', 'brand_colors', 'logo_url', 'contact_person', 'contact_number', 'company_email', 'operating_locations'],
+        'core': ['name', 'industry', 'status', 'brand_colors', 'logo_url', 'contact_person', 'contact_number', 'company_email', 'address', 'operating_locations'],
         'services': ['service_engagement'],
         'team': ['account_manager_id', 'assigned_staff_ids'],
         'ad_accounts': ['ad_accounts'],
+        'finance': ['ledger_options'],
         'extended': ['social_links', 'customer_avatar'],
         'strategy': ['competitor_info']
     };
@@ -142,7 +181,10 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
             social_links: {},
             operating_locations: [],
             customer_avatar: { description: '', pain_points: '' },
-            content_strategies: []
+            content_strategies: [],
+
+            address: '',
+            ledger_options: { create: false, head_id: '' }
         }
     });
 
@@ -181,6 +223,13 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
         queryKey: ['staff'],
         queryFn: async () => (await api.get('/team/staff')).data,
         enabled: !!isOpen // Only fetch when open
+    });
+
+    // Fetch Account Heads
+    const { data: accountHeads } = useQuery({
+        queryKey: ['accountHeads'],
+        queryFn: async () => (await api.get('/accounting/heads')).data,
+        enabled: !!isOpen
     });
 
     // Array fields for Competitors
@@ -228,7 +277,13 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
                 competitor_info: parseJsonSafe(clientToEdit.competitor_info, []),
                 customer_avatar: parseJsonSafe(clientToEdit.customer_avatar, { description: '', pain_points: '' }),
                 content_strategies: clientToEdit.content_strategies || [],
-                operating_locations: parseJsonSafe(clientToEdit.operating_locations_json, [])
+                operating_locations: parseJsonSafe(clientToEdit.operating_locations_json, []),
+                address: clientToEdit.address || '',
+                ledger_options: {
+                    create: clientToEdit.ledger_options?.create || false,
+                    head_id: '' // We don't fetch head_id from list, so we might need to handle this if they check it. 
+                    // Ideally, if it exists, we should show it. But for now this fixes the "Checked" state.
+                }
             });
         } else {
             reset({
@@ -260,14 +315,29 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
                 return await api.post('/clients', data);
             }
         },
+        // Add at top: import Swal from 'sweetalert2';
+
+        // In mutation onSuccess:
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['clients'] });
+            queryClient.invalidateQueries({ queryKey: ['client'] }); // Refresh Detail View
+            queryClient.invalidateQueries({ queryKey: ['clients-list-simple'] }); // Refresh Portal Overview
+            queryClient.invalidateQueries({ queryKey: ['client-portal-dashboard'] }); // Refresh active portal view
             if (onSuccess) {
-                onSuccess(data.data); // Assuming API returns data object
+                onSuccess(data.data);
             }
             onClose();
             reset();
-            setCurrentStepIndex(0); // Reset step on success
+            setCurrentStepIndex(0);
+
+            Swal.fire({
+                title: 'Success!',
+                text: clientToEdit ? 'Client profile updated successfully.' : 'New client added successfully.',
+                icon: 'success',
+                confirmButtonColor: '#8b5cf6', // Primary Purple
+                timer: 2000,
+                timerProgressBar: true
+            });
         },
         onError: (err: any) => {
             console.error("Mutation Error:", err);
@@ -311,6 +381,7 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
             contact_person: data.contact_person || undefined,
             contact_number: data.contact_number || undefined,
             company_email: data.company_email || undefined,
+            address: data.address || undefined
         };
         mutation.mutate(cleanedData);
     };
@@ -335,8 +406,9 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
                     <TabButton id="services" label="Services" icon={Target} index={1} />
                     <TabButton id="team" label="Team" icon={Users} index={2} />
                     <TabButton id="ad_accounts" label="Ad Accounts" icon={DollarSign} index={3} />
-                    <TabButton id="extended" label="Extended" icon={Briefcase} index={4} />
-                    <TabButton id="strategy" label="Strategy" icon={Globe} index={5} />
+                    <TabButton id="finance" label="Finance" icon={DollarSign} index={4} />
+                    <TabButton id="extended" label="Extended" icon={Briefcase} index={5} />
+                    <TabButton id="strategy" label="Strategy" icon={Globe} index={6} />
                 </div>
 
                 <form className="flex-1 overflow-y-auto p-6">
@@ -350,6 +422,10 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
                                         <label className="label">Company Name *</label>
                                         <input {...register('name')} className={`input ${errors.name ? 'border-red-500' : ''}`} placeholder="Acme Corp" autoFocus />
                                         {errors.name && <p className="error">{errors.name.message}</p>}
+                                    </div>
+                                    <div>
+                                        <label className="label">Client ID {clientToEdit ? '' : '(Auto-Generated)'}</label>
+                                        <ClientCodeField clientToEdit={clientToEdit} />
                                     </div>
                                     <div>
                                         <label className="label">Industry</label>
@@ -397,6 +473,10 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
                                             <label className="label">Mobile Number</label>
                                             <input {...register('contact_number')} className="input" placeholder="+1 234..." />
                                         </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="label">Business Address</label>
+                                        <textarea {...register('address')} className="input min-h-[60px]" placeholder="Full street address..." />
                                     </div>
 
                                     <div className="flex justify-between items-center border-b pb-2 mt-2">
@@ -452,18 +532,42 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
                         <div className="space-y-6 animate-in fade-in">
                             <div>
                                 <h3 className="text-lg font-medium text-gray-900 mb-4">Service Engagement</h3>
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                    {SERVICE_OPTIONS.map((service) => (
-                                        <label key={service} className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${watch('service_engagement').includes(service) ? 'bg-primary/5 border-primary' : 'hover:bg-gray-50'}`}>
-                                            <input
-                                                type="checkbox"
-                                                value={service}
-                                                {...register('service_engagement')}
-                                                className="w-4 h-4 rounded text-primary focus:ring-primary accent-primary"
-                                            />
-                                            <span className="text-sm font-medium text-gray-700">{service}</span>
-                                        </label>
-                                    ))}
+                                <div className="space-y-3">
+                                    {[
+                                        { id: 'META_ADS', label: 'Meta Ads' },
+                                        { id: 'GOOGLE_ADS', label: 'Google Ads' },
+                                        { id: 'SEO', label: 'SEO' },
+                                        { id: 'WEB_DEV', label: 'Web Design / Development' },
+                                        { id: 'CONTENT', label: 'Content Creation' },
+                                        { id: 'BRANDING', label: 'Branding' }
+                                    ].map((service) => {
+                                        const isActive = watch('service_engagement').includes(service.id);
+                                        return (
+                                            <div key={service.id} className={`flex items-center justify-between p-4 border rounded-lg transition-all ${isActive ? 'bg-green-50 border-green-200 shadow-sm' : 'bg-white hover:bg-gray-50'}`}>
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-3 h-3 rounded-full ${isActive ? 'bg-green-500 shadow-sm shadow-green-200' : 'bg-gray-300'}`}></div>
+                                                    <span className={`font-medium ${isActive ? 'text-green-900' : 'text-gray-700'}`}>{service.label}</span>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const current = watch('service_engagement');
+                                                        if (isActive) {
+                                                            setValue('service_engagement', current.filter((s: string) => s !== service.id));
+                                                        } else {
+                                                            setValue('service_engagement', [...current, service.id]);
+                                                        }
+                                                    }}
+                                                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${isActive
+                                                        ? 'bg-white border border-red-200 text-red-600 hover:bg-red-50'
+                                                        : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                                                        }`}
+                                                >
+                                                    {isActive ? 'Deactivate' : 'Activate'}
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         </div>
@@ -639,6 +743,75 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
                                             Click to add one
                                         </button>
                                     </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* FINANCE TAB */}
+                    {currentStep === 'finance' && (
+                        <div className="space-y-6 animate-in fade-in">
+                            <div className="p-4 bg-gray-50 border rounded-lg">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <input
+                                        type="checkbox"
+                                        {...register('ledger_options.create')}
+                                        className="w-5 h-5 rounded text-primary focus:ring-primary accent-primary"
+                                        id="create_ledger"
+                                    />
+                                    <label htmlFor="create_ledger" className="font-medium text-gray-900 cursor-pointer select-none">Create a dedicated Ledger Account for this client?</label>
+                                </div>
+
+                                {watch('ledger_options.create') && (
+                                    <div className="pl-7 space-y-4 animate-in slide-in-from-top-2">
+                                        <p className="text-sm text-gray-500">
+                                            A new ledger will be created named <strong>{watch('name') || 'Client Name'}</strong>.
+                                            Please select the parent Account Head (Category).
+                                        </p>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="label">Account Type</label>
+                                                <select
+                                                    className="input"
+                                                    onChange={(e) => {
+                                                        // Filter heads logic could be here, but simpler to just show all sorted or grouped
+                                                        // For now let's just use the head selector directly as Type is implied by Head
+                                                    }}
+                                                >
+                                                    <option value="">All Types</option>
+                                                    <option value="ASSET">Assets (debtors)</option>
+                                                    <option value="LIABILITY">Liabilities</option>
+                                                    <option value="INCOME">Income</option>
+                                                    <option value="Income from Client">Income from Client</option>
+                                                    <option value="EXPENSE">Expense</option>
+                                                </select>
+                                                <p className="text-xs text-muted-foreground mt-1">Filter the list of Account Heads.</p>
+                                            </div>
+
+                                            <div>
+                                                <label className="label">Account Head *</label>
+                                                <select
+                                                    {...register('ledger_options.head_id')}
+                                                    className={`input ${errors.ledger_options?.head_id ? 'border-red-500' : ''}`}
+                                                >
+                                                    <option value="">Select Head...</option>
+                                                    {accountHeads?.map((head: any) => (
+                                                        <option key={head.id} value={head.id}>
+                                                            {head.name} ({head.code}) - {head.type}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                {errors.ledger_options?.head_id && <p className="error">{errors.ledger_options.head_id.message}</p>}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {!watch('ledger_options.create') && (
+                                    <p className="text-xs text-gray-400 pl-7">
+                                        Note: If skipped, a default Ledger (Income - 4000) might be reused or auto-created depending on system settings.
+                                    </p>
                                 )}
                             </div>
                         </div>

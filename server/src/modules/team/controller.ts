@@ -67,6 +67,10 @@ const onboardSchema = z.object({
     total_experience_years: z.any().optional(),
 
     base_salary: z.any().optional(),
+    hra: z.any().optional(),
+    allowances: z.any().optional(),
+    conveyance_allowance: z.any().optional(),
+    accommodation_allowance: z.any().optional(),
 
     // Payroll & Financial
     salary_type: z.any().optional(),
@@ -94,11 +98,17 @@ const onboardSchema = z.object({
     upi_id: z.any().optional(),
     upi_linked_mobile: z.any().optional(),
 
+    // Ledger Settings
+    ledger_options: z.object({
+        create: z.boolean(),
+        head_id: z.string().optional()
+    }).optional(),
+
+
     // Documents/Financial Extras
     pan_number: z.any().optional(),
     aadhar_number: z.any().optional(),
     payment_method: z.any().optional(),
-    create_ledger: z.boolean().optional(),
 });
 
 // Controllers
@@ -182,7 +192,7 @@ export const onboardStaff = async (req: Request, res: Response) => {
                 upi_id: data.upi_id,
                 upi_linked_mobile: data.upi_linked_mobile
             },
-            data.create_ledger !== false // Default to true if undefined? Or just pass value. Schema says optional. Let's default true if not provided.
+            data.ledger_options // Pass new ledger options object
         );
 
         res.status(201).json(result);
@@ -220,6 +230,16 @@ export const updateStaffFull = async (req: Request, res: Response) => {
         // 2. Check if we are trying to modify an existing DEVELOPER_ADMIN
         // We need to fetch the current profile/user to check their current role
         const targetStaff = await teamService.getStaffProfile(id);
+
+        // SUPER ADMIN LOCK: noorudheen243@gmail.com
+        if (targetStaff && targetStaff.user.email === 'noorudheen243@gmail.com') {
+            // 1. Prevent changing their role to anything else
+            if (data.role && data.role !== 'DEVELOPER_ADMIN') {
+                return res.status(403).json({ message: "This Super User account cannot be demoted." });
+            }
+            // 2. Prevent others from editing this user unless they are also that user (Self-edit ok for details, but rarely role)
+        }
+
         if (targetStaff && targetStaff.user.role === 'DEVELOPER_ADMIN') {
             if (req.user!.role !== 'DEVELOPER_ADMIN') {
                 return res.status(403).json({ message: "You cannot modify a Developer Admin account." });
@@ -252,6 +272,10 @@ export const updateStaffFull = async (req: Request, res: Response) => {
             previous_company: data.previous_company,
             total_experience_years: data.total_experience_years,
             base_salary: data.base_salary,
+            hra: data.hra,
+            allowances: data.allowances, // Fixed Allowance
+            conveyance_allowance: data.conveyance_allowance,
+            accommodation_allowance: data.accommodation_allowance,
 
             // Payroll & Financial
             salary_type: data.salary_type,
@@ -287,18 +311,9 @@ export const updateStaffFull = async (req: Request, res: Response) => {
         console.log(`[UpdateStaff] Final UserData:`, JSON.stringify(userData, null, 2));
         console.log(`[UpdateStaff] Final ProfileData:`, JSON.stringify(profileData, null, 2));
 
-        const result = await teamService.updateStaffFull(id, userData, profileData);
+        const result = await teamService.updateStaffFull(id, userData, profileData, data.ledger_options);
 
-        // --- LEDGER AUTOMATION ---
-        if (data.create_ledger) {
-            try {
-                // Ensure Ledger exists (Payable)
-                await ensureLedger('USER', result.profile.user_id, '2000');
-                console.log(`[UpdateStaff] Ledger ensured for ${result.profile.user_id}`);
-            } catch (err) {
-                console.error("[UpdateStaff] Failed to ensure ledger:", err);
-            }
-        }
+        // LEDGER AUTOMATION moved to service.
 
         res.json(result);
     } catch (error: any) {
@@ -376,7 +391,14 @@ export const applyLeave = async (req: Request, res: Response) => {
 
 export const getLeaves = async (req: Request, res: Response) => {
     try {
-        const leaves = await teamService.getLeaveRequests(req.user!.id, req.user!.role); // Fixed: .id
+        const { userId } = req.query;
+        // If userId is passed, pass it as target. If 'me', resolving to undefined here relies on frontend sending UUID?
+        // Actually, let's treat any string passed as target. Service handles permissions.
+        const targetUserId = (typeof userId === 'string' && userId !== 'me') ? userId : undefined;
+        // Note: If userId is 'me', targetUserId is undefined. Service returns ALL for Admin.
+        // If Admin wants "My Leaves", frontend must send Admin's UUID.
+
+        const leaves = await teamService.getLeaveRequests(req.user!.id, req.user!.role, targetUserId); // Fixed: .id
         res.json(leaves);
     } catch (error: any) {
         res.status(500).json({ message: error.message });

@@ -39,7 +39,11 @@ export const StickyNoteContainer = () => {
             </div>
 
             {/* Floating Restore Tray (Bottom Right) */}
-            <div className="fixed bottom-4 right-4 z-[60] flex flex-col items-end gap-2">
+            <motion.div
+                drag
+                dragMomentum={false}
+                className="fixed bottom-4 right-4 z-[60] flex flex-col items-end gap-2"
+            >
 
                 {/* Minimized Stack */}
                 <AnimatePresence>
@@ -73,24 +77,26 @@ export const StickyNoteContainer = () => {
                         </button>
                     )}
 
-                    <button
-                        onClick={(e) => {
-                            // Calculate position relative to button (center of screen or near button)
-                            // Button is bottom-right. Let's make note appear slightly above-left of it.
-                            const x = window.innerWidth - 320; // 250px width + margin
-                            const y = window.innerHeight - 400; // 300px height + margin
-                            addNote({ x, y });
-                        }}
-                        className="w-14 h-14 bg-gradient-to-br from-yellow-300 to-yellow-500 rounded-full shadow-xl flex items-center justify-center text-yellow-900 hover:scale-110 active:scale-95 transition-all group"
-                        title="Create Sticky Note"
+                    <div
+                        className="w-14 h-14 bg-gradient-to-br from-yellow-300 to-yellow-500 rounded-full shadow-xl flex items-center justify-center text-yellow-900 group cursor-grab active:cursor-grabbing"
+                        title="Drag to move. Click + to add note."
                     >
                         <LucideSticky size={24} className="group-hover:rotate-12 transition-transform" />
-                        <div className="absolute top-0 right-0 bg-primary text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center -mt-1 -mr-1 border-2 border-white">
-                            <Plus size={12} strokeWidth={3} />
-                        </div>
-                    </button>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                const x = window.innerWidth / 2 - 125;
+                                const y = window.innerHeight / 2 - 125;
+                                addNote({ x, y });
+                            }}
+                            className="absolute top-0 right-0 bg-primary text-white text-[10px] w-6 h-6 rounded-full flex items-center justify-center -mt-1 -mr-1 border-2 border-white hover:scale-125 transition-transform cursor-pointer shadow-sm z-10"
+                            title="Add New Note"
+                        >
+                            <Plus size={14} strokeWidth={3} />
+                        </button>
+                    </div>
                 </div>
-            </div>
+            </motion.div>
         </>
     );
 };

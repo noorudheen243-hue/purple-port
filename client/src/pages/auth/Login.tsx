@@ -32,7 +32,9 @@ const Login = () => {
         <div className="min-h-screen flex items-center justify-center bg-background">
             <div className="w-full max-w-md p-8 space-y-6 bg-card rounded-lg shadow-lg border border-border">
                 <div className="text-center">
-                    <h1 className="text-3xl font-bold text-primary">Qix Ads</h1>
+                    <div className="flex justify-center mb-4">
+                        <img src="/qix_logo.png" alt="Qix Ads" className="h-16 w-auto" />
+                    </div>
                     <p className="text-muted-foreground mt-2">Sign in to your workspace</p>
                 </div>
 

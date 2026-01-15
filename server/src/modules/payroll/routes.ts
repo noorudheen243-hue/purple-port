@@ -14,6 +14,8 @@ router.get('/draft', protect, authorize('ADMIN'), payrollController.getSalaryDra
 router.post('/slip', protect, authorize('ADMIN'), payrollController.savePayrollSlip);
 router.post('/confirm', protect, authorize('ADMIN'), payrollController.confirmPayrollRun);
 router.get('/run', protect, authorize('ADMIN'), payrollController.getPayrollRun);
-router.get('/history', protect, authorize('ADMIN'), payrollController.getPayrollHistory);
+router.get('/history', protect, payrollController.getPayrollHistory);
+router.post('/slip/:id/process', protect, authorize('ADMIN'), payrollController.processSlip);
+router.delete('/slip/:id', protect, authorize('ADMIN'), payrollController.rejectSlip);
 
 export default router;

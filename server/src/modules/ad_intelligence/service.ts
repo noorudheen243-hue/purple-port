@@ -69,16 +69,26 @@ export const linkAdAccount = async (data: Prisma.AdAccountCreateInput) => {
     return await prisma.adAccount.create({ data });
 };
 
-export const getAggregatedStats = async (startDate: Date, endDate: Date) => {
+export const getAggregatedStats = async (startDate: Date, endDate: Date, clientId?: string) => {
+    const whereClause: any = {
+        date: {
+            gte: startDate,
+            lte: endDate
+        }
+    };
+
+    if (clientId) {
+        const clientCampaigns = await prisma.campaign.findMany({
+            where: { client_id: clientId },
+            select: { id: true }
+        });
+        whereClause.campaign_id = { in: clientCampaigns.map(c => c.id) };
+    }
+
     // raw query might be better for aggregations, but prisma groupBy is fine for simple stuff
     const stats = await prisma.spendSnapshot.groupBy({
         by: ['campaign_id', 'date'],
-        where: {
-            date: {
-                gte: startDate,
-                lte: endDate
-            }
-        },
+        where: whereClause,
         _sum: {
             spend_micros: true,
             impressions: true,

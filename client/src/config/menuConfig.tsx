@@ -17,7 +17,9 @@ import {
     BarChart3,
     FileText,
     Banknote,
-    Settings
+    Settings,
+    Calculator,
+    MessageSquare
 } from 'lucide-react';
 
 export interface MenuItem {
@@ -26,6 +28,7 @@ export interface MenuItem {
     icon?: any;
     children?: MenuItem[];
     roles?: string[]; // If specific items inside a menu are restricted
+    highlight?: boolean;
 }
 
 export const ADMIN_MANAGER_MENU: MenuItem[] = [
@@ -39,6 +42,7 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
         icon: User,
         children: [
             { label: "View Clients", path: "/dashboard/clients", icon: List },
+            { label: "Client Access", path: "/dashboard/clients/credentials", icon: Shield, roles: ['ADMIN', 'DEVELOPER_ADMIN'] },
             { label: "Add New Client", path: "/dashboard/clients?action=new", icon: PlusCircle },
             { label: "Content Status", path: "/dashboard/clients/content-status", icon: BarChart3 }
         ]
@@ -53,6 +57,7 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
             { label: "Transaction History", path: "/dashboard/accounts/history", icon: ClipboardList },
             { label: "Record Transaction", path: "/dashboard/accounts/new", icon: PlusCircle },
             { label: "Account Statement", path: "/dashboard/accounts/statement", icon: FileText },
+            { label: "Client Invoice", path: "/dashboard/finance/invoices", icon: FileText, roles: ['ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'] },
         ]
     },
     {
@@ -60,7 +65,7 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
         icon: Users,
         children: [
             { label: "Team", path: "/dashboard/team", icon: List },
-            { label: "Systems Roles", path: "/dashboard/team/roles", icon: Shield, roles: ['ADMIN', 'DEVELOPER_ADMIN'] }
+            { label: "Systems Roles", path: "/dashboard/team/roles", icon: Shield, roles: ['ADMIN', 'DEVELOPER_ADMIN'], highlight: true } as MenuItem
         ]
     },
     {
@@ -72,28 +77,46 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
             { label: "New Task", path: "/dashboard/tasks?action=new", icon: PlusCircle },
             { label: "Task Board", path: "/dashboard/tasks/board", icon: KanbanSquare },
             { label: "Calendar", path: "/dashboard/tasks/calendar", icon: Calendar },
-            { label: "Automation", path: "/dashboard/tasks/automation", icon: Zap, roles: ['ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'] },
             { label: "Team Performance", path: "/dashboard/tasks/performance", icon: UsersIcon, roles: ['ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'] },
             { label: "Reports", path: "/dashboard/tasks/reports", icon: BarChart3, roles: ['ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'] }
         ]
     },
     {
-        label: "Ads",
+        label: "Client Portal",
         icon: TrendingUp,
         children: [
-            { label: "Campaigns", path: "/dashboard/roi", icon: List },
-            { label: "ROI", path: "/dashboard/roi", icon: TrendingUp },
-            { label: "Reports", path: "/dashboard/roi", icon: BarChart3 }
+            { label: "Dashboard", path: "/dashboard/client-portal", icon: LayoutDashboard },
+            { label: "Approvals", path: "/dashboard/client-portal/approvals", icon: CheckSquare },
+            { label: "Reports", path: "/dashboard/client-portal/reports", icon: BarChart3 }
+        ]
+    },
+    {
+        label: "Attendance & Leave",
+        icon: Calendar,
+        children: [
+            { label: "Attendance Summary", path: "/dashboard/attendance/summary", icon: ClipboardList },
+            { label: "Leave Request", path: "/dashboard/attendance/leave-request", icon: PlusCircle },
+            { label: "Leave Summary", path: "/dashboard/attendance/leave-summary", icon: List },
+            { label: "Holiday & Leave Planner", path: "/dashboard/attendance/planner", icon: Calendar, roles: ['ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'] },
+            { label: "Calendar", path: "/dashboard/attendance/calendar", icon: Calendar },
+            { label: "Regularisation", path: "/dashboard/attendance/regularisation", icon: CheckSquare },
+            { label: "Requests (Admin)", path: "/dashboard/attendance/requests", icon: Shield, roles: ['ADMIN', 'MANAGER'] },
+            { label: "History (Admin)", path: "/dashboard/attendance/history", icon: ClipboardList, roles: ['ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'] },
+            { label: "Biometric Details", path: "/dashboard/attendance/biometric", icon: List, roles: ['ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'] },
+            { label: "Biometric Manager", path: "/dashboard/attendance/biometric-manager", icon: Shield, roles: ['ADMIN', 'DEVELOPER_ADMIN'] },
+            { label: "Reports", path: "/dashboard/attendance/reports", icon: BarChart3, roles: ['ADMIN', 'MANAGER'] }
         ]
     },
     {
         label: "Payroll",
         icon: Banknote,
         children: [
-            { label: "Salary Calculator", path: "/dashboard/payroll/calculator", icon: Banknote, roles: ['ADMIN', 'DEVELOPER_ADMIN'] },
-            { label: "Salary Slip & Statements", path: "/dashboard/payroll/history", icon: FileText },
+            { label: "Salary Calculator", path: "/dashboard/payroll/calculator", icon: Calculator, roles: ['ADMIN', 'DEVELOPER_ADMIN'] },
+            { label: "Payslip History", path: "/dashboard/payroll/history", icon: FileText },
+            { label: "Salary Statement", path: "/dashboard/payroll/statement", icon: FileText },
+            { label: "Payroll Calendar", path: "/dashboard/payroll/calendar", icon: Calendar },
+            { label: "Payroll Process", path: "/dashboard/payroll/process", icon: CheckSquare, roles: ['ADMIN', 'DEVELOPER_ADMIN'] }, // Added Payroll Process
             { label: "Payroll Reports", path: "/dashboard/payroll/reports", icon: BarChart3, roles: ['ADMIN', 'DEVELOPER_ADMIN'] },
-            { label: "Leave & LOP Summary", path: "/dashboard/payroll/leaves", icon: Calendar },
             { label: "Payroll Settings", path: "/dashboard/payroll/settings", icon: Settings, roles: ['ADMIN', 'DEVELOPER_ADMIN'] }
         ]
     },
@@ -105,6 +128,7 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
             { label: "Data Sync", path: "/dashboard/admin/sync", icon: TrendingUp }
         ]
     },
+
     {
         label: "Settings",
         path: "/dashboard/settings",
@@ -133,12 +157,42 @@ export const STAFF_MENU: MenuItem[] = [
         icon: Calendar
     },
     {
+        label: "Attendance & Leave",
+        icon: Calendar,
+        children: [
+            { label: "Attendance Summary", path: "/dashboard/attendance/summary", icon: ClipboardList },
+            { label: "Leave Request", path: "/dashboard/attendance/leave-request", icon: PlusCircle },
+            { label: "Leave Summary", path: "/dashboard/attendance/leave-summary", icon: List },
+            { label: "Calendar", path: "/dashboard/attendance/calendar", icon: Calendar },
+            { label: "Regularisation", path: "/dashboard/attendance/regularisation", icon: CheckSquare }
+        ]
+    },
+    {
         label: "Payroll",
         icon: Banknote,
         children: [
-            { label: "My Payslips", path: "/dashboard/payroll/payslips", icon: FileText },
-            { label: "Leaves", path: "/dashboard/payroll/leaves", icon: Calendar }
+            { label: 'Payslips', path: '/dashboard/payroll/history', icon: FileText },
+            { label: 'Salary Statement', path: '/dashboard/payroll/statement', icon: FileText },
+            { label: 'Payroll Calendar', path: '/dashboard/payroll/calendar', icon: Calendar }
         ]
+    },
+    {
+        label: "Settings",
+        path: "/dashboard/settings",
+        icon: Settings
+    }
+];
+
+export const CLIENT_MENU: MenuItem[] = [
+    {
+        label: "Service Portal",
+        path: "/dashboard/client-portal",
+        icon: TrendingUp
+    },
+    {
+        label: "Accounts",
+        path: "/dashboard/client/accounts",
+        icon: Wallet
     },
     {
         label: "Settings",

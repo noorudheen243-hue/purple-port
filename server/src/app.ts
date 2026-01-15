@@ -58,6 +58,8 @@ import uploadRoutes from './modules/upload/routes';
 import userRoutes from './modules/users/routes';
 import payrollRoutes from './modules/payroll/routes';
 import backupRoutes from './modules/backup/routes';
+import clientPortalRoutes from './modules/client_portal/routes';
+
 import path from 'path';
 
 // Serve Uploads
@@ -76,10 +78,26 @@ app.use('/api/ad-intelligence', adIntelligenceRoutes);
 app.use('/api/team', teamRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/client-portal', clientPortalRoutes);
+
 app.use('/api/payroll', payrollRoutes);
 app.use('/api/backup', backupRoutes);
 import stickyNoteRoutes from './modules/sticky_notes/routes';
+import attendanceRoutes from './modules/attendance/routes';
+import biometricControlRoutes from './modules/attendance/biometric_control.routes';
+import billingRoutes from './modules/billing/routes';
+import leaveRoutes from './modules/leave/routes';
+
+app.use('/api/billing', billingRoutes);
 app.use('/api/sticky-notes', stickyNoteRoutes);
+app.use('/api/attendance/biometric', biometricControlRoutes); // Specific route first
+app.use('/api/attendance', attendanceRoutes); // Generic route second
+app.use('/api/leave', leaveRoutes);
+
+import chatRoutes from './modules/chat/routes';
+import launcherRoutes from './modules/launcher/routes';
+app.use('/api/chat', chatRoutes);
+app.use('/api/launcher', launcherRoutes);
 
 // --- Production: Serve Frontend ---
 // In production, we assume the React build is copied to a 'public' folder in the root

@@ -3,7 +3,9 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Moon, Sun } from 'lucide-react';
+import { Moon, Sun, Bell } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import PendingRequestsModal from '@/components/attendance/PendingRequestsModalv2';
 
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#94a3b8']; // Green, Blue, Yellow, Gray
 
@@ -46,10 +48,14 @@ const useTheme = () => {
     return isDark;
 };
 
+import { useSearchParams } from 'react-router-dom';
+
 const ManagerDashboard = () => {
     const { user } = useAuthStore();
     const isDarkMode = useTheme();
-    const axisColor = isDarkMode ? '#e2e8f0' : '#64748b'; // slate-200 (dark) vs slate-500 (light)
+    const axisColor = isDarkMode ? '#e2e8f0' : '#64748b';
+    const [searchParams, setSearchParams] = useSearchParams();
+    const highlightRequestId = searchParams.get('requestId'); // slate-200 (dark) vs slate-500 (light)
 
     // --- DATA FETCHING ---
 
@@ -71,6 +77,23 @@ const ManagerDashboard = () => {
         queryFn: async () => (await api.get('/analytics/team-performance')).data
     });
 
+
+
+    // 4. Pending Requests Count
+    const { data: requestCount } = useQuery({
+        queryKey: ['pending-requests-count'],
+        queryFn: async () => {
+            const [leaves, regularisation] = await Promise.all([
+                api.get('/leave/requests'),
+                api.get('/attendance/regularisation/requests?status=PENDING')
+            ]);
+            // Filter leaves for PENDING only if API returns all
+            const pendingLeaves = leaves.data.filter((l: any) => l.status === 'PENDING');
+            return pendingLeaves.length + regularisation.data.length;
+        },
+        refetchInterval: 30000 // Poll every 30 seconds
+    });
+
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
             {/* --- HEADER --- */}
@@ -79,9 +102,33 @@ const ManagerDashboard = () => {
                     <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
                         Overview
                     </h1>
-                    <p className="text-muted-foreground">Welcome back, {user?.full_name}</p>
                 </div>
                 <div className="flex items-center gap-6">
+                    {/* Pending Requests Button */}
+                    <PendingRequestsModal
+                        highlightId={highlightRequestId}
+                        autoOpen={!!highlightRequestId || searchParams.get('action') === 'review_request'}
+                        onOpenChange={(open) => {
+                            // If modal closes, clear the requestId from URL so clicking it again works
+                            if (!open && (highlightRequestId || searchParams.get('action'))) {
+                                const newParams = new URLSearchParams(searchParams);
+                                newParams.delete('requestId');
+                                newParams.delete('type');
+                                newParams.delete('action');
+                                setSearchParams(newParams);
+                            }
+                        }}
+                        trigger={
+                            <Button variant="outline" className="gap-2 shadow-sm border-orange-200 bg-orange-50/50 hover:bg-orange-50 text-orange-700 relative">
+                                <Bell className="h-4 w-4" />
+                                Pending Requests
+                                {requestCount > 0 && (
+                                    <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-red-500 animate-pulse ring-2 ring-white" />
+                                )}
+                            </Button>
+                        }
+                    />
+
                     {/* Clock Only - Theme Toggle is now in Global Header */}
                     <DigitalClock />
                 </div>

@@ -39,15 +39,42 @@ model User {
   staffProfile   StaffProfile?
   attendance     AttendanceRecord[]
   leaveRequests  LeaveRequest[]
+  leaveAllocations LeaveAllocation[]
   payrollSlips   PayrollSlip[]
   
   // Managerial Relations
   subordinates   StaffProfile[] @relation("ReportingManager")
   leaveApprovals LeaveRequest[] @relation("LeaveApprover")
+  regularisationApprovals RegularisationRequest[] @relation("RegularisationApprover")
+  regularisationRequests  RegularisationRequest[]
 
   // Sticky Notes
   stickyNotesOwned StickyNote[] @relation("NoteOwner")
   stickyNotePermissions StickyNotePermission[]
+
+  // Meta Integration
+  metaToken     MetaToken? @relation("UserMetaToken")
+
+  // Client Portal Access
+  linked_client_id String? @unique
+  linkedClient     Client? @relation("ClientPortalUser", fields: [linked_client_id], references: [id])
+  
+  // Invoicing
+  created_invoices ClientInvoice[] @relation("InvoiceCreator")
+  
+  // Content Approvals
+  contentApprovals ContentDeliverable[] @relation("ContentApprover")
+
+  // Chat Relations
+  chatParticipations ChatParticipant[]
+  messagesSent       ChatMessage[]
+  readReceipts       ChatReadReceipt[]
+
+  // Launcher Relations
+  createdApps       LauncherApp[]           @relation("LauncherAppCreator")
+  launcherPreferences UserLauncherPreference[]
+
+  advance_balance Float    @default(0.0)
 }
 
 // --- MODULE 5: TEAM & HR MANAGEMENT ---
@@ -123,6 +150,24 @@ model StaffProfile {
   
   reporting_manager_id String?
   reporting_manager    User?   @relation("ReportingManager", fields: [reporting_manager_id], references: [id])
+
+  // Biometric Data
+  biometricCredentials BiometricCredential[]
+}
+
+model BiometricCredential {
+  id           String   @id @default(uuid())
+  staff_number String
+  finger_index Int      @default(0) // 0-9 usually
+  template     String   // Base64 encoded template data
+  algorithm    String?  @default("ZK")
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  staff        StaffProfile @relation(fields: [staff_number], references: [staff_number], onDelete: Cascade)
+
+  @@unique([staff_number, finger_index])
 }
 
 model AttendanceRecord {
@@ -161,11 +206,49 @@ model LeaveRequest {
   approver    User?    @relation("LeaveApprover", fields: [approver_id], references: [id])
 }
 
+model RegularisationRequest {
+  id          String   @id @default(uuid())
+  date        DateTime // The date for which regularisation is requested
+  type        String   // LATE_ARRIVAL, EARLY_DEPARTURE, MISSED_PUNCH_IN, MISSED_PUNCH_OUT
+  reason      String
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  exceeds_limit Boolean @default(false) // Flag if request exceeded monthly limit
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user_id     String
+  user        User     @relation(fields: [user_id], references: [id])
+  
+  approver_id String?
+  approver    User?    @relation("RegularisationApprover", fields: [approver_id], references: [id])
+}
+
+model LeaveAllocation {
+  id           String   @id @default(uuid())
+  year         Int
+  casual_leave Float    @default(0.0)
+  sick_leave   Float    @default(0.0)
+  earned_leave Float    @default(0.0)
+  unpaid_leave Float    @default(0.0)
+  
+  // Custom/Other leave types if needed later, could be JSON or specific cols
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user_id      String
+  user         User     @relation(fields: [user_id], references: [id])
+
+  @@unique([user_id, year])
+}
+
 model Holiday {
   id          String   @id @default(uuid())
   name        String
   date        DateTime @unique
   description String?
+  is_recurring Boolean @default(false) // e.g., Every Sunday
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -221,6 +304,7 @@ model PayrollSlip {
 
 model Client {
   id           String   @id @default(uuid())
+  client_code  String?  @unique // QCNxxxx
   name         String
   brand_colors String?    // Stored as JSON string
   logo_url     String?
@@ -231,11 +315,15 @@ model Client {
   contact_person String?
   contact_number String?
   company_email  String?
+  address        String? // Physical Business Address
 
   // Operating Location
   operating_country String?
   operating_state   String?
   operating_locations_json String? // JSON Array of { country, state? }
+
+  // Financials
+  advance_balance   Float    @default(0.0)
 
   // New JSON Fields for Extended Data
   service_engagement String? // JSON Array of Strings
@@ -258,6 +346,18 @@ model Client {
   directTasks Task[] // Tasks linked directly (e.g. Internal)
   ad_accounts AdAccount[]
   invoices    Invoice[]
+
+  // Portal Access
+  portalUser  User?   @relation("ClientPortalUser")
+
+  // Client Portal Data
+  seoLogs            SeoLog[]
+  webDevProjects     WebDevProject[]
+  metaAdsLogs        MetaAdsLog[]
+  googleAdsLogs      GoogleAdsLog[]
+  contentDeliverables ContentDeliverable[]
+  reports            Report[]
+
 }
 
 model ClientContentStrategy {
@@ -460,9 +560,8 @@ model Ledger {
 
   journalLines JournalLine[]
   
-  @@unique([name, head_id]) // Ensure unique names within a head? Or globally? Prompt says "Ledger Name (Unique)".
-  // Making name globally unique might be too strict if same name in different heads? 
-  // "Ledger Name (Unique)" usually implies globally.
+  @@unique([name, head_id]) 
+  @@index([entity_type, entity_id]) // Crucial for "Find Ledger for Client X"
 }
 
 model JournalEntry {
@@ -472,6 +571,8 @@ model JournalEntry {
   reference    String?  // Invoice #, Receipt #, etc.
   amount       Float
   type         String   // Enum: RECEIPT, PAYMENT, JOURNAL, CONTRA, INVOICE, EXPENSE
+  nature       String   @default("GENERAL") // values: GENERAL, ADVANCE_RECEIVED, ADVANCE_PAID
+  transaction_number String? @unique 
   
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -482,6 +583,9 @@ model JournalEntry {
   lines JournalLine[]
   
   invoice Invoice?
+
+  @@index([date]) // Index for time-range filtering
+  @@index([type]) // Index for type filtering
 }
 
 model JournalLine {
@@ -495,6 +599,8 @@ model JournalLine {
 
   ledger_id String
   ledger    Ledger @relation(fields: [ledger_id], references: [id])
+  
+  @@index([ledger_id]) // Index for ledger lookups
 }
 
 // --- INVOICING MODULE (Restored) ---
@@ -549,6 +655,7 @@ model InvoiceItem {
 
 
 
+
 // --- MODULE 4: AD INTELLIGENCE ---
 
 model AdAccount {
@@ -566,6 +673,8 @@ model AdAccount {
 
   // Credentials are stored in a secure separate vault or encrypted field
   // For MVP, we might store a simple token reference or env var key
+  
+  campaigns AdCampaign[]
 }
 
 model SpendSnapshot {
@@ -607,8 +716,6 @@ model Lead {
   client_id       String?
   // client Client...
 }
-
-// --- INVOICING MODULE ---
 
 // --- MODULE 6: STICKY NOTES SYSTEM ---
 
@@ -667,6 +774,443 @@ model StickyNotePermission {
   @@unique([note_id, user_id])
 }
 
+// --- MODULE 5: META ADS INTEGRATION ---
+
+model MetaToken {
+  id            String   @id @default(uuid())
+  access_token  String
+  refresh_token String?
+  expires_at    DateTime?
+  scopes        String?  // e.g. "ads_read,ads_management"
+  isActive      Boolean  @default(true)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user_id       String   @unique
+  user          User     @relation("UserMetaToken", fields: [user_id], references: [id])
+}
+
+model AdCampaign {
+  id            String   @id @default(uuid())
+  external_id   String   @unique // Renamed from meta_id
+  name          String
+  status        String   // ACTIVE, PAUSED, ARCHIVED, DELETED
+  objective     String?  // OUTCOME_TRAFFIC, OUTCOME_SALES, etc.
+  buying_type   String?  // AUCTION, RESERVED
+  
+  start_time    DateTime?
+  end_time      DateTime?
+  
+  daily_budget    Float?
+  lifetime_budget Float?
+  spend_cap       Float?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt // Last Synced
+
+  ad_account_id String
+  ad_account    AdAccount @relation(fields: [ad_account_id], references: [id])
+
+  ad_sets       AdSet[]
+  insights      AdInsight[]
+}
 
 
 
+model AdSet {
+  id            String   @id @default(uuid())
+  meta_id       String   @unique
+  name          String
+  status        String
+  start_time    DateTime?
+  end_time      DateTime?
+  
+  daily_budget    Float?
+  lifetime_budget Float?
+  
+  bid_strategy  String?
+  billing_event String? // IMPRESSIONS, LINK_CLICKS
+  
+  targeting     String? // JSON String of targeting spec
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  campaign_id   String
+  campaign      AdCampaign @relation(fields: [campaign_id], references: [id], onDelete: Cascade)
+  
+  ads           AdCreative[]
+  insights      AdInsight[]
+}
+
+model AdCreative {
+  id            String   @id @default(uuid())
+  meta_id       String   @unique // This is the AD ID (not Creative ID, for simplicity we treat Ad as leaf)
+  creative_id   String?  // The actual creative ID
+  name          String
+  status        String
+  
+  // Visuals
+  thumbnail_url String?
+  body_text     String?
+  headline      String?
+  call_to_action String?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  ad_set_id     String
+  ad_set        AdSet    @relation(fields: [ad_set_id], references: [id], onDelete: Cascade)
+  
+  insights      AdInsight[]
+}
+
+model AdInsight {
+  id            String   @id @default(uuid())
+  date          DateTime // Midnight
+  
+  spend         Float    @default(0.0)
+  impressions   Int      @default(0)
+  clicks        Int      @default(0)
+  ctr           Float?   @default(0.0)
+  cpc           Float?   @default(0.0)
+  cpm           Float?   @default(0.0)
+  
+  conversions          Int      @default(0)
+  cost_per_conversion  Float?   @default(0.0)
+  
+  reach         Int?     @default(0)
+  frequency     Float?   @default(0.0)
+  
+  currency      String   @default("INR")
+
+  // Linkage (Optional levels)
+  campaign_id   String
+  campaign      AdCampaign @relation(fields: [campaign_id], references: [id], onDelete: Cascade)
+  
+  ad_set_id     String?
+  ad_set        AdSet?     @relation(fields: [ad_set_id], references: [id])
+  
+  ad_id         String?
+  ad            AdCreative? @relation(fields: [ad_id], references: [id])
+  
+  createdAt     DateTime @default(now())
+  
+  @@unique([date, campaign_id, ad_set_id, ad_id]) // Unique snapshot per grain
+}
+
+// --- MODULE 9: CLIENT INVOICE SYSTEM (NEW) ---
+
+model InvoiceSequence {
+  id            String   @id @default(uuid())
+  year          Int
+  month         Int
+  current_count Int      @default(0)
+  
+  updatedAt     DateTime @updatedAt
+
+  @@unique([year, month])
+}
+
+model ClientInvoice {
+  id              String   @id @default(uuid())
+  invoice_number  String   @unique // QIX-YY-MM-XXX
+  
+  // Client Details
+  client_type     String   @default("ONBOARDED") // ONBOARDED or WALKIN
+  client_id       String?
+  client_name     String   // Copied from Client or Typed manually
+  
+  // Dates
+  invoice_date    DateTime
+  due_date        DateTime
+  
+  // Financials
+  sub_total       Float    @default(0.0) // Sum of items
+  
+  additions_total Float    @default(0.0)
+  additions_desc  String?  // JSON or Text description of extras
+  
+  deductions_total Float   @default(0.0) // Advance, Discount
+  deductions_desc String?
+  
+  net_payable     Float    @default(0.0)
+  
+  amount_paid     Float    @default(0.0) // If partial pymt allowed in future
+  balance_due     Float    @default(0.0)
+  
+  status          String   @default("DRAFT") // DRAFT, SUBMITTED, PAID, VOID
+  
+  notes           String?
+  
+  // Branding / Audit
+  created_by_id   String
+  created_by      User     @relation("InvoiceCreator", fields: [created_by_id], references: [id])
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  items           ClientInvoiceItem[]
+}
+
+model ClientInvoiceItem {
+  id              String        @id @default(uuid())
+  
+  invoice_id      String
+  invoice         ClientInvoice @relation(fields: [invoice_id], references: [id], onDelete: Cascade)
+  
+  sl_no           Int
+  particulars     String        // Service Type
+  description     String?       // Detailed text
+  
+  quantity        Float         @default(1.0)
+  rate            Float         @default(0.0)
+  amount          Float         @default(0.0)
+  
+  ledger_id       String?       // Optional link to Ledger Account
+}
+
+
+model ContentDeliverable {
+  id              String   @id @default(uuid())
+  title           String
+  type            String   // POSTER, REEL, BLOG, COPY, LOGO
+  status          String   @default("DRAFT") // DRAFT, SUBMITTED, APPROVED, CHANGES_REQUESTED, REJECTED
+  
+  file_url        String?
+  preview_url     String?
+  
+  feedback        String?
+  version         Int      @default(1)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  client_id       String
+  client          Client   @relation(fields: [client_id], references: [id])
+  
+  approver_id     String?
+  approver        User?    @relation("ContentApprover", fields: [approver_id], references: [id])
+}
+
+model Report {
+  id              String   @id @default(uuid())
+  title           String
+  type            String   // MONTHLY, AD_HOC
+  period          String?  // DAILY, WEEKLY, MONTHLY, YEARLY
+  services_included String? // JSON Array of service keys
+  from_date       DateTime
+  to_date         DateTime
+  
+  file_url        String?
+  status          String   @default("GENERATING") // GENERATING, READY, FAILED
+  
+  createdAt       DateTime @default(now())
+  
+  client_id       String
+  client          Client   @relation(fields: [client_id], references: [id])
+}
+// --- MODULE 6: CLIENT SERVICE TRACKING (Variable/Manual Logs) ---
+
+model MetaAdsLog {
+  id            String   @id @default(uuid())
+  client_id     String
+  client        Client   @relation(fields: [client_id], references: [id])
+  date          DateTime @default(now())
+  
+  campaign_name String
+  objective     String   // e.g. Engagement, Leads, Traffic, Sales
+  platform      String   // Facebook, Instagram, Both
+  spend         Float    @default(0.0)
+  
+  // Dynamic Results stored as JSON to allow flexibility
+  // e.g. { "impressions": 1000, "clicks": 50, "leads": 5, "cpl": 20.5 }
+  results_json  String   @default("{}") 
+  
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model GoogleAdsLog {
+  id            String   @id @default(uuid())
+  client_id     String
+  client        Client   @relation(fields: [client_id], references: [id])
+  date          DateTime @default(now())
+  
+  campaign_name String
+  campaign_type String   // Search, Display, Video, PMax
+  spend         Float    @default(0.0)
+  
+  clicks        Int      @default(0)
+  impressions   Int      @default(0)
+  conversions   Int      @default(0)
+  cpa           Float    @default(0.0) // Cost Per Acquisition
+  
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model SeoLog {
+  id            String   @id @default(uuid())
+  client_id     String
+  client        Client   @relation(fields: [client_id], references: [id])
+  
+  month         Int
+  year          Int
+  
+  // JSON arrays/objects for structured data
+  activities_json       String @default("[]") // List of tasks: On-page, Technical, etc.
+  keyword_rankings_json String @default("[]") // [{ keyword: 'xyz', rank: 5, change: '+1' }]
+  organic_traffic       Int    @default(0)
+  
+  summary       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([client_id, month, year])
+}
+
+model WebDevProject {
+  id            String   @id @default(uuid())
+  client_id     String
+  client        Client   @relation(fields: [client_id], references: [id])
+  
+  project_name  String
+  status        String   // PLANNING, DESIGN, DEVELOPMENT, AMENDS, TESTING, DEPLOYED
+  
+  // Progress Tracking
+  milestones_json String @default("[]") // [{ name: 'Design', status: 'COMPLETED', date: '...' }]
+  timeline_json   String @default("[]") // For Gantt/Timeline view
+  
+  staging_url   String?
+  live_url      String?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// --- MODULE 10: NATIVE CHAT SYSTEM ---
+
+model ChatConversation {
+  id            String   @id @default(uuid())
+  type          String   // DIRECT, GROUP, CHANNEL
+  name          String?  // For Groups/Channels
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  lastMessageAt DateTime @default(now())
+  
+  participants  ChatParticipant[]
+  messages      ChatMessage[]
+}
+
+model ChatParticipant {
+  id              String   @id @default(uuid())
+  conversation_id String
+  conversation    ChatConversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  
+  // Participant can be User (Staff) or Client (Portal User)
+  // For simplicity and unified Auth, we'll link to User
+  // Client portal users rely on the `User` record linked to `Client`
+  user_id         String
+  user            User     @relation(fields: [user_id], references: [id])
+  
+  role            String   @default("MEMBER") // ADMIN, MEMBER, READ_ONLY
+  joinedAt        DateTime @default(now())
+  
+  // Track read status per conversation
+  lastReadAt      DateTime @default(now())
+
+  @@unique([conversation_id, user_id])
+}
+
+model ChatMessage {
+  id              String   @id @default(uuid())
+  conversation_id String
+  conversation    ChatConversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  
+  sender_id       String
+  sender          User     @relation(fields: [sender_id], references: [id])
+  
+  type            String   @default("TEXT") // TEXT, IMAGE, FILE, SYSTEM
+  content         String?   // SQLite Text
+  
+  // Attachment Metadata
+  file_url        String?
+  file_name       String?
+  file_size       Int?
+  file_type       String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt // For edits?
+  
+  readReceipts    ChatReadReceipt[]
+}
+
+model ChatReadReceipt {
+  id         String   @id @default(uuid())
+  message_id String
+  message    ChatMessage @relation(fields: [message_id], references: [id], onDelete: Cascade)
+  
+  user_id    String
+  user       User     @relation(fields: [user_id], references: [id])
+  
+  readAt     DateTime @default(now())
+
+  @@unique([message_id, user_id])
+}
+
+
+
+// --- MODULE 7: APP LAUNCHER ---
+
+model LauncherApp {
+  id          String   @id @default(uuid())
+  name        String
+  icon        String   // specific 3d icon name or url
+  type        String   // WEB, LOCAL
+  url         String?  // https://...
+  command     String?  // protocol:// or custom command
+  description String?
+  
+  is_global   Boolean  @default(false)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  creator_id  String?
+  creator     User?    @relation("LauncherAppCreator", fields: [creator_id], references: [id])
+  
+  preferences UserLauncherPreference[]
+}
+
+model UserLauncherPreference {
+  id          String   @id @default(uuid())
+  
+  is_pinned   Boolean  @default(false)
+  last_used   DateTime?
+  usage_count Int      @default(0)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  user_id     String
+  user        User     @relation(fields: [user_id], references: [id])
+  
+  app_id      String
+  app         LauncherApp @relation(fields: [app_id], references: [id], onDelete: Cascade)
+  
+  @@unique([user_id, app_id])
+}
+
+model TransactionSequence {
+  id        String @id @default(uuid())
+  year      Int
+  month     Int
+  last_seq  Int    @default(0)
+
+  @@unique([year, month])
+}

@@ -1,0 +1,8 @@
+model TransactionSequence {
+  id        String @id @default(uuid())
+  year      Int
+  month     Int
+  last_seq  Int    @default(0)
+
+  @@unique([year, month])
+}

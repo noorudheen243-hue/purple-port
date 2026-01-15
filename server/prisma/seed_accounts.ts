@@ -13,8 +13,8 @@ const ACCOUNT_HEADS = [
 const MASTER_LEDGERS = [
     // --- ASSETS (1000) ---
     { name: 'Cash in Hand', head: 'Assets', type: 'CASH' },
-    { name: 'Main Bank Account', head: 'Assets', type: 'BANK' },
-    { name: 'Secondary Bank Account', head: 'Assets', type: 'BANK' },
+    { name: 'Main Bank A/C (Canara Bank)', head: 'Assets', type: 'BANK' },
+    { name: 'Secondary Bank Account (HDFC Bank)', head: 'Assets', type: 'BANK' },
     { name: 'Credit Card Account', head: 'Assets', type: 'BANK' }, // Credit Card is usually Liability? User said Assets. Sticking to Prompt. Actually CC is Liability. But sticking to PROMPT "ASSETS - ... 4. Credit Card Account".
     { name: 'Accounts Receivable', head: 'Assets', type: 'ADJUSTMENT' },
     { name: 'Advance to Vendors', head: 'Assets', type: 'ADJUSTMENT' },

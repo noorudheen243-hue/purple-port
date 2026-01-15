@@ -18,7 +18,9 @@ const transactionSchema = z.object({
     type: z.enum(['PAYMENT', 'RECEIPT', 'CONTRA', 'EXPENSE', 'INCOME', 'JOURNAL']),
     from_ledger_id: z.string().uuid(), // Credit
     to_ledger_id: z.string().uuid(),   // Debit
-    reference: z.string().optional()
+    reference: z.string().optional(),
+    nature: z.enum(['GENERAL', 'ADVANCE_RECEIVED', 'ADVANCE_PAID']).optional(),
+    entity_id: z.string().optional()
 });
 
 export const getLedgers = async (req: Request, res: Response) => {
@@ -67,9 +69,11 @@ export const getAccountHeads = async (req: Request, res: Response) => {
         const heads = await AccountingService.getAccountHeads();
         res.json(heads);
     } catch (error) {
-        res.status(500).json({ message: "Failed to fetch heads" });
+        res.status(500).json({ error: "Failed to fetch account heads" });
     }
 };
+
+// getInvoices moved to Billing Module
 
 export const updateLedger = async (req: Request, res: Response) => {
     try {
@@ -129,7 +133,23 @@ export const getTransactions = async (req: Request, res: Response) => {
         const startDate = req.query.start_date ? new Date(req.query.start_date as string) : undefined;
         const endDate = req.query.end_date ? new Date(req.query.end_date as string) : undefined;
 
-        const transactions = await AccountingService.getTransactions(limit, startDate, endDate);
+        let clientId = req.user?.role === 'CLIENT' ? (req.user as any).linked_client_id : undefined;
+
+        console.log('DEBUG_TRANSACTIONS:', {
+            role: req.user?.role,
+            userId: req.user?.id,
+            linkedClient: (req.user as any)?.linked_client_id,
+            queryClient: req.query.client_id
+        });
+
+        // Allow Admins/Managers to view specific client transactions
+        if (req.user?.role !== 'CLIENT' && req.query.client_id) {
+            clientId = req.query.client_id as string;
+        }
+
+        console.log('DEBUG_TRANSACTIONS_FINAL_ID:', clientId);
+
+        const transactions = await AccountingService.getTransactions(limit, startDate, endDate, clientId);
         res.json(transactions);
     } catch (error) {
         res.status(500).json({ message: "Failed to fetch transactions", error: (error as Error).message });

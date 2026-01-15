@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { X, Save, User, Briefcase, Lock, Heart, GraduationCap } from 'lucide-react';
 import api from '../../lib/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import Swal from 'sweetalert2';
 import ImageUpload from '../../components/ui/ImageUpload';
 import FormErrorAlert from '../../components/ui/FormErrorAlert';
 
@@ -13,6 +14,7 @@ import FormErrorAlert from '../../components/ui/FormErrorAlert';
 // --- Configuration ---
 
 const AGENCY_DESIGNATIONS = [
+    "CO-FOUNDER",
     "Creative Director",
     "Art Director",
     "Senior Graphic Designer",
@@ -83,7 +85,10 @@ const staffSchema = z.object({
     salary_type: z.enum(['MONTHLY', 'DAILY', 'CONTRACT']).optional(),
     incentive_eligible: z.boolean().optional(),
     payroll_status: z.enum(['ACTIVE', 'HOLD']).optional(),
-    create_ledger: z.boolean().optional(), // NEW: Ledger Automation
+    ledger_options: z.object({
+        create: z.boolean(),
+        head_id: z.string().optional()
+    }).optional(),
 
     // Banking
     bank_name: z.string().optional(),
@@ -94,6 +99,15 @@ const staffSchema = z.object({
     pan_number: z.string().optional(),
     upi_id: z.string().optional(),
     upi_linked_mobile: z.string().optional(),
+    payment_method: z.enum(['BANK_TRANSFER', 'CASH', 'CHEQUE', 'UPI']).optional(), // Added to match screenshot
+}).superRefine((data, ctx) => {
+    if (data.ledger_options?.create && !data.ledger_options.head_id) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Account Head is required",
+            path: ["ledger_options", "head_id"]
+        });
+    }
 });
 
 type StaffFormValues = z.infer<typeof staffSchema>;
@@ -106,14 +120,21 @@ interface StaffFormModalProps {
 
 const StaffFormModal = ({ isOpen, onClose, initialData }: StaffFormModalProps) => {
     const queryClient = useQueryClient();
-    const [tab, setTab] = useState<'profile' | 'details' | 'payroll'>('profile');
+    const [tab, setTab] = useState<'profile' | 'details' | 'payroll' | 'finance'>('profile');
     const [showConfirm, setShowConfirm] = useState(false);
     const [pendingData, setPendingData] = useState<StaffFormValues | null>(null);
+    const [filterAccountType, setFilterAccountType] = useState<string>(''); // For Finance Section
     const isEditMode = !!initialData;
 
     const { data: staffList } = useQuery({
         queryKey: ['staff-list-simple'],
         queryFn: async () => (await api.get('/team/staff')).data
+    });
+
+    const { data: accountHeads } = useQuery({
+        queryKey: ['accountHeads'],
+        queryFn: async () => (await api.get('/accounting/heads')).data,
+        enabled: isOpen
     });
 
     const form = useForm<StaffFormValues>({
@@ -125,7 +146,8 @@ const StaffFormModal = ({ isOpen, onClose, initialData }: StaffFormModalProps) =
             marital_status: 'SINGLE',
             staff_number: '',
             designation: '',
-            create_ledger: true // Default to true for new staff
+            ledger_options: { create: false, head_id: '' },
+            payment_method: 'BANK_TRANSFER'
         }
     });
 
@@ -154,10 +176,22 @@ const StaffFormModal = ({ isOpen, onClose, initialData }: StaffFormModalProps) =
                 reporting_manager_id: initialData.reporting_manager_id || '',
                 shift_timing: initialData.shift_timing || '',
                 password: undefined, // Don't pre-fill password usually
-                create_ledger: false,
+                ledger_options: initialData.ledger_options || { create: false, head_id: '' },
             });
         }
     }, [initialData, reset]);
+
+    const watchedHeadId = watch('ledger_options.head_id');
+
+    // Fix: Initialize filterAccountType when editing and head is selected (Dynamic)
+    useEffect(() => {
+        if (watchedHeadId && accountHeads) {
+            const head = accountHeads.find((h: any) => h.id === watchedHeadId);
+            if (head) {
+                setFilterAccountType(head.type);
+            }
+        }
+    }, [watchedHeadId, accountHeads]);
 
     const onFormSubmit = (data: StaffFormValues) => {
         setPendingData(data);
@@ -196,17 +230,31 @@ const StaffFormModal = ({ isOpen, onClose, initialData }: StaffFormModalProps) =
                 return await api.post('/team/staff/onboard', payload);
             }
         },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['staff'] });
+        onSuccess: async () => {
+            await queryClient.refetchQueries({ queryKey: ['staff'] });
             onClose();
             reset();
-            // Optional: nicer toast notification could go here
-            alert(isEditMode ? "Staff Updated!" : "Staff Onboarded Successfully!");
+            Swal.fire({
+                title: 'Success!',
+                text: 'Staff profile updated successfully.',
+                icon: 'success',
+                confirmButtonColor: '#8b5cf6', // Primary Purple
+                timer: 2000,
+                timerProgressBar: true
+            });
         },
         onError: (err: any) => {
             console.error(err);
-            const msg = err.response?.data?.message || err.message || "Failed to save.";
-            alert(typeof msg === 'object' ? JSON.stringify(msg) : msg);
+            let msg = err.response?.data?.message || err.message || "Failed to save.";
+
+            // Format Zod Errors nicely
+            if (Array.isArray(msg)) {
+                msg = "Validation Errors:\n" + msg.map((e: any) => `- ${e.path.join('.')}: ${e.message}`).join('\n');
+            } else if (typeof msg === 'object') {
+                msg = JSON.stringify(msg, null, 2);
+            }
+
+            alert(msg);
         }
     });
 
@@ -241,7 +289,7 @@ const StaffFormModal = ({ isOpen, onClose, initialData }: StaffFormModalProps) =
                 </div>
             )}
 
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden relative">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden relative">
 
                 {/* Header */}
                 <div className="flex justify-between items-center p-5 border-b border-gray-100 bg-gray-50">
@@ -260,6 +308,7 @@ const StaffFormModal = ({ isOpen, onClose, initialData }: StaffFormModalProps) =
                         { id: 'profile', label: '1. Profile & Access', icon: User },
                         { id: 'details', label: '2. Personal & HR', icon: Briefcase },
                         { id: 'payroll', label: '3. Payroll & Bank', icon: Lock },
+                        { id: 'finance', label: '4. Finance Account', icon: GraduationCap }, // Swapped Icon for distinctness or use Coins/Dollar Sign if available
                     ].map((t) => (
                         <button
                             key={t.id}
@@ -283,7 +332,7 @@ const StaffFormModal = ({ isOpen, onClose, initialData }: StaffFormModalProps) =
                 )}
 
                 {/* Form Content */}
-                <form onSubmit={handleSubmit(onFormSubmit)} className="flex-1 overflow-y-auto p-8 bg-gray-50/30">
+                <form onSubmit={handleSubmit(onFormSubmit as any)} className="flex-1 overflow-y-auto p-8 bg-gray-50/30">
 
                     {/* TAB 1: PROFILE & ACCESS */}
                     {tab === 'profile' && (
@@ -326,7 +375,11 @@ const StaffFormModal = ({ isOpen, onClose, initialData }: StaffFormModalProps) =
 
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">System Role <span className="text-red-500">*</span></label>
-                                        <select {...register('role')} className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all bg-white">
+                                        <select
+                                            {...register('role')}
+                                            disabled={watch('role') === 'DEVELOPER_ADMIN'}
+                                            className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all bg-white disabled:bg-gray-100 disabled:text-gray-500 cursor-pointer disabled:cursor-not-allowed"
+                                        >
                                             <option value="DEVELOPER_ADMIN" className="font-bold text-red-600">Developer Admin (Super User)</option>
                                             <option value="ADMIN">Admin (Full Access)</option>
                                             <option value="MANAGER">Manager (Team & Clients)</option>
@@ -335,45 +388,49 @@ const StaffFormModal = ({ isOpen, onClose, initialData }: StaffFormModalProps) =
                                             <option value="CREATIVE_DESIGNER">Creative Designer</option>
                                             <option value="OPERATIONS_EXECUTIVE">Operations Executive</option>
                                         </select>
-                                        <p className="text-xs text-gray-500 mt-1">Determines system permissions.</p>
+                                        {watch('role') === 'DEVELOPER_ADMIN' && <p className="text-xs text-red-500 mt-1 font-medium">This role cannot be changed.</p>}
+                                        {watch('role') !== 'DEVELOPER_ADMIN' && <p className="text-xs text-gray-500 mt-1">Determines system permissions.</p>}
                                     </div>
                                 </div>
+                            </div>
 
-                                <div className="border-t pt-4">
-                                    <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                                        <Briefcase size={18} className="text-gray-400" /> Work Identifiers
-                                    </h4>
-                                    <div className="grid grid-cols-2 gap-6">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Staff ID (Manual) <span className="text-red-500">*</span></label>
-                                            <input {...register('staff_number')} className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all uppercase" placeholder="QIX-001" />
-                                            {errors.staff_number && <p className="text-red-500 text-xs mt-1">{errors.staff_number.message}</p>}
+                            <div className="border-t pt-4">
+                                <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                                    <Briefcase size={18} className="text-gray-400" /> Work Identifiers
+                                </h4>
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Staff ID (Manual) <span className="text-red-500">*</span></label>
+                                        <input {...register('staff_number')} className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all uppercase" placeholder="QIX-001" />
+                                        {errors.staff_number && <p className="text-red-500 text-xs mt-1">{errors.staff_number.message}</p>}
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Designation <span className="text-red-500">*</span></label>
+                                        <div className="relative space-y-2">
+                                            <select
+                                                {...register('designation')}
+                                                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all bg-white appearance-none"
+                                            >
+                                                <option value="">Select Designation...</option>
+                                                {AGENCY_DESIGNATIONS.map(d => (
+                                                    <option key={d} value={d}>{d}</option>
+                                                ))}
+                                                <option value="Other">Other (Type below)</option>
+                                            </select>
+
+                                            {selectedDesignation === 'Other' && (
+                                                <input
+                                                    {...register('custom_designation')}
+                                                    placeholder="Enter Custom Designation"
+                                                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all animate-in fade-in slide-in-from-top-1"
+                                                />
+                                            )}
                                         </div>
+                                        {errors.designation && <p className="text-red-500 text-xs mt-1">{errors.designation.message}</p>}
+                                    </div>
 
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Designation <span className="text-red-500">*</span></label>
-                                            <div className="relative space-y-2">
-                                                <select
-                                                    {...register('designation')}
-                                                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all bg-white appearance-none"
-                                                >
-                                                    <option value="">Select Designation...</option>
-                                                    {AGENCY_DESIGNATIONS.map(d => (
-                                                        <option key={d} value={d}>{d}</option>
-                                                    ))}
-                                                    <option value="Other">Other (Type below)</option>
-                                                </select>
-
-                                                {selectedDesignation === 'Other' && (
-                                                    <input
-                                                        {...register('custom_designation')}
-                                                        placeholder="Enter Custom Designation"
-                                                        className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all animate-in fade-in slide-in-from-top-1"
-                                                    />
-                                                )}
-                                            </div>
-                                            {errors.designation && <p className="text-red-500 text-xs mt-1">{errors.designation.message}</p>}
-                                        </div>
+                                    <div>
 
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Department <span className="text-red-500">*</span></label>
@@ -529,13 +586,12 @@ const StaffFormModal = ({ isOpen, onClose, initialData }: StaffFormModalProps) =
                                             <input type="checkbox" {...register('incentive_eligible')} className="w-4 h-4 text-blue-600 rounded" />
                                             <span className="text-sm text-gray-700">Eligible for Performance Incentives/Commissions</span>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <input type="checkbox" {...register('create_ledger')} className="w-4 h-4 text-green-600 rounded" />
-                                            <span className="text-sm font-medium text-gray-900 bg-green-50 px-2 py-0.5 rounded border border-green-200">Add to Payroll Accounts (Auto-Create Ledger)</span>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
+
+
+
 
                             {/* Bank Details */}
                             <div>
@@ -555,7 +611,16 @@ const StaffFormModal = ({ isOpen, onClose, initialData }: StaffFormModalProps) =
                                     </div>
                                     <div>
                                         <label className="label">IFSC Code</label>
-                                        <input {...register('ifsc_code')} className="input-std" placeholder="Upper Case" />
+                                        <input {...register('ifsc_code')} className="input-std uppercase" placeholder="Upper Case" />
+                                    </div>
+                                    <div>
+                                        <label className="label">Payment Mode</label>
+                                        <select {...register('payment_method')} className="input-std">
+                                            <option value="BANK_TRANSFER">Bank Transfer</option>
+                                            <option value="CASH">Cash</option>
+                                            <option value="CHEQUE">Cheque</option>
+                                            <option value="UPI">UPI</option>
+                                        </select>
                                     </div>
                                     <div>
                                         <label className="label">Account Type</label>
@@ -587,6 +652,74 @@ const StaffFormModal = ({ isOpen, onClose, initialData }: StaffFormModalProps) =
                             </div>
                         </div>
                     )}
+                    {/* TAB 4: FINANCE ACCOUNT (Recovered) */}
+                    {tab === 'finance' && (
+                        <div className="space-y-8 animate-in fade-in slide-in-from-right-4">
+                            <div className="bg-purple-50/50 p-6 rounded-xl border border-purple-100">
+                                <h4 className="font-semibold text-purple-900 mb-4 flex items-center gap-2">
+                                    <Briefcase size={18} /> Finance Account / Ledger
+                                </h4>
+                                <p className="text-sm text-gray-600 mb-6">
+                                    Create or link a ledger account for this staff member to track payroll, expenses, and payments.
+                                </p>
+
+                                <div className="space-y-6">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <input
+                                            type="checkbox"
+                                            id="create_ledger"
+                                            {...register('ledger_options.create')}
+                                            disabled={initialData?.ledger_options?.create}
+                                            className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500 disabled:opacity-50"
+                                        />
+                                        <label htmlFor="create_ledger" className={`text-sm font-medium ${initialData?.ledger_options?.create ? 'text-gray-500' : 'text-gray-900'}`}>
+                                            {initialData?.ledger_options?.create
+                                                ? "Finance Account / Ledger (Already Linked)"
+                                                : "Create Finance Account / Ledger"
+                                            }
+                                        </label>
+                                    </div>
+
+                                    {(watch('ledger_options.create') || initialData?.ledger_options?.create) && (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-white rounded-lg border border-purple-100 animate-in fade-in slide-in-from-top-2">
+                                            <div>
+                                                <label className="label">Account Type</label>
+                                                <select
+                                                    className="input-std"
+                                                    value={filterAccountType}
+                                                    disabled={!!initialData?.ledger_options?.create}
+                                                    onChange={(e) => setFilterAccountType(e.target.value)}
+                                                >
+                                                    <option value="">All Types</option>
+                                                    <option value="ASSET">Asset</option>
+                                                    <option value="LIABILITY">Liability</option>
+                                                    <option value="EXPENSE">Expense</option>
+                                                    <option value="INCOME">Income</option>
+                                                </select>
+                                                <p className="text-xs text-gray-400 mt-1">Filter heads by type</p>
+                                            </div>
+                                            <div>
+                                                <label className="label">Account Head</label>
+                                                <select
+                                                    {...register('ledger_options.head_id')}
+                                                    disabled={!!initialData?.ledger_options?.create}
+                                                    className="input-std"
+                                                >
+                                                    <option value="">Select Head...</option>
+                                                    {accountHeads
+                                                        ?.filter((h: any) => !filterAccountType || h.type === filterAccountType)
+                                                        .map((h: any) => (
+                                                            <option key={h.id} value={h.id}>{h.name} ({h.code})</option>
+                                                        ))}
+                                                </select>
+                                                <p className="text-xs text-gray-400 mt-1">Select the parent ledger Head</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                 </form>
 
@@ -613,8 +746,23 @@ const StaffFormModal = ({ isOpen, onClose, initialData }: StaffFormModalProps) =
                     {tab === 'payroll' && (
                         <>
                             <button onClick={() => setTab('details')} className="btn-secondary">Back</button>
+                            <button onClick={() => setTab('finance')} className="btn-primary">Next: Finance</button>
+                        </>
+                    )}
+                    {tab === 'finance' && (
+                        <>
+                            <button onClick={() => setTab('payroll')} className="btn-secondary">Back</button>
                             <button
-                                onClick={handleSubmit(onFormSubmit)}
+                                onClick={handleSubmit(onFormSubmit as any, (errors) => {
+                                    console.error("Frontend Validation Errors:", errors);
+                                    let msg = "Please check the form for errors:\n";
+                                    Object.keys(errors).forEach(key => {
+                                        const err = errors[key as keyof StaffFormValues];
+                                        if (err?.message) msg += `- ${key}: ${err.message}\n`;
+                                        else if (key === 'ledger_options') msg += `- Finance Account: Check details\n`;
+                                    });
+                                    alert(msg);
+                                })}
                                 disabled={isSubmitting}
                                 className="btn-primary flex items-center gap-2"
                             >

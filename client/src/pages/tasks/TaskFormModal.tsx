@@ -269,7 +269,7 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose }) => {
                                         className={`w-full pl-10 pr-4 py-2.5 border rounded-lg appearance-none bg-white focus:ring-2 focus:ring-purple-200 outline-none ${errors.assignee_id ? 'border-red-300' : 'border-gray-300'}`}
                                     >
                                         <option value="">-- Select Staff --</option>
-                                        {staff?.map((u: any) => (
+                                        {staff?.filter((u: any) => u.role !== 'CLIENT' && !['9c2c3b09-1a4d-4e9f-a00a-fdcae89806a1', '0f602110-d76e-4f21-8bcf-c71959dd4015'].includes(u.id)).map((u: any) => (
                                             <option key={u.id} value={u.id}>{u.full_name} ({u.department || 'General'})</option>
                                         ))}
                                     </select>

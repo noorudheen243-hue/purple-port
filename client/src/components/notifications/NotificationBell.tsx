@@ -3,11 +3,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/api';
 import { Bell, Check } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const NotificationBell = () => {
     const [isOpen, setIsOpen] = useState(false);
     const queryClient = useQueryClient();
+    const navigate = useNavigate();
 
     const { data: notifications } = useQuery({
         queryKey: ['notifications'],
@@ -68,12 +69,12 @@ const NotificationBell = () => {
                         </div>
 
                         <div className="max-h-[300px] overflow-y-auto">
-                            {notifications?.length === 0 ? (
+                            {notifications?.filter((n: any) => !n.read).length === 0 ? (
                                 <div className="p-4 text-center text-sm text-muted-foreground">
-                                    No notifications
+                                    No new notifications
                                 </div>
                             ) : (
-                                notifications?.map((n: any) => (
+                                notifications?.filter((n: any) => !n.read).map((n: any) => (
                                     <div
                                         key={n.id}
                                         className={`p-3 border-b last:border-0 hover:bg-muted/50 transition-colors ${!n.read ? 'bg-primary/5' : ''}`}
@@ -95,13 +96,19 @@ const NotificationBell = () => {
                                                 {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
                                             </span>
                                             {n.link && (
-                                                <Link
-                                                    to={n.link}
-                                                    onClick={() => setIsOpen(false)}
-                                                    className="font-medium hover:underline text-foreground"
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        markReadMutation.mutate(n.id); // Mark as read on click
+                                                        setIsOpen(false);
+                                                        if (n.link) {
+                                                            navigate(n.link);
+                                                        }
+                                                    }}
+                                                    className="font-medium hover:underline text-foreground border-none bg-transparent p-0 h-auto cursor-pointer"
                                                 >
                                                     View
-                                                </Link>
+                                                </button>
                                             )}
                                         </div>
                                     </div>

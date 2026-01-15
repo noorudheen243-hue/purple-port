@@ -1,5 +1,6 @@
 import prisma from '../../utils/prisma';
 import { Prisma } from '@prisma/client';
+import { generateTransactionId } from '../../utils/transactionIdGenerator';
 
 export type LedgerType = 'CLIENT' | 'VENDOR' | 'BANK' | 'CASH' | 'INCOME' | 'EXPENSE' | 'ADJUSTMENT' | 'INTERNAL';
 
@@ -7,6 +8,7 @@ export const createLedger = async (data: {
     name: string;
     head_id: string;
     entity_type: string;
+    entity_id?: string; // Added optional entity_id
     description?: string;
     opening_balance?: number;
     opening_balance_date?: Date;
@@ -18,6 +20,7 @@ export const createLedger = async (data: {
                 name: data.name,
                 head_id: data.head_id,
                 entity_type: data.entity_type,
+                entity_id: data.entity_id,     // Pass it through
                 description: data.description,
                 status: 'ACTIVE',
                 balance: 0 // Balance is updated via transactions only
@@ -77,6 +80,8 @@ const createJournalEntry = async (
         invoice_id?: string;
     }
 ) => {
+    const transactionId = await generateTransactionId(tx);
+
     // 1. Create Header
     const entry = await tx.journalEntry.create({
         data: {
@@ -85,6 +90,8 @@ const createJournalEntry = async (
             amount: data.amount,
             type: data.type,
             reference: data.reference,
+            // @ts-ignore
+            transaction_number: transactionId,
             created_by_id: 'SYSTEM', // TODO: Pass user ID
             invoice: data.invoice_id ? { connect: { id: data.invoice_id } } : undefined
         }
@@ -148,8 +155,12 @@ export const recordTransaction = async (data: {
     to_ledger_id: string;   // The RECEIVER (Debit)
     reference?: string;
     user_id: string;
+    nature?: string; // GENERAL, ADVANCE_RECEIVED, ADVANCE_PAID
+    entity_id?: string; // Client ID or User ID (Staff)
 }) => {
     return prisma.$transaction(async (tx) => {
+        const transactionId = await generateTransactionId(tx);
+
         // Create Entry
         const entry = await tx.journalEntry.create({
             data: {
@@ -158,7 +169,10 @@ export const recordTransaction = async (data: {
                 amount: data.amount,
                 type: data.type,
                 reference: data.reference,
-                created_by_id: data.user_id
+                // @ts-ignore
+                transaction_number: transactionId,
+                created_by_id: data.user_id,
+                nature: data.nature || 'GENERAL'
             }
         });
 
@@ -193,74 +207,87 @@ export const recordTransaction = async (data: {
             data: { balance: { decrement: data.amount } }
         });
 
+        // --- ADVANCE LOGIC ---
+        if (data.nature === 'ADVANCE_RECEIVED' && data.entity_id) {
+            // Client Advance: Increase Client's Advance Balance
+            await tx.client.update({
+                where: { id: data.entity_id },
+                data: { advance_balance: { increment: data.amount } }
+            });
+        } else if (data.nature === 'ADVANCE_PAID' && data.entity_id) {
+            // Staff Advance: Increase User's Advance Balance
+            await tx.user.update({
+                where: { id: data.entity_id },
+                data: { advance_balance: { increment: data.amount } }
+            });
+        }
+
         return entry;
     });
 };
 
-export const ensureLedger = async (entityType: string, entityId: string, headCode: string, name?: string) => {
-    // Check if ledger exists for entity
-    // We don't have entity_id indexed yet or unique? "Prevent duplicate ledgers per entity".
-    // We should check if one exists.
+// Ledger management functions
+// Ledger management functions
+export const ensureLedger = async (entityType: string, entityId: string, headCode: string, description?: string) => {
+    // 1. Resolve Entity Name
+    let entityName = '';
+    if (entityType === 'CLIENT') {
+        const c = await prisma.client.findUnique({ where: { id: entityId } });
+        if (!c) throw new Error("Client not found for ledger creation");
+        entityName = c.name;
+    } else if (entityType === 'USER') { // Support Staff
+        const u = await prisma.user.findUnique({ where: { id: entityId } });
+        if (!u) throw new Error("User not found for ledger creation");
+        entityName = u.full_name;
+    } else {
+        // For INTERNAL, BANK, etc., use entityId as the name identifier
+        entityName = entityId;
+    }
 
-    const existing = await prisma.ledger.findFirst({
-        where: { entity_id: entityId, entity_type: entityType }
-    });
-
-    if (existing) return existing;
-
+    // 2. Resolve Head ID from Code
     const head = await prisma.accountHead.findUnique({ where: { code: headCode } });
-    if (!head) throw new Error("Head Code not found: " + headCode);
+    if (!head) throw new Error(`Account Head Code ${headCode} not found.`);
 
-    // Get Name from Entity if not provided
-    let ledgerName = name;
-    if (!ledgerName) {
-        if (entityType === 'CLIENT') {
-            const client = await prisma.client.findUnique({ where: { id: entityId } });
-            ledgerName = client?.name || "Unknown Client";
-        } else if (entityType === 'USER') { // Staff
-            const user = await prisma.user.findUnique({ where: { id: entityId } });
-            ledgerName = user?.full_name || "Unknown Staff";
+    // 3. Find Existing Ledger
+    const existing = await prisma.ledger.findFirst({
+        where: {
+            entity_type: entityType,
+            name: entityName
         }
-    }
-
-    // Check for Name Conflict (Unique constraint on name + head_id)
-    const duplicate = await prisma.ledger.findFirst({
-        where: { name: ledgerName, head_id: head.id }
     });
 
-    if (duplicate) {
-        // If it belongs to THIS entity, return it (Success)
-        if (duplicate.entity_id === entityId) return duplicate;
+    if (existing) {
+        // UPDATE Logic: If head is different or entity_id is missing, update it.
+        const updates: any = {};
+        if (existing.head_id !== head.id) updates.head_id = head.id;
+        if (existing.entity_id !== entityId) updates.entity_id = entityId;
 
-        // Conflict: Same name but different entity or global ledger.
-        // Resolve by appending entity info
-        const safeSuffix = entityId.substring(0, 4);
-        ledgerName = `${ledgerName} (${safeSuffix})`;
-
-        // Final sanity check (recursive?) No, single retry is enough for MVP.
-        const doubleCheck = await prisma.ledger.findFirst({ where: { name: ledgerName, head_id: head.id } });
-        if (doubleCheck) {
-            // Second collision, fallback to full random
-            ledgerName = `${name} (Ref: ${entityId.substring(0, 6)})`;
+        if (Object.keys(updates).length > 0) {
+            console.log(`[Ledger] Automatic update of ${Object.keys(updates).join(', ')} for ${entityType} ${entityId}`);
+            return await prisma.ledger.update({
+                where: { id: existing.id },
+                data: updates
+            });
         }
+        return existing;
     }
 
-    return createLedger({
-        name: ledgerName || "New Ledger",
-        head_id: head.id,
+    // 4. Create New
+    // 4. Create New
+    return await createLedger({
+        name: entityName,
         entity_type: entityType,
-        description: `Auto-created for ${entityType}`,
-        opening_balance: 0
+        entity_id: entityId, // FIX: Pass the entity ID!
+        head_id: head.id,
+        description: description || `Auto-generated Ledger for ${entityType}`
     });
 };
 
 export const getLedgers = async () => {
-    // Return ledgers formatted for UI
-    const ledgers = await prisma.ledger.findMany({
+    return prisma.ledger.findMany({
         include: { head: true },
         orderBy: { name: 'asc' }
     });
-    return ledgers;
 };
 
 export const getAccountHeads = async () => {
@@ -270,80 +297,14 @@ export const getAccountHeads = async () => {
 };
 
 export const updateLedger = async (id: string, data: { name?: string; description?: string; status?: string; opening_balance?: number }) => {
-    // If opening_balance/current balance is provided, we need to adjust it.
-    // This is a "Manual Override" which posts a difference adjustment.
-
-    if (data.opening_balance !== undefined) {
-        return prisma.$transaction(async (tx) => {
-            const ledger = await tx.ledger.findUnique({ where: { id }, include: { head: true } });
-            if (!ledger) throw new Error("Ledger not found");
-
-            // Calculate Difference
-            const diff = data.opening_balance! - ledger.balance;
-
-            if (Math.abs(diff) > 0.01) {
-                // Find Adjustment Ledger
-                const adjustmentLedger = await tx.ledger.findFirst({ where: { name: 'Opening Balance Adjustment' } });
-                if (!adjustmentLedger) throw new Error("System Ledger 'Opening Balance Adjustment' not found.");
-
-                const isDebitNature = ['ASSET', 'EXPENSE'].includes(ledger.head.type);
-
-                // If Asset/Expense: Increase (Debit) means Ledger Dr, Adj Cr. Decrease (Credit) means Ledger Cr, Adj Dr.
-                // If Liab/Income: Increase (Credit) means Ledger Cr, Adj Dr. Decrease (Debit) means Ledger Dr, Adj Cr.
-
-                // Let's simplify: 
-                // We want to change Balance by `diff` amount.
-                // If diff is Positive (+1000): We treat it as "Adding to Balance".
-                // In our simplified Model: Balance = Dr - Cr (Assets) OR Cr - Dr (Liabilities).
-                // Actually the `createJournalEntry` logic updates balance: 
-                // Dr -> Balance + (Increment)
-                // Cr -> Balance - (Decrement)
-                // Wait, looking at `createJournalEntry`:
-                /*
-                   await tx.ledger.update({ where: { id: data.to_ledger_id }, data: { balance: { increment: data.amount } } });
-                   await tx.ledger.update({ where: { id: data.from_ledger_id }, data: { balance: { decrement: data.amount } } });
-                */
-                // This implies ALL ledgers increase on Debit and decrease on Credit? 
-                // No, that's only true for Assets. Liabilities should Increase on Credit.
-                // Current logic seems to treat Balance as a signed value where Positive = Debit?
-                // Let's assume the previous `createJournalEntry` logic (Lines 186-194) forces this "Dr = + / Cr = -" model.
-                // So if I want to increase balance from 100 to 200 (diff +100), I need to Debit this ledger.
-
-                let debitLedgerId, creditLedgerId;
-
-                if (diff > 0) {
-                    // Need to Increase Balance (Debit this ledger)
-                    debitLedgerId = ledger.id;
-                    creditLedgerId = adjustmentLedger.id;
-                } else {
-                    // Need to Decrease Balance (Credit this ledger)
-                    debitLedgerId = adjustmentLedger.id;
-                    creditLedgerId = ledger.id;
-                }
-
-                await createJournalEntry(tx, {
-                    date: new Date(),
-                    description: `Manual Balance Update from ${ledger.balance} to ${data.opening_balance}`,
-                    amount: Math.abs(diff),
-                    type: 'JOURNAL',
-                    debit_ledger_id: debitLedgerId,
-                    credit_ledger_id: creditLedgerId,
-                    reference: 'MANUAL_EDIT'
-                });
-            }
-
-            // Update Metadata
-            const { opening_balance, ...metaData } = data;
-            return tx.ledger.update({
-                where: { id },
-                data: metaData
-            });
-        });
-    }
-
+    // Basic update logic
     return prisma.ledger.update({
         where: { id },
-        data
+        data: {
+            name: data.name,
+            description: data.description,
+            status: data.status
+        }
     });
 };
 
@@ -362,6 +323,7 @@ export const deleteLedger = async (id: string) => {
     return prisma.ledger.delete({ where: { id } });
 };
 
+// Restore getAccountStatement
 export const getAccountStatement = async (ledgerId: string, startDate: Date, endDate: Date) => {
     const ledger = await prisma.ledger.findUnique({
         where: { id: ledgerId },
@@ -460,10 +422,12 @@ export const syncEntityLedgers = async () => {
     return { message: "Sync Complete", new_ledgers: count };
 };
 
+
 export const getTransactions = async (
     limit: number = 20,
     startDate?: Date,
-    endDate?: Date
+    endDate?: Date,
+    clientId?: string
 ) => {
     const whereClause: any = {};
     if (startDate && endDate) {
@@ -472,6 +436,48 @@ export const getTransactions = async (
             lte: endDate
         };
     }
+
+    if (clientId) {
+        // Fetch Client Details to get Name
+        const client = await prisma.client.findUnique({ where: { id: clientId } });
+
+        const orConditions: any[] = [
+            // Case A: Linked via Ledger Lines (Direct Ledger Impact - Strict ID match)
+            {
+                lines: {
+                    some: {
+                        ledger: {
+                            entity_type: 'CLIENT',
+                            entity_id: clientId
+                        }
+                    }
+                }
+            },
+            // Case B: Linked via Invoice
+            {
+                invoice: {
+                    client_id: clientId
+                }
+            }
+        ];
+
+        // Case C: Fallback - Match Ledger by Client Name (If Entity ID/Type missing on Ledger)
+        if (client) {
+            orConditions.push({
+                lines: {
+                    some: {
+                        ledger: {
+                            name: client.name
+                        }
+                    }
+                }
+            });
+        }
+
+        whereClause.OR = orConditions;
+    }
+
+
 
     const transactions = await prisma.journalEntry.findMany({
         where: whereClause,
@@ -491,6 +497,7 @@ export const getTransactions = async (
 
         return {
             id: tx.id,
+            transaction_number: tx.transaction_number,
             date: tx.date,
             description: tx.description,
             type: tx.type,
@@ -523,6 +530,38 @@ export const deleteTransaction = async (entryId: string) => {
                 where: { id: line.ledger_id },
                 data: { balance: { increment: line.credit } }
             });
+        }
+    }
+
+    // Verify and Revert Advance Balances
+    if (entry.nature === 'ADVANCE_RECEIVED') {
+        // Find client linked? Usually found via Ledger Entity or passing context. 
+        // Current Schema doesn't link JournalEntry directly to Client/User for nature.
+        // We must inspect proper Journal Lines or rely on a new field.
+        // LIMITATION: 'nature' was added, but 'entity_id' wasn't added to JournalEntry.
+        // We have to infer from Ledgers. 
+        // Advance Received -> Credit Ledger is Client.
+        const creditLine = entry.lines.find(l => l.credit > 0);
+        if (creditLine) {
+            const ledger = await prisma.ledger.findUnique({ where: { id: creditLine.ledger_id } });
+            if (ledger && ledger.entity_type === 'CLIENT' && ledger.entity_id) {
+                await prisma.client.update({
+                    where: { id: ledger.entity_id },
+                    data: { advance_balance: { decrement: entry.amount } }
+                });
+            }
+        }
+    } else if (entry.nature === 'ADVANCE_PAID') {
+        // Advance Paid -> Debit Ledger is User (Staff)
+        const debitLine = entry.lines.find(l => l.debit > 0);
+        if (debitLine) {
+            const ledger = await prisma.ledger.findUnique({ where: { id: debitLine.ledger_id } });
+            if (ledger && ledger.entity_type === 'USER' && ledger.entity_id) {
+                await prisma.user.update({
+                    where: { id: ledger.entity_id },
+                    data: { advance_balance: { decrement: entry.amount } }
+                });
+            }
         }
     }
 

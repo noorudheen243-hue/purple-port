@@ -102,7 +102,9 @@ const AccountStatement = () => {
 
     return (
         <div className="space-y-6">
-            <h1 className="text-2xl font-bold tracking-tight no-print">Account Statement Generator</h1>
+            <div className="flex justify-between items-center no-print">
+                <h1 className="text-2xl font-bold tracking-tight">Account Statement Generator</h1>
+            </div>
 
             {/* Selection Form */}
             <div className="bg-card p-6 rounded-lg border space-y-4 no-print shadow-sm">
@@ -156,6 +158,7 @@ const AccountStatement = () => {
                     {/* Header */}
                     <div className="flex justify-between items-start border-b pb-6 mb-6">
                         <div>
+                            <img src="/qix_logo.png" alt="Qix Ads" className="h-12 w-auto mb-4" />
                             <h2 className="text-3xl font-bold text-gray-900">Statement of Account</h2>
                             <p className="text-gray-600 mt-1">{statementData.ledger.name} <span className="text-sm text-gray-400 ml-2">({statementData.ledger.head.name})</span></p>
                         </div>

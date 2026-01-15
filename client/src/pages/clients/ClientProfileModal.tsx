@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import { X, Building2, User, Mail, Phone, MapPin, Globe, CreditCard, Target, Users, Briefcase, DollarSign } from 'lucide-react';
+import { X, Building2, User, Mail, Phone, MapPin, Globe, CreditCard, Target, Users, Briefcase, DollarSign, Hash } from 'lucide-react';
 
 interface ClientProfileModalProps {
     isOpen: boolean;
@@ -123,6 +123,10 @@ const ClientProfileModal = ({ isOpen, onClose, client }: ClientProfileModalProps
                                             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Contact Details</h3>
                                             <div className="space-y-3">
                                                 <div className="flex items-center gap-3 text-gray-700">
+                                                    <Hash size={16} className="text-gray-400" />
+                                                    <span className="font-mono font-medium text-sm text-gray-900 bg-gray-50 px-2 py-0.5 rounded border border-gray-200">{client.client_code || 'N/A'}</span>
+                                                </div>
+                                                <div className="flex items-center gap-3 text-gray-700">
                                                     <User size={16} className="text-gray-400" />
                                                     <span className="font-medium text-sm">{client.contact_person || 'N/A'}</span>
                                                 </div>
@@ -192,11 +196,23 @@ const ClientProfileModal = ({ isOpen, onClose, client }: ClientProfileModalProps
                                         <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Engaged Services</h3>
                                         {services.length > 0 ? (
                                             <div className="flex flex-wrap gap-2">
-                                                {services.map((s: string) => (
-                                                    <span key={s} className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium border border-blue-100">
-                                                        {s}
-                                                    </span>
-                                                ))}
+                                                {services.map((s: string) => {
+                                                    // Map ID to Label
+                                                    const labels: Record<string, string> = {
+                                                        'META_ADS': 'Meta Ads',
+                                                        'GOOGLE_ADS': 'Google Ads',
+                                                        'SEO': 'SEO',
+                                                        'WEB_DEV': 'Web Development',
+                                                        'CONTENT': 'Content Creation',
+                                                        'BRANDING': 'Branding'
+                                                    };
+                                                    return (
+                                                        <span key={s} className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-sm font-medium border border-green-100 flex items-center gap-2">
+                                                            <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                                                            {labels[s] || s}
+                                                        </span>
+                                                    );
+                                                })}
                                             </div>
                                         ) : (
                                             <p className="text-gray-500 italic text-sm">No services listed.</p>
@@ -307,6 +323,20 @@ const ClientProfileModal = ({ isOpen, onClose, client }: ClientProfileModalProps
                                 {/* STRATEGY */}
                                 {activeTab === 'strategy' && (
                                     <div className="animate-in fade-in">
+                                        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Content Strategy (Monthly)</h3>
+                                        {client.content_strategies && client.content_strategies.length > 0 ? (
+                                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-8">
+                                                {client.content_strategies.map((strat: any) => (
+                                                    <div key={strat.id} className="bg-purple-50 p-3 rounded-lg border border-purple-100 flex justify-between items-center">
+                                                        <span className="font-medium text-purple-900 text-sm">{strat.type}</span>
+                                                        <span className="bg-white px-2 py-0.5 rounded text-xs font-bold text-purple-700 shadow-sm border">{strat.quantity}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <p className="text-gray-500 italic text-sm mb-8">No content strategy defined.</p>
+                                        )}
+
                                         <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Competitors</h3>
                                         {competitors.length > 0 ? (
                                             <div className="space-y-3">

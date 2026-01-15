@@ -1,5 +1,6 @@
 import React, { ReactNode, useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
+import { useChatStore } from '../../store/chatStore';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import {
     LayoutDashboard,
@@ -14,7 +15,12 @@ import {
 } from 'lucide-react';
 import NotificationBell from '../notifications/NotificationBell';
 import ProfileSettingsModal from '../users/ProfileSettingsModal';
-import { ADMIN_MANAGER_MENU, STAFF_MENU, MenuItem } from '../../config/menuConfig';
+import { ADMIN_MANAGER_MENU, STAFF_MENU, CLIENT_MENU, MenuItem } from '../../config/menuConfig';
+import { StickyNoteContainer } from '../sticky_notes/StickyNoteContainer';
+import { ChatFloatingIcon } from '../chat/ChatFloatingIcon';
+import { ChatPopup } from '../chat/ChatPopup';
+import { AnimatePresence } from 'framer-motion';
+import { AppLauncher } from '../launcher/AppLauncher';
 
 const SidebarItem = ({ item, isActive, depth = 0, closeSidebar, index }: { item: MenuItem; isActive: (path: string) => boolean; depth?: number; closeSidebar: () => void, index: number }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -77,9 +83,10 @@ const SidebarItem = ({ item, isActive, depth = 0, closeSidebar, index }: { item:
                 className={`
                     flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-md transition-all cursor-pointer mb-1
                     ${finalClass}
+                    ${item.highlight ? 'bg-red-50 border border-red-200 hover:bg-red-100' : ''}
                     ${depth > 0 ? 'ml-6 border-l-2 border-yellow-200/30 pl-4' : ''}
                     ${isMain ? 'font-bold tracking-wide' : 'font-medium'}
-                    ${!active && !hasChildren ? textColor : ''}
+                    ${!active && !hasChildren && !item.highlight ? textColor : ''}
                 `}
             >
                 {item.path && !hasChildren ? (
@@ -90,9 +97,15 @@ const SidebarItem = ({ item, isActive, depth = 0, closeSidebar, index }: { item:
                         {item.label}
                     </Link>
                 ) : (
-                    <div className="flex-1 flex items-center gap-3">
+                    <div className={`flex-1 flex items-center gap-3 ${item.highlight ? 'text-red-700 font-bold' : ''}`}>
                         <span className={iconColor}>
-                            {item.icon && <item.icon size={20} fill={isMain ? "currentColor" : "none"} fillOpacity={isMain ? 0.1 : 0} strokeWidth={2} />}
+                            {item.highlight ? (
+                                <span className="text-red-600 flex items-center justify-center bg-red-100 p-0.5 rounded-sm">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                                </span>
+                            ) : (
+                                item.icon && <item.icon size={20} fill={isMain ? "currentColor" : "none"} fillOpacity={isMain ? 0.1 : 0} strokeWidth={2} />
+                            )}
                         </span>
                         {item.label}
                     </div>
@@ -142,9 +155,12 @@ const Sidebar = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) 
             }));
     };
 
-    const rawMenuItems = (user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'DEVELOPER_ADMIN')
-        ? ADMIN_MANAGER_MENU
-        : STAFF_MENU;
+    let rawMenuItems = STAFF_MENU;
+    if (user?.role === 'CLIENT') {
+        rawMenuItems = CLIENT_MENU;
+    } else if (user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'DEVELOPER_ADMIN') {
+        rawMenuItems = ADMIN_MANAGER_MENU;
+    }
 
     const menuItems = user ? filterMenuByRole(rawMenuItems, user.role) : [];
 
@@ -165,7 +181,7 @@ const Sidebar = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) 
             `}>
                 <div className="p-6 flex justify-between items-center sticky top-0 bg-card z-10">
                     <div>
-                        <h1 className="text-2xl font-bold text-primary">Qix Ads</h1>
+                        <img src="/qix_logo.png" alt="Qix Ads" className="h-16 w-auto mb-2" />
                         <div className="text-xs text-muted-foreground mt-1 px-1 py-0.5 rounded bg-muted inline-block">
                             {user?.role.replace('_', ' ')}
                         </div>
@@ -185,6 +201,8 @@ const Sidebar = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) 
                             index={index}
                         />
                     ))}
+
+
                 </nav>
 
 
@@ -193,7 +211,7 @@ const Sidebar = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) 
     );
 };
 
-import { StickyNoteContainer } from '../sticky_notes/StickyNoteContainer';
+
 
 const DashboardLayout = ({ children }: { children: ReactNode }) => {
     // ... hooks
@@ -223,14 +241,48 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
         }
     }, []);
 
+    // Initialize Socket
+    React.useEffect(() => {
+        const token = localStorage.getItem('token'); // Simplest way, assuming authStore syncs with localStorage or we can ignore if token missing
+        if (token) {
+            import('../../services/socketService').then(({ default: socketService }) => {
+                socketService.connect(token);
+            });
+        }
+    }, [user]); // Re-connect if user changes (re-login)
+
     const handleLogout = async () => {
         await logout();
         navigate('/login');
     };
 
+    const [isChatOpen, setIsChatOpen] = useState(false);
+
+    // Calculate Unread Count (Global)
+    const conversations = useChatStore(state => state.conversations);
+    const unreadCount = conversations.reduce((acc, curr) => acc + (curr.unreadCount || 0), 0);
+
     return (
         <div className="min-h-screen bg-background transition-colors duration-300">
-            <StickyNoteContainer />
+            <div className="print-hidden">
+                <StickyNoteContainer />
+            </div>
+            <AppLauncher />
+
+            <AnimatePresence>
+                {isChatOpen && <ChatPopup onClose={() => {
+                    setIsChatOpen(false);
+                    useChatStore.getState().deselectConversation();
+                }} />}
+            </AnimatePresence>
+
+            <div className="relative z-50 print-hidden">
+                <ChatFloatingIcon
+                    onClick={() => setIsChatOpen(!isChatOpen)}
+                    count={unreadCount}
+                />
+            </div>
+
             <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
             <main className="ml-0 md:ml-64 p-4 md:p-8 transition-[margin] duration-300">
@@ -262,18 +314,6 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                             </button>
 
                             <NotificationBell />
-                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold overflow-hidden">
-                                {user?.avatar_url ? (
-                                    <img
-                                        src={user.avatar_url.startsWith('http') ? user.avatar_url : `${(import.meta as any).env.VITE_API_URL?.replace('/api', '') || 'http://localhost:4001'}${user.avatar_url}`}
-                                        alt={user.full_name}
-                                        className="w-full h-full object-cover"
-                                    />
-                                ) : (
-                                    user?.full_name.charAt(0)
-                                )}
-                            </div>
-
                             <button
                                 onClick={() => setIsSettingsOpen(true)}
                                 className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-md transition-colors"
@@ -291,6 +331,18 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                                 <LogOut size={18} />
                                 <span className="hidden md:inline">Logout</span>
                             </button>
+
+                            <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold overflow-hidden shadow-sm border-2 border-white print-hidden">
+                                {user?.avatar_url ? (
+                                    <img
+                                        src={user.avatar_url.startsWith('http') ? user.avatar_url : `${(import.meta as any).env.VITE_API_URL?.replace('/api', '') || 'http://localhost:4001'}${user.avatar_url}`}
+                                        alt={user.full_name}
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <span className="text-xl">{user?.full_name.charAt(0)}</span>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </header>
@@ -298,6 +350,8 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
             </main>
 
             <ProfileSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+            {/* WhatsApp Floating Icon - Only for certain roles ideally, but global for now as user requested */}
+
         </div>
     );
 };

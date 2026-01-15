@@ -4,15 +4,15 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Briefcase, FileText, CheckCircle, ArrowRight, ArrowLeft, Upload, Lock } from 'lucide-react';
+import { User, Briefcase, FileText, CheckCircle, ArrowRight, ArrowLeft, Upload, Lock, GraduationCap } from 'lucide-react';
 import api from '../../lib/api';
 import ImageUpload from '../../components/ui/ImageUpload';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import FormErrorAlert from '../../components/ui/FormErrorAlert';
 
 // --- Configuration & Constants ---
 const AGENCY_DESIGNATIONS = [
-    "Creative Director", "Art Director", "Senior Graphic Designer", "Graphic Designer",
+    "CO-FOUNDER", "Creative Director", "Art Director", "Senior Graphic Designer", "Graphic Designer",
     "Copywriter", "Content Strategist", "Social Media Manager", "Social Media Executive",
     "SEO Specialist", "Web Developer", "Account Director", "Account Manager",
     "Client Servicing Executive", "Media Planner", "Media Buyer", "Operations Manager",
@@ -67,7 +67,10 @@ const onboardingSchema = z.object({
     ifsc_code: z.string().optional(),
     pan_number: z.string().optional(),
     aadhar_number: z.string().optional(),
-    create_ledger: z.boolean().optional(),
+    ledger_options: z.object({
+        create: z.boolean(),
+        head_id: z.string().optional()
+    }).optional(),
 
     // Step 4: Documents
     resume_url: z.string().optional(),
@@ -75,14 +78,23 @@ const onboardingSchema = z.object({
     password: z.string().optional(),
     confirm_password: z.string().optional(),
     role: z.string().optional(),
-}).refine(data => {
+}).superRefine((data, ctx) => {
     if (data.password || data.confirm_password) {
-        return data.password === data.confirm_password;
+        if (data.password !== data.confirm_password) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Passwords must match",
+                path: ["confirm_password"]
+            });
+        }
     }
-    return true;
-}, {
-    message: "Passwords must match",
-    path: ["confirm_password"]
+    if (data.ledger_options?.create && !data.ledger_options.head_id) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Account Head is required to link ledger",
+            path: ["ledger_options", "head_id"]
+        });
+    }
 });
 
 type FormValues = z.infer<typeof onboardingSchema>;
@@ -108,18 +120,39 @@ const OnboardingPage = () => {
             department: 'MARKETING',
             staff_number: '',
             designation: '',
-            create_ledger: true
+            ledger_options: {
+                create: true,
+                head_id: ''
+            }
         }
     });
 
     const formData = watch();
+    const [filterAccountType, setFilterAccountType] = useState<string>('');
+
+    const { data: accountHeads } = useQuery({
+        queryKey: ['accountHeads'],
+        queryFn: async () => (await api.get('/accounting/heads')).data
+    });
+
+    const watchedHeadId = watch('ledger_options.head_id');
+
+    // Fix: Initialize filterAccountType when editing and head is selected
+    useEffect(() => {
+        if (watchedHeadId && accountHeads) {
+            const head = accountHeads.find((h: any) => h.id === watchedHeadId);
+            if (head) {
+                setFilterAccountType(head.type);
+            }
+        }
+    }, [watchedHeadId, accountHeads]);
 
     const handleNext = async () => {
         // Validate current step fields before moving
         let fieldsToValidate: any[] = [];
         if (currentStep === 1) fieldsToValidate = ['full_name', 'email', 'personal_contact', 'date_of_birth', 'current_address'];
         if (currentStep === 2) fieldsToValidate = ['staff_number', 'designation', 'department', 'date_of_joining', 'role'];
-        if (currentStep === 3) fieldsToValidate = ['base_salary', 'salary_type', 'create_ledger'];
+        if (currentStep === 3) fieldsToValidate = ['base_salary', 'salary_type', 'ledger_options'];
 
         const isValid = await trigger(fieldsToValidate);
         if (isValid) {
@@ -154,8 +187,8 @@ const OnboardingPage = () => {
                 return await api.post('/team/staff/onboard', payload);
             }
         },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['staff'] });
+        onSuccess: async () => {
+            await queryClient.refetchQueries({ queryKey: ['staff'] });
             alert(isEditMode ? "Staff Profile Updated Successfully!" : "Staff Onboarded Successfully!");
             navigate('/dashboard/team');
         },
@@ -361,16 +394,34 @@ const OnboardingPage = () => {
 
                                     <div className="md:col-span-2">
                                         <label className="label">System Access Role <span className="text-red-500">*</span></label>
-                                        <select {...register('role')} className="input-field bg-blue-50/50 border-blue-200">
-                                            <option value="">Select System Permission...</option>
-                                            <option value="ADMIN">Admin (Full Access)</option>
-                                            <option value="MANAGER">Manager (Team & Clients)</option>
-                                            <option value="DM_EXECUTIVE">DM Executive</option>
-                                            <option value="WEB_SEO_EXECUTIVE">Web & SEO Executive</option>
-                                            <option value="CREATIVE_DESIGNER">Creative Designer</option>
-                                            <option value="OPERATIONS_EXECUTIVE">Operations Executive</option>
-                                        </select>
-                                        <p className="text-xs text-gray-500 mt-1">Determines what they can see in the dashboard.</p>
+                                        {watch('role') === 'DEVELOPER_ADMIN' ? (
+                                            <div className="relative">
+                                                <input
+                                                    disabled
+                                                    value="Developer Admin (Super User)"
+                                                    className="input-field bg-red-50 text-red-700 font-bold border-red-200 opacity-100 cursor-not-allowed"
+                                                />
+                                                <Lock className="absolute right-3 top-1/2 -translate-y-1/2 text-red-400" size={16} />
+                                                <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1">
+                                                    <Lock size={10} /> This role is permanently locked to this account.
+                                                </p>
+                                                {/* Hidden input to maintain form state */}
+                                                <input type="hidden" {...register('role')} />
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <select {...register('role')} className="input-field bg-blue-50/50 border-blue-200">
+                                                    <option value="">Select System Permission...</option>
+                                                    <option value="ADMIN">Admin (Full Access)</option>
+                                                    <option value="MANAGER">Manager (Team & Clients)</option>
+                                                    <option value="DM_EXECUTIVE">DM Executive</option>
+                                                    <option value="WEB_SEO_EXECUTIVE">Web & SEO Executive</option>
+                                                    <option value="CREATIVE_DESIGNER">Creative Designer</option>
+                                                    <option value="OPERATIONS_EXECUTIVE">Operations Executive</option>
+                                                </select>
+                                                <p className="text-xs text-gray-500 mt-1">Determines what they can see in the dashboard.</p>
+                                            </>
+                                        )}
                                         {errors.role && <span className="error">{errors.role.message}</span>}
                                     </div>
                                     <div>
@@ -417,6 +468,68 @@ const OnboardingPage = () => {
                                         </div>
                                     </div>
 
+                                    {/* NEW: Finance Ledger Section */}
+                                    <div className="md:col-span-2 bg-purple-50 p-4 rounded-lg border border-purple-100">
+                                        <h4 className="font-semibold text-purple-900 mb-3 flex items-center gap-2">
+                                            <GraduationCap size={18} /> Finance Account (Ledger)
+                                        </h4>
+
+                                        <div className="flex items-start gap-3 mb-4">
+                                            <input
+                                                type="checkbox"
+                                                {...register('ledger_options.create')}
+                                                className="mt-1 w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+                                                id="create_staff_ledger_page"
+                                            />
+                                            <div>
+                                                <label htmlFor="create_staff_ledger_page" className="font-medium text-gray-900 cursor-pointer text-sm">Create/Link Ledger Account</label>
+                                                <p className="text-xs text-gray-500">Track salary payable & advances automatically.</p>
+                                            </div>
+                                        </div>
+
+                                        {watch('ledger_options.create') && (
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="text-xs font-semibold text-gray-600 mb-1 block">Filter Type</label>
+                                                    <select
+                                                        value={filterAccountType}
+                                                        onChange={(e) => setFilterAccountType(e.target.value)}
+                                                        className="w-full border p-2 rounded text-sm bg-white"
+                                                    >
+                                                        <option value="">All Types</option>
+                                                        <option value="LIABILITY">Liability</option>
+                                                        <option value="ASSET">Asset (Advances)</option>
+                                                        <option value="EXPENSE">Expense</option>
+                                                        <option value="SoW">Salary & Wages</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs font-semibold text-gray-600 mb-1 block">Select Account Head <span className="text-red-500">*</span></label>
+                                                    {/* We need to use `ledger_options.head_id` but schema currently uses `create_ledger` boolean separately. 
+                                                        Wait, `onboardSchema` in this file doesn't have `ledger_options`. 
+                                                        I need to update Schema too, or just map it. 
+                                                        The backend `updateStaffFull` expects `ledger_options: { create, head_id }`.
+                                                        The backend `createStaffProfile` (which is /team/staff/onboard) uses `onboardSchema` which I updated earlier.
+                                                        So I SHOULD structure the form data as `ledger_options`.
+                                                    */}
+                                                    <select
+                                                        {...register('ledger_options.head_id')}
+                                                        className="w-full border p-2 rounded text-sm bg-white"
+                                                    >
+                                                        <option value="">-- Select Head --</option>
+                                                        {accountHeads
+                                                            ?.filter((h: any) => !filterAccountType || h.type === filterAccountType || (filterAccountType === 'SoW' && h.name.includes('Salary')))
+                                                            .map((head: any) => (
+                                                                <option key={head.id} value={head.id}>
+                                                                    {head.name} ({head.code})
+                                                                </option>
+                                                            ))}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
                                     <div>
                                         <label className="label">Bank Name</label>
                                         <input {...register('bank_name')} className="input-field" placeholder="HDFC, SBI..." />
@@ -445,22 +558,7 @@ const OnboardingPage = () => {
                                         <label className="label">Aadhar Number (New)</label>
                                         <input {...register('aadhar_number')} className="input-field" placeholder="XXXX-XXXX-XXXX" />
                                     </div>
-                                    <div className="md:col-span-2 mt-4 bg-gray-50 p-4 rounded-lg flex items-center gap-3 border border-gray-200">
-                                        <input
-                                            type="checkbox"
-                                            {...register('create_ledger')}
-                                            id="create_ledger"
-                                            className="w-5 h-5 text-primary rounded border-gray-300 focus:ring-primary"
-                                        />
-                                        <div>
-                                            <label htmlFor="create_ledger" className="font-semibold text-gray-800 cursor-pointer">
-                                                Create Staff Ledger Account
-                                            </label>
-                                            <p className="text-xs text-gray-500">
-                                                Automatically creates a Liability/Payable account in Accounting to track salary dues.
-                                            </p>
-                                        </div>
-                                    </div>
+
                                 </div>
                             )}
 

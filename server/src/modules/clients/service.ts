@@ -1,10 +1,57 @@
 import prisma from '../../utils/prisma';
 import { Prisma } from '@prisma/client';
 import { ensureLedger } from '../accounting/service';
+import bcrypt from 'bcryptjs';
+
+// Helper: Generate Single Client Credentials
+export const createCredentialsForClient = async (client: { id: string, name: string }) => {
+    const DEFAULT_PASS = "password123";
+    const cleanedName = client.name.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    let username = `${cleanedName}@qix.com`;
+
+    // Collision Check & handling
+    let userExists = await prisma.user.findUnique({ where: { email: username } });
+    let counter = 1;
+    while (userExists) {
+        username = `${cleanedName}${counter}@qix.com`;
+        userExists = await prisma.user.findUnique({ where: { email: username } });
+        counter++;
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(DEFAULT_PASS, salt);
+
+    return await prisma.user.create({
+        data: {
+            full_name: client.name,
+            email: username,
+            password_hash: passwordHash,
+            role: 'CLIENT',
+            department: 'CLIENT',
+            linked_client_id: client.id
+        }
+    });
+};
 
 // Update signature to accept arrays
-export const createClient = async (data: Prisma.ClientCreateInput, assignedStaffIds?: string[], adAccounts?: any[]) => {
+export const createClient = async (data: Prisma.ClientCreateInput, assignedStaffIds?: string[], adAccounts?: any[], ledgerOptions?: { create: boolean, head_id?: string }) => {
     const createData: any = { ...data };
+
+    // Auto-generate Client Code (QCNxxxx)
+    // Find last code to increment
+    const lastClient = await prisma.client.findFirst({
+        where: { client_code: { startsWith: 'QCN' } },
+        orderBy: { client_code: 'desc' }
+    });
+
+    let nextCode = 'QCN0001';
+    if (lastClient && lastClient.client_code) {
+        const lastNum = parseInt(lastClient.client_code.replace('QCN', ''), 10);
+        if (!isNaN(lastNum)) {
+            nextCode = `QCN${(lastNum + 1).toString().padStart(4, '0')}`;
+        }
+    }
+    createData.client_code = nextCode;
 
     // Handle Assigned Staff Relation
     if (assignedStaffIds && assignedStaffIds.length > 0) {
@@ -62,18 +109,42 @@ export const createClient = async (data: Prisma.ClientCreateInput, assignedStaff
 
     console.log(`[AUDIT] Client Created: ${client.name} (ID: ${client.id}) | Account Manager: ${accountManagerId}`);
 
-    // Auto-create Client Ledger under Assets (1000 - Accounts Receivable)
+    // Auto-create Client Ledger
     try {
-        await ensureLedger('CLIENT', client.id, '1000');
+        if (ledgerOptions?.create && ledgerOptions.head_id) {
+            // User selected a specific head
+            const head = await prisma.accountHead.findUnique({ where: { id: ledgerOptions.head_id } });
+            if (head) {
+                await ensureLedger('CLIENT', client.id, head.code);
+            } else {
+                console.warn(`[WARNING] Client created but Ledger Head ID ${ledgerOptions.head_id} not found. Defaulting to 4000.`);
+                await ensureLedger('CLIENT', client.id, '4000');
+            }
+        } else if (ledgerOptions?.create === false) {
+            console.log(`[INFO] Client ${client.name}: Ledger creation skipped by user request.`);
+        } else {
+            // Default Behavior (Fallback for legacy/unspecified)
+            await ensureLedger('CLIENT', client.id, '4000');
+        }
+
     } catch (error) {
         console.error("Failed to create ledger for client:", error);
+    }
+
+    // Auto-create Client Credentials
+    try {
+        await createCredentialsForClient(client);
+        console.log(`[AUDIT] Generated credentials for ${client.name}`);
+    } catch (error) {
+        console.error("Failed to generate credentials for client:", error);
     }
 
     return client;
 };
 
 export const getClients = async () => {
-    return await prisma.client.findMany({
+    // 1. Fetch Clients
+    const clients = await prisma.client.findMany({
         orderBy: { updatedAt: 'desc' },
         include: {
             _count: {
@@ -89,10 +160,31 @@ export const getClients = async () => {
             content_strategies: true
         }
     });
+
+    // 2. Fetch Ledgers for these Clients
+    const clientIds = clients.map(c => c.id);
+    const ledgers = await prisma.ledger.findMany({
+        where: {
+            entity_type: 'CLIENT',
+            entity_id: { in: clientIds }
+        },
+        select: { entity_id: true }
+    });
+
+    const ledgerSet = new Set(ledgers.map(l => l.entity_id));
+
+    // 3. Attach flag and parse JSONs
+    return clients.map(client => ({
+        ...client,
+        service_engagement: client.service_engagement ? JSON.parse(client.service_engagement as string) : [],
+        ledger_options: {
+            create: ledgerSet.has(client.id)
+        }
+    }));
 };
 
 export const getClientById = async (id: string) => {
-    return await prisma.client.findUnique({
+    const client = await prisma.client.findUnique({
         where: { id },
         include: {
             campaigns: {
@@ -109,11 +201,37 @@ export const getClientById = async (id: string) => {
             content_strategies: true
         }
     });
+
+
+
+    if (!client) return null;
+
+    // Check for Ledger
+    const ledger = await prisma.ledger.findFirst({
+        where: {
+            entity_type: 'CLIENT',
+            entity_id: id
+        }
+    });
+
+    // Parse JSON fields
+    return {
+        ...client,
+        service_engagement: client.service_engagement ? JSON.parse(client.service_engagement) : [],
+        social_links: client.social_links ? JSON.parse(client.social_links) : {},
+        competitor_info: client.competitor_info ? JSON.parse(client.competitor_info) : [],
+        customer_avatar: client.customer_avatar ? JSON.parse(client.customer_avatar) : {},
+        operating_locations: client.operating_locations_json ? JSON.parse(client.operating_locations_json) : [],
+        brand_colors: client.brand_colors ? JSON.parse(client.brand_colors) : {},
+        ledger_options: {
+            create: !!ledger
+        }
+    };
 };
 
 export const updateClient = async (id: string, data: any) => {
     // If assigned_staff_ids is present, we need to manage the relation
-    const { assigned_staff_ids, ad_accounts, content_strategies, ...updateData } = data;
+    const { assigned_staff_ids, ad_accounts, content_strategies, ledger_options, ...updateData } = data;
 
     if (assigned_staff_ids) {
         updateData.assigned_staff = {
@@ -186,19 +304,55 @@ export const updateClient = async (id: string, data: any) => {
         });
     }
 
-    if (updateData.operating_locations && Array.isArray(updateData.operating_locations)) {
-        updateData.operating_locations_json = JSON.stringify(updateData.operating_locations);
-        delete updateData.operating_locations;
+    // Helper to stringify if array, else leave as is (if string/null)
+    if (updateData.operating_locations !== undefined) {
+        if (Array.isArray(updateData.operating_locations)) {
+            updateData.operating_locations_json = JSON.stringify(updateData.operating_locations);
+        }
+        delete updateData.operating_locations; // ALWAYS delete the non-schema field
     }
 
-    if (updateData.service_engagement && Array.isArray(updateData.service_engagement)) {
-        updateData.service_engagement = JSON.stringify(updateData.service_engagement);
+    if (updateData.service_engagement !== undefined) {
+        if (Array.isArray(updateData.service_engagement)) {
+            updateData.service_engagement = JSON.stringify(updateData.service_engagement);
+        }
     }
 
-    return await prisma.client.update({
+    // Handle other JSON fields
+    ['social_links', 'competitor_info', 'customer_avatar', 'brand_colors'].forEach(field => {
+        if (updateData[field] !== undefined && typeof updateData[field] === 'object' && updateData[field] !== null) {
+            updateData[field] = JSON.stringify(updateData[field]);
+        }
+    });
+
+    console.log("[ClientUpdate] Final Payload:", JSON.stringify(updateData, null, 2));
+
+    const updatedClient = await prisma.client.update({
         where: { id },
         data: updateData,
     });
+
+    // Handle Ledger Creation on Update
+    if (ledger_options && ledger_options.create) {
+        try {
+            if (ledger_options.head_id) {
+                const head = await prisma.accountHead.findUnique({ where: { id: ledger_options.head_id } });
+                if (head) {
+                    await ensureLedger('CLIENT', id, head.code);
+                    console.log(`[ClientUpdate] Ledger created for ${updatedClient.name} under head ${head.code}`);
+                } else {
+                    console.warn(`[ClientUpdate] Head ID ${ledger_options.head_id} not found. Defaulting to 4000.`);
+                    await ensureLedger('CLIENT', id, '4000');
+                }
+            } else {
+                await ensureLedger('CLIENT', id, '4000'); // Default
+            }
+        } catch (error) {
+            console.error("[ClientUpdate] Failed to create ledger:", error);
+        }
+    }
+
+    return updatedClient;
 };
 
 export const upsertContentStrategy = async (clientId: string, strategies: { type: string, quantity: number }[]) => {
@@ -262,4 +416,100 @@ export const deleteClient = async (id: string) => {
             where: { id },
         });
     });
+};
+
+export const generateClientCredentials = async () => {
+    const clients = await prisma.client.findMany({
+        where: { portalUser: null }, // Find clients without portal access
+        select: { id: true, name: true, company_email: true }
+    });
+
+    const results = [];
+    const DEFAULT_PASS = "password123";
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(DEFAULT_PASS, salt);
+
+    for (const client of clients) {
+        try {
+            const user = await createCredentialsForClient(client);
+            results.push({ client: client.name, email: user.email, status: 'CREATED' });
+        } catch (e: any) {
+            results.push({ client: client.name, status: 'ERROR', reason: e.message });
+        }
+    }
+    return results;
+};
+
+export const getClientCredentials = async () => {
+    return await prisma.client.findMany({
+        orderBy: { name: 'asc' },
+        select: {
+            id: true,
+            name: true,
+            portalUser: {
+                select: {
+                    id: true,
+                    email: true,
+                    // We don't return password hash
+                }
+            }
+        }
+    });
+};
+
+export const updateClientCredentials = async (clientId: string, data: { username?: string, password?: string }) => {
+    const client = await prisma.client.findUnique({
+        where: { id: clientId },
+        include: { portalUser: true }
+    });
+
+    if (!client) throw new Error("Client not found");
+
+    if (!client.portalUser) {
+        // Create if doesn't exist (Manual Create via Update)
+        if (!data.username || !data.password) throw new Error("Credentials don't exist. Provide both username and password to create.");
+
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(data.password, salt);
+
+        return await prisma.user.create({
+            data: {
+                full_name: client.name,
+                email: data.username,
+                password_hash: hashedPassword,
+                role: 'CLIENT',
+                department: 'CLIENT',
+                linked_client_id: client.id
+            }
+        });
+    } else {
+        // Update existing
+        const updateData: any = {};
+        if (data.username) updateData.email = data.username;
+        if (data.password) {
+            const salt = await bcrypt.genSalt(10);
+            updateData.password_hash = await bcrypt.hash(data.password, salt);
+        }
+
+        return await prisma.user.update({
+            where: { id: client.portalUser.id },
+            data: updateData
+        });
+    }
+};
+
+export const getNextClientCode = async () => {
+    const lastClient = await prisma.client.findFirst({
+        where: { client_code: { startsWith: 'QCN' } },
+        orderBy: { client_code: 'desc' }
+    });
+
+    let nextCode = 'QCN0001';
+    if (lastClient && lastClient.client_code) {
+        const lastNum = parseInt(lastClient.client_code.replace('QCN', ''), 10);
+        if (!isNaN(lastNum)) {
+            nextCode = `QCN${(lastNum + 1).toString().padStart(4, '0')}`;
+        }
+    }
+    return nextCode;
 };

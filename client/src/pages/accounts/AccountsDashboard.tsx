@@ -6,33 +6,32 @@ import AccountStatement from './AccountStatement';
 const AccountsDashboard = () => {
     const [activeTab, setActiveTab] = useState<'ledgers' | 'reports' | 'statements'>('ledgers');
 
+    const getTabClass = (tabName: string) => {
+        const isActive = activeTab === tabName;
+        return `px-6 py-2 rounded-md font-bold transition-all shadow-sm border-2 ${isActive
+                ? 'bg-purple-900 text-yellow-400 border-yellow-400'
+                : 'bg-yellow-400 text-purple-900 border-transparent hover:opacity-90'
+            }`;
+    };
+
     return (
         <div className="space-y-6">
-            <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg w-fit">
+            <div className="flex space-x-2 bg-transparent p-0 w-fit">
                 <button
                     onClick={() => setActiveTab('ledgers')}
-                    className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'ledgers'
-                        ? 'bg-white text-gray-900 shadow-sm'
-                        : 'text-gray-500 hover:text-gray-700'
-                        }`}
+                    className={getTabClass('ledgers')}
                 >
                     Ledger Management
                 </button>
                 <button
                     onClick={() => setActiveTab('reports')}
-                    className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'reports'
-                            ? 'bg-white text-gray-900 shadow-sm'
-                            : 'text-gray-500 hover:text-gray-700'
-                        }`}
+                    className={getTabClass('reports')}
                 >
                     Salary & Wages Reports
                 </button>
                 <button
                     onClick={() => setActiveTab('statements')}
-                    className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'statements'
-                            ? 'bg-white text-gray-900 shadow-sm'
-                            : 'text-gray-500 hover:text-gray-700'
-                        }`}
+                    className={getTabClass('statements')}
                 >
                     Statements
                 </button>

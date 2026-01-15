@@ -8,8 +8,17 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { DollarSign, Save, AlertCircle } from 'lucide-react';
+import { useAuthStore } from '../../store/authStore';
 
 const SalaryCalculator = () => {
+    const { user } = useAuthStore();
+    const isAdmin = user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'DEVELOPER_ADMIN';
+
+    // If not admin, redirect or show unauthorized
+    if (!isAdmin) {
+        return <div className="p-8 text-center text-red-500">You are not authorized to access this page.</div>;
+    }
+
     const queryClient = useQueryClient();
     const [selectedStaff, setSelectedStaff] = useState<string>('');
     const [month, setMonth] = useState<number>(new Date().getMonth() + 1);
@@ -21,12 +30,7 @@ const SalaryCalculator = () => {
         queryFn: () => backend.get('/team/staff').then(res => res.data)
     });
 
-    // Fetch Draft Logic using useEffect to update form when data arrives
-    const { data: draftData } = useQuery({
-        queryKey: ['payroll-draft', selectedStaff, month, year],
-        queryFn: () => backend.get(`/payroll/draft?userId=${selectedStaff}&month=${month}&year=${year}`).then(res => res.data),
-        enabled: !!selectedStaff
-    });
+    // ... (rest of the code)
 
     // Form
     const { register, handleSubmit, setValue, watch, reset } = useForm({
@@ -41,50 +45,83 @@ const SalaryCalculator = () => {
             other_deductions: 0,
             lop_days: 0,
             lop_deduction: 0,
+            total_working_days: 30,
             net_pay: 0
         }
     });
 
+    // Fetch logic on selection
+    useEffect(() => {
+        if (selectedStaff && month && year && staffList) {
+            const fetchData = async () => {
+                try {
+                    // 1. Get Staff Profile from pre-loaded list (Contains Defaults)
+                    const staffProfile = staffList.find((s: any) => s.user_id === selectedStaff);
+
+                    // 2. Fetch Draft Slip (if exists) or Calculate Fresh
+                    const res = await backend.get('/payroll/draft', { params: { userId: selectedStaff, month, year } });
+                    const data = res.data;
+
+                    // Merge Staff Defaults with any potential existing input (though we prioritize defaults for core structure)
+                    // Policy: Core structure (Basic, HRA, Conv, Acc) comes from Profile. 
+                    // Variable (Allowances/Misc, Incentives, Deductions) come from Draft or 0.
+
+                    if (staffProfile) {
+                        reset({
+                            basic_salary: staffProfile.base_salary || 0,
+                            hra: staffProfile.hra || 0,
+                            conveyance_allowance: staffProfile.conveyance_allowance || 0,
+                            accommodation_allowance: staffProfile.accommodation_allowance || 0,
+
+                            // Variable Components
+                            allowances: data.allowances || 0, // Allowance (Misc)
+                            incentives: data.incentives || 0,
+
+                            advance_salary: data.advance_salary || 0,
+                            other_deductions: data.other_deductions || 0,
+
+                            lop_days: data.lop_days || 0,
+                            lop_deduction: data.lop_deduction || 0,
+
+                            total_working_days: data.total_working_days || 30,
+                            net_pay: data.net_pay || 0
+                        });
+                    }
+
+                } catch (error) {
+                    console.error("Failed to fetch salary data", error);
+                }
+            };
+            fetchData();
+        }
+    }, [selectedStaff, month, year, reset, staffList]);
+
     const values = watch();
 
-    // Real-time Calculation Effect
+    // Auto-Calculate Net Pay
     useEffect(() => {
-        if (draftData) {
-            // If draft loaded, populate form
-            if (draftData.isDraft) {
-                reset(draftData);
-            } else {
-                // If fresh calc, use backend values but ensure form state is synced
-                // Note: Backend 'getDraft' returns calculated values even if not saved (isDraft=false)
-                reset(draftData);
-            }
-        }
-    }, [draftData, reset]);
+        const earnings =
+            (Number(values.basic_salary) || 0) +
+            (Number(values.hra) || 0) +
+            (Number(values.conveyance_allowance) || 0) +
+            (Number(values.accommodation_allowance) || 0) +
+            (Number(values.allowances) || 0) +
+            (Number(values.incentives) || 0);
 
-    // Recalc Net Pay on Frontend Change (Optional, but good for responsiveness)
-    useEffect(() => {
-        const gross = Number(values.basic_salary) + Number(values.hra) + Number(values.allowances) + Number(values.conveyance_allowance) + Number(values.accommodation_allowance) + Number(values.incentives);
+        const deductions =
+            (Number(values.lop_deduction) || 0) +
+            (Number(values.advance_salary) || 0) +
+            (Number(values.other_deductions) || 0);
 
-        // Auto-Calculate LOP Deduction if Basic changes? 
-        // Backend logic: DailyWage = (Basic+HRA+Conv+Acc)/30
-        const standardEarnings = Number(values.basic_salary) + Number(values.hra) + Number(values.conveyance_allowance) + Number(values.accommodation_allowance);
-        const dailyWage = standardEarnings / 30;
-        const lopDed = Math.round(dailyWage * Number(values.lop_days)); // lop_days is read-only usually
-
-        // Update derived fields
-        if (lopDed !== values.lop_deduction) {
-            setValue('lop_deduction', lopDed);
-        }
-
-        const totalDeductions = lopDed + Number(values.advance_salary) + Number(values.other_deductions);
-        const net = gross - totalDeductions;
-
-        if (net !== values.net_pay) {
+        const net = earnings - deductions;
+        if (values.net_pay !== net) {
             setValue('net_pay', net);
         }
-
-    }, [values.basic_salary, values.hra, values.allowances, values.conveyance_allowance, values.accommodation_allowance, values.incentives, values.advance_salary, values.other_deductions, values.lop_days, setValue]);
-
+    }, [
+        values.basic_salary, values.hra, values.conveyance_allowance, values.accommodation_allowance,
+        values.allowances, values.incentives, values.lop_deduction, values.advance_salary, values.other_deductions,
+        setValue
+    ]);
 
     const saveMutation = useMutation({
         mutationFn: (data: any) => backend.post('/payroll/slip', { month, year, userId: selectedStaff, data }),
@@ -95,9 +132,11 @@ const SalaryCalculator = () => {
         onError: (err: any) => alert(err.response?.data?.message || "Failed to save")
     });
 
+
     const onSubmit = (data: any) => {
         saveMutation.mutate(data);
     };
+
 
     return (
         <div className="space-y-6">
@@ -121,8 +160,10 @@ const SalaryCalculator = () => {
                             <SelectValue placeholder="Year" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="2024">2024</SelectItem>
-                            <SelectItem value="2025">2025</SelectItem>
+                            {Array.from({ length: 5 }, (_, i) => {
+                                const y = new Date().getFullYear() - 2 + i; // Current year -2 to +2
+                                return <SelectItem key={y} value={y.toString()}>{y}</SelectItem>;
+                            })}
                         </SelectContent>
                     </Select>
                 </div>
@@ -137,7 +178,7 @@ const SalaryCalculator = () => {
                         <SelectTrigger>
                             <SelectValue placeholder="Select Staff Member" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="max-h-[300px] overflow-y-auto">
                             {staffList?.map((s: any) => (
                                 <SelectItem key={s.user_id} value={s.user_id}>{s.user.full_name} - {s.designation}</SelectItem>
                             ))}
@@ -158,23 +199,23 @@ const SalaryCalculator = () => {
                         <CardContent className="space-y-4 pt-6">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label>Basic Salary</Label>
-                                    <Input type="number" {...register('basic_salary')} />
+                                    <Label>Basic Salary <span className="text-xs text-muted-foreground">(Locked)</span></Label>
+                                    <Input type="number" {...register('basic_salary')} readOnly className="bg-muted text-muted-foreground" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>HRA</Label>
-                                    <Input type="number" {...register('hra')} />
+                                    <Label>HRA <span className="text-xs text-muted-foreground">(Locked)</span></Label>
+                                    <Input type="number" {...register('hra')} readOnly className="bg-muted text-muted-foreground" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Conveyance</Label>
-                                    <Input type="number" {...register('conveyance_allowance')} />
+                                    <Label>Conveyance <span className="text-xs text-muted-foreground">(Locked)</span></Label>
+                                    <Input type="number" {...register('conveyance_allowance')} readOnly className="bg-muted text-muted-foreground" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Accommodation</Label>
-                                    <Input type="number" {...register('accommodation_allowance')} />
+                                    <Label>Accommodation <span className="text-xs text-muted-foreground">(Locked)</span></Label>
+                                    <Input type="number" {...register('accommodation_allowance')} readOnly className="bg-muted text-muted-foreground" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Allowances (Misc)</Label>
+                                    <Label>Allowance (Misc)</Label>
                                     <Input type="number" {...register('allowances')} />
                                 </div>
                                 <div className="space-y-2">
@@ -204,6 +245,17 @@ const SalaryCalculator = () => {
                                     </div>
                                     {/* Hidden Input to register value */}
                                     <input type="hidden" {...register('lop_days')} />
+                                </div>
+
+                                <div className="p-4 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex justify-between items-center">
+                                    <div>
+                                        <span className="block font-semibold text-blue-900 dark:text-blue-200">Total Working Days</span>
+                                        <span className="text-xs text-blue-700 dark:text-blue-300">Days - Sundays - Holidays</span>
+                                    </div>
+                                    <div className="text-2xl font-bold text-blue-700 dark:text-blue-400">
+                                        {Number(watch('total_working_days')) || 30}
+                                    </div>
+                                    <input type="hidden" {...register('total_working_days')} />
                                 </div>
 
                             </div>

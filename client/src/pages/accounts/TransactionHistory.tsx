@@ -144,6 +144,7 @@ const TransactionHistory = () => {
                 <table className="w-full text-sm text-left">
                     <thead className="bg-muted text-muted-foreground font-medium border-b">
                         <tr>
+                            <th className="px-4 py-3">ID</th>
                             <th className="px-4 py-3">Date</th>
                             <th className="px-4 py-3">Description</th>
                             <th className="px-4 py-3">Type</th>
@@ -156,21 +157,24 @@ const TransactionHistory = () => {
                     </thead>
                     <tbody className="divide-y">
                         {isLoading ? (
-                            <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">Loading transactions...</td></tr>
+                            <tr><td colSpan={9} className="p-8 text-center text-muted-foreground">Loading transactions...</td></tr>
                         ) : transactions?.length === 0 ? (
-                            <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">No transactions found.</td></tr>
+                            <tr><td colSpan={9} className="p-8 text-center text-muted-foreground">No transactions found.</td></tr>
                         ) : (
                             transactions?.map((tx: any) => (
                                 <tr key={tx.id} className="hover:bg-muted/50 transition-colors">
+                                    <td className="px-4 py-3 font-mono text-xs">{tx.transaction_number || '-'}</td>
                                     <td className="px-4 py-3 whitespace-nowrap">{format(new Date(tx.date), 'dd/MM/yyyy')}</td>
                                     <td className="px-4 py-3 font-medium">{tx.description}</td>
                                     <td className="px-4 py-3 text-xs uppercase badge">
-                                        <span className="bg-secondary px-2 py-0.5 rounded text-foreground/80">{tx.type}</span>
+                                        <span className={`px-2 py-0.5 rounded font-medium ${tx.type === 'INCOME' ? 'bg-green-100 text-green-700 border border-green-200' : tx.type === 'EXPENSE' ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-secondary text-foreground'}`}>
+                                            {tx.type}
+                                        </span>
                                     </td>
                                     <td className="px-4 py-3 text-muted-foreground">{tx.debit_ledgers}</td>
                                     <td className="px-4 py-3 text-muted-foreground">{tx.credit_ledgers}</td>
                                     <td className="px-4 py-3 text-xs font-mono">{tx.reference || '-'}</td>
-                                    <td className="px-4 py-3 text-right font-mono font-bold">
+                                    <td className={`px-4 py-3 text-right font-mono font-bold ${tx.type === 'INCOME' ? 'text-green-600' : tx.type === 'EXPENSE' ? 'text-red-600' : ''}`}>
                                         {formatCurrency(tx.amount)}
                                     </td>
                                     <td className="px-4 py-3 text-center flex justify-center gap-2">

@@ -23,46 +23,46 @@ const AccountOverview = () => {
             <h1 className="text-2xl font-bold">Financial Overview</h1>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card>
+                <Card className="bg-green-50 border-green-100">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Income</CardTitle>
-                        <ArrowDownLeft className="h-4 w-4 text-green-500" />
+                        <CardTitle className="text-sm font-medium text-green-900">Total Income</CardTitle>
+                        <ArrowDownLeft className="h-4 w-4 text-green-600" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{formatCurrency(income || 0)}</div>
-                        <p className="text-xs text-muted-foreground">Revenue generated</p>
+                        <div className="text-2xl font-bold text-green-700">₹{(income || 0).toLocaleString('en-IN')}</div>
+                        <p className="text-xs text-green-600/80">Revenue generated</p>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="bg-red-50 border-red-100">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
-                        <ArrowUpRight className="h-4 w-4 text-red-500" />
+                        <CardTitle className="text-sm font-medium text-red-900">Total Expenses</CardTitle>
+                        <ArrowUpRight className="h-4 w-4 text-red-600" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{formatCurrency(expense || 0)}</div>
-                        <p className="text-xs text-muted-foreground">Operating costs</p>
+                        <div className="text-2xl font-bold text-red-700">₹{(expense || 0).toLocaleString('en-IN')}</div>
+                        <p className="text-xs text-red-600/80">Operating costs</p>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="bg-blue-50 border-blue-100">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Net Profit</CardTitle>
-                        <DollarSign className="h-4 w-4 text-muted-foreground" />
+                        <CardTitle className="text-sm font-medium text-blue-900">Net Profit</CardTitle>
+                        <DollarSign className="h-4 w-4 text-blue-600" />
                     </CardHeader>
                     <CardContent>
-                        <div className={`text-2xl font-bold ${net_profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {formatCurrency(net_profit || 0)}
+                        <div className={`text-2xl font-bold ${net_profit >= 0 ? 'text-blue-700' : 'text-red-600'}`}>
+                            ₹{(net_profit || 0).toLocaleString('en-IN')}
                         </div>
-                        <p className="text-xs text-muted-foreground">Income - Expenses</p>
+                        <p className="text-xs text-blue-600/80">Income - Expenses</p>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="bg-amber-50 border-amber-100">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Cash & Bank</CardTitle>
-                        <Wallet className="h-4 w-4 text-muted-foreground" />
+                        <CardTitle className="text-sm font-medium text-amber-900">Cash & Bank</CardTitle>
+                        <Wallet className="h-4 w-4 text-amber-600" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{formatCurrency(cash_bank_balance || 0)}</div>
-                        <p className="text-xs text-muted-foreground">Liquid Assets</p>
+                        <div className="text-2xl font-bold text-amber-700">₹{(cash_bank_balance || 0).toLocaleString('en-IN')}</div>
+                        <p className="text-xs text-amber-600/80">Liquid Assets</p>
                     </CardContent>
                 </Card>
             </div>
@@ -88,7 +88,7 @@ const AccountOverview = () => {
                                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                         ))}
                                     </Pie>
-                                    <RechartsTooltip formatter={(value: any) => formatCurrency(Number(value))} />
+                                    <RechartsTooltip formatter={(value: any) => `₹${Number(value).toLocaleString('en-IN')}`} />
                                     <Legend />
                                 </PieChart>
                             </ResponsiveContainer>

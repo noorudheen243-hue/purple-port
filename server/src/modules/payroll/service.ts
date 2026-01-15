@@ -42,12 +42,13 @@ export const calculateAutoLOP = async (userId: string, month: number, year: numb
     // 2. Scan Attendance
     for (const record of attendance) {
         if (record.status === 'ABSENT') {
-            // Check if covered by APPROVED PAID LEAVE
+            // Check if covered by ANY APPROVED LEAVE (Paid or Unpaid)
+            // If covered by Unpaid/LOP, we count it in Step 3.
+            // If covered by Paid, we don't count it at all.
             const coveringLeave = await prisma.leaveRequest.findFirst({
                 where: {
                     user_id: userId,
                     status: 'APPROVED',
-                    type: { not: 'UNPAID' }, // Paid leaves cover absence
                     start_date: { lte: record.date },
                     end_date: { gte: record.date }
                 }
@@ -61,12 +62,12 @@ export const calculateAutoLOP = async (userId: string, month: number, year: numb
         }
     }
 
-    // 3. Add Explicit LOP Leaves (Leave Type = UNPAID)
+    // 3. Add Explicit LOP Leaves (Leave Type = UNPAID or LOP)
     const unpaidLeaves = await prisma.leaveRequest.findMany({
         where: {
             user_id: userId,
             status: 'APPROVED',
-            type: 'UNPAID', // Specific LOP type
+            type: { in: ['UNPAID', 'LOP'] }, // Specific LOP types
             start_date: { lte: endDate },
             end_date: { gte: startDate }
         }
@@ -94,10 +95,50 @@ export const getSalaryDraft = async (userId: string, month: number, year: number
     });
     if (!profile) throw new Error("Staff profile not found");
 
-    // 2. Calculate LOP
+    // 2. Calculate LOP (Always fresh)
     const lopDays = await calculateAutoLOP(userId, month, year);
 
-    // 3. Get existing Draft Slip if any
+    // 3. Calculate Working Days (Always fresh)
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0); // Last day of month
+
+    // Fetch Holidays for the month
+    const holidays = await prisma.holiday.findMany({
+        where: {
+            date: { gte: startDate, lte: endDate }
+        }
+    });
+
+    const holidayDates = new Set(holidays.map(h => h.date.toDateString()));
+    let nonWorkingDays = 0;
+
+    // Iterate through each day of the month
+    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+        const isSunday = d.getDay() === 0;
+        const isHoliday = holidayDates.has(d.toDateString());
+
+        if (isSunday || isHoliday) {
+            nonWorkingDays++;
+        }
+    }
+
+    const daysInMonth = endDate.getDate();
+    const totalWorkingDays = Math.max(0, daysInMonth - nonWorkingDays);
+
+
+    // Calculate Standard Earnings for Deduction logic
+    const basic = profile.base_salary || 0;
+    const hra = profile.hra || 0;
+    const conveyance = profile.conveyance_allowance || 0;
+    const accommodation = profile.accommodation_allowance || 0;
+    const allowances = profile.allowances || 0;
+
+    // Daily Wage Rule: (Basic + HRA + Conveyance + Accommodation) / 30
+    const standardEarnings = basic + hra + conveyance + accommodation;
+    const dailyWage = standardEarnings / 30;
+    const lopDeduction = Math.round(dailyWage * lopDays);
+
+    // 4. Get existing Draft Slip if any
     const existingSlip = await prisma.payrollSlip.findFirst({
         where: {
             user_id: userId,
@@ -105,70 +146,103 @@ export const getSalaryDraft = async (userId: string, month: number, year: number
         }
     });
 
-    // 4. Fetch Salary Advance from Ledger
-    // Assuming Ledger Name is "Salary Advance" and entity_id is userId
+    // 5. Fetch Salary Advance from Ledger
+    // 5. Check for Salary Advance
+    // A. Explicit Advance Ledger (Asset/1000)
     const advanceLedger = await prisma.ledger.findFirst({
         where: {
             entity_id: userId,
             entity_type: 'USER',
-            head: { name: 'Salary Advance' } // Ensure Head Name matches exactly or use Code
+            head: { code: '1000' }
         }
     });
 
-    // If head name is not guaranteed, search by Name directly or assume code?
-    // Safer: Search by name 'Salary Advance' combined with entity. 
-    // Or if we create "Salary Advance - Name" for each?
-    // Let's try finding ANY ledger for this user that is under "Assets" and has "Advance" in name?
-    // Better: We defined "Salary Advance" handling.
-    // Let's assume we look for a ledger named "Salary Advance" or similar linked to user.
-    // If we use `ensureLedger` with a specific code for Salary Advance, we can query that code.
-    // For now, let's assume we query by HEAD Name 'Salary Advance'. 
-    // If not found, check generic name "Salary Advance".
-
     let salaryAdvanceBalance = 0;
-    if (advanceLedger) {
-        // Asset: Debit is Positive. If User took advance, it's Debit. 
-        // Balance should be Positive.
-        salaryAdvanceBalance = advanceLedger.balance > 0 ? advanceLedger.balance : 0;
-    } else {
-        // Double check by Name in case Head isn't linked by name 'Salary Advance'
-        const altLedger = await prisma.ledger.findFirst({
-            where: { entity_id: userId, name: { contains: 'Salary Advance' } }
-        });
-        if (altLedger) salaryAdvanceBalance = altLedger.balance > 0 ? altLedger.balance : 0;
+    if (advanceLedger && advanceLedger.balance > 0) {
+        salaryAdvanceBalance += advanceLedger.balance;
     }
 
+    // B. Liability Ledger (Staff Account/2000) - Check for Debit Balance (Overpayment)
+    // Try by Entity ID first, then Name
+    let staffLedger = await prisma.ledger.findFirst({
+        where: {
+            entity_id: userId,
+            entity_type: 'USER',
+            head: { code: '2000' }
+        }
+    });
+
+    if (!staffLedger) {
+        // Fallback: Search by Name matches User Name (for manual ledgers)
+        staffLedger = await prisma.ledger.findFirst({
+            where: {
+                name: profile.user.full_name, // Exact match preferred
+                head: { code: '2000' }
+            }
+        });
+    }
+
+    if (staffLedger && staffLedger.balance > 0) {
+        // Liability with Debit Balance = Advance
+        salaryAdvanceBalance += staffLedger.balance;
+    }
+
+    // 3. Check Expense Ledger (Head 6000) - "Personal Expense" treated as Advance
+    // User created ledger 'Noorudheen' under Expenses. 
+    // Any Debit balance here implies company paid money 'for' or 'to' the user as an expense.
+    // We treat this as recoverable advance.
+    let expenseLedger = await prisma.ledger.findFirst({
+        where: {
+            entity_id: userId,
+            head: { code: '6000' }
+        }
+    });
+    if (!expenseLedger) {
+        expenseLedger = await prisma.ledger.findFirst({
+            where: {
+                name: profile.user.full_name,
+                head: { code: '6000' }
+            }
+        });
+    }
+
+    if (expenseLedger && expenseLedger.balance > 0) {
+        salaryAdvanceBalance += expenseLedger.balance;
+    }
 
     if (existingSlip) {
+        // Validate / Update Advance from Source of Truth (Ledger)
+        // If current ledger balance (debt) differs from slip, should we update?
+        // User request "should be reflected automatically". 
+        // We will default to Ledger Balance if it exists, effectively syncing 'Debt' to 'Deduction'.
+        // This assumes we deduct the FULL advance. 
+        // If they want partial, they must edit it (but next refresh might overwrite if we are aggressive).
+        // For now, prompt suggests auto-reflection.
+
+        const currentAdvance = salaryAdvanceBalance; // Use refreshed balance
+        const updatedNetPay = (existingSlip.basic_salary + existingSlip.hra + existingSlip.allowances + existingSlip.conveyance_allowance + existingSlip.accommodation_allowance + existingSlip.incentives) - (lopDeduction + currentAdvance + existingSlip.other_deductions);
+
         return {
             ...existingSlip,
             user: profile.user,
             department: profile.department,
             designation: profile.designation,
             isDraft: true,
-            // Update Advance if not overridden? No, existing slip might have manual edits.
-            // But if it's draft, maybe we refresh? 
-            // Let's Keep existing values if slip exists.
+
+            // Override with Fresh Calc
+            lop_days: lopDays,
+            lop_deduction: lopDeduction,
+            advance_salary: currentAdvance, // Reflected from Ledger
+            total_working_days: totalWorkingDays,
+            net_pay: updatedNetPay > 0 ? updatedNetPay : 0
         };
     }
 
-    // 5. New Draft Calculation
-    const basic = profile.base_salary || 0;
-    const hra = profile.hra || 0;
-    const allowances = profile.allowances || 0;
-    const conveyance = profile.conveyance_allowance || 0;
-    const accommodation = profile.accommodation_allowance || 0;
+    // 6. New Draft Calculation
+    // (Variables already calculated above)
 
-    // Daily Wage Rule: (Basic + HRA + Conveyance + Accommodation) / 30
-    const standardEarnings = basic + hra + conveyance + accommodation;
-    const dailyWage = standardEarnings / 30;
-
-    const lopDeduction = Math.round(dailyWage * lopDays);
     const grossEarnings = standardEarnings + allowances; // Add misc allowances back to gross
-    const netPay = grossEarnings - lopDeduction - salaryAdvanceBalance; // Deduct Advance by default? 
-    // Usually we deduct FULL advance if it covers? Or let Manager decide?
-    // Prompt says: "Fetch from Accounts". "Automatic".
-    // We will pre-fill it.
+    const netPay = grossEarnings - lopDeduction - salaryAdvanceBalance;
 
     return {
         user_id: userId,
@@ -190,7 +264,7 @@ export const getSalaryDraft = async (userId: string, month: number, year: number
         advance_salary: salaryAdvanceBalance, // PRE-FILL
         other_deductions: 0,
 
-        total_working_days: 30, // Standard
+        total_working_days: totalWorkingDays,
         net_pay: netPay > 0 ? netPay : 0,
 
         isDraft: false
@@ -389,4 +463,160 @@ export const confirmPayrollRun = async (month: number, year: number) => {
     });
 
     return { message: "Payroll Processed and Posted", totalPayout };
+};
+
+export const getPayrollSlips = async (userId: string | undefined, year: number, month?: number) => {
+    const whereClause: any = {
+        run: { year } // Filter by year
+    };
+
+    if (month) {
+        whereClause.run.month = month;
+    }
+
+    // Exclude Co-Founders
+    whereClause.user = {
+        staffProfile: {
+            staff_number: { notIn: ['QIX0001', 'QIX0002'] }
+        }
+    };
+
+    if (userId) {
+        whereClause.user_id = userId;
+    }
+
+    // Include Run details and User details
+    return prisma.payrollSlip.findMany({
+        where: whereClause,
+        include: {
+            run: true,
+            user: {
+                select: {
+                    full_name: true,
+                    staffProfile: { select: { designation: true, department: true, staff_number: true } }
+                }
+            }
+        },
+        orderBy: { run: { month: 'desc' } }
+    });
+};
+
+export const processIndividualSlip = async (slipId: string) => {
+    // Pre-fetch/Create ledgers OUTSIDE transaction
+    const slipForUser = await prisma.payrollSlip.findUnique({ where: { id: slipId } });
+    if (!slipForUser) throw new Error("Slip not found");
+
+    // 1. Fetch Ledgers
+    const salaryExpenseLedger = await ensureLedger('INTERNAL', 'SALARY_EXPENSE', '6000', 'Salary Expense');
+    const staffLedger = await ensureLedger('USER', slipForUser.user_id, '2000'); // Liability
+
+    // Find Bank Ledger (Try 'Main Bank A/C (Canara Bank)' first, else any BANK)
+    let bankLedger = await prisma.ledger.findFirst({
+        where: { name: { contains: 'Canara' } }
+    });
+    if (!bankLedger) {
+        bankLedger = await prisma.ledger.findFirst({
+            where: { entity_type: 'BANK', status: 'ACTIVE' }
+        });
+    }
+    // Fallback if no bank found? Error or generic?
+    if (!bankLedger) {
+        // Create a generic Cash/Bank ledger if missing?
+        // For now, let's error to force setup, or use a placeholder "Petty Cash" if strictly needed.
+        // Better to Error so user knows they need a Bank Ledger.
+        // But to be helpful, let's try 'CASH' or create one.
+        bankLedger = await ensureLedger('INTERNAL', 'MAIN_BANK', '1000', 'Main Bank A/C');
+    }
+
+    let advanceLedger = null;
+    if (slipForUser.advance_salary > 0) {
+        advanceLedger = await ensureLedger('USER', slipForUser.user_id, '1000', `Salary Advance - User ${slipForUser.user_id}`);
+    }
+
+    return prisma.$transaction(async (tx) => {
+        const slip = await tx.payrollSlip.findUnique({
+            where: { id: slipId },
+            include: { run: true, user: true } // Include user to get full_name
+        });
+
+        if (!slip) throw new Error("Slip not found");
+        if (slip.status === 'PAID') throw new Error("Slip already paid");
+
+        const monthName = new Date(0, slip.run.month - 1).toLocaleString('default', { month: 'short' });
+        const periodStr = `${monthName} ${slip.run.year}`;
+
+        let totalExpense = slip.net_pay;
+        if (slip.advance_salary > 0) totalExpense += slip.advance_salary;
+
+        // --- ENTRY 1: ACCRUAL (Dr Expense, Cr Staff) ---
+        // This records the Liability "We owe the staff"
+        // If Advance Recovery exists: Dr Expense (Full), Cr Staff (Net), Cr Advance (Recovery)
+        // Let's adjust accrual lines:
+        const realAccrualLines = [
+            { ledger_id: salaryExpenseLedger.id, debit: totalExpense, credit: 0 },
+            { ledger_id: staffLedger.id, credit: slip.net_pay, debit: 0 }
+        ];
+        if (slip.advance_salary > 0 && advanceLedger) {
+            realAccrualLines.push({ ledger_id: advanceLedger.id, credit: slip.advance_salary, debit: 0 });
+        }
+
+        await tx.journalEntry.create({
+            data: {
+                description: `Payroll Accrual - ${periodStr} - ${slip.user.full_name}`,
+                amount: totalExpense,
+                type: 'EXPENSE',
+                created_by_id: 'SYSTEM',
+                lines: { create: realAccrualLines }
+            }
+        });
+
+        // Update Balances for Accrual
+        await tx.ledger.update({ where: { id: salaryExpenseLedger.id }, data: { balance: { increment: totalExpense } } });
+        // Wait. In previous `createLedger` logic I saw:
+        // Dr -> Increment. Cr -> Decrement.
+        // So if Liability is Cr, Balance Decreases (becomes more negative).
+        // If Asset is Dr, Balance Increases (becomes more positive).
+        // So I should DECREMENT for Credit.
+        await tx.ledger.update({ where: { id: staffLedger.id }, data: { balance: { decrement: slip.net_pay } } });
+
+        if (slip.advance_salary > 0 && advanceLedger) {
+            await tx.ledger.update({ where: { id: advanceLedger.id }, data: { balance: { decrement: slip.advance_salary } } });
+        }
+
+
+        // --- ENTRY 2: PAYMENT (Dr Staff, Cr Bank) ---
+        // This clears the liability and reduces bank
+        const paymentLines = [
+            { ledger_id: staffLedger.id, debit: slip.net_pay, credit: 0 },
+            { ledger_id: bankLedger.id, credit: slip.net_pay, debit: 0 }
+        ];
+
+        await tx.journalEntry.create({
+            data: {
+                description: `Payroll Payment - ${periodStr} - ${slip.user.full_name}`,
+                amount: slip.net_pay,
+                type: 'PAYMENT',
+                created_by_id: 'SYSTEM',
+                lines: { create: paymentLines }
+            }
+        });
+
+        // Update Balances for Payment
+        await tx.ledger.update({ where: { id: staffLedger.id }, data: { balance: { increment: slip.net_pay } } }); // Debit = Increment (Reduces negative liability towards 0)
+        await tx.ledger.update({ where: { id: bankLedger.id }, data: { balance: { decrement: slip.net_pay } } }); // Credit = Decrement (Reduces Asset)
+
+        // 2. Mark Slip as PAID
+        return tx.payrollSlip.update({
+            where: { id: slipId },
+            data: { status: 'PAID' }
+        });
+    });
+};
+
+export const rejectIndividualSlip = async (slipId: string) => {
+    const slip = await prisma.payrollSlip.findUnique({ where: { id: slipId } });
+    if (!slip) throw new Error("Slip not found");
+    if (slip.status === 'PAID') throw new Error("Cannot reject a paid slip");
+
+    return prisma.payrollSlip.delete({ where: { id: slipId } });
 };

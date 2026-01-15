@@ -96,8 +96,52 @@ export const getPayrollRun = async (req: Request, res: Response) => {
 
 export const getPayrollHistory = async (req: Request, res: Response) => {
     try {
-        // TODO: Implement list of past runs
-        res.json([]);
+        const { userId, year, month } = req.query; // Filters
+
+        // RBAC Logic
+        // 1. If Admin/Manager, can query any userId (or all if undefined)
+        // 2. If Staff, can ONLY query their own userId
+
+        let targetUserId: string | undefined = undefined;
+
+        if (req.user!.role === 'ADMIN' || req.user!.role === 'MANAGER' || req.user!.role === 'DEVELOPER_ADMIN') {
+            if (userId && typeof userId === 'string') {
+                targetUserId = userId === 'me' ? req.user!.id : userId;
+            }
+            // If userId undefined, fetched ALL (Admin view all slips? Or maybe we enforce filtering for optimized UX? Service handles optional userId)
+        } else {
+            // Staff
+            if (userId && userId !== 'me' && userId !== req.user!.id) {
+                return res.status(403).json({ message: "Forbidden: Cannot view other's slips" });
+            }
+            targetUserId = req.user!.id;
+        }
+
+        const y = year ? parseInt(year as string) : new Date().getFullYear();
+        const m = month ? parseInt(month as string) : undefined;
+
+        const slips = await payrollService.getPayrollSlips(targetUserId, y, m);
+        res.json(slips);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const processSlip = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const slip = await payrollService.processIndividualSlip(id);
+        res.json(slip);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const rejectSlip = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        await payrollService.rejectIndividualSlip(id);
+        res.json({ message: "Slip rejected" });
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }

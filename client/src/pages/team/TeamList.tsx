@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useLocation } from 'react-router-dom';
-import { Search, UserPlus, Filter, Mail, Phone, Trash2, Edit, ChevronDown, ChevronRight, LogOut, Save } from 'lucide-react';
+import { Search, UserPlus, Filter, Mail, Phone, Trash2, Edit, ChevronDown, ChevronRight, LogOut, Save, CheckCircle } from 'lucide-react';
 import api from '../../lib/api';
 import { getAssetUrl } from '../../lib/utils';
 import OnboardingModal from './OnboardingModal';
@@ -122,12 +122,16 @@ const TeamList = () => {
             const matchesSearch = fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 designation.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 staffNo.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesDept = filterDept === 'ALL' || staff.department === filterDept;
+            const matchesDept = filterDept === 'ALL' || filterDept === 'ALL_LIST' || staff.department === filterDept;
             return matchesSearch && matchesDept;
         });
     }, [staffList, searchTerm, filterDept]);
 
     const groupedStaff = useMemo(() => {
+        if (filterDept === 'ALL_LIST') {
+            return { 'All Team Members': filteredStaff };
+        }
+
         const groups: Record<string, any[]> = {};
         const depts = ['MANAGEMENT', 'MARKETING', 'CREATIVE', 'WEB_SEO', 'WEB', 'ADMIN'];
 
@@ -141,7 +145,7 @@ const TeamList = () => {
         });
 
         return groups;
-    }, [filteredStaff]);
+    }, [filteredStaff, filterDept]);
 
     return (
         <div className="space-y-6">
@@ -218,7 +222,8 @@ const TeamList = () => {
                         value={filterDept}
                         onChange={(e) => setFilterDept(e.target.value)}
                     >
-                        <option value="ALL">All Departments</option>
+                        <option value="ALL">All Departments (Grouped)</option>
+                        <option value="ALL_LIST">All Team Members (List)</option>
                         <option value="MANAGEMENT">Management</option>
                         <option value="MARKETING">Marketing</option>
                         <option value="CREATIVE">Creative</option>
@@ -253,9 +258,10 @@ const TeamList = () => {
                                 {isExpanded && (
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-sm text-left">
-                                            <thead className="bg-gray-50/50 text-gray-500 font-medium border-b">
+                                            <thead className="bg-gray-50/50 dark:bg-slate-800/50 text-gray-500 dark:text-gray-400 font-medium border-b dark:border-gray-700">
                                                 <tr>
                                                     <th className="px-4 py-3 pl-6">Name</th>
+                                                    <th className="px-4 py-3 text-center">Ledger</th>
                                                     <th className="px-4 py-3">ID Number</th>
                                                     <th className="px-4 py-3">Designation</th>
                                                     <th className="px-4 py-3">System Role</th>
@@ -283,31 +289,44 @@ const TeamList = () => {
                                                                         )}
                                                                     </div>
                                                                     <div>
-                                                                        <div className="font-medium text-gray-900">{user.full_name || 'Unknown'}</div>
+                                                                        <div className="font-medium text-gray-900 flex items-center gap-2">
+                                                                            {user.full_name || 'Unknown'}
+                                                                        </div>
                                                                         <Link to={`/dashboard/team/${member.id}`} className="text-[10px] text-primary hover:underline">View Profile</Link>
                                                                     </div>
                                                                 </div>
                                                             </td>
+                                                            <td className="px-4 py-3 text-center">
+                                                                {member.ledger_options?.create ? (
+                                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 text-[10px] font-medium" title="Ledger Account Active">
+                                                                        <CheckCircle size={10} className="fill-green-100" /> Active
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="text-gray-300 text-[10px]">-</span>
+                                                                )}
+                                                            </td>
                                                             <td className="px-4 py-3 text-gray-600 font-mono text-xs">{member.staff_number}</td>
                                                             <td className="px-4 py-3 text-gray-600">{member.designation}</td>
                                                             <td className="px-4 py-3">
-                                                                <select
-                                                                    value={currentRole}
-                                                                    onChange={(e) => handleRoleChange(member.id, e.target.value)}
-                                                                    className={`bg-transparent border-none text-xs font-medium focus:ring-0 cursor-pointer hover:bg-gray-100 rounded px-1 py-0.5 ${currentRole === 'DEVELOPER_ADMIN'
-                                                                            ? 'bg-red-600 text-white font-bold px-2 py-1 rounded shadow-sm hover:bg-red-700'
-                                                                            : (isChanged ? 'text-amber-600 font-bold' : 'text-gray-700')
-                                                                        }`}
-                                                                >
-                                                                    <option value="DEVELOPER_ADMIN" className="font-bold text-red-600">★ Developer Admin</option>
-                                                                    <option value="ADMIN">Admin</option>
-                                                                    <option value="MANAGER">Manager</option>
-                                                                    <option value="MARKETING_EXEC">Marketing Exec</option>
-                                                                    <option value="DM_EXECUTIVE">DM Executive</option>
-                                                                    <option value="WEB_SEO_EXECUTIVE">SEO Executive</option>
-                                                                    <option value="CREATIVE_DESIGNER">Designer</option>
-                                                                    <option value="OPERATIONS_EXECUTIVE">Operations</option>
-                                                                </select>
+                                                                {currentRole === 'DEVELOPER_ADMIN' ? (
+                                                                    <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-red-600 text-white font-bold text-xs shadow-sm w-fit opacity-100 cursor-not-allowed select-none">
+                                                                        <span>Developer Admin</span>
+                                                                    </div>
+                                                                ) : (
+                                                                    <select
+                                                                        value={currentRole}
+                                                                        onChange={(e) => handleRoleChange(member.id, e.target.value)}
+                                                                        className={`border-none text-xs font-medium focus:ring-0 cursor-pointer rounded px-1 py-0.5 transition-colors bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 ${isChanged ? 'text-amber-600 font-bold' : 'text-gray-700 dark:text-gray-300'}`}
+                                                                    >
+                                                                        <option value="ADMIN">Admin</option>
+                                                                        <option value="MANAGER">Manager</option>
+                                                                        <option value="MARKETING_EXEC">Marketing Exec</option>
+                                                                        <option value="DM_EXECUTIVE">DM Executive</option>
+                                                                        <option value="WEB_SEO_EXECUTIVE">SEO Executive</option>
+                                                                        <option value="CREATIVE_DESIGNER">Designer</option>
+                                                                        <option value="OPERATIONS_EXECUTIVE">Operations</option>
+                                                                    </select>
+                                                                )}
                                                             </td>
                                                             <td className="px-4 py-3">
                                                                 <div className="flex flex-col gap-0.5 text-xs text-gray-500">
@@ -331,24 +350,28 @@ const TeamList = () => {
                                                                     >
                                                                         <Edit size={16} />
                                                                     </Link>
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            if (window.confirm("Are you sure you want to delete this team member?")) {
-                                                                                handleDelete(member.id);
-                                                                            }
-                                                                        }}
-                                                                        className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
-                                                                        title="Delete Member"
-                                                                    >
-                                                                        <Trash2 size={16} />
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={() => handleInitiateExit(member)}
-                                                                        className="p-1 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded"
-                                                                        title="Initiate Exit"
-                                                                    >
-                                                                        <LogOut size={16} />
-                                                                    </button>
+                                                                    {currentRole !== 'DEVELOPER_ADMIN' && (
+                                                                        <>
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    if (window.confirm("Are you sure you want to delete this team member?")) {
+                                                                                        handleDelete(member.id);
+                                                                                    }
+                                                                                }}
+                                                                                className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
+                                                                                title="Delete Member"
+                                                                            >
+                                                                                <Trash2 size={16} />
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => handleInitiateExit(member)}
+                                                                                className="p-1 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded"
+                                                                                title="Initiate Exit"
+                                                                            >
+                                                                                <LogOut size={16} />
+                                                                            </button>
+                                                                        </>
+                                                                    )}
                                                                 </div>
                                                             </td>
                                                         </tr>

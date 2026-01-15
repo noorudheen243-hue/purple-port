@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { useQuery } from '@tanstack/react-query';
 import api from '../../lib/api';
-import { User, Briefcase, CreditCard, Check, X } from 'lucide-react';
+import { User, Briefcase, CreditCard, Check, X, GraduationCap } from 'lucide-react';
 
 interface OnboardingModalProps {
     onClose: () => void;
@@ -18,7 +19,13 @@ const steps = [
 const OnboardingModal: React.FC<OnboardingModalProps> = ({ onClose, onSuccess }) => {
     const [step, setStep] = useState(1);
     const { register, handleSubmit, watch, trigger, formState: { errors } } = useForm();
+    const [filterAccountType, setFilterAccountType] = useState<string>('');
     const formData = watch();
+
+    const { data: accountHeads } = useQuery({
+        queryKey: ['accountHeads'],
+        queryFn: async () => (await api.get('/accounting/heads')).data
+    });
 
     const nextStep = async () => {
         const valid = await trigger();
@@ -59,7 +66,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ onClose, onSuccess })
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full p-0 overflow-hidden">
+            <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden">
                 {/* Header */}
                 <div className="bg-slate-900 text-white p-6 flex justify-between items-center">
                     <div>
@@ -80,7 +87,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ onClose, onSuccess })
                     ))}
                 </div>
 
-                <form onSubmit={handleSubmit(onSubmit)} className="p-6 h-[400px] overflow-y-auto">
+                <form onSubmit={handleSubmit(onSubmit)} className="p-6 overflow-y-auto flex-1">
                     {step === 1 && (
                         <div className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
@@ -151,7 +158,63 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ onClose, onSuccess })
                     )}
 
                     {step === 3 && (
-                        <div className="space-y-4">
+                        <div className="space-y-4 animate-in fade-in slide-in-from-right-4">
+
+                            {/* NEW: Finance Ledger Section */}
+                            <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
+                                <h4 className="font-semibold text-purple-900 mb-3 flex items-center gap-2">
+                                    <GraduationCap size={18} /> Finance Account (Ledger)
+                                </h4>
+
+                                <div className="flex items-start gap-3 mb-4">
+                                    <input
+                                        type="checkbox"
+                                        {...register('ledger_options.create')}
+                                        className="mt-1 w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+                                        id="create_staff_ledger_wiz"
+                                    />
+                                    <div>
+                                        <label htmlFor="create_staff_ledger_wiz" className="font-medium text-gray-900 cursor-pointer text-sm">Create/Link Ledger Account</label>
+                                        <p className="text-xs text-gray-500">Track salary payable & advances automatically.</p>
+                                    </div>
+                                </div>
+
+                                {watch('ledger_options.create') && (
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-xs font-semibold text-gray-600 mb-1 block">Filter Type</label>
+                                            <select
+                                                value={filterAccountType}
+                                                onChange={(e) => setFilterAccountType(e.target.value)}
+                                                className="w-full border p-2 rounded text-sm bg-white"
+                                            >
+                                                <option value="">All Types</option>
+                                                <option value="LIABILITY">Liability</option>
+                                                <option value="ASSET">Asset (Advances)</option>
+                                                <option value="EXPENSE">Expense</option>
+                                                <option value="SoW">Salary & Wages</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-semibold text-gray-600 mb-1 block">Select Account Head <span className="text-red-500">*</span></label>
+                                            <select
+                                                {...register('ledger_options.head_id')}
+                                                className="w-full border p-2 rounded text-sm bg-white"
+                                            >
+                                                <option value="">-- Select Head --</option>
+                                                {accountHeads
+                                                    ?.filter((h: any) => !filterAccountType || h.type === filterAccountType || (filterAccountType === 'SoW' && h.name.includes('Salary')))
+                                                    .map((head: any) => (
+                                                        <option key={head.id} value={head.id}>
+                                                            {head.name} ({head.code})
+                                                        </option>
+                                                    ))}
+                                            </select>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium">Salary Type</label>

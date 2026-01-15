@@ -12,6 +12,7 @@ declare global {
                 id: string;
                 role: string;
                 department: string;
+                linked_client_id?: string | null;
             };
         }
     }
@@ -34,14 +35,15 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
 
             const user = await prisma.user.findUnique({
                 where: { id: decoded.userId },
-                select: { id: true, role: true, department: true }, // Select minimal fields
+                select: { id: true, role: true, department: true, linked_client_id: true }, // Select minimal fields
             });
 
             if (user) {
                 req.user = {
                     id: user.id,
                     role: user.role,
-                    department: user.department
+                    department: user.department,
+                    linked_client_id: user.linked_client_id
                 };
                 next();
             } else {

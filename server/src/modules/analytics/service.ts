@@ -46,11 +46,15 @@ export const getManagerStats = async () => {
 };
 
 export const getTeamPerformanceStats = async (department?: string, startDate?: Date, endDate?: Date) => {
-    // 1. Fetch Staff (Filter by Department if provided)
-    const whereUser: any = {};
-    if (department && department !== 'ALL') {
-        whereUser.department = department;
-    }
+    // 1. Fetch Staff (Creative, Marketing, SEO)
+    const targetDepartments = ['CREATIVE', 'MARKETING', 'WEB_SEO'];
+    const whereUser: any = {
+        department: { in: targetDepartments },
+        role: { not: 'ADMIN' },
+        staffProfile: {
+            staff_number: { notIn: ['QIX0001', 'QIX0002'] }
+        }
+    };
 
     const staff = await prisma.user.findMany({
         where: whereUser,
@@ -69,6 +73,7 @@ export const getTeamPerformanceStats = async (department?: string, startDate?: D
     const staffIds = staff.map(u => u.id);
 
     // 2. Fetch Tasks (Filter by Date if provided)
+    // We want tasks ASSIGNED TO (assignee_id) the creative staff (Workload View)
     const whereTask: any = {
         assignee_id: { in: staffIds }
     };
@@ -83,7 +88,8 @@ export const getTeamPerformanceStats = async (department?: string, startDate?: D
     const tasks = await prisma.task.findMany({
         where: whereTask,
         select: {
-            assignee_id: true,
+            id: true,
+            assignee_id: true, // The "Assignee"
             status: true,
             nature: true,
             sla_status: true,
@@ -94,8 +100,9 @@ export const getTeamPerformanceStats = async (department?: string, startDate?: D
         }
     });
 
-    // 3. Aggregate Data per User
+    // 3. Aggregate Data per User (Assignee)
     const performanceData = staff.map(user => {
+        // Tasks assigned to this user
         const userTasks = tasks.filter(t => t.assignee_id === user.id);
         const totalTasks = userTasks.length;
 
@@ -125,26 +132,18 @@ export const getTeamPerformanceStats = async (department?: string, startDate?: D
         });
 
         // E. Productivity Score Calculation
-        // Algorithm:
-        // 1. Completion Score (60% weight): Based on % completed vs total assigned
-        // 2. Quality Score (20% weight): Penalize rework and breaches
-        // 3. Efficiency Score (20% weight): Bonus for fast completion (Actual < Est)
-
         const completionRatio = totalTasks > 0 ? completedTasks / totalTasks : 0;
         const completionScore = completionRatio * 100;
 
-        const qualityPenalty = (reworkTasks * 10) + (slaBreaches * 15); // penalize 10pts per rework, 15 per breach
-        const qualityScore = Math.max(0, 100 - qualityPenalty); // Base 100, subtract penalties
+        const qualityPenalty = (reworkTasks * 10) + (slaBreaches * 15);
+        const qualityScore = Math.max(0, 100 - qualityPenalty);
 
-        // Efficiency: If you save time, you get points. If you overrun, you lose.
-        // Ratio: Est / Act. >1 is good.
-        let efficiencyScore = 50; // Neutral start
+        let efficiencyScore = 50;
         if (totalActHours > 0) {
             const ratio = totalEstHours / totalActHours;
-            efficiencyScore = Math.min(100, ratio * 50); // scales. 2x speed = 100. 1x = 50.
+            efficiencyScore = Math.min(100, ratio * 50);
         }
 
-        // Final Weighted Score
         const finalScore = Math.round(
             (completionScore * 0.5) +
             (qualityScore * 0.3) +
@@ -200,7 +199,10 @@ export const getAttendanceStats = async () => {
                 gte: todayStart,
                 lte: todayEnd
             },
-            status: { in: ['PRESENT', 'WFH', 'HALF_DAY'] }
+            status: { in: ['PRESENT', 'WFH', 'HALF_DAY'] },
+            check_in: { not: null }, // STRICT FILTER: Only count if actually punched in
+            // Exclude Co-Founders by ID (Safer than nested StaffProfile relation)
+            user_id: { notIn: ['9c2c3b09-1a4d-4e9f-a00a-fdcae89806a1', '0f602110-d76e-4f21-8bcf-c71959dd4015'] }
         },
         include: {
             user: {
@@ -213,12 +215,14 @@ export const getAttendanceStats = async () => {
     const departmentCounts: Record<string, number> = {
         'CREATIVE': 0,
         'MARKETING': 0,
-        'WEB': 0,
+        'WEB': 0, // Should map WEB_SEO to this
         'MANAGEMENT': 0
     };
 
     attendanceRecords.forEach(record => {
-        const dept = record.user.department || 'OTHER';
+        let dept = record.user.department || 'OTHER';
+        if (dept === 'WEB_SEO') dept = 'WEB'; // Map WEB_SEO to WEB
+
         if (departmentCounts[dept] !== undefined) {
             departmentCounts[dept]++;
         }

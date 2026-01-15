@@ -1,15 +1,51 @@
 import 'dotenv/config';
 import app from './app';
-import cors from 'cors';
+// import cors from 'cors'; // cors handled in app.ts
+import { syncBiometrics } from './modules/attendance/biometric.service';
 
 const PORT = process.env.PORT || 4001;
 
-// Override the app's default CORS if possible, or just rely on having updated it in app.ts?
-// Actually, CORS is set in app.ts. Modifying server.ts won't change middleware order.
-// I need to modify app.ts, NOT server.ts.
-// But wait, my previous view showed CORS in `app.ts`.
-// Let's modify `app.ts` via write_to_file to be sure.
+import prisma from './utils/prisma';
+// Biometric service might keep socket open, so we don't strictly close it here as it closes after sync, 
+// but we ensure process exits cleanly.
 
-app.listen(PORT, () => {
+import http from 'http';
+import SocketService from './socket';
+
+const server = http.createServer(app);
+
+// Initialize Socket.IO
+SocketService.initialize(server, [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:4001',
+    'http://72.61.246.22',
+    process.env.CLIENT_URL || ''
+].filter(Boolean));
+
+const runningServer = server.listen(PORT, async () => {
     console.log(`Server running on port ${PORT}`);
+
+    // Auto-Run Biometric Sync on Startup (Non-blocking)
+    // syncBiometrics().catch(err => console.error('Startup Sync Error:', err));
 });
+
+const shutdown = async () => {
+    console.log('--- Stopping Server ---');
+    runningServer.close(() => {
+        console.log('HTTP Server closed.');
+    });
+
+    try {
+        await prisma.$disconnect();
+        console.log('Database disconnected.');
+    } catch (e) {
+        console.error('Error disconnecting DB:', e);
+    }
+
+    process.exit(0);
+};
+
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
+

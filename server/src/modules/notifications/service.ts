@@ -37,3 +37,31 @@ export const markAllAsRead = async (userId: string) => {
         data: { read: true }
     });
 };
+// Notify All Admins/Managers
+export const notifyAdmins = async (type: string, message: string, link?: string) => {
+    // Find all users with administrative roles
+    const admins = await prisma.user.findMany({
+        where: {
+            role: {
+                in: ['ADMIN', 'MANAGER', 'DEVELOPER_ADMIN']
+            }
+        },
+        select: { id: true }
+    });
+
+    // Create notifications for all of them
+    const notifications = admins.map(admin => ({
+        user_id: admin.id,
+        type,
+        message,
+        link,
+        read: false,
+        createdAt: new Date()
+    }));
+
+    if (notifications.length > 0) {
+        await prisma.notification.createMany({
+            data: notifications
+        });
+    }
+};

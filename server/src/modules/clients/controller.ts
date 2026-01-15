@@ -13,10 +13,13 @@ const createClientSchema = z.object({
     contact_person: z.string().optional().or(z.literal('')),
     contact_number: z.string().optional().or(z.literal('')),
     company_email: z.string().email().optional().or(z.literal('')).or(z.undefined()),
+    address: z.string().optional().or(z.literal('')).or(z.undefined()), // Added Address
 
     // Operating Location
-    operating_country: z.string().optional().or(z.literal('')).or(z.undefined()),
-    operating_state: z.string().optional().or(z.literal('')).or(z.undefined()),
+    operating_locations: z.array(z.object({
+        country: z.string(),
+        state: z.string().optional()
+    })).optional(),
 
     // Extended JSON Fields
     service_engagement: z.array(z.string()).optional(),
@@ -47,7 +50,13 @@ const createClientSchema = z.object({
     content_strategies: z.array(z.object({
         type: z.string(),
         quantity: z.number().min(0)
-    })).optional()
+    })).optional(),
+
+    // Ledger Options
+    ledger_options: z.object({
+        create: z.boolean(),
+        head_id: z.string().optional()
+    }).optional()
 });
 
 export const createClient = async (req: Request, res: Response) => {
@@ -64,7 +73,9 @@ export const createClient = async (req: Request, res: Response) => {
             contact_person: validatedData.contact_person || undefined,
             contact_number: validatedData.contact_number || undefined,
             company_email: validatedData.company_email || undefined,
+            address: validatedData.address || undefined, // Added Address
 
+            operating_locations_json: validatedData.operating_locations ? JSON.stringify(validatedData.operating_locations) : undefined,
             service_engagement: validatedData.service_engagement ? JSON.stringify(validatedData.service_engagement) : undefined,
             social_links: validatedData.social_links ? JSON.stringify(validatedData.social_links) : undefined,
             competitor_info: validatedData.competitor_info ? JSON.stringify(validatedData.competitor_info) : undefined,
@@ -76,8 +87,10 @@ export const createClient = async (req: Request, res: Response) => {
         delete dbData.assigned_staff_ids;
         delete dbData.ad_accounts;
         delete dbData.content_strategies; // Prevent Prisma Unknown Argument Error
+        delete dbData.operating_locations; // Remove array field
+        delete dbData.ledger_options; // Remove from Client Data
 
-        const client = await clientService.createClient(dbData, validatedData.assigned_staff_ids, validatedData.ad_accounts);
+        const client = await clientService.createClient(dbData, validatedData.assigned_staff_ids, validatedData.ad_accounts, validatedData.ledger_options);
 
         // Handle Content Strategy Creation
         if (validatedData.content_strategies && validatedData.content_strategies.length > 0) {
@@ -126,10 +139,13 @@ export const updateClient = async (req: Request, res: Response) => {
             ...validatedData,
         };
 
-        if (validatedData.service_engagement) dbData.service_engagement = JSON.stringify(validatedData.service_engagement);
-        if (validatedData.social_links) dbData.social_links = JSON.stringify(validatedData.social_links);
-        if (validatedData.competitor_info) dbData.competitor_info = JSON.stringify(validatedData.competitor_info);
-        if (validatedData.customer_avatar) dbData.customer_avatar = JSON.stringify(validatedData.customer_avatar);
+        if (validatedData.service_engagement) dbData.service_engagement = validatedData.service_engagement;
+        if (validatedData.social_links) dbData.social_links = validatedData.social_links;
+        if (validatedData.competitor_info) dbData.competitor_info = validatedData.competitor_info;
+        if (validatedData.customer_avatar) dbData.customer_avatar = validatedData.customer_avatar;
+        if (validatedData.operating_locations) {
+            dbData.operating_locations = validatedData.operating_locations;
+        }
 
         // Ensure ad_accounts is passed through if present
         if (validatedData.ad_accounts) dbData.ad_accounts = validatedData.ad_accounts;
@@ -151,6 +167,44 @@ export const deleteClient = async (req: Request, res: Response) => {
     try {
         await clientService.deleteClient(req.params.id);
         res.json({ message: 'Client deleted successfully' });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+
+export const generateCredentials = async (req: Request, res: Response) => {
+    try {
+        const results = await clientService.generateClientCredentials();
+        res.json(results);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const listCredentials = async (req: Request, res: Response) => {
+    try {
+        const credentials = await clientService.getClientCredentials();
+        res.json(credentials);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const updateCredentials = async (req: Request, res: Response) => {
+    try {
+        const { username, password } = req.body;
+        const result = await clientService.updateClientCredentials(req.params.id, { username, password });
+        res.json(result);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const getNextCode = async (req: Request, res: Response) => {
+    try {
+        const code = await clientService.getNextClientCode();
+        res.json({ code });
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }

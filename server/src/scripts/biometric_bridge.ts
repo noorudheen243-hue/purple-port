@@ -5,7 +5,7 @@ import axios from 'axios';
 // --- CONFIGURATION ---
 const DEVICE_IP = '192.168.1.201'; // Local Device IP
 const DEVICE_PORT = 4370;
-const SERVER_URL = 'http://localhost:4001/api'; // CHANGE THIS to your Cloud URL (e.g., https://app.antigravity.com/api)
+const SERVER_URL = 'http://72.61.246.22/api'; // Live VPS Backend URL
 const API_TOKEN = ''; // Optionally use a long-lived JWT, or we login automatically below.
 
 // Login Credentials for the Bridge to authenticate with Server

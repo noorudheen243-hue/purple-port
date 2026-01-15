@@ -68,8 +68,9 @@ export const loginUser = async (req: Request, res: Response) => {
             console.log(`[LOGIN DEBUG] Password Match: ${isMatch}`);
 
             if (isMatch) {
-                generateToken(res, user.id, user.role);
+                const token = generateToken(res, user.id, user.role);
                 res.json({
+                    token,
                     id: user.id,
                     full_name: user.full_name,
                     email: user.email,

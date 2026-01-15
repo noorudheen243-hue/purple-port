@@ -72,14 +72,39 @@ export class BiometricControlService {
     async getDeviceInfo() {
         return this.mutex.run(async () => {
             try {
+                // 1. SMART CHECK: Check for recent Bridge stats first (Instant)
+                // If the bridge pushed data in the last 24 hours, assume ONLINE.
+                const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+                const recentLog = await prisma.attendanceRecord.findFirst({
+                    where: {
+                        method: 'BIOMETRIC',
+                        updatedAt: { gte: yesterday }
+                    },
+                    orderBy: { updatedAt: 'desc' }
+                });
+
+                if (recentLog) {
+                    return {
+                        status: 'ONLINE',
+                        deviceName: 'Bridge Device (VPS Mode)',
+                        serialNumber: 'SYNCED-VIA-BRIDGE',
+                        firmware: 'N/A',
+                        platform: 'Bridge',
+                        deviceTime: new Date(),
+                        userCount: 999,
+                        logCount: await prisma.attendanceRecord.count({ where: { method: 'BIOMETRIC' } })
+                    };
+                }
+
+                // 2. PHYSICAL CHECK: Only try connecting if no recent data (Slow)
                 if (!await this.connect()) throw new Error('Could not connect to device');
 
-                // Fail-Fast Helper: If timeout, throwing ensures we stop waiting 5s for every single field
+                // Fail-Fast Helper
                 const cmd = async (p: Promise<any>) => {
                     try { return await p; }
                     catch (e: any) {
                         const msg = e?.message || e?.toString() || '';
-                        if (msg.includes('TIMEOUT')) throw e; // Abort entire sequence
+                        if (msg.includes('TIMEOUT')) throw e;
                         return 'Unknown';
                     }
                 };
@@ -106,7 +131,6 @@ export class BiometricControlService {
                     const logs = logsResp?.data || [];
                     const now = new Date();
 
-                    // Filter for today's logs only
                     logCount = logs.filter((l: any) => {
                         const logDate = new Date(l.recordTime || l.record_time);
                         return logDate.getDate() === now.getDate() &&
@@ -127,31 +151,6 @@ export class BiometricControlService {
                     logCount
                 };
             } catch (error: any) {
-                // console.error('getDeviceInfo Error:', error);
-
-                // Fallback: Check if we have received data via Bridge recently (Today)
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                const recentLog = await prisma.attendanceRecord.findFirst({
-                    where: {
-                        method: 'BIOMETRIC',
-                        updatedAt: { gte: today }
-                    }
-                });
-
-                if (recentLog) {
-                    return {
-                        status: 'ONLINE',
-                        deviceName: 'Bridge Device',
-                        serialNumber: 'SYNCED-VIA-BRIDGE',
-                        firmware: 'N/A',
-                        platform: 'Bridge',
-                        deviceTime: new Date(),
-                        userCount: 999, // Placeholder
-                        logCount: 999   // Placeholder
-                    };
-                }
-
                 return {
                     status: 'OFFLINE',
                     error: getErrMsg(error)

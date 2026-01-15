@@ -59,18 +59,24 @@ async function main() {
             // ZKLib returns: { userSn, deviceUserId, recordTime, ip } 
 
             // Clean data keys just in case (zkteco-js sometimes uses different casing)
+            if (data.length > 0) {
+                console.log("DEBUG: Sample Logs from Device:");
+                console.log(JSON.stringify(data.slice(0, 3), null, 2));
+            }
+
             const cleanLogs = data.map((l: any) => ({
-                user_id: l.deviceUserId, // Map to what our service expects
-                record_time: l.recordTime,
+                user_id: l.user_id || l.deviceUserId, // Handle both potential casing
+                record_time: l.recordTime || l.record_time, // Handle both
                 ip: l.ip
             }));
 
-            await axios.post(
+            const uploadResp = await axios.post(
                 `${SERVER_URL}/attendance/biometric/upload-logs`,
                 { logs: cleanLogs },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             console.log("Upload Successful!");
+            console.log("Server Response:", JSON.stringify(uploadResp.data, null, 2));
 
             // Optional: Clear logs from device to prevent pile-up?
             // console.log("Clearing Device Logs...");

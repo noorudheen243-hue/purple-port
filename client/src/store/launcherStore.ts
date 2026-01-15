@@ -98,7 +98,12 @@ export const useLauncherStore = create<LauncherStore>((set, get) => ({
         get().recordUsage(app.id);
 
         if (app.type === 'WEB' && app.url) {
-            window.open(app.url, '_blank');
+            // Fix: Internal Routes should open in same tab to avoid popup blockers and improve UX
+            if (app.url.startsWith('/')) {
+                window.location.href = app.url;
+            } else {
+                window.open(app.url, '_blank');
+            }
         } else if (app.type === 'LOCAL' && app.command) {
             // Attempt Local Execution via Server (Only works if Hosting = Client)
             try {

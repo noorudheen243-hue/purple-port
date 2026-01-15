@@ -44,6 +44,34 @@ export const getApps = async (userId: string) => {
         });
     }
 
+    // Fix: Convert Notepad to Web Tool
+    const oldNotepad = await prisma.launcherApp.findFirst({ where: { name: 'Notepad', is_global: true } });
+    if (oldNotepad && oldNotepad.type === 'LOCAL') {
+        await prisma.launcherApp.update({
+            where: { id: oldNotepad.id },
+            data: {
+                type: 'WEB',
+                url: '/dashboard/tools/notepad', // Internal Route
+                command: null,
+                icon: 'notepad' // Ensure icon key matches frontend
+            }
+        });
+    }
+
+    // Fix: Convert Calculator to Web Tool
+    const oldCalc = await prisma.launcherApp.findFirst({ where: { name: 'Calculator', is_global: true } });
+    if (oldCalc && oldCalc.type === 'LOCAL') {
+        await prisma.launcherApp.update({
+            where: { id: oldCalc.id },
+            data: {
+                type: 'WEB',
+                url: '/dashboard/tools/calculator', // Internal Route
+                command: null,
+                icon: 'calculator'
+            }
+        });
+    }
+
     if (globalCount === 0) {
         await initDefaults();
     }

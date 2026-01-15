@@ -41,6 +41,9 @@ const OnboardingPage = lazy(() => import('../team/OnboardingPage'));
 const DataSync = lazy(() => import('../admin/DataSync')); // [New Route]
 const SettingsPage = lazy(() => import('../settings/index'));
 
+const CalculatorTool = lazy(() => import('../tools/CalculatorTool'));
+const NotepadTool = lazy(() => import('../tools/NotepadTool'));
+
 
 // Advanced Task Views
 const TaskDashboard = lazy(() => import('../tasks/TaskDashboard'));
@@ -176,6 +179,10 @@ const Dashboard = () => {
 
                     <Route path="admin/sync" element={<DataSync />} />
                     <Route path="settings" element={<SettingsPage />} />
+
+                    {/* Launcher Tools */}
+                    <Route path="tools/calculator" element={<CalculatorTool />} />
+                    <Route path="tools/notepad" element={<NotepadTool />} />
                 </Routes>
             </Suspense>
         </DashboardLayout>

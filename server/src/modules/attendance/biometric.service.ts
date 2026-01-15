@@ -128,6 +128,30 @@ export class BiometricControlService {
                 };
             } catch (error: any) {
                 // console.error('getDeviceInfo Error:', error);
+
+                // Fallback: Check if we have received data via Bridge recently (Today)
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const recentLog = await prisma.attendanceRecord.findFirst({
+                    where: {
+                        method: 'BIOMETRIC',
+                        updatedAt: { gte: today }
+                    }
+                });
+
+                if (recentLog) {
+                    return {
+                        status: 'ONLINE',
+                        deviceName: 'Bridge Device',
+                        serialNumber: 'SYNCED-VIA-BRIDGE',
+                        firmware: 'N/A',
+                        platform: 'Bridge',
+                        deviceTime: new Date(),
+                        userCount: 999, // Placeholder
+                        logCount: 999   // Placeholder
+                    };
+                }
+
                 return {
                     status: 'OFFLINE',
                     error: getErrMsg(error)

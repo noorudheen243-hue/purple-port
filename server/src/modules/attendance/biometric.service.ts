@@ -164,6 +164,31 @@ export class BiometricControlService {
     async getDeviceUsers() {
         return this.mutex.run(async () => {
             try {
+                // 1. SMART CHECK: Fail-Fast for Bridge Mode
+                const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+                const recentLog = await prisma.attendanceRecord.findFirst({
+                    where: {
+                        method: 'BIOMETRIC',
+                        updatedAt: { gte: yesterday }
+                    }
+                });
+
+                if (recentLog) {
+                    return {
+                        data: [
+                            {
+                                uid: 1,
+                                userId: 'BRIDGE',
+                                name: 'Device Managed Locally',
+                                role: 0,
+                                cardno: 0,
+                                fingerCount: 0
+                            }
+                        ]
+                    };
+                }
+
+                // 2. Physical Connect
                 if (!await this.connect()) throw new Error('Device offline');
                 const users = await this.zk.getUsers();
 
@@ -176,6 +201,8 @@ export class BiometricControlService {
 
                 return { data: usersWithFingerBytes };
             } catch (error: any) {
+                // If standard connection fails, we just throw/return error. 
+                // We don't need fallback here because if bridge was active we would have caught it above.
                 throw new Error(`Failed to fetch users: ${getErrMsg(error)}`);
             } finally {
                 await this.disconnect();

@@ -86,24 +86,27 @@ export const updateTask = async (req: Request, res: Response) => {
     try {
         const validatedData = updateTaskSchema.parse(req.body);
 
-        // Access Control: Creative team can ONLY update STATUS
-        if (isCreative(req)) {
-            const keys = Object.keys(validatedData);
-            const isStatusOnly = keys.length === 1 && keys[0] === 'status';
-
-            if (!isStatusOnly) {
-                return res.status(403).json({ message: 'Creative team can only update task status.' });
-            }
-        }
-
         // Transform relations to Prisma Connect syntax
         const { assignee_id, campaign_id, client_id, due_date, ...rest } = validatedData;
-        const updateData: any = { ...rest };
+        let updateData: any = { ...rest };
 
-        if (assignee_id) updateData.assignee = { connect: { id: assignee_id } };
-        if (campaign_id) updateData.campaign = { connect: { id: campaign_id } };
-        if (client_id) updateData.client = { connect: { id: client_id } };
-        if (due_date) updateData.due_date = new Date(due_date);
+        // Access Control: Creative team can ONLY update STATUS
+        if (isCreative(req)) {
+            // Force strict sanitization: Only allow status
+            updateData = {};
+            if (validatedData.status) updateData.status = validatedData.status;
+
+            // If no status provided (and only defaults/garbage), return error or just success with no-op
+            if (!updateData.status) {
+                return res.status(400).json({ message: 'Creative team must provide a status update.' });
+            }
+        } else {
+            // Regular logic for Admin/Manager
+            if (assignee_id) updateData.assignee = { connect: { id: assignee_id } };
+            if (campaign_id) updateData.campaign = { connect: { id: campaign_id } };
+            if (client_id) updateData.client = { connect: { id: client_id } };
+            if (due_date) updateData.due_date = new Date(due_date);
+        }
 
         const task = await taskService.updateTask(req.params.id, updateData);
 

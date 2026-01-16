@@ -397,6 +397,7 @@ model Campaign {
 
 model Task {
   id              String       @id @default(uuid())
+  sequence_id     Int          @default(0) // Manually incremented in service
   title           String
   description     String?
   status          String       @default("PLANNED") // Enum: TaskStatus

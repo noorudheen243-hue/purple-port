@@ -71,11 +71,20 @@ export const createTask = async (data: Prisma.TaskCreateInput) => {
     // 4. Set Initial SLA Status & Nature Default
     (createData as any).sla_status = 'ON_TRACK';
 
+    // 5. Generate QIX Sequence ID
+    const lastTask = await prisma.task.findFirst({
+        orderBy: { sequence_id: 'desc' },
+        select: { sequence_id: true }
+    });
+    const nextSequenceId = (lastTask?.sequence_id || 0) + 1;
+    (createData as any).sequence_id = nextSequenceId;
+
     const task = await prisma.task.create({
         data: createData,
         include: {
             assignee: { select: { id: true, full_name: true, avatar_url: true } },
             reporter: { select: { id: true, full_name: true, avatar_url: true } },
+            assigned_by: { select: { id: true, full_name: true } }, // Ensure return
         }
     });
 
@@ -134,8 +143,9 @@ export const getTaskById = async (id: string) => {
         include: {
             assignee: { select: { id: true, full_name: true, avatar_url: true } },
             reporter: { select: { id: true, full_name: true, avatar_url: true } },
+            assigned_by: { select: { id: true, full_name: true } }, // Added
             campaign: { include: { client: true } },
-            client: { select: { name: true } }, // Include Direct Client
+            client: { select: { name: true } },
             sub_tasks: true,
             dependencies: {
                 include: { blocking_task: { select: { id: true, title: true, status: true } } }
@@ -149,7 +159,48 @@ export const getTaskById = async (id: string) => {
             },
             assets: {
                 orderBy: { createdAt: 'desc' }
+            },
+            // Check for active timer
+            timeLogs: {
+                where: { end_time: null },
+                take: 1
             }
+        }
+    });
+};
+
+export const startTimer = async (taskId: string, userId: string) => {
+    // Check if already running
+    const activeLog = await prisma.timeLog.findFirst({
+        where: { task_id: taskId, user_id: userId, end_time: null }
+    });
+
+    if (activeLog) return activeLog; // Already running
+
+    return await prisma.timeLog.create({
+        data: {
+            task_id: taskId,
+            user_id: userId,
+            start_time: new Date()
+        }
+    });
+};
+
+export const stopTimer = async (taskId: string, userId: string) => {
+    const activeLog = await prisma.timeLog.findFirst({
+        where: { task_id: taskId, user_id: userId, end_time: null }
+    });
+
+    if (!activeLog) throw new Error("No active timer found");
+
+    const endTime = new Date();
+    const duration = Math.floor((endTime.getTime() - activeLog.start_time.getTime()) / 60000); // Minutes
+
+    return await prisma.timeLog.update({
+        where: { id: activeLog.id },
+        data: {
+            end_time: endTime,
+            duration_minutes: duration
         }
     });
 };

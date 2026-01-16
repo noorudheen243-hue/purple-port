@@ -134,8 +134,27 @@ export const deleteTask = async (req: Request, res: Response) => {
     try {
         if (isCreative(req)) return res.status(403).json({ message: 'Creative team cannot delete tasks.' });
 
-        await taskService.deleteTask(req.params.id);
         res.json({ message: 'Task deleted' });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const startTaskTimer = async (req: Request, res: Response) => {
+    try {
+        if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
+        const timer = await taskService.startTimer(req.params.id, req.user.id);
+        res.json(timer);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const stopTaskTimer = async (req: Request, res: Response) => {
+    try {
+        if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
+        const timer = await taskService.stopTimer(req.params.id, req.user.id);
+        res.json(timer);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }

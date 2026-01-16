@@ -1,5 +1,5 @@
 import express from 'express';
-import { createTask, getTasks, getTask, updateTask, deleteTask, getStats } from './controller';
+import { createTask, getTasks, getTask, updateTask, deleteTask, getStats, startTaskTimer, stopTaskTimer } from './controller';
 import { protect } from '../auth/middleware';
 
 const router = express.Router();
@@ -17,5 +17,8 @@ router.route('/:id')
     .patch(updateTask) // Matches Frontend api.patch
     .put(updateTask)   // Backward compatibility
     .delete(deleteTask);
+
+router.post('/:id/timer/start', startTaskTimer);
+router.post('/:id/timer/stop', stopTaskTimer);
 
 export default router;

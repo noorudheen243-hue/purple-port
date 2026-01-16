@@ -67,7 +67,7 @@ const TaskDetail = () => {
             return await api.post('/assets', {
                 task_id: id,
                 original_name: file.name,
-                file_url: uploadRes.data.file.path, // Adjust based on upload response
+                file_url: uploadRes.data.url, // Corrected: controller returns 'url'
                 file_type: file.type,
                 size_bytes: file.size
             });

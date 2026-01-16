@@ -16,7 +16,6 @@ echo "🏗️  Building Frontend..."
 cd client
 echo "   - Installing dependencies..."
 npm install
-npm install react-draggable @types/react-draggable --force
 echo "   - Compiling React app..."
 npm run build
 cd ..

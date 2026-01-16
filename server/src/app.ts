@@ -102,12 +102,28 @@ app.use('/api/launcher', launcherRoutes);
 // --- Production: Serve Frontend ---
 // In production, we assume the React build is copied to a 'public' folder in the root
 if (process.env.NODE_ENV === 'production') {
+    // Serve static files from the React app
     const publicPath = path.join(process.cwd(), 'public');
-    app.use(express.static(publicPath));
+    app.use(express.static(publicPath, {
+        setHeaders: (res, filePath) => {
+            if (filePath.endsWith('index.html')) {
+                res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+                res.setHeader('Pragma', 'no-cache');
+                res.setHeader('Expires', '0');
+            }
+        }
+    }));
 
-    // SPA Catch-all: Any request not handled by API or static files returns index.html
-    app.get('*', (req, res) => {
-        res.sendFile(path.join(publicPath, 'index.html'));
+    // The "catchall" handler: for any request that doesn't
+    // match one above, send back React's index.html file.
+    app.get('*', (req: express.Request, res: express.Response) => {
+        res.sendFile(path.join(publicPath, 'index.html'), {
+            headers: {
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0'
+            }
+        });
     });
 }
 

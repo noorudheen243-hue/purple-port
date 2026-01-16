@@ -79,19 +79,23 @@ export const createTask = async (data: Prisma.TaskCreateInput) => {
         }
     });
 
-    if (task.assignee_id) {
-        await createNotification(
-            task.assignee_id,
-            'TASK_ASSIGNED',
-            `You have been assigned to task: ${task.title}`,
-            `/dashboard/tasks/${task.id}`
-        );
-        // Real-time Push
-        SocketService.emitToUser(task.assignee_id, 'task_created', task);
-    }
+    try {
+        if (task.assignee_id) {
+            await createNotification(
+                task.assignee_id,
+                'TASK_ASSIGNED',
+                `You have been assigned to task: ${task.title}`,
+                `/dashboard/tasks/${task.id}`
+            );
+            // Real-time Push
+            SocketService.emitToUser(task.assignee_id, 'task_created', task);
+        }
 
-    // Also emit to the reporter (creator) so their list updates instantly
-    SocketService.emitToUser(task.reporter_id, 'task_created', task);
+        // Also emit to the reporter (creator) so their list updates instantly
+        SocketService.emitToUser(task.reporter_id, 'task_created', task);
+    } catch (e) {
+        console.error("Notification Error (Create Task):", e);
+    }
 
     return task;
 };
@@ -116,7 +120,8 @@ export const getTasks = async (filters: {
         include: {
             assignee: { select: { id: true, full_name: true, avatar_url: true } },
             reporter: { select: { id: true, full_name: true, avatar_url: true } },
-            campaign: { include: { client: true } }, // Include Client for display
+            campaign: { include: { client: true } }, // Include Client for display (Campaign Tasks)
+            client: { select: { name: true } }, // Include Direct Client for display (General Tasks)
             _count: { select: { comments: true, assets: true, sub_tasks: true } }
         },
         orderBy: { createdAt: 'desc' }
@@ -130,6 +135,7 @@ export const getTaskById = async (id: string) => {
             assignee: { select: { id: true, full_name: true, avatar_url: true } },
             reporter: { select: { id: true, full_name: true, avatar_url: true } },
             campaign: { include: { client: true } },
+            client: { select: { name: true } }, // Include Direct Client
             sub_tasks: true,
             dependencies: {
                 include: { blocking_task: { select: { id: true, title: true, status: true } } }
@@ -172,32 +178,36 @@ export const updateTask = async (id: string, data: Prisma.TaskUpdateInput) => {
         }
     });
 
-    if (existingTask) {
-        // Notify new assignee
-        if (updatedTask.assignee_id && updatedTask.assignee_id !== existingTask.assignee_id) {
-            await createNotification(
-                updatedTask.assignee_id,
-                'TASK_ASSIGNED',
-                `You have been assigned to task: ${updatedTask.title}`,
-                `/dashboard/tasks/${updatedTask.id}`
-            );
-            SocketService.emitToUser(updatedTask.assignee_id, 'task_created', updatedTask); // Treat as new for them
-        }
+    try {
+        if (existingTask) {
+            // Notify new assignee
+            if (updatedTask.assignee_id && updatedTask.assignee_id !== existingTask.assignee_id) {
+                await createNotification(
+                    updatedTask.assignee_id,
+                    'TASK_ASSIGNED',
+                    `You have been assigned to task: ${updatedTask.title}`,
+                    `/dashboard/tasks/${updatedTask.id}`
+                );
+                SocketService.emitToUser(updatedTask.assignee_id, 'task_created', updatedTask); // Treat as new for them
+            }
 
-        // Notify reporter on status change
-        if (updatedTask.status !== existingTask.status) {
-            await createNotification(
-                updatedTask.reporter_id,
-                'TASK_UPDATED',
-                `Task "${updatedTask.title}" is now ${updatedTask.status}`,
-                `/dashboard/tasks/${updatedTask.id}`
-            );
-        }
+            // Notify reporter on status change
+            if (updatedTask.status !== existingTask.status) {
+                await createNotification(
+                    updatedTask.reporter_id,
+                    'TASK_UPDATED',
+                    `Task "${updatedTask.title}" is now ${updatedTask.status}`,
+                    `/dashboard/tasks/${updatedTask.id}`
+                );
+            }
 
-        // General Update Broadcast
-        // Emit to assignee and reporter
-        if (updatedTask.assignee_id) SocketService.emitToUser(updatedTask.assignee_id, 'task_updated', updatedTask);
-        SocketService.emitToUser(updatedTask.reporter_id, 'task_updated', updatedTask);
+            // General Update Broadcast
+            // Emit to assignee and reporter
+            if (updatedTask.assignee_id) SocketService.emitToUser(updatedTask.assignee_id, 'task_updated', updatedTask);
+            SocketService.emitToUser(updatedTask.reporter_id, 'task_updated', updatedTask);
+        }
+    } catch (e) {
+        console.error("Notification Error (Update Task):", e);
     }
 
     return updatedTask;

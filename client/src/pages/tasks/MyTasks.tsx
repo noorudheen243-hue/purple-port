@@ -151,8 +151,12 @@ const MyTasks = () => {
                                         <div className="text-xs text-gray-500 mt-1">{task.type} • {task.nature}</div>
                                     </td>
                                     <td className="p-4">
-                                        <div className="text-sm font-medium text-gray-800">{task.campaign?.client?.name || 'General / No Client'}</div>
-                                        <div className="text-xs text-gray-500">{task.campaign?.title || '-'}</div>
+                                        <div className="text-sm font-medium text-gray-800">
+                                            {task.client?.name || task.campaign?.client?.name || 'General / No Client'}
+                                        </div>
+                                        <div className="text-xs text-gray-500">
+                                            {task.campaign?.title || (task.client ? 'Direct Task' : '-')}
+                                        </div>
                                     </td>
                                     <td className="p-4">
                                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>

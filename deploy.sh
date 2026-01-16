@@ -14,10 +14,16 @@ git pull origin main
 # 2. Build Client
 echo "🏗️  Building Frontend..."
 cd client
+echo "   - Cleaning old build..."
+rm -rf dist
 echo "   - Installing dependencies..."
 npm install
 echo "   - Compiling React app..."
 npm run build
+if [ ! -d "dist" ]; then
+    echo "❌ Error: Client build failed (dist folder missing)"
+    exit 1
+fi
 cd ..
 
 # 3. Build Server

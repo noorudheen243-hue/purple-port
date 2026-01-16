@@ -50,7 +50,17 @@ const MyTasks = () => {
             });
         },
         onError: (err: any) => {
-            Swal.fire('Error', err.response?.data?.message || 'Failed to update status', 'error');
+            console.error("Task Update Failed:", err);
+            let errorMessage = 'Failed to update status';
+
+            if (err.response?.data?.errors) {
+                // Format Zod errors
+                errorMessage = err.response.data.errors.map((e: any) => `${e.path.join('.')}: ${e.message}`).join('\n');
+            } else if (err.response?.data?.message) {
+                errorMessage = err.response.data.message;
+            }
+
+            Swal.fire('Error', errorMessage, 'error');
         }
     });
 

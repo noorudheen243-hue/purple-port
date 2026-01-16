@@ -30,11 +30,12 @@ cd ..
 echo "🏗️  Building Backend..."
 cd server
 echo "   - Installing dependencies..."
+echo "   - Installing dependencies..."
 npm install
-echo "   - Compiling TypeScript..."
-npm run build
 echo "   - Generating Prisma Client..."
 npx prisma generate
+echo "   - Compiling TypeScript..."
+npm run build
 
 # 4. Integrate
 echo "🔗 Integration: Copying Client to Server Public folder..."

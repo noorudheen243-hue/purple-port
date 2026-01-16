@@ -14,7 +14,8 @@ router.get('/stats', getStats);
 
 router.route('/:id')
     .get(getTask)
-    .put(updateTask)
+    .patch(updateTask) // Matches Frontend api.patch
+    .put(updateTask)   // Backward compatibility
     .delete(deleteTask);
 
 export default router;

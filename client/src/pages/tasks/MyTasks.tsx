@@ -52,15 +52,22 @@ const MyTasks = () => {
         onError: (err: any) => {
             console.error("Task Update Failed:", err);
             let errorMessage = 'Failed to update status';
+            const status = err.response?.status;
 
             if (err.response?.data?.errors) {
                 // Format Zod errors
                 errorMessage = err.response.data.errors.map((e: any) => `${e.path.join('.')}: ${e.message}`).join('\n');
             } else if (err.response?.data?.message) {
                 errorMessage = err.response.data.message;
+            } else if (status === 404) {
+                errorMessage = "Server endpoint not found (404). API Route missing?";
+            } else if (status === 405) {
+                errorMessage = "Method Not Allowed (405). PATCH/PUT mismatch?";
+            } else if (status === 0) {
+                errorMessage = "Network Error. Server unreachable or CORS issue.";
             }
 
-            Swal.fire('Error', errorMessage, 'error');
+            Swal.fire('Error', `(${status || '?'}) ${errorMessage}`, 'error');
         }
     });
 

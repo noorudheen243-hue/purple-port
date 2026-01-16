@@ -56,7 +56,7 @@ export const createTask = async (req: Request, res: Response) => {
 
 export const getTasks = async (req: Request, res: Response) => {
     try {
-        const { campaign_id, assignee_id, client_id, status, priority } = req.query;
+        const { campaign_id, assignee_id, client_id, status, priority, start_date, end_date } = req.query;
 
         const tasks = await taskService.getTasks({
             campaign_id: campaign_id as string,
@@ -64,6 +64,8 @@ export const getTasks = async (req: Request, res: Response) => {
             assignee_id: assignee_id as string,
             status: status as any,
             priority: priority as any,
+            startDate: start_date ? new Date(start_date as string) : undefined,
+            endDate: end_date ? new Date(end_date as string) : undefined
         });
 
         res.json(tasks);

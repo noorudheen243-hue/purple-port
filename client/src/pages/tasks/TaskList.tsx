@@ -10,6 +10,7 @@ const COLUMNS = [
     { id: 'ASSIGNED', label: 'Assigned' },
     { id: 'IN_PROGRESS', label: 'In Progress' },
     { id: 'REVIEW', label: 'Review' },
+    { id: 'REVISION_REQUESTED', label: 'Revision' },
     { id: 'COMPLETED', label: 'Completed' }
 ];
 

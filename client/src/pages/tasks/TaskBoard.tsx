@@ -9,23 +9,30 @@ const TaskBoard = () => {
     const [month, setMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
     const [department, setDepartment] = useState('ALL');
 
+    // Calculate start and end date for the selected month
+    const startDate = `${month}-01`;
+    const endDate = new Date(new Date(month).getFullYear(), new Date(month).getMonth() + 1, 0).toISOString().slice(0, 10);
+
     const { data: tasks, isLoading } = useQuery({
         queryKey: ['tasks', 'board', month, department],
         queryFn: async () => {
-            // In a real implementation, we would pass month range and dept to backend.
-            // For MVP/Proto, we fetch all and filter.
-            const res = await api.get('/tasks');
+            // Pass filters to backend
+            const params: any = { start_date: startDate, end_date: endDate };
+            // Department filtering is currently client-side or needs backend support. 
+            // Since backend doesn't support department filter on tasks directly (only assignee department),
+            // we will keep fetching by date range and filter department client-side for now, 
+            // OR we can implement assignee department filter in backend if needed.
+            // For now, let's fetch by date range, which solves the main "Loading Delay" and "Visibility" issues if date matches.
+
+            const res = await api.get('/tasks', { params });
             return res.data;
         }
     });
 
     const filteredTasks = tasks?.filter((task: any) => {
-        // Simple month filtering based on createdAt or actual_start_date
-        const taskDate = task.actual_start_date || task.createdAt;
-        const matchesMonth = taskDate.startsWith(month);
-        // Department logic requires assignee dept, stubbing for now if missing
+        // Department logic requires assignee dept
         const matchesDept = department === 'ALL' ? true : task.assignee?.department === department;
-        return matchesMonth && matchesDept;
+        return matchesDept;
     });
 
     const getStatusColor = (status: string) => {

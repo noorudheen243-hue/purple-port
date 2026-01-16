@@ -112,25 +112,37 @@ export const createTask = async (data: Prisma.TaskCreateInput) => {
 export const getTasks = async (filters: {
     campaign_id?: string;
     assignee_id?: string;
-    client_id?: string; // Added
+    client_id?: string;
     status?: string;
     priority?: string;
+    startDate?: Date; // Added
+    endDate?: Date;   // Added
 }) => {
     const whereClause: Prisma.TaskWhereInput = {};
 
     if (filters.campaign_id) whereClause.campaign_id = filters.campaign_id;
-    if (filters.client_id) whereClause.client_id = filters.client_id; // Added
+    if (filters.client_id) whereClause.client_id = filters.client_id;
     if (filters.assignee_id) whereClause.assignee_id = filters.assignee_id;
     if (filters.status) whereClause.status = filters.status;
     if (filters.priority) whereClause.priority = filters.priority;
 
+    // Date Range Filtering (Mixed: Due Date OR Created At OR Start Date)
+    // Common pattern: If start/end provided, check if task overlaps or was created in range
+    if (filters.startDate && filters.endDate) {
+        whereClause.OR = [
+            { createdAt: { gte: filters.startDate, lte: filters.endDate } },
+            { actual_start_date: { gte: filters.startDate, lte: filters.endDate } }
+        ];
+    }
+
     return await prisma.task.findMany({
         where: whereClause,
         include: {
-            assignee: { select: { id: true, full_name: true, avatar_url: true } },
+            assignee: { select: { id: true, full_name: true, avatar_url: true, department: true } }, // Added department
             reporter: { select: { id: true, full_name: true, avatar_url: true } },
-            campaign: { include: { client: true } }, // Include Client for display (Campaign Tasks)
-            client: { select: { name: true } }, // Include Direct Client for display (General Tasks)
+            campaign: { include: { client: true } },
+            client: { select: { name: true } },
+            assigned_by: { select: { id: true, full_name: true } }, // Ensure assigned_by is fetched
             _count: { select: { comments: true, assets: true, sub_tasks: true } }
         },
         orderBy: { createdAt: 'desc' }

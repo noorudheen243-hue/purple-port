@@ -14,11 +14,19 @@ interface LauncherApp {
     usage_count: number;
 }
 
+interface ActiveWidget {
+    id: string; // appId
+    title: string;
+    componentType: 'CALCULATOR' | 'NOTEPAD';
+    isMinimized: boolean;
+}
+
 interface LauncherStore {
     isOpen: boolean;
     apps: LauncherApp[];
     searchQuery: string;
     isLoading: boolean;
+    activeWidgets: ActiveWidget[]; // New State
 
     toggleLauncher: () => void;
     setOpen: (open: boolean) => void;
@@ -30,6 +38,11 @@ interface LauncherStore {
     recordUsage: (appId: string) => Promise<void>;
     executeApp: (app: LauncherApp) => Promise<void>;
     deleteApp: (appId: string) => Promise<void>;
+
+    // Widget Actions
+    openWidget: (app: LauncherApp) => void;
+    closeWidget: (appId: string) => void;
+    minimizeWidget: (appId: string) => void;
 }
 
 export const useLauncherStore = create<LauncherStore>((set, get) => ({
@@ -37,6 +50,7 @@ export const useLauncherStore = create<LauncherStore>((set, get) => ({
     apps: [],
     searchQuery: '',
     isLoading: false,
+    activeWidgets: [],
 
     toggleLauncher: () => set(state => ({ isOpen: !state.isOpen })),
     setOpen: (open) => set({ isOpen: open }),
@@ -87,15 +101,67 @@ export const useLauncherStore = create<LauncherStore>((set, get) => ({
     recordUsage: async (appId) => {
         try {
             await api.post(`/launcher/apps/${appId}/use`);
-            // No need to fetch immediately, just background track
         } catch (error) {
             console.error('Failed to record usage', error);
         }
     },
 
+    openWidget: (app) => {
+        const { activeWidgets } = get();
+        // Check if already open
+        const exists = activeWidgets.find(w => w.id === app.id);
+
+        let type: 'CALCULATOR' | 'NOTEPAD' | null = null;
+        if (app.name.toLowerCase().includes('calculator')) type = 'CALCULATOR';
+        if (app.name.toLowerCase().includes('notepad')) type = 'NOTEPAD';
+
+        if (!type) return; // Should not happen if called correctly
+
+        if (exists) {
+            // Restore if minimized
+            set({
+                activeWidgets: activeWidgets.map(w =>
+                    w.id === app.id ? { ...w, isMinimized: false } : w
+                ),
+                isOpen: false // Close launcher
+            });
+        } else {
+            set({
+                activeWidgets: [...activeWidgets, {
+                    id: app.id,
+                    title: app.name,
+                    componentType: type,
+                    isMinimized: false
+                }],
+                isOpen: false // Close launcher
+            });
+        }
+    },
+
+    closeWidget: (appId) => {
+        set(state => ({
+            activeWidgets: state.activeWidgets.filter(w => w.id !== appId)
+        }));
+    },
+
+    minimizeWidget: (appId) => {
+        set(state => ({
+            activeWidgets: state.activeWidgets.map(w =>
+                w.id === appId ? { ...w, isMinimized: true } : w
+            )
+        }));
+    },
+
     executeApp: async (app) => {
         // Record Usage
         get().recordUsage(app.id);
+
+        // INTERCEPT: Check for Widget Apps
+        const name = app.name.toLowerCase();
+        if (name.includes('calculator') || name.includes('notepad')) {
+            get().openWidget(app);
+            return;
+        }
 
         if (app.type === 'WEB' && app.url) {
             // Fix: Internal Routes should open in same tab to avoid popup blockers and improve UX
@@ -107,9 +173,6 @@ export const useLauncherStore = create<LauncherStore>((set, get) => ({
         } else if (app.type === 'LOCAL' && app.command) {
             // Attempt Local Execution via Server (Only works if Hosting = Client)
             try {
-                // If we are strictly in a web browser, we can't do this directly.
-                // But we can try the custom protocol approach for some.
-
                 // If it's a known protocol
                 if (app.command.includes('://')) {
                     window.location.href = app.command;

@@ -21,6 +21,7 @@ import { ChatFloatingIcon } from '../chat/ChatFloatingIcon';
 import { ChatPopup } from '../chat/ChatPopup';
 import { AnimatePresence } from 'framer-motion';
 import { AppLauncher } from '../launcher/AppLauncher';
+import { WidgetManager } from '../widgets/WidgetManager';
 
 const SidebarItem = ({ item, isActive, depth = 0, closeSidebar, index }: { item: MenuItem; isActive: (path: string) => boolean; depth?: number; closeSidebar: () => void, index: number }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -268,6 +269,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                 <StickyNoteContainer />
             </div>
             <AppLauncher />
+            <WidgetManager />
 
             <AnimatePresence>
                 {isChatOpen && <ChatPopup onClose={() => {

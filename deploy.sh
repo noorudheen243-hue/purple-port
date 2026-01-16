@@ -10,6 +10,7 @@ git pull origin main
 echo "🏗️  Building Frontend..."
 cd client
 npm install
+npm install react-draggable @types/react-draggable --force # Force install to ensure it exists
 npm run build
 cd ..
 

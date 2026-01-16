@@ -84,18 +84,17 @@ export const getTask = async (req: Request, res: Response) => {
 
 export const updateTask = async (req: Request, res: Response) => {
     try {
-        if (isCreative(req)) {
-            // Exception: Creative team MIGHT need to update status of their OWN task?
-            // User said: "Except 'creative' team all other staffs can create, modify, and delete the task to others."
-            // This implies Creative team CANNOT do general modifications.
-            // Checking if they are just updating status? 
-            // "modify... the task" usually covers everything. 
-            // Safest interpretation: Block all modifications as per strict request.
-            // If user complains they can't update status, I will relax it later.
-            return res.status(403).json({ message: 'Creative team cannot modify tasks.' });
-        }
-
         const validatedData = updateTaskSchema.parse(req.body);
+
+        // Access Control: Creative team can ONLY update STATUS
+        if (isCreative(req)) {
+            const keys = Object.keys(validatedData);
+            const isStatusOnly = keys.length === 1 && keys[0] === 'status';
+
+            if (!isStatusOnly) {
+                return res.status(403).json({ message: 'Creative team can only update task status.' });
+            }
+        }
 
         // Transform relations to Prisma Connect syntax
         const { assignee_id, campaign_id, client_id, due_date, ...rest } = validatedData;

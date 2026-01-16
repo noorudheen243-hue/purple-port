@@ -14,13 +14,13 @@ import FormErrorAlert from '../../components/ui/FormErrorAlert';
 const schema = z.object({
     title: z.string().min(3, "Title is required"),
     description: z.string().optional(),
-    type: z.enum(['GENERIC', 'GRAPHIC', 'VIDEO', 'COPY', 'STRATEGY', 'DEV']),
+    type: z.enum(['GENERIC', 'GRAPHIC', 'VIDEO', 'COPY', 'STRATEGY', 'DEV', 'CONTENT_SHOOTING']),
     priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']),
     category: z.enum(['CAMPAIGN', 'INTERNAL']),
     nature: z.enum(['NEW', 'REWORK']),
     campaign_id: z.string().optional(),
     content_type: z.string().optional(), // Added
-    client_id: z.string().min(1, "Client is required"), // Mandatory for ALL
+    client_id: z.string().optional(), // Now Optional for "General" tasks
     assignee_id: z.string().min(1, "Assigned To is required"), // Mandatory for ALL
     due_date: z.string().optional(), // Soft optional
 });
@@ -70,8 +70,9 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose }) => {
 
             // Content Type is passed directly
             if (data.content_type) payload.content_type = data.content_type;
-            // Client ID is now handled by backend
-            // payload.client_id is already in data/payload
+
+            // Handle General/Empty Client
+            if (!data.client_id) delete payload.client_id;
 
             payload.assignee = { connect: { id: data.assignee_id } };
             delete payload.assignee_id;
@@ -188,6 +189,7 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose }) => {
                                     <option value="COPY">Copywriting</option>
                                     <option value="STRATEGY">Strategy</option>
                                     <option value="DEV">Development</option>
+                                    <option value="CONTENT_SHOOTING">Content Shooting</option> {/* Added */}
                                 </select>
                             </div>
                             <div className="space-y-1">
@@ -226,6 +228,7 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose }) => {
                                         }}
                                     >
                                         <option value="">-- Choose Client --</option>
+                                        <option value="">General (Walk-in / No Client)</option> {/* Added */}
                                         {clients?.map((client: any) => (
                                             <option key={client.id} value={client.id}>{client.name}</option>
                                         ))}

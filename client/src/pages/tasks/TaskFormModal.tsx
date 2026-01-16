@@ -72,7 +72,7 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose }) => {
             if (data.content_type) payload.content_type = data.content_type;
 
             // Handle General/Empty Client
-            if (!data.client_id) delete payload.client_id;
+            if (!data.client_id || data.client_id === 'GENERAL') delete payload.client_id;
 
             payload.assignee = { connect: { id: data.assignee_id } };
             delete payload.assignee_id;
@@ -228,7 +228,9 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose }) => {
                                         }}
                                     >
                                         <option value="">-- Choose Client --</option>
-                                        <option value="">General (Walk-in / No Client)</option> {/* Added */}
+                                        {(category === 'INTERNAL' || category === 'CAMPAIGN') && (
+                                            <option value="GENERAL">General (Walk-in / No Client)</option>
+                                        )}
                                         {clients?.map((client: any) => (
                                             <option key={client.id} value={client.id}>{client.name}</option>
                                         ))}

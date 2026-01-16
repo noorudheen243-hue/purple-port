@@ -74,10 +74,13 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose }) => {
             // Handle General/Empty Client
             if (!data.client_id || data.client_id === 'GENERAL') delete payload.client_id;
 
-            payload.assignee = { connect: { id: data.assignee_id } };
-            delete payload.assignee_id;
+            // FIX: Send plain IDs, let backend handle connections
+            // payload.assignee = { connect: { id: data.assignee_id } }; // INCORRECT
+            // delete payload.assignee_id; // INCORRECT
 
-            payload.reporter = { connect: { id: user?.id } };
+            // Reporter is added by backend from token
+            // payload.reporter = { connect: { id: user?.id } };
+
 
             if (data.due_date) payload.due_date = new Date(data.due_date);
 

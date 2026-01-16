@@ -1,6 +1,7 @@
 import prisma from '../../utils/prisma';
 import { Prisma } from '@prisma/client';
 import { createNotification } from '../notifications/service';
+import SocketService from '../../socket';
 
 // Helper to calculate SLA
 const calculateSLA = (priority: string = 'MEDIUM'): Date => {
@@ -85,7 +86,12 @@ export const createTask = async (data: Prisma.TaskCreateInput) => {
             `You have been assigned to task: ${task.title}`,
             `/dashboard/tasks/${task.id}`
         );
+        // Real-time Push
+        SocketService.emitToUser(task.assignee_id, 'task_created', task);
     }
+
+    // Also emit to the reporter (creator) so their list updates instantly
+    SocketService.emitToUser(task.reporter_id, 'task_created', task);
 
     return task;
 };
@@ -175,6 +181,7 @@ export const updateTask = async (id: string, data: Prisma.TaskUpdateInput) => {
                 `You have been assigned to task: ${updatedTask.title}`,
                 `/dashboard/tasks/${updatedTask.id}`
             );
+            SocketService.emitToUser(updatedTask.assignee_id, 'task_created', updatedTask); // Treat as new for them
         }
 
         // Notify reporter on status change
@@ -186,6 +193,11 @@ export const updateTask = async (id: string, data: Prisma.TaskUpdateInput) => {
                 `/dashboard/tasks/${updatedTask.id}`
             );
         }
+
+        // General Update Broadcast
+        // Emit to assignee and reporter
+        if (updatedTask.assignee_id) SocketService.emitToUser(updatedTask.assignee_id, 'task_updated', updatedTask);
+        SocketService.emitToUser(updatedTask.reporter_id, 'task_updated', updatedTask);
     }
 
     return updatedTask;

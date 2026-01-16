@@ -16,7 +16,7 @@ const NotificationBell = () => {
             const { data } = await api.get('/notifications');
             return data;
         },
-        refetchInterval: 30000 // Poll every 30s
+        // refetchInterval: 30000 // Removed in favor of Real-Time Socket Sync
     });
 
     const unreadCount = notifications?.filter((n: any) => !n.read).length || 0;

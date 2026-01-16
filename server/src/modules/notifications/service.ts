@@ -1,4 +1,5 @@
 import prisma from '../../utils/prisma';
+import SocketService from '../../socket';
 
 export const createNotification = async (
     userId: string,
@@ -6,7 +7,7 @@ export const createNotification = async (
     message: string,
     link?: string
 ) => {
-    return await prisma.notification.create({
+    const notification = await prisma.notification.create({
         data: {
             user_id: userId,
             type,
@@ -14,6 +15,11 @@ export const createNotification = async (
             link
         }
     });
+
+    // Real-time Push
+    SocketService.emitToUser(userId, 'notification', notification);
+
+    return notification;
 };
 
 export const getUserNotifications = async (userId: string) => {
@@ -62,6 +68,11 @@ export const notifyAdmins = async (type: string, message: string, link?: string)
     if (notifications.length > 0) {
         await prisma.notification.createMany({
             data: notifications
+        });
+
+        // Real-time Push to each admin
+        notifications.forEach(n => {
+            SocketService.emitToUser(n.user_id, 'notification', n);
         });
     }
 };

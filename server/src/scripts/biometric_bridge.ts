@@ -17,81 +17,68 @@ const BRIDGE_USER = {
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
-async function main() {
-    console.log("--- Biometric Bridge Agent Started ---");
-    console.log(`Target Device: ${DEVICE_IP}`);
-    console.log(`Target Server: ${SERVER_URL}`);
+async function sync() {
+    console.log(`[${new Date().toLocaleTimeString()}] Starting Sync Cycle...`);
 
     // 1. Authenticate with Server
     let token = API_TOKEN;
     if (!token) {
-        console.log("Authenticating with Server...");
         try {
             const loginResp = await axios.post(`${SERVER_URL}/auth/login`, BRIDGE_USER);
             token = loginResp.data.token;
-            console.log("Authentication Successful.");
-            console.log("DEBUG: Received Token:", token ? (token.substring(0, 10) + "...") : "UNDEFINED/NULL");
         } catch (error: any) {
             console.error("Server Authentication Failed:", error.message);
-            console.error("Check SERVER_URL and BRIDGE_USER credentials.");
-            process.exit(1);
+            return; // Try again next cycle
         }
     }
 
     // 2. Connect to Device
-    console.log("Connecting to Biometric Device...");
     const zk = new ZKLib(DEVICE_IP, DEVICE_PORT, 5000, 4000);
-
     try {
         await zk.createSocket();
 
-        console.log("Fetching Attendance Logs...");
+        // 3. Fetch & Upload
         const logs = await zk.getAttendances();
         const data = logs.data || [];
-        console.log(`Fetched ${data.length} logs from device.`);
 
         if (data.length > 0) {
-            // 3. Push to Server
-            console.log("Uploading logs to Server...");
-            // Map ZK log format to what our backend expects if needed, 
-            // but our backend usually handles the raw ZK format from the library.
-            // Expected by backend: { userSn, deviceUserId, recordTime, ip } (roughly)
-            // ZKLib returns: { userSn, deviceUserId, recordTime, ip } 
-
-            // Clean data keys just in case (zkteco-js sometimes uses different casing)
-            if (data.length > 0) {
-                console.log("DEBUG: Sample Logs from Device:");
-                console.log(JSON.stringify(data.slice(0, 3), null, 2));
-            }
-
             const cleanLogs = data.map((l: any) => ({
-                user_id: l.user_id || l.deviceUserId, // Handle both potential casing
-                record_time: l.recordTime || l.record_time, // Handle both
+                user_id: l.user_id || l.deviceUserId,
+                record_time: l.recordTime || l.record_time,
                 ip: l.ip
             }));
+
+            // Log count only to keep output clean
+            console.log(`Fetched ${data.length} logs. Uploading...`);
 
             const uploadResp = await axios.post(
                 `${SERVER_URL}/attendance/biometric/upload-logs`,
                 { logs: cleanLogs },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
-            console.log("Upload Successful!");
-            console.log("Server Response:", JSON.stringify(uploadResp.data, null, 2));
 
-            // Optional: Clear logs from device to prevent pile-up?
-            // console.log("Clearing Device Logs...");
-            // await zk.clearAttendanceLog(); 
+            console.log(`✅ Success: ${uploadResp.data.message}`);
         } else {
-            console.log("No new logs to upload.");
+            console.log("No logs found on device.");
         }
 
     } catch (error: any) {
-        console.error("Device/Upload Error:", error.message || error);
+        console.error("⚠️ Sync Error:", error.message || "Unknown error");
     } finally {
-        try {
-            await zk.disconnect();
-            console.log("Disconnected from Device.");
-        } catch (e) { }
+        try { await zk.disconnect(); } catch (e) { }
+    }
+}
+
+async function main() {
+    console.log("--- Biometric Bridge Agent (Auto-Sync Mode) ---");
+    console.log(`Target: ${DEVICE_IP} -> ${SERVER_URL}`);
+    console.log("Sync Interval: Every 60 Seconds");
+    console.log("-----------------------------------------------");
+
+    while (true) {
+        await sync();
+        console.log("Waiting 60s...");
+        await sleep(60000);
     }
 }
 

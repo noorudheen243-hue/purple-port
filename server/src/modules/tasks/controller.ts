@@ -84,7 +84,12 @@ export const getTask = async (req: Request, res: Response) => {
 
 export const updateTask = async (req: Request, res: Response) => {
     try {
+        console.log("---------------- START UPDATE TASK DEBUG ----------------");
+        console.log("User:", JSON.stringify(req.user, null, 2));
+        console.log("Raw Body:", JSON.stringify(req.body, null, 2));
+
         const validatedData = updateTaskSchema.parse(req.body);
+        console.log("Validated Data:", JSON.stringify(validatedData, null, 2));
 
         // Transform relations to Prisma Connect syntax
         const { assignee_id, campaign_id, client_id, due_date, ...rest } = validatedData;
@@ -92,15 +97,20 @@ export const updateTask = async (req: Request, res: Response) => {
 
         // Access Control: Creative team can ONLY update STATUS
         if (isCreative(req)) {
+            console.log("User identified as CREATIVE");
             // Force strict sanitization: Only allow status
             updateData = {};
             if (validatedData.status) updateData.status = validatedData.status;
 
+            console.log("Sanitized Creative Update Data:", updateData);
+
             // If no status provided (and only defaults/garbage), return error or just success with no-op
             if (!updateData.status) {
+                console.log("Error: No status provided by creative");
                 return res.status(400).json({ message: 'Creative team must provide a status update.' });
             }
         } else {
+            console.log("User identified as ADMIN/MANAGER");
             // Regular logic for Admin/Manager
             if (assignee_id) updateData.assignee = { connect: { id: assignee_id } };
             if (campaign_id) updateData.campaign = { connect: { id: campaign_id } };
@@ -108,10 +118,13 @@ export const updateTask = async (req: Request, res: Response) => {
             if (due_date) updateData.due_date = new Date(due_date);
         }
 
+        console.log("Final Update Payload sent to Service:", JSON.stringify(updateData, null, 2));
         const task = await taskService.updateTask(req.params.id, updateData);
+        console.log("Task Updated Successfully");
 
         res.json(task);
     } catch (error: any) {
+        console.error("UPDATE TASK ERROR:", error);
         if (error instanceof z.ZodError) res.status(400).json({ errors: error.errors });
         else res.status(500).json({ message: error.message });
     }

@@ -33,7 +33,7 @@ echo "   - Installing dependencies..."
 echo "   - Installing dependencies..."
 npm install
 echo "   - Generating Prisma Client..."
-npx prisma generate
+npx prisma generate --schema=./prisma/schema.prisma
 echo "   - Compiling TypeScript..."
 npm run build
 

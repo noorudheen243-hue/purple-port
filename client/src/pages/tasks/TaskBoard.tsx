@@ -6,23 +6,19 @@ import TaskEditModal from './TaskEditModal';
 import { useAuthStore } from '../../store/authStore';
 
 const TaskBoard = () => {
-    const [month, setMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
+    const [month, setMonth] = useState(''); // Empty default to show ALL
     const [department, setDepartment] = useState('ALL');
-
-    // Calculate start and end date for the selected month
-    const startDate = `${month}-01`;
-    const endDate = new Date(new Date(month).getFullYear(), new Date(month).getMonth() + 1, 0).toISOString().slice(0, 10);
 
     const { data: tasks, isLoading } = useQuery({
         queryKey: ['tasks', 'board', month, department],
         queryFn: async () => {
-            // Pass filters to backend
-            const params: any = { start_date: startDate, end_date: endDate };
-            // Department filtering is currently client-side or needs backend support. 
-            // Since backend doesn't support department filter on tasks directly (only assignee department),
-            // we will keep fetching by date range and filter department client-side for now, 
-            // OR we can implement assignee department filter in backend if needed.
-            // For now, let's fetch by date range, which solves the main "Loading Delay" and "Visibility" issues if date matches.
+            const params: any = {};
+
+            // Only apply date filter if month is selected
+            if (month) {
+                params.start_date = `${month}-01`;
+                params.end_date = new Date(new Date(month).getFullYear(), new Date(month).getMonth() + 1, 0).toISOString().slice(0, 10);
+            }
 
             const res = await api.get('/tasks', { params });
             return res.data;

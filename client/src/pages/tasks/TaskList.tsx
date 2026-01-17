@@ -79,6 +79,15 @@ const TaskBoard = () => {
                 </div>
             </div>
 
+            {/* DEBUG BLOCK - REMOVE AFTER FIXING */}
+            <div className="bg-yellow-50 p-4 rounded border border-yellow-200 text-xs font-mono mb-4 text-black">
+                <strong>DEBUG INFO:</strong><br />
+                Status: {isLoading ? 'Loading...' : 'Loaded'}<br />
+                Tasks Fetched: {tasks?.length || 0}<br />
+                Raw Filter: None (Client-side grouping only)<br />
+                First Task (if any): {tasks && tasks.length > 0 ? JSON.stringify(tasks[0].status) : 'N/A'}
+            </div>
+
             <div className="flex gap-4 overflow-x-auto pb-4 flex-1">
                 {COLUMNS.map(column => (
                     <div

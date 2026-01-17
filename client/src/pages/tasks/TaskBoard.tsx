@@ -94,6 +94,14 @@ const TaskBoard = () => {
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
+                {/* DEBUG BLOCK - REMOVE AFTER FIXING */}
+                <div className="bg-yellow-50 p-4 border-b border-yellow-200 text-xs font-mono text-black">
+                    <strong>DEBUG INFO:</strong><br />
+                    Status: {isLoading ? 'Loading...' : 'Loaded'}<br />
+                    Tasks Fetched: {tasks?.length || 0}<br />
+                    Tasks Displayed: {filteredTasks?.length || 0}<br />
+                    Raw Filter: Month="{month}" Dept="{department}"
+                </div>
                 <table className="w-full text-left text-sm whitespace-nowrap">
                     <thead className="bg-gray-50/50 border-b border-gray-200 font-semibold text-gray-600">
                         <tr>

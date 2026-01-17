@@ -1,5 +1,5 @@
 import express from 'express';
-import { getTasks, createTask, getTask, updateTask, deleteTask, startTaskTimer, stopTaskTimer } from './controller';
+import { getTasks, createTask, getTask, updateTask, deleteTask, getStats, startTaskTimer, stopTaskTimer } from './controller';
 import { debugTasks } from './debug.controller';
 import { protect } from '../auth/middleware';
 

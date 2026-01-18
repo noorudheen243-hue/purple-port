@@ -78,6 +78,8 @@ import path from 'path';
 // Serve Uploads
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
+import systemRouter from './modules/system/routes'; // Deployment Routes
+
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/clients', clientRoutes);
@@ -91,6 +93,10 @@ app.use('/api/ad-intelligence', adIntelligenceRoutes);
 app.use('/api/team', teamRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/upload', uploadRoutes);
+
+// System / Deployment Access
+app.use('/api/system', systemRouter);
+
 app.use('/api/client-portal', clientPortalRoutes);
 
 app.use('/api/payroll', payrollRoutes);

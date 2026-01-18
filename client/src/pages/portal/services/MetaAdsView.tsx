@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../../../lib/api';
+import Swal from 'sweetalert2';
 import { MetaAdsLogForm } from '../forms/MetaAdsLogForm';
 import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
@@ -15,6 +16,8 @@ const MetaAdsView = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const { user } = useAuthStore();
+    const queryClient = useQueryClient();
+    const [editingLog, setEditingLog] = React.useState<any>(null);
 
     // Determine context (Admin managing vs Client viewing)
     const urlClientId = searchParams.get('clientId');
@@ -52,6 +55,28 @@ const MetaAdsView = () => {
         } catch { return '-' }
     };
 
+    const handleDelete = async (id: string) => {
+        const result = await Swal.fire({
+            title: 'Are you sure?',
+            text: "You won't be able to revert this!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, delete it!'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                await api.delete(`/client-portal/tracking/meta-ads/${id}`);
+                queryClient.invalidateQueries({ queryKey: ['meta-ads-logs'] });
+                Swal.fire('Deleted!', 'Record has been deleted.', 'success');
+            } catch (error: any) {
+                Swal.fire('Error', error.response?.data?.message || 'Failed to delete', 'error');
+            }
+        }
+    };
+
     if (!clientId) return <div className="p-8 text-center">No Client Selected</div>;
 
     return (
@@ -80,7 +105,12 @@ const MetaAdsView = () => {
 
             {/* Management Form */}
             {isManageMode && (
-                <MetaAdsLogForm clientId={clientId} />
+                <MetaAdsLogForm
+                    clientId={clientId}
+                    initialData={editingLog}
+                    onSuccess={() => setEditingLog(null)}
+                    onCancel={() => setEditingLog(null)}
+                />
             )}
 
             {/* Performance Stats Cards (Aggregated) */}
@@ -121,13 +151,14 @@ const MetaAdsView = () => {
                                     <TableHead className="text-right">Spend</TableHead>
                                     <TableHead className="text-right">Results</TableHead>
                                     <TableHead>Notes</TableHead>
+                                    {isManageMode && <TableHead className="text-right">Actions</TableHead>}
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {logs?.length > 0 ? logs.map((log: any) => {
                                     const results = typeof log.results_json === 'string' ? JSON.parse(log.results_json) : log.results_json;
                                     return (
-                                        <TableRow key={log.id}>
+                                        <TableRow key={log.id} className={editingLog?.id === log.id ? "bg-yellow-50" : ""}>
                                             <TableCell>{new Date(log.date).toLocaleDateString()}</TableCell>
                                             <TableCell className="font-medium">{log.campaign_name}</TableCell>
                                             <TableCell>{log.platform}</TableCell>
@@ -139,11 +170,24 @@ const MetaAdsView = () => {
                                                 ))}
                                             </TableCell>
                                             <TableCell className="max-w-[200px] truncate" title={log.notes}>{log.notes || '-'}</TableCell>
+                                            {isManageMode && (
+                                                <TableCell className="text-right space-x-2">
+                                                    <Button variant="ghost" size="sm" onClick={() => {
+                                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                        setEditingLog(log);
+                                                    }}>
+                                                        Edit
+                                                    </Button>
+                                                    <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => handleDelete(log.id)}>
+                                                        Delete
+                                                    </Button>
+                                                </TableCell>
+                                            )}
                                         </TableRow>
                                     )
                                 }) : (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="text-center h-24 text-muted-foreground">
+                                        <TableCell colSpan={isManageMode ? 8 : 7} className="text-center h-24 text-muted-foreground">
                                             No records found.
                                         </TableCell>
                                     </TableRow>

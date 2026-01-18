@@ -40,6 +40,39 @@ export const createMetaAdsLog = async (req: Request, res: Response) => {
     }
 };
 
+export const updateMetaAdsLog = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { campaign_name, objective, platform, spend, results_json, notes, date } = req.body;
+
+        const log = await prisma.metaAdsLog.update({
+            where: { id },
+            data: {
+                campaign_name,
+                objective,
+                platform,
+                spend: parseFloat(spend || 0),
+                results_json: typeof results_json === 'object' ? JSON.stringify(results_json) : results_json,
+                notes,
+                date: date ? new Date(date) : undefined
+            }
+        });
+        res.json(log);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const deleteMetaAdsLog = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        await prisma.metaAdsLog.delete({ where: { id } });
+        res.json({ message: "Deleted successfully" });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 // --- GOOGLE ADS ---
 
 export const getGoogleAdsLogs = async (req: Request, res: Response) => {

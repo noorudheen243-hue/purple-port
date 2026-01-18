@@ -29,6 +29,8 @@ router.post('/reports/generate', authorize('ADMIN', 'MANAGER'), reportsControlle
 // Service Tracking Logs (Manual Data Entry)
 router.get('/tracking/meta-ads', trackingController.getMetaAdsLogs);
 router.post('/tracking/meta-ads', authorize('ADMIN', 'MANAGER'), trackingController.createMetaAdsLog);
+router.patch('/tracking/meta-ads/:id', authorize('ADMIN', 'MANAGER'), trackingController.updateMetaAdsLog);
+router.delete('/tracking/meta-ads/:id', authorize('ADMIN', 'MANAGER'), trackingController.deleteMetaAdsLog);
 
 router.get('/tracking/google-ads', trackingController.getGoogleAdsLogs);
 router.post('/tracking/google-ads', authorize('ADMIN', 'MANAGER'), trackingController.createGoogleAdsLog);

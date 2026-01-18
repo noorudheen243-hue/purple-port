@@ -277,6 +277,12 @@ export const updateTask = async (id: string, data: Prisma.TaskUpdateInput) => {
 };
 
 export const deleteTask = async (id: string) => {
+    // Break Parent-Child relation before delete (Simulate SetNull)
+    await prisma.task.updateMany({
+        where: { parent_task_id: id },
+        data: { parent_task_id: null }
+    });
+
     return await prisma.task.delete({
         where: { id }
     });

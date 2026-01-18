@@ -6,7 +6,7 @@ import TaskEditModal from './TaskEditModal';
 import { useAuthStore } from '../../store/authStore';
 
 const TaskBoard = () => {
-    const [month, setMonth] = useState(''); // Empty default to show ALL
+    const [month, setMonth] = useState(new Date().toISOString().slice(0, 7)); // Default to Current Month
     const [department, setDepartment] = useState('ALL');
 
     const { data: tasks, isLoading } = useQuery({

@@ -13,16 +13,11 @@ router.route('/')
 
 router.get('/stats', getStats);
 
+router.delete('/reset-data', resetData); // Admin Only
 router.route('/:id')
     .get(getTask)
     .patch(updateTask) // Matches Frontend api.patch
     .put(updateTask)   // Backward compatibility
     .delete(deleteTask);
-
-router.post('/:id/timer/start', startTaskTimer);
-router.post('/:id/timer/stop', stopTaskTimer);
-
-// router.get('/debug/diagnose', debugTasks);
-router.delete('/reset-data', resetData); // Admin Only protected by router.use(protect) above, but ideally add authorize('ADMIN')
 
 export default router;

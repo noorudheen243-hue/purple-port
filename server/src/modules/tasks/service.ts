@@ -459,11 +459,14 @@ export const wipeAllTaskData = async () => {
     // If user specifically asked "wipe out", maybe they want files gone?
     // "wipe out entire task related datas entered before as trials". 
     // I will delete assets that are linked to tasks, assuming they are trial uploads.
+    // Disconnect/Delete assets linked to tasks
     await prisma.asset.deleteMany({
-        where: { task_id: { not: null } }
+        where: { NOT: { task_id: null } }
     });
 
-    await prisma.subTask.deleteMany({}); // If model exists, but based on wiping script, I should check.
+    // SubTask model deletion removed as it doesn't exist in Prisma Client
+
+    return await prisma.task.deleteMany({});
     // Wait, I don't recall seeing SubTask in schema view earlier. 
     // Let's stick to safe deletes: TimeLog, Comment, Task.
 

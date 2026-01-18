@@ -167,12 +167,35 @@ export const getStats = async (req: Request, res: Response) => {
         if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
         const { view, start, end } = req.query;
-        export const resetData = async (req: Request, res: Response) => {
-            try {
-                // Optional secret check if needed, but relying on Admin role middleware
-                await taskService.wipeAllTaskData();
-                res.json({ message: "All task data wiped successfully." });
-            } catch (error: any) {
-                res.status(500).json({ message: error.message });
-            }
-        };
+
+        // If 'view' matches report types, fetch Report Stats (Array)
+        if (view && ['staff', 'department', 'client', 'status'].includes(view as string)) {
+            const reportStats = await taskService.getTaskStats({
+                groupBy: view as 'staff' | 'department' | 'client' | 'status',
+                startDate: start ? new Date(start as string) : undefined,
+                endDate: end ? new Date(end as string) : undefined
+            });
+            return res.json(reportStats);
+        }
+
+        // Default: Dashboard Stats (Object)
+        const stats = await taskService.getDashboardStats({
+            id: req.user.id,
+            role: req.user.role,
+            department: req.user.department
+        });
+
+        res.json(stats);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const resetData = async (req: Request, res: Response) => {
+    try {
+        await taskService.wipeAllTaskData();
+        res.json({ message: "All task data wiped successfully." });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};

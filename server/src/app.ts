@@ -4,25 +4,38 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 
+import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 
 const app = express();
 
 // System: Accounting Module Loaded
 
-// Rate Limiting
+// 1. General Rate Limiter (Relaxed)
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 2000, // Relaxed limit for development
+    max: 2000,
     standardHeaders: true,
     legacyHeaders: false,
+    message: 'Too many requests from this IP, please try again after 15 minutes'
+});
+
+// 2. Strict Auth Limiter (Brute-force protection)
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 50, // 50 login attempts per 15 min
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: 'Too many login attempts, please try again later.'
 });
 
 // Middleware
+app.use(compression()); // GZIP Compression
 app.use(helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 app.use(limiter);
+app.use('/api/auth', authLimiter); // Apply strict limit to auth routes
 app.use(cors({
     origin: [
         'http://localhost:5173',

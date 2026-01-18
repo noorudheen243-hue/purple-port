@@ -19,10 +19,12 @@
   },
   "dependencies": {
     "@prisma/client": "^5.10.0",
+    "@types/compression": "^1.8.1",
     "adm-zip": "^0.5.10",
     "archiver": "^7.0.1",
     "axios": "^1.13.2",
     "bcryptjs": "^2.4.3",
+    "compression": "^1.8.1",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "date-fns": "^2.30.0",

@@ -1,58 +1,47 @@
 #!/bin/bash
-set -e # Exit immediately if a command exits with a non-zero status.
 
-echo "=========================================="
-echo "🚀 Starting Robust Deployment..."
-echo "=========================================="
+# Qix Ads Deployment Script
+# Place this file in /root/purple-port/ on your VPS
+# Make it executable with: chmod +x deploy.sh
+# Run it with: ./deploy.sh
+
+echo "========================================"
+echo "🚀 Qix Ads Automated Deployment System"
+echo "========================================"
+
+# Stop on any error
+set -e
 
 # 1. Update Codebase
-echo "📥 Pulling latest code..."
-# Stash local changes to avoid conflicts (except .env usually ignored)
-git stash
+echo "⬇️  Step 1: Pulling latest code from Git..."
 git pull origin main
 
-# 2. Build Client
-echo "🏗️  Building Frontend..."
-cd client
-echo "   - Cleaning old build..."
-rm -rf dist
-echo "   - Installing dependencies..."
-npm install
-echo "   - Compiling React app..."
+# 2. Server Update
+echo "🛠️  Step 2: Updating Server..."
+cd server
+echo "   -> Installing dependencies..."
+npm install --production=false # Ensure devDependencies (types/prisma) are installed for build
+echo "   -> Generating Database Client..."
+npx prisma generate
+echo "   -> Pushing Database Schema..."
+npx prisma db push
+echo "   -> Compiling TypeScript..."
 npm run build
-if [ ! -d "dist" ]; then
-    echo "❌ Error: Client build failed (dist folder missing)"
-    exit 1
-fi
 cd ..
 
-# 3. Build Server
-echo "🏗️  Building Backend..."
-cd server
-echo "   - Installing dependencies..."
-echo "   - Installing dependencies..."
+# 3. Client Update
+echo "🎨 Step 3: Updating Client..."
+cd client
+echo "   -> Installing dependencies..."
 npm install
-echo "   - Generating Prisma Client..."
-npx prisma generate --schema=./prisma/schema.prisma
-echo "   - Compiling TypeScript..."
+echo "   -> Building React App..."
 npm run build
+cd ..
 
-# 4. Integrate
-echo "🔗 Integration: Copying Client to Server Public folder..."
-rm -rf public
-mkdir -p public
-# Check if build exists
-if [ -d "../client/dist" ]; then
-    cp -r ../client/dist/* public/
-else
-    echo "❌ Error: Client build directory 'dist' not found!"
-    exit 1
-fi
+# 4. Restart Services
+echo "🔄 Step 4: Restarting Process Manager..."
+pm2 restart all
 
-# 5. Restart Application
-echo "🔄 Restarting Server..."
-pm2 restart qix-backend || pm2 start dist/server.js --name qix-backend
-
-echo "=========================================="
-echo "✅ Deployment Complete! App is live."
-echo "=========================================="
+echo "========================================"
+echo "✅ DEPLOYMENT SUCCESSFUL"
+echo "========================================"

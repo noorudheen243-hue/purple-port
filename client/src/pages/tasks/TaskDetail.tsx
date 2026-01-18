@@ -5,6 +5,7 @@ import api from '../../lib/api';
 import { ArrowLeft, Paperclip, Send, Clock, User as UserIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuthStore } from '../../store/authStore';
+import { getAssetUrl } from '../../lib/utils';
 
 const TaskDetail = () => {
     const { id } = useParams();
@@ -137,8 +138,12 @@ const TaskDetail = () => {
                         <div className="flex-1 overflow-y-auto p-4 space-y-6">
                             {task.comments?.map((comment: any) => (
                                 <div key={comment.id} className="flex gap-4">
-                                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold shrink-0">
-                                        {comment.author.full_name.charAt(0)}
+                                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold shrink-0 overflow-hidden">
+                                        {comment.author.avatar_url ? (
+                                            <img src={getAssetUrl(comment.author.avatar_url)} alt="Avatar" className="w-full h-full object-cover" />
+                                        ) : (
+                                            comment.author.full_name.charAt(0)
+                                        )}
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2 mb-1">
@@ -179,8 +184,12 @@ const TaskDetail = () => {
                         <div>
                             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1">Assignee</label>
                             <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs">
-                                    <UserIcon size={14} />
+                                <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs overflow-hidden">
+                                    {task.assignee?.avatar_url ? (
+                                        <img src={getAssetUrl(task.assignee.avatar_url)} alt="Assignee" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <UserIcon size={14} />
+                                    )}
                                 </div>
                                 <span className="text-sm font-medium">{task.assignee?.full_name || 'Unassigned'}</span>
                             </div>
@@ -190,8 +199,12 @@ const TaskDetail = () => {
                         <div>
                             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1">Assigned By</label>
                             <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-orange-100 text-orange-700 flex items-center justify-center text-xs">
-                                    <UserIcon size={14} />
+                                <div className="w-6 h-6 rounded-full bg-orange-100 text-orange-700 flex items-center justify-center text-xs overflow-hidden">
+                                    {task.assigned_by?.avatar_url ? (
+                                        <img src={getAssetUrl(task.assigned_by.avatar_url)} alt="Reporter" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <UserIcon size={14} />
+                                    )}
                                 </div>
                                 <div>
                                     <div className="text-sm font-medium">{task.assigned_by?.full_name || 'System'}</div>

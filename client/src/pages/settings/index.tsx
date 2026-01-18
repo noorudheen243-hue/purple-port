@@ -125,47 +125,10 @@ const SettingsAndData = () => {
                 </Card>
             </div>
 
-            {/* Developer Admin Section */}
-            {/* We can access user role from store or decode token, but for now assuming this component is protected */}
-            {/* NOTE: Ideally you should use useAuthStore here. I will just render this and control via role check if needed, 
-                or better, import useAuthStore to conditionally render it. */}
-            <DeveloperSection />
+
+
         </div>
     );
 };
-
-import { useAuthStore } from '@/store/authStore';
-
-// Sub-component for Developer Section
-const DeveloperSection = () => {
-    // Import useAuthStore safely
-    const { user } = useAuthStore();
-
-    if (user?.role !== 'DEVELOPER_ADMIN') return null;
-
-    return (
-        <div className="grid gap-6 md:grid-cols-1 mt-6">
-            <Card className="border-purple-500/20 bg-purple-50/10">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-purple-700">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-code-2"><path d="m18 16 4-4-4-4" /><path d="m6 8-4 4 4 4" /><path d="m14.5 4-5 16" /></svg>
-                        Developer Workspace
-                    </CardTitle>
-                    <CardDescription>
-                        Access the AI Engineering workspace for this project.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Button
-                        className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white w-full sm:w-auto"
-                        onClick={() => window.open('https://antigravity.dev/workspace/noorudheen243-hue/purple-port', '_blank')}
-                    >
-                        Open Antigravity Workspace
-                    </Button>
-                </CardContent>
-            </Card>
-        </div>
-    );
-}
 
 export default SettingsAndData;

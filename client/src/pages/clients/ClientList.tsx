@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/api';
+import { getAssetUrl } from '../../lib/utils';
 // import { Link } from 'react-router-dom'; // Using Link for name only? No, requirement says "clicking the client... popup".
 import { Link, useNavigate } from 'react-router-dom'; // Keep Link for other navigations if needed, but row click is modal.
 import { Users, Pencil, Trash2, Plus, ArrowRight, CheckCircle } from 'lucide-react';
@@ -157,9 +158,7 @@ const ClientList = () => {
                                         <div className="flex items-center gap-3">
                                             {client.logo_url ? (
                                                 <img
-                                                    src={(client.logo_url.startsWith('http') || client.logo_url.startsWith('blob:'))
-                                                        ? client.logo_url
-                                                        : `${(import.meta as any).env.VITE_API_URL?.replace('/api', '') || 'http://localhost:4000'}${client.logo_url}`}
+                                                    src={getAssetUrl(client.logo_url)}
                                                     alt={client.name}
                                                     className="w-8 h-8 rounded-full object-cover border border-gray-200"
                                                     onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}

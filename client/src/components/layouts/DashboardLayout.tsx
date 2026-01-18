@@ -11,8 +11,15 @@ import {
     ChevronRight,
     Settings,
     Sun,
-    Moon
+    Moon,
+    Upload
 } from 'lucide-react';
+import api from '../../lib/api';
+import Swal from 'sweetalert2';
+import { getAssetUrl } from '../../lib/utils';
+// ... existing imports ...
+
+// ... inside component ...
 import NotificationBell from '../notifications/NotificationBell';
 import ProfileSettingsModal from '../users/ProfileSettingsModal';
 import { ADMIN_MANAGER_MENU, STAFF_MENU, CLIENT_MENU, MenuItem } from '../../config/menuConfig';
@@ -261,6 +268,37 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
         navigate('/login');
     };
 
+    const handleDeploy = async () => {
+        const result = await Swal.fire({
+            title: 'Deploy to Cloud?',
+            text: "This will sync your local code changes to the VPS. Ensure you have internet access.",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, Sync Now',
+            confirmButtonColor: '#6366f1'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                // Show loading state
+                Swal.fire({
+                    title: 'Syncing...',
+                    text: 'Pushing code to repository. Please wait.',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                await api.post('/system/deploy');
+
+                Swal.fire('Success!', 'Sync initiated. The Cloud VPS will update automatically in ~2 minutes.', 'success');
+            } catch (error: any) {
+                Swal.fire('Sync Failed', error.response?.data?.message || 'Unknown error', 'error');
+            }
+        }
+    };
+
     const [isChatOpen, setIsChatOpen] = useState(false);
 
     // Calculate Unread Count (Global)
@@ -319,6 +357,17 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                                 {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
                             </button>
 
+                            {user?.role === 'DEVELOPER_ADMIN' && (
+                                <button
+                                    onClick={handleDeploy}
+                                    className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors"
+                                    title="Sync Updates to Cloud"
+                                >
+                                    <Upload size={18} />
+                                    <span className="hidden md:inline">Sync to Cloud</span>
+                                </button>
+                            )}
+
                             <NotificationBell />
                             <button
                                 onClick={() => setIsSettingsOpen(true)}
@@ -341,7 +390,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                             <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold overflow-hidden shadow-sm border-2 border-white print-hidden">
                                 {user?.avatar_url ? (
                                     <img
-                                        src={user.avatar_url.startsWith('http') ? user.avatar_url : `${(import.meta as any).env.VITE_API_URL?.replace('/api', '') || 'http://localhost:4001'}${user.avatar_url}`}
+                                        src={getAssetUrl(user.avatar_url)}
                                         alt={user.full_name}
                                         className="w-full h-full object-cover"
                                     />

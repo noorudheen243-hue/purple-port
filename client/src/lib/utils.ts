@@ -14,7 +14,7 @@ export const getAssetUrl = (path?: string) => {
     // but for <img> src tags, they sometimes bypass proxy if not careful or if on different port.
     // Safest is to prepend API URL root.
 
-    // We assume the API_URL env is set, or default to localhost:4000
+    // We assume the API_URL env is set, or default to localhost:4001
     const baseUrl = (import.meta as any).env.VITE_API_URL
         ? (import.meta as any).env.VITE_API_URL.replace('/api', '') // Remove /api suffix if present
         : 'http://localhost:4001';

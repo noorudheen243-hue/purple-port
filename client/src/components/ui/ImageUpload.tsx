@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Upload, X, Loader2, Image as ImageIcon } from 'lucide-react';
 import api from '../../lib/api';
+import { getAssetUrl } from '../../lib/utils';
 
 interface ImageUploadProps {
     value?: string;
@@ -19,18 +20,10 @@ const ImageUpload = ({ value, onChange, label = "Upload Image", className = "" }
         setPreview(value);
     }, [value]);
 
-    const getFullUrl = (path?: string) => {
-        if (!path) return '';
-        if (path.startsWith('http') || path.startsWith('blob:')) return path;
-
-        // Remove leading slash if strictly appending, but here we assume path starts with /uploads
-        // Remove leading slash if strictly appending, but here we assume path starts with /uploads
-        const baseUrl = (import.meta as any).env.VITE_API_URL
-            ? (import.meta as any).env.VITE_API_URL.replace('/api', '')
-            : 'http://localhost:4000';
-
-        return `${baseUrl}${path}`;
-    };
+    // Sync preview with value prop (important for edit mode or external resets)
+    React.useEffect(() => {
+        setPreview(value);
+    }, [value]);
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -70,7 +63,7 @@ const ImageUpload = ({ value, onChange, label = "Upload Image", className = "" }
     };
 
     // Use the helper for display
-    const displayUrl = getFullUrl(preview);
+    const displayUrl = getAssetUrl(preview);
 
     return (
         <div className={`space-y-2 ${className}`}>

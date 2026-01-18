@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { exec } from 'child_process';
 import util from 'util';
 
+import path from 'path';
+
 const execAsync = util.promisify(exec);
 
 export const syncToCloud = async (req: Request, res: Response) => {
@@ -13,12 +15,19 @@ export const syncToCloud = async (req: Request, res: Response) => {
 
         console.log('Starting One-Click Sync...');
 
+        // Resolve Project Root (Go up from src/modules/system/controller.ts -> system -> modules -> src -> server -> ROOT)
+        // If running from dist, structure is same: dist/modules/system/controller.js -> ... -> ROOT
+        const projectRoot = path.resolve(__dirname, '../../../../');
+        console.log('Project Root:', projectRoot);
+
+        const execOptions = { cwd: projectRoot };
+
         // 1. Git Add
-        await execAsync('git add .');
+        await execAsync('git add .', execOptions);
 
         // 2. Git Commit (Ignore error if nothing to commit)
         try {
-            await execAsync('git commit -m "Auto-sync from One-Click Dashboard"');
+            await execAsync('git commit -m "Auto-sync from One-Click Dashboard"', execOptions);
             console.log('Changes committed.');
         } catch (e: any) {
             if (e.stdout?.includes('nothing to commit')) {
@@ -30,7 +39,7 @@ export const syncToCloud = async (req: Request, res: Response) => {
 
         // 3. Git Push
         // This triggers the GitHub Action setup previously
-        const { stdout, stderr } = await execAsync('git push origin main');
+        const { stdout, stderr } = await execAsync('git push origin main', execOptions);
 
         console.log('Push Output:', stdout);
         if (stderr) console.error('Push Stderr:', stderr);

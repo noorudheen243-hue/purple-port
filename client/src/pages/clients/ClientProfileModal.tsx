@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { X, Building2, User, Mail, Phone, MapPin, Globe, CreditCard, Target, Users, Briefcase, DollarSign, Hash } from 'lucide-react';
 
+import { getAssetUrl } from '../../lib/utils';
+
 interface ClientProfileModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -14,22 +16,11 @@ const ClientProfileModal = ({ isOpen, onClose, client }: ClientProfileModalProps
     if (!client) return null;
 
     // Helper safely parse JSON
-    // Helper safely parse JSON
     const parseJson = (val: any) => {
         if (typeof val === 'string') {
             try { return JSON.parse(val); } catch { return null; }
         }
         return val;
-    };
-
-    // Helper for Image URLs
-    const getFullUrl = (path?: string) => {
-        if (!path) return '';
-        if (path.startsWith('http') || path.startsWith('blob:')) return path;
-        const baseUrl = (import.meta as any).env.VITE_API_URL
-            ? (import.meta as any).env.VITE_API_URL.replace('/api', '')
-            : 'http://localhost:4000';
-        return `${baseUrl}${path}`;
     };
 
     const services = parseJson(client.service_engagement) || [];
@@ -75,7 +66,7 @@ const ClientProfileModal = ({ isOpen, onClose, client }: ClientProfileModalProps
                                 <div className="w-32 h-32 bg-white rounded-xl shadow-md p-2 flex items-center justify-center border border-gray-100 flex-shrink-0 relative overflow-hidden">
                                     {client.logo_url ? (
                                         <img
-                                            src={getFullUrl(client.logo_url)}
+                                            src={getAssetUrl(client.logo_url)}
                                             alt={client.name}
                                             className="w-full h-full object-contain"
                                             onError={(e) => {
@@ -171,7 +162,7 @@ const ClientProfileModal = ({ isOpen, onClose, client }: ClientProfileModalProps
                                                     {client.assigned_staff.map((staff: any) => (
                                                         <div key={staff.id} className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg border border-gray-100">
                                                             {staff.avatar_url ? (
-                                                                <img src={staff.avatar_url} alt={staff.full_name} className="w-8 h-8 rounded-full object-cover" />
+                                                                <img src={getAssetUrl(staff.avatar_url)} alt={staff.full_name} className="w-8 h-8 rounded-full object-cover" />
                                                             ) : (
                                                                 <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-xs">
                                                                     {staff.full_name?.charAt(0)}
@@ -243,7 +234,7 @@ const ClientProfileModal = ({ isOpen, onClose, client }: ClientProfileModalProps
                                                     {client.assigned_staff.map((staff: any) => (
                                                         <div key={staff.id} className="flex items-center gap-3 p-2 border rounded-md bg-white hover:bg-gray-50 transition-colors">
                                                             {staff.avatar_url ? (
-                                                                <img src={staff.avatar_url} alt={staff.full_name} className="w-8 h-8 rounded-full object-cover" />
+                                                                <img src={getAssetUrl(staff.avatar_url)} alt={staff.full_name} className="w-8 h-8 rounded-full object-cover" />
                                                             ) : (
                                                                 <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-xs">
                                                                     {staff.full_name?.charAt(0)}

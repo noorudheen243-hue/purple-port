@@ -80,6 +80,25 @@ const TaskBoard = () => {
                 </div>
 
                 <div className="flex gap-2">
+                    {/* Admin Only Reset Button */}
+                    {(user?.role === 'ADMIN' || user?.role === 'DEVELOPER_ADMIN') && (
+                        <button
+                            onClick={async () => {
+                                if (window.confirm("⚠️ DANGER: This will delete ALL tasks, comments, notification, and assets. This cannot be undone. Are you sure?")) {
+                                    try {
+                                        await api.delete('/tasks/reset-data');
+                                        alert("All system data has been wiped.");
+                                        window.location.reload();
+                                    } catch (e) {
+                                        alert("Failed to reset data.");
+                                    }
+                                }
+                            }}
+                            className="bg-red-100 text-red-600 border border-red-200 px-3 py-2 rounded-md font-medium text-xs flex items-center gap-2 hover:bg-red-200 transition-colors"
+                        >
+                            <Trash2 size={14} /> Reset Data
+                        </button>
+                    )}
                     <select
                         value={department}
                         onChange={(e) => setDepartment(e.target.value)}

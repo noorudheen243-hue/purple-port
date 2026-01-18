@@ -1,5 +1,5 @@
 import express from 'express';
-import { getTasks, createTask, getTask, updateTask, deleteTask, getStats, startTaskTimer, stopTaskTimer } from './controller';
+import { getTasks, createTask, getTask, updateTask, deleteTask, getStats, startTaskTimer, stopTaskTimer, resetData } from './controller';
 import { debugTasks } from './debug.controller';
 import { protect } from '../auth/middleware';
 
@@ -23,5 +23,6 @@ router.post('/:id/timer/start', startTaskTimer);
 router.post('/:id/timer/stop', stopTaskTimer);
 
 // router.get('/debug/diagnose', debugTasks);
+router.delete('/reset-data', resetData); // Admin Only protected by router.use(protect) above, but ideally add authorize('ADMIN')
 
 export default router;

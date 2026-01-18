@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/api';
-import { Filter, Calendar as CalIcon, Edit, Trash2 } from 'lucide-react';
+import { Filter, Calendar as CalIcon, Edit, Trash2, Plus } from 'lucide-react';
 import TaskEditModal from './TaskEditModal';
 import { useAuthStore } from '../../store/authStore';
 

@@ -136,6 +136,7 @@ export const deleteTask = async (req: Request, res: Response) => {
     try {
         if (isCreative(req)) return res.status(403).json({ message: 'Creative team cannot delete tasks.' });
 
+        await taskService.deleteTask(req.params.id);
         res.json({ message: 'Task deleted' });
     } catch (error: any) {
         res.status(500).json({ message: error.message });

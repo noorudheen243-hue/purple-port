@@ -22,6 +22,6 @@ router.route('/:id')
 router.post('/:id/timer/start', startTaskTimer);
 router.post('/:id/timer/stop', stopTaskTimer);
 
-router.get('/debug/diagnose', debugTasks);
+// router.get('/debug/diagnose', debugTasks);
 
 export default router;

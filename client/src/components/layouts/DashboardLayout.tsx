@@ -357,7 +357,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                                 {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
                             </button>
 
-                            {user?.role === 'DEVELOPER_ADMIN' && (
+                            {user?.role === 'DEVELOPER_ADMIN' && import.meta.env.DEV && (
                                 <button
                                     onClick={handleDeploy}
                                     className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors"

@@ -193,6 +193,7 @@ export const getStats = async (req: Request, res: Response) => {
 
 export const resetData = async (req: Request, res: Response) => {
     try {
+        console.log('RESET DATA REQUESTED');
         await taskService.wipeAllTaskData();
         res.json({ message: "All task data wiped successfully." });
     } catch (error: any) {

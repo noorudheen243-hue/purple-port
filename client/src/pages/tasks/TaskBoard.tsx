@@ -89,8 +89,10 @@ const TaskBoard = () => {
                                         await api.delete('/tasks/reset-data');
                                         alert("All system data has been wiped.");
                                         window.location.reload();
-                                    } catch (e) {
-                                        alert("Failed to reset data.");
+                                    } catch (e: any) {
+                                        console.error(e);
+                                        const msg = e.response?.data?.message || e.message || "Failed to reset data";
+                                        alert(`Failed to reset data: ${msg}`);
                                     }
                                 }
                             }}

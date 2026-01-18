@@ -457,11 +457,21 @@ export const wipeAllTaskData = async () => {
     // OR user said "wipe out entire task related datas". 
     // Usually assets are valuable files. Let's just unlink them for now to avoid losing files.
     // Notifications: Often contain old task alerts. Wipe them for a fresh start.
-    await prisma.notification.deleteMany({}); // Optional: where type is task related. But "fresh start" implies all.
+    await prisma.notification.deleteMany({});
 
     // Assets are strictly linked to tasks (required task_id).
     // Deleting all assets is safe as they are child records of Tasks.
     await prisma.asset.deleteMany({});
 
+    // 1. Break Self-Reference (Subtasks) to avoid Foreign Key locking
+    await prisma.task.updateMany({
+        where: { parent_task_id: { not: null } },
+        data: { parent_task_id: null }
+    });
+
+    // 2. Clear Dependencies (Many-to-Many link table)
+    await prisma.taskDependency.deleteMany({});
+
+    // 3. now safe to delete Tasks
     return await prisma.task.deleteMany({});
 };

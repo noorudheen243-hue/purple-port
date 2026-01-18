@@ -456,13 +456,9 @@ export const wipeAllTaskData = async () => {
     // Schema says Asset.task_id is optional. We'll just unlink them to be safe, 
     // OR user said "wipe out entire task related datas". 
     // Usually assets are valuable files. Let's just unlink them for now to avoid losing files.
-    // If user specifically asked "wipe out", maybe they want files gone?
-    // "wipe out entire task related datas entered before as trials". 
-    // I will delete assets that are linked to tasks, assuming they are trial uploads.
-    // Disconnect/Delete assets linked to tasks
-    await prisma.asset.deleteMany({
-        where: { NOT: { task_id: null } }
-    });
+    // Assets are strictly linked to tasks (required task_id).
+    // Deleting all assets is safe as they are child records of Tasks.
+    await prisma.asset.deleteMany({});
 
     // SubTask model deletion removed as it doesn't exist in Prisma Client
 

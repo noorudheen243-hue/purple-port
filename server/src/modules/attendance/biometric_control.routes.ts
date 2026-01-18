@@ -23,4 +23,19 @@ router.post('/clear-logs', authenticate, authorize('ADMIN', 'DEVELOPER_ADMIN'), 
 router.post('/users/add', authenticate, authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'), BiometricController.addUser);
 router.post('/users/delete', authenticate, authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'), BiometricController.deleteUser);
 
+// dedicated API Key Middleware for Bridge
+const requireApiKey = (req: any, res: any, next: any) => {
+    const apiKey = req.headers['x-api-key'];
+    const envKey = process.env.BIOMETRIC_API_KEY || 'default_bridge_key';
+
+    if (apiKey && apiKey === envKey) {
+        next();
+    } else {
+        res.status(403).json({ message: 'Forbidden: Invalid Bridge API Key' });
+    }
+};
+
+// Bridge Agent Routes (API Key Protected)
+router.post('/bridge/upload', requireApiKey, BiometricController.uploadLogs);
+
 export default router;

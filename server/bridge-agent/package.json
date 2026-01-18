@@ -1,0 +1,18 @@
+{
+    "name": "qix-biometric-bridge",
+    "version": "1.0.0",
+    "description": "Bridge Agent to sync local ZKTeco Biometric Data to Online Server",
+    "main": "agent.js",
+    "scripts": {
+        "start": "node agent.js",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "author": "Qix Ads",
+    "license": "ISC",
+    "dependencies": {
+        "axios": "^1.6.0",
+        "dotenv": "^16.3.0",
+        "node-cron": "^3.0.3",
+        "zkteco-js": "^1.7.1"
+    }
+}

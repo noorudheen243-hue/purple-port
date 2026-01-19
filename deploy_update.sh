@@ -15,20 +15,28 @@ git pull origin main
 echo ">>> Updating Server..."
 cd server || exit
 npm install
-# COMPILE TYPESCRIPT (Important!)
+# CLEAN & BUILD
+echo ">>> Cleaning old build artifacts..."
+rm -rf dist
+echo ">>> Compiling TypeScript..."
 npm run build
 npx prisma generate
-npx prisma db push # Or migrate deploy
-# Ensure Developer Admin Role
-# Ensure Developer Admin Role
-# Force Production Mode for Backend
+npx prisma db push 
+
+# Force Production Mode
 export NODE_ENV=production
 
-# PM2 RESCUE: Restart ALL possible service names to be safe
-echo ">>> Resetting PM2 Processes..."
-pm2 restart "purple-port-api" || echo "purple-port-api not running"
-pm2 restart "qix-api" || echo "qix-api not running"
-pm2 restart "qix-backend" || echo "qix-backend not running"
+# PM2 RELOAD (Aggressive)
+echo ">>> restarting PM2..."
+# Stop everything to ensure no locked files or old memory refs
+pm2 stop all || true
+# Delete old instances definitions to force update from new code
+pm2 delete "purple-port-api" || true
+pm2 delete "qix-api" || true
+pm2 delete "qix-backend" || true
+
+# Start Clean Instance
+pm2 start dist/server.js --name "qix-api"
 pm2 save
 
 # SYNC: Also copy code to /root/purple-port just in case

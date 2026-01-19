@@ -20,8 +20,12 @@ export const calculateTeamKPIs = async (month: number, year: number): Promise<KP
     const tasks = await prisma.task.findMany({
         where: {
             createdAt: { gte: startDate, lte: endDate },
-            // Or should we count tasks updated/completed in this month?
-            // "Task deadlines & completion dates" 
+            // Exclude Co-founders' tasks from Team Stats
+            assignee: {
+                staffProfile: {
+                    staff_number: { notIn: ['QIX0001', 'QIX0002'] }
+                }
+            }
         }
     });
 

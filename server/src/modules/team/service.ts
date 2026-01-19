@@ -86,6 +86,9 @@ export const getStaffByUserId = async (userId: string) => {
 export const listStaff = async () => {
     const profiles = await prisma.staffProfile.findMany({
         orderBy: { designation: 'asc' },
+        where: {
+            staff_number: { notIn: ['QIX0001', 'QIX0002'] } // Exclude Co-founders from Directory & Registry
+        },
         include: {
             user: { select: { id: true, full_name: true, email: true, role: true, avatar_url: true } }
         }

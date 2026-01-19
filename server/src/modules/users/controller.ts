@@ -3,7 +3,8 @@ import * as userService from './service';
 
 export const getUsers = async (req: Request, res: Response) => {
     try {
-        const users = await userService.getAllUsers();
+        const includeHidden = req.query.include_hidden === 'true';
+        const users = await userService.getAllUsers(includeHidden);
         res.json(users);
     } catch (error: any) {
         res.status(500).json({ message: error.message });

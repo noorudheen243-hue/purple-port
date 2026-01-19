@@ -43,16 +43,22 @@ export const findUserById = async (id: string) => {
     });
 };
 
-export const getAllUsers = async () => {
+export const getAllUsers = async (includeHidden = false) => {
+    // Base Where: Always hide Bridge Agent
+    const whereClause: any = {
+        email: { not: 'bridge@antigravity.com' }
+    };
+
+    // If NOT asking for hidden users (default behavior for Dropdowns), apply strict filters
+    if (!includeHidden) {
+        whereClause.role = { not: 'CLIENT' }; // Exclude Clients
+        whereClause.staffProfile = {
+            staff_number: { notIn: ['QIX0001', 'QIX0002'] } // Exclude Co-founders
+        };
+    }
+
     return await prisma.user.findMany({
-        where: {
-            email: { not: 'bridge@antigravity.com' },
-            role: { not: 'CLIENT' }, // Exclude Clients
-            // Implicitly requires Staff Profile to exist
-            staffProfile: {
-                staff_number: { notIn: ['QIX0001', 'QIX0002'] }
-            }
-        },
+        where: whereClause,
         select: {
             id: true,
             full_name: true,

@@ -83,8 +83,8 @@ const MyProfileTab = ({ user, onClose }: { user: any, onClose: () => void }) => 
 // --- Component: Team Credentials Tab ---
 const TeamCredentialsTab = () => {
     const { data: users, isLoading } = useQuery({
-        queryKey: ['users'],
-        queryFn: async () => (await api.get('/users')).data
+        queryKey: ['users', 'credentials'], // Unique key to avoid cache collision with dropdowns
+        queryFn: async () => (await api.get('/users?include_hidden=true')).data
     });
 
     const [editingUser, setEditingUser] = useState<any>(null);

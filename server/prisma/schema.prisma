@@ -75,6 +75,9 @@ model User {
   launcherPreferences UserLauncherPreference[]
 
   advance_balance Float    @default(0.0)
+
+  @@index([role])
+  @@index([department])
 }
 
 // --- MODULE 5: TEAM & HR MANAGEMENT ---
@@ -185,6 +188,8 @@ model AttendanceRecord {
   user        User     @relation(fields: [user_id], references: [id])
 
   @@unique([user_id, date])
+  @@index([status])
+  @@index([date])
 }
 
 model LeaveRequest {
@@ -358,6 +363,8 @@ model Client {
   contentDeliverables ContentDeliverable[]
   reports            Report[]
 
+  @@index([status])
+  @@index([account_manager_id])
 }
 
 model ClientContentStrategy {
@@ -448,6 +455,14 @@ model Task {
   assets   Asset[]
   comments Comment[]
   timeLogs TimeLog[]
+
+  @@index([status])
+  @@index([priority])
+  @@index([assignee_id])
+  @@index([reporter_id])
+  @@index([client_id])
+  @@index([campaign_id])
+  @@index([due_date])
 }
 
 model TaskDependency {
@@ -495,6 +510,8 @@ model Comment {
   parent_comment_id String?
   parent_comment    Comment?  @relation("ThreadedComments", fields: [parent_comment_id], references: [id])
   replies           Comment[] @relation("ThreadedComments")
+
+  @@index([task_id])
 }
 
 model TimeLog {
@@ -509,6 +526,10 @@ model TimeLog {
 
   user_id String
   user    User   @relation(fields: [user_id], references: [id])
+
+  @@index([user_id])
+  @@index([task_id])
+  @@index([start_time])
 }
 
 model Notification {
@@ -521,6 +542,9 @@ model Notification {
 
   user_id String
   user    User   @relation(fields: [user_id], references: [id])
+
+  @@index([user_id])
+  @@index([read])
 }
 
 // --- MODULE 3: ACCOUNTING ---

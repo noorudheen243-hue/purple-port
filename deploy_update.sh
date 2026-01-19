@@ -24,12 +24,17 @@ npx prisma db push # Or migrate deploy
 # Force Production Mode for Backend
 export NODE_ENV=production
 
-# PM2 RESCUE: Delete old process and start fresh to fix path issues
-# We are currently in /var/www/purple-port/server
-echo ">>> Resetting PM2 Process..."
-pm2 delete all || true
-pm2 start dist/server.js --name "purple-port-api"
+# PM2 RESCUE: Restart ALL possible service names to be safe
+echo ">>> Resetting PM2 Processes..."
+pm2 restart "purple-port-api" || echo "purple-port-api not running"
+pm2 restart "qix-api" || echo "qix-api not running"
+pm2 restart "qix-backend" || echo "qix-backend not running"
 pm2 save
+
+# SYNC: Also copy code to /root/purple-port just in case
+echo ">>> Syncing to fallback directory..."
+mkdir -p /root/purple-port
+cp -r /var/www/purple-port/* /root/purple-port/ || true
 
 # 3. Update Frontend
 echo ">>> Building Client..."

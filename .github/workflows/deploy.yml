@@ -18,7 +18,10 @@ jobs:
           port: 22
           script: |
             cd /root/purple-port
-            # Run the deployment script to pull and rebuild
-            # Ensure it is executable first
+            # Force clean state from remote
+            git fetch --all
+            git reset --hard origin/main
+            
+            # Run the deployment script to rebuild
             chmod +x deploy.sh
             ./deploy.sh

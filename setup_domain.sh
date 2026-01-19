@@ -23,7 +23,7 @@ server {
     listen 80;
     server_name $DOMAIN_NAME www.$DOMAIN_NAME;
 
-    root /var/www/purple-port;
+    root /var/www/purple-port/server/public;
     index index.html;
 
     # Frontend Routes (React Router)
@@ -55,7 +55,7 @@ EOF
 
 # 2. Update Backend Environment (CLIENT_URL)
 echo ">>> Updating Server Environment Variables..."
-SERVER_ENV_FILE="/root/purple-port/server/.env"
+SERVER_ENV_FILE="/var/www/purple-port/server/.env"
 
 # Check if file exists, then replace or append CLIENT_URL
 if [ -f "$SERVER_ENV_FILE" ]; then

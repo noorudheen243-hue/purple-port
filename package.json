@@ -1,6 +1,6 @@
 {
   "name": "antigravity",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A production-ready work management application for Qix Ads agency.",
   "main": "index.js",
   "scripts": {

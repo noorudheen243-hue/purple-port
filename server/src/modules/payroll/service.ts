@@ -95,6 +95,11 @@ export const getSalaryDraft = async (userId: string, month: number, year: number
     });
     if (!profile) throw new Error("Staff profile not found");
 
+    // EXCLUDE CO-FOUNDERS
+    if (['QIX0001', 'QIX0002'].includes(profile.staff_number)) {
+        throw new Error("Payroll processing is disabled for Co-founders (Manual Processing Only).");
+    }
+
     // 2. Calculate LOP (Always fresh)
     const lopDays = await calculateAutoLOP(userId, month, year);
 

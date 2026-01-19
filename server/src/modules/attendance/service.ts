@@ -678,11 +678,13 @@ export class AttendanceService {
     // Biometric Logs View (Flat List for Admin Table - Shows ALL staff)
     static async getBiometricLogs(startDate: Date, endDate: Date, userId?: string) {
         // 1. Fetch ALL Active Staff involved in attendance (exclude Clients)
-        // 1. Fetch ALL Active Staff involved in attendance (exclude Clients)
         const staffQuery: any = {
             role: { not: 'CLIENT' },
             full_name: { not: 'Biometric Bridge Agent' }, // Explicitly exclude Bridge Agent
-            staffProfile: { isNot: null }, // Only users with Staff Profile (removes N/A staff)
+            staffProfile: {
+                isNot: null, // Only users with Staff Profile (removes N/A staff)
+                staff_number: { notIn: ['QIX0001', 'QIX0002'] } // Exclude Co-founders
+            },
             // Optional: Filter by specific user if requested (e.g. non-admin view)
             ...(userId ? { id: userId } : {})
         };

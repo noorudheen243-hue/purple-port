@@ -682,8 +682,7 @@ export class AttendanceService {
             role: { not: 'CLIENT' },
             full_name: { not: 'Biometric Bridge Agent' }, // Explicitly exclude Bridge Agent
             staffProfile: {
-                isNot: null, // Only users with Staff Profile (removes N/A staff)
-                staff_number: { notIn: ['QIX0001', 'QIX0002'] } // Exclude Co-founders
+                staff_number: { notIn: ['QIX0001', 'QIX0002'] } // Exclude Co-founders (Implicitly checks isNot null)
             },
             // Optional: Filter by specific user if requested (e.g. non-admin view)
             ...(userId ? { id: userId } : {})

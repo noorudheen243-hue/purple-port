@@ -15,9 +15,9 @@ router.get('/', getClients);
 router.get('/next-code', getNextCode);
 router.get('/:id', getClientById);
 
-// Only Admin and Managers can modify clients
-router.post('/', authorize('ADMIN', 'MANAGER'), createClient);
-router.patch('/:id', authorize('ADMIN', 'MANAGER'), updateClient);
-router.delete('/:id', authorize('ADMIN', 'MANAGER'), deleteClient);
+// Only Admin, Managers, and Executives can modify clients
+router.post('/', authorize('ADMIN', 'MANAGER', 'DM_EXECUTIVE', 'WEB_SEO_EXECUTIVE'), createClient);
+router.patch('/:id', authorize('ADMIN', 'MANAGER', 'DM_EXECUTIVE', 'WEB_SEO_EXECUTIVE'), updateClient);
+router.delete('/:id', authorize('ADMIN', 'MANAGER', 'DM_EXECUTIVE', 'WEB_SEO_EXECUTIVE'), deleteClient);
 
 export default router;

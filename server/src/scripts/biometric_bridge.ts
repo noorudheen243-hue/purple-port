@@ -18,8 +18,6 @@ const BRIDGE_USER = {
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 async function sync() {
-    console.log(`[${new Date().toLocaleTimeString()}] Starting Sync Cycle...`);
-
     // 1. Authenticate with Server
     let token = API_TOKEN;
     if (!token) {
@@ -27,7 +25,7 @@ async function sync() {
             const loginResp = await axios.post(`${SERVER_URL}/auth/login`, BRIDGE_USER);
             token = loginResp.data.token;
         } catch (error: any) {
-            console.error("Server Authentication Failed:", error.message);
+            console.error(`[${new Date().toLocaleTimeString()}] ❌ Server Auth Failed:`, error.message);
             return; // Try again next cycle
         }
     }
@@ -48,8 +46,7 @@ async function sync() {
                 ip: l.ip
             }));
 
-            // Log count only to keep output clean
-            console.log(`Fetched ${data.length} logs. Uploading...`);
+            console.log(`[${new Date().toLocaleTimeString()}] 📤 Uploading ${data.length} logs...`);
 
             const uploadResp = await axios.post(
                 `${SERVER_URL}/attendance/biometric/upload-logs`,
@@ -57,13 +54,13 @@ async function sync() {
                 { headers: { Authorization: `Bearer ${token}` } }
             );
 
-            console.log(`✅ Success: ${uploadResp.data.message}`);
+            console.log(`[${new Date().toLocaleTimeString()}] ✅ Sync Success: ${uploadResp.data.message}`);
         } else {
-            console.log("No logs found on device.");
+            console.log(`[${new Date().toLocaleTimeString()}] 💤 Device Online. No new logs.`);
         }
 
     } catch (error: any) {
-        console.error("⚠️ Sync Error:", error.message || "Unknown error");
+        console.error(`[${new Date().toLocaleTimeString()}] ⚠️ Device Connection Error:`, error.message || "Unknown error");
     } finally {
         try { await zk.disconnect(); } catch (e) { }
     }

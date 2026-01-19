@@ -72,7 +72,8 @@ export default function BiometricDetailsPage() {
         queryKey: ['staff-list'],
         queryFn: async () => {
             const res = await api.get('/team/staff');
-            return res.data;
+            // Filter out system users
+            return res.data?.filter((s: any) => s.user?.full_name !== 'Biometric Bridge Agent');
         },
         enabled: isAdminOrManager
     });
@@ -92,8 +93,9 @@ export default function BiometricDetailsPage() {
     const filteredLogs = useMemo(() => {
         if (!logs) return [];
         return logs.filter((log: any) =>
-            log.user_name.toLowerCase().includes(search.toLowerCase()) ||
-            log.staff_number.toLowerCase().includes(search.toLowerCase())
+            log.user_name !== 'Biometric Bridge Agent' &&
+            (log.user_name.toLowerCase().includes(search.toLowerCase()) ||
+                log.staff_number.toLowerCase().includes(search.toLowerCase()))
         );
     }, [logs, search]);
 

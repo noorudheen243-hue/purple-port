@@ -46,7 +46,12 @@ export const findUserById = async (id: string) => {
 export const getAllUsers = async () => {
     return await prisma.user.findMany({
         where: {
-            email: { not: 'bridge@antigravity.com' }
+            email: { not: 'bridge@antigravity.com' },
+            role: { not: 'CLIENT' }, // Exclude Clients
+            // Implicitly requires Staff Profile to exist
+            staffProfile: {
+                staff_number: { notIn: ['QIX0001', 'QIX0002'] }
+            }
         },
         select: {
             id: true,

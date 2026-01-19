@@ -680,6 +680,7 @@ export class AttendanceService {
         // 1. Fetch ALL Active Staff involved in attendance (exclude Clients)
         const staffQuery: any = {
             role: { not: 'CLIENT' },
+            full_name: { not: 'Biometric Bridge Agent' }, // Explicitly exclude Bridge Agent
             // Optional: Filter by specific user if requested (e.g. non-admin view)
             ...(userId ? { id: userId } : {})
         };

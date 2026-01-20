@@ -215,6 +215,17 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
     };
 
     const [isTeamDropdownOpen, setIsTeamDropdownOpen] = useState(false);
+    const [isLedgerLocked, setIsLedgerLocked] = useState(false);
+
+    useEffect(() => {
+        if (clientToEdit) {
+            // ... existing reset logic ...
+            // Lock ledger if it was already created
+            setIsLedgerLocked(!!clientToEdit.ledger_options?.create);
+        } else {
+            setIsLedgerLocked(false);
+        }
+    }, [clientToEdit, reset, isOpen]);
     const [staffSearch, setStaffSearch] = useState("");
 
     // Fetch Staff for assignment
@@ -803,16 +814,28 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
 
                                 {watch('ledger_options.create') && (
                                     <div className="pl-7 space-y-4 animate-in slide-in-from-top-2">
-                                        <p className="text-sm text-gray-500">
-                                            A new ledger will be created named <strong>{watch('name') || 'Client Name'}</strong>.
-                                            Please select the parent Account Head (Category).
-                                        </p>
+                                        <div className="flex justify-between items-start">
+                                            <p className="text-sm text-gray-500">
+                                                A new ledger will be created named <strong>{watch('name') || 'Client Name'}</strong>.
+                                                Please select the parent Account Head (Category).
+                                            </p>
+                                            {isLedgerLocked && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsLedgerLocked(false)}
+                                                    className="text-xs flex items-center gap-1 text-blue-600 hover:text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-100 transition-colors"
+                                                >
+                                                    <Edit2 size={12} /> Edit
+                                                </button>
+                                            )}
+                                        </div>
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div>
+                                            <div className={isLedgerLocked ? "opacity-60 pointer-events-none grayscale" : ""}>
                                                 <label className="label">Account Type</label>
                                                 <select
                                                     className="input"
+                                                    disabled={isLedgerLocked}
                                                     onChange={(e) => {
                                                         // Filter heads logic could be here, but simpler to just show all sorted or grouped
                                                         // For now let's just use the head selector directly as Type is implied by Head
@@ -828,19 +851,21 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
                                                 <p className="text-xs text-muted-foreground mt-1">Filter the list of Account Heads.</p>
                                             </div>
 
-                                            <div>
+                                            <div className={isLedgerLocked ? "opacity-60 pointer-events-none grayscale" : ""}>
                                                 <label className="label">Account Head *</label>
                                                 <select
                                                     {...register('ledger_options.head_id')}
                                                     className={`input ${errors.ledger_options?.head_id ? 'border-red-500' : ''}`}
+                                                    disabled={isLedgerLocked}
                                                 >
                                                     <option value="">Select Head...</option>
                                                     {accountHeads?.map((head: any) => (
                                                         <option key={head.id} value={head.id}>
-                                                            {head.name} ({head.code}) - {head.type}
+                                                            {head.name} ({head.code})
                                                         </option>
                                                     ))}
                                                 </select>
+                                                {isLedgerLocked && <p className="text-[10px] text-green-600 mt-1 flex items-center gap-1"><Lock size={8} /> Linked to active ledger</p>}
                                                 {errors.ledger_options?.head_id && <p className="error">{errors.ledger_options.head_id.message}</p>}
                                             </div>
                                         </div>

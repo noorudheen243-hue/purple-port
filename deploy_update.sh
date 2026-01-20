@@ -16,7 +16,7 @@ git pull origin main
 
 # 3. Update Frontend (Build while server is running to minimize downtime)
 echo ">>> Building Client..."
-cd ../client || exit
+cd client || exit
 export NODE_ENV=development
 npm install
 npm run build

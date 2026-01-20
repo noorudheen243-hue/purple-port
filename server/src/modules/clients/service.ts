@@ -224,7 +224,8 @@ export const getClientById = async (id: string) => {
         operating_locations: client.operating_locations_json ? JSON.parse(client.operating_locations_json) : [],
         brand_colors: client.brand_colors ? JSON.parse(client.brand_colors) : {},
         ledger_options: {
-            create: !!ledger
+            create: !!ledger,
+            head_id: ledger?.head_id || ''
         }
     };
 };

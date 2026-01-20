@@ -293,7 +293,7 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
                 address: clientToEdit.address || '',
                 ledger_options: {
                     create: clientToEdit.ledger_options?.create || false,
-                    head_id: ''
+                    head_id: clientToEdit.ledger_options?.head_id || ''
                 }
             });
         } else {

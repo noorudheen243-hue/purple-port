@@ -243,6 +243,14 @@ const OnboardingPage = () => {
                     setValue('avatar_url', data.user.avatar_url);
                 }
 
+                // Explicitly set ledger options
+                if (data.ledger_options) {
+                    setValue('ledger_options', data.ledger_options);
+                    // Force update specific fields if nested setValue is quirky
+                    setValue('ledger_options.create', data.ledger_options.create);
+                    setValue('ledger_options.head_id', data.ledger_options.head_id);
+                }
+
             }).catch(err => console.error("Failed to fetch staff details", err));
         }
     }, [id, setValue]);

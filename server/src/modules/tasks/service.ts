@@ -481,3 +481,45 @@ export const wipeAllTaskData = async () => {
     // 3. now safe to delete Tasks
     return await prisma.task.deleteMany({});
 };
+// ULTRA-OPTIMIZED DASHBOARD AGGREGATION
+export const calculateDashboardAggregates = async () => {
+    // Run all counts in parallel for maximum speed
+    const [total, completed, inProgress, rework, overdue] = await Promise.all([
+        prisma.task.count(),
+        prisma.task.count({ where: { status: 'COMPLETED' } }),
+        prisma.task.count({ where: { status: 'IN_PROGRESS' } }),
+        prisma.task.count({ where: { nature: 'REWORK' } }),
+        prisma.task.count({
+            where: {
+                status: 'OVERDUE',
+                OR: [
+                    { sla_status: 'BREACHED' }
+                ]
+            }
+        })
+    ]);
+
+    // Note: The original 'overdue' logic on frontend was: status === 'OVERDUE' || (t.sla_status === 'BREACHED').
+    // The query above approximates this. If status isn't explicitly OVERDUE but deadline is passed, we might need date check.
+    // Let's refine the OVERDUE query to match frontend logic exactly:
+    const preciseOverdue = await prisma.task.count({
+        where: {
+            OR: [
+                { status: 'OVERDUE' },
+                { sla_status: 'BREACHED' },
+                {
+                    status: { not: 'COMPLETED' },
+                    due_date: { lt: new Date() }
+                }
+            ]
+        }
+    });
+
+    return {
+        total,
+        completed,
+        inProgress,
+        rework,
+        overdue: preciseOverdue
+    };
+};

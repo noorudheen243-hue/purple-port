@@ -11,11 +11,11 @@ import {
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
 const TaskDashboard = () => {
-    // Fetch aggregated stats
-    const { data: tasks, isLoading: isTasksLoading } = useQuery({
-        queryKey: ['tasks', 'all'],
+    // Fetch aggregated stats (Optimized Server-Side)
+    const { data: stats, isLoading: isTasksLoading } = useQuery({
+        queryKey: ['tasks', 'aggregates'],
         queryFn: async () => {
-            const res = await api.get('/tasks');
+            const res = await api.get('/tasks/stats?view=aggregates');
             return res.data;
         }
     });
@@ -27,12 +27,12 @@ const TaskDashboard = () => {
 
     if (isTasksLoading || isDmStatsLoading) return <div className="p-8">Loading Dashboard...</div>;
 
-    // Aggregations
-    const total = tasks?.length || 0;
-    const completed = tasks?.filter((t: any) => t.status === 'COMPLETED').length || 0;
-    const inProgress = tasks?.filter((t: any) => t.status === 'IN_PROGRESS').length || 0;
-    const overdue = tasks?.filter((t: any) => t.status === 'OVERDUE' || (t.sla_status === 'BREACHED')).length || 0;
-    const rework = tasks?.filter((t: any) => t.nature === 'REWORK').length || 0;
+    // Use Server Stats
+    const total = stats?.total || 0;
+    const completed = stats?.completed || 0;
+    const inProgress = stats?.inProgress || 0;
+    const overdue = stats?.overdue || 0;
+    const rework = stats?.rework || 0;
 
     const statusData = [
         { name: 'Completed', value: completed },

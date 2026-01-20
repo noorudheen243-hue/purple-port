@@ -179,6 +179,12 @@ export const getStats = async (req: Request, res: Response) => {
             return res.json(reportStats);
         }
 
+        // OPTIMIZED DASHBOARD AGGREGATES
+        if (view === 'aggregates') {
+            const aggs = await taskService.calculateDashboardAggregates();
+            return res.json(aggs);
+        }
+
         // Default: Dashboard Stats (Object)
         const stats = await taskService.getDashboardStats({
             id: req.user.id,

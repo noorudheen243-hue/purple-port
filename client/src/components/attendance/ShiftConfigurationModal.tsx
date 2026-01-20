@@ -59,6 +59,15 @@ export const ShiftConfigurationModal: React.FC<ShiftConfigurationModalProps> = (
         }
     };
 
+    const formatTime12 = (time: string) => {
+        if (!time) return '';
+        const [h, m] = time.split(':');
+        const hour = parseInt(h);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const hour12 = hour % 12 || 12;
+        return `${hour12}:${m} ${ampm}`;
+    };
+
     if (!isOpen) return null;
 
     return (
@@ -117,7 +126,7 @@ export const ShiftConfigurationModal: React.FC<ShiftConfigurationModalProps> = (
                                 <div key={preset.id} className="flex justify-between items-center p-2 border rounded hover:bg-gray-50">
                                     <div>
                                         <p className="font-medium text-sm text-gray-800">{preset.name}</p>
-                                        <p className="text-xs text-gray-500">{preset.start_time} - {preset.end_time}</p>
+                                        <p className="text-xs text-gray-500">{formatTime12(preset.start_time)} - {formatTime12(preset.end_time)}</p>
                                     </div>
                                     <button onClick={() => handleDelete(preset.id)} className="text-red-400 hover:text-red-600 p-1">
                                         <Trash2 size={14} />

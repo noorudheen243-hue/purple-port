@@ -631,6 +631,16 @@ const BiometricManagerPage = () => {
                                             const shiftId = isEditing ? editPolicy[staff.id].shift : (staff.shift_timing || '');
                                             const grace = isEditing ? editPolicy[staff.id].grace : (staff.grace_time || 15);
 
+                                            // Helper for 12h format
+                                            const format12 = (time: string) => {
+                                                if (!time || !time.includes(':')) return time;
+                                                const [h, m] = time.split(':');
+                                                const hour = parseInt(h);
+                                                const ampm = hour >= 12 ? 'PM' : 'AM';
+                                                const hour12 = hour % 12 || 12;
+                                                return `${hour12}:${m} ${ampm}`;
+                                            };
+
                                             return (
                                                 <tr key={staff.id} className="hover:bg-gray-50">
                                                     <td className="px-4 py-3">
@@ -651,12 +661,12 @@ const BiometricManagerPage = () => {
                                                                 <option value="">Select Shift</option>
                                                                 {shifts?.map((s: any) => (
                                                                     <option key={s.id} value={s.name}>
-                                                                        {s.name} ({s.start_time} - {s.end_time})
+                                                                        {s.name} ({format12(s.start_time)} - {format12(s.end_time)})
                                                                     </option>
                                                                 ))}
                                                             </select>
                                                         ) : (
-                                                            <span className="text-gray-700">{staff.shift_timing || 'Default (09:30 - 18:30)'}</span>
+                                                            <span className="text-gray-700">{staff.shift_timing || 'Default (09:30 AM - 06:30 PM)'}</span>
                                                         )}
                                                     </td>
                                                     <td className="px-4 py-3">

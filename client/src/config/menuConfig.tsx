@@ -77,19 +77,12 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
             { label: "New Task", path: "/dashboard/tasks?action=new", icon: PlusCircle },
             { label: "Task Board", path: "/dashboard/tasks/board", icon: KanbanSquare },
             { label: "Calendar", path: "/dashboard/tasks/calendar", icon: Calendar },
+            { label: "DM Tasks", path: "/dashboard/client-portal", icon: TrendingUp },
             { label: "Team Performance", path: "/dashboard/tasks/performance", icon: UsersIcon, roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN] },
             { label: "Reports", path: "/dashboard/tasks/reports", icon: BarChart3, roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN] }
         ]
     },
-    {
-        label: "Client Portal",
-        icon: TrendingUp,
-        children: [
-            { label: "Dashboard", path: "/dashboard/client-portal", icon: LayoutDashboard },
-            { label: "Approvals", path: "/dashboard/client-portal/approvals", icon: CheckSquare },
-            { label: "Reports", path: "/dashboard/client-portal/reports", icon: BarChart3 }
-        ]
-    },
+
     {
         label: "Attendance & Leave",
         icon: Calendar,

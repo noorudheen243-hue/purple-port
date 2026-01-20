@@ -699,7 +699,7 @@ const BiometricManagerPage = () => {
                                                                     setEditPolicy(newPolicy);
                                                                 }}>Cancel</Button>
                                                                 <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => {
-                                                                    api.put(`/team/${staff.id}`, {
+                                                                    api.patch(`/team/staff/${staff.id}`, {
                                                                         shift_timing: editPolicy[staff.id].shift,
                                                                         grace_time: editPolicy[staff.id].grace
                                                                     }).then(() => {

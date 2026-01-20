@@ -12,6 +12,7 @@ router.patch('/services/:clientId', authorize('ADMIN', 'MANAGER', 'DM_EXECUTIVE'
 router.get('/services/:clientId', authorize('ADMIN', 'MANAGER', 'DM_EXECUTIVE', 'WEB_SEO_EXECUTIVE'), controller.getServices);
 
 // Client/Admin/Manager: Get Dashboard Data
+router.get('/global-stats', authorize('ADMIN', 'MANAGER', 'DM_EXECUTIVE', 'WEB_SEO_EXECUTIVE', 'DEVELOPER_ADMIN'), controller.getGlobalPortalStats);
 router.get('/dashboard', controller.getPortalDashboard);
 
 // Approvals

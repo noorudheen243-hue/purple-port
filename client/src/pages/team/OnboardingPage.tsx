@@ -649,7 +649,7 @@ const OnboardingPage = () => {
                 )}
             </motion.div>
         </AnimatePresence>
-                </div >
+        </div >
 
     {/* Footer Controls */ }
     < div className = "pt-6 mt-8 border-t flex justify-between items-center" >
@@ -681,22 +681,21 @@ const OnboardingPage = () => {
     </button>
 )
 }
-                </div >
-            </div >
+        </div >
+    </div >
 
     {/* Global Error Summary at Bottom */ }
     < div className = "px-8 pb-8" >
         <FormErrorAlert errors={errors} />
-            </div >
-
+    </div >
 
     <style>{`
-                .label { display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem; }
-                .input-field { width: 100%; padding: 0.625rem 0.875rem; background-color: #fff; border: 1px solid #d1d5db; border-radius: 0.5rem; color: #111827; font-size: 0.93rem; transition: all 0.2s; outline: none; }
-                .input-field:focus { border-color: #3b82f6; ring: 2px solid #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
-                .error { font-size: 0.75rem; color: #ef4444; margin-top: 0.25rem; display: block; }
-            `}</style>
-        </div >
+        .label { display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem; }
+        .input-field { width: 100%; padding: 0.625rem 0.875rem; background-color: #fff; border: 1px solid #d1d5db; border-radius: 0.5rem; color: #111827; font-size: 0.93rem; transition: all 0.2s; outline: none; }
+        .input-field:focus { border-color: #3b82f6; ring: 2px solid #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+        .error { font-size: 0.75rem; color: #ef4444; margin-top: 0.25rem; display: block; }
+    `}</style>
+</div >
     );
 };
 

@@ -383,7 +383,7 @@ export const getDashboardStats = async (user: { id: string, role: string, depart
     const statusDistribution = statusRaw.map(s => ({ name: s.status, value: s._count.id }));
 
     // 3. Efficiency Stats (Optimized)
-    let efficiencyStats = [];
+    let efficiencyStats: { name: string; total: number; completed: number; efficiency: number }[] = [];
 
     const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 

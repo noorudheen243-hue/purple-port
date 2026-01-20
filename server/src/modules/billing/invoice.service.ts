@@ -157,11 +157,17 @@ export const updateInvoiceStatus = async (id: string, status: string) => {
         if (status === 'SUBMITTED' && invoice.status === 'DRAFT') {
             const clientLedger = await ensureLedger('CLIENT', invoice.client_id || '', '1000'); // '1000' is generic head code fallback
 
-            const creditLines = invoice.items.map(item => ({
-                ledger_id: item.ledger_id,
-                debit: 0,
-                credit: parseFloat(item.amount.toString())
-            }));
+            const creditLines: { ledger_id: string; debit: number; credit: number }[] = [];
+
+            for (const item of invoice.items) {
+                if (item.ledger_id) {
+                    creditLines.push({
+                        ledger_id: item.ledger_id,
+                        debit: 0,
+                        credit: parseFloat(item.amount.toString())
+                    });
+                }
+            }
 
             // Handle Additions (e.g. Tax) -> Credit 'Duties & Taxes'
             if (invoice.additions_total > 0) {

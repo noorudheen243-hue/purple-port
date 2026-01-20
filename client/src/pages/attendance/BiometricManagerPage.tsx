@@ -49,6 +49,11 @@ const BiometricManagerPage = () => {
     const [activeTab, setActiveTab] = useState<'console' | 'audit' | 'policies'>('console');
     const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
 
+    // DEBUG: Verify Version
+    React.useEffect(() => {
+        console.log('BiometricManagerPage Loaded - Version 2.0');
+    }, []);
+
     // Policy State
     const [editPolicy, setEditPolicy] = useState<{ [key: string]: { shift: string, grace: number } }>({});
 
@@ -603,7 +608,7 @@ const BiometricManagerPage = () => {
                     <Card className="p-6">
                         <div className="flex justify-between items-center mb-6">
                             <div>
-                                <h3 className="text-lg font-bold text-gray-800">Staff Policies</h3>
+                                <h3 className="text-lg font-bold text-gray-800">Staff Policies (v2)</h3>
                                 <p className="text-sm text-gray-500">Configure shift timings and grace periods</p>
                             </div>
                             <Button onClick={() => setIsShiftModalOpen(true)}>

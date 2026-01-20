@@ -368,10 +368,10 @@ export const getTaskStats = async (filters: {
 
 export const getDashboardStats = async (user: { id: string, role: string, department: string }) => {
     // 1. Determine Scope
+    // Including MARKETING_EXEC in managerial view as per previous logic
     const isManagerial = ['ADMIN', 'MANAGER', 'DEVELOPER_ADMIN', 'MARKETING_EXEC', 'WEB_SEO_EXECUTIVE'].includes(user.role) || user.department === 'MARKETING' || user.department === 'WEB';
 
     // 2. Task Status Distribution
-    // Managers = All Tasks. Staff = My Tasks.
     const distributionWhere: Prisma.TaskWhereInput = isManagerial ? {} : { assignee_id: user.id };
 
     const statusRaw = await prisma.task.groupBy({
@@ -382,61 +382,58 @@ export const getDashboardStats = async (user: { id: string, role: string, depart
 
     const statusDistribution = statusRaw.map(s => ({ name: s.status, value: s._count.id }));
 
-    // 3. Efficiency Stats
+    // 3. Efficiency Stats (Optimized)
     let efficiencyStats = [];
+
+    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
     if (isManagerial) {
         // Creative Team Efficiency (All staff in CREATIVE department)
-        // Check StaffProfile for department = CREATIVE
+        // Fetch all tasks for creative staff in one go, grouped by assignee
+        // First get creative staff IDs to filter
         const creativeStaff = await prisma.staffProfile.findMany({
             where: { department: 'CREATIVE' },
-            include: { user: true }
+            select: { user_id: true, user: { select: { full_name: true } } }
         });
 
-        // Calculate stats for each
-        const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+        const creativeIds = creativeStaff.map(s => s.user_id);
 
-        efficiencyStats = await Promise.all(creativeStaff.map(async (staff) => {
-            const stats = await prisma.task.aggregate({
+        if (creativeIds.length > 0) {
+            // Group by assignee and status
+            const rawStats = await prisma.task.groupBy({
+                by: ['assignee_id', 'status'],
                 where: {
-                    assignee_id: staff.user_id,
+                    assignee_id: { in: creativeIds },
                     createdAt: { gte: startOfMonth }
                 },
                 _count: { id: true }
             });
 
-            const completed = await prisma.task.count({
-                where: {
-                    assignee_id: staff.user_id,
-                    status: 'COMPLETED',
-                    createdAt: { gte: startOfMonth }
-                }
-            });
+            // Map results back to staff names
+            efficiencyStats = creativeStaff.map(staff => {
+                const staffStats = rawStats.filter(s => s.assignee_id === staff.user_id);
+                const total = staffStats.reduce((acc, curr) => acc + curr._count.id, 0);
+                const completed = staffStats.find(s => s.status === 'COMPLETED')?._count.id || 0;
 
-            return {
-                name: staff.user.full_name,
-                total: stats._count.id,
-                completed: completed,
-                efficiency: stats._count.id > 0 ? Math.round((completed / stats._count.id) * 100) : 0
-            };
-        }));
+                return {
+                    name: staff.user.full_name,
+                    total,
+                    completed,
+                    efficiency: total > 0 ? Math.round((completed / total) * 100) : 0
+                };
+            }).filter(s => s.total > 0); // Only show active staff
+        }
 
     } else {
         // Personal Monthly Status
-        const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
         const myTasks = await prisma.task.findMany({
             where: {
                 assignee_id: user.id,
                 createdAt: { gte: startOfMonth }
-            }
+            },
+            select: { status: true }
         });
 
-        // Group by Date or Status? Request: "Current month status of their own tasks status".
-        // Let's give status split for this month.
-        // And maybe a timeline?
-        // Let's reuse Distribution for the Pie Chart.
-        // For Efficiency, maybe weekly trend?
-        // Let's just return the same structure but focused on self.
         efficiencyStats = [{
             name: 'Me',
             total: myTasks.length,

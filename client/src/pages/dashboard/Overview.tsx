@@ -24,6 +24,7 @@ const Overview = () => {
             return <ManagerDashboard />;
 
         case ROLES.DM_EXECUTIVE:
+        case 'MARKETING_EXEC' as any: // Handle legacy/mismatched role string if present in DB
         case ROLES.WEB_SEO_EXECUTIVE:
         case ROLES.OPERATIONS_EXECUTIVE:
             // Legacy fallback support if needed, but prefer strict

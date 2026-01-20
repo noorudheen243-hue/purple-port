@@ -361,6 +361,10 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                                 {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
                             </button>
 
+                            <div className="hidden md:block text-[10px] text-gray-400 mr-2 border border-gray-200 p-1 rounded">
+                                v2.2 | Role: {user?.role || 'None'}
+                            </div>
+
                             {(user?.role === ROLES.DEVELOPER_ADMIN || user?.role === ROLES.ADMIN) && (
                                 <button
                                     onClick={handleDeploy}

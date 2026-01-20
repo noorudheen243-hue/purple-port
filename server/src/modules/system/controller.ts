@@ -10,8 +10,8 @@ import { spawn } from 'child_process';
 export const syncToCloud = async (req: Request, res: Response) => {
     try {
         // Security Check: Only Developer Admin
-        if (req.user?.role !== 'DEVELOPER_ADMIN') {
-            return res.status(403).json({ message: 'Forbidden. Only Developer Admins can perform deployments.' });
+        if (req.user?.role !== 'DEVELOPER_ADMIN' && req.user?.role !== 'ADMIN') {
+            return res.status(403).json({ message: 'Forbidden. Only Developer Admins & Admins can perform deployments.' });
         }
 
         const isProduction = process.env.NODE_ENV === 'production';

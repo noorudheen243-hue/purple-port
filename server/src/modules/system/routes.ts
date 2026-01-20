@@ -7,6 +7,6 @@ const router = Router();
 router.use(protect);
 
 // Only Developer Admin can trigger cloud sync
-router.post('/deploy', authorize('DEVELOPER_ADMIN'), controller.syncToCloud);
+router.post('/deploy', authorize('DEVELOPER_ADMIN', 'ADMIN'), controller.syncToCloud);
 
 export default router;

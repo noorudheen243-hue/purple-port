@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Briefcase, FileText, CheckCircle, ArrowRight, ArrowLeft, Upload, Lock, GraduationCap } from 'lucide-react';
+import { User, Briefcase, FileText, CheckCircle, ArrowRight, ArrowLeft, Upload, Lock, GraduationCap, Edit2 } from 'lucide-react';
 import api from '../../lib/api';
 import ImageUpload from '../../components/ui/ImageUpload';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';

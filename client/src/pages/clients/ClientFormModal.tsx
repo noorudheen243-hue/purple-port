@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { X, Save, Building, Users, Globe, Target, Briefcase, Plus, Trash2, DollarSign } from 'lucide-react';
+import { X, Save, Building, Users, Globe, Target, Briefcase, Plus, Trash2, DollarSign, Lock, Edit2 } from 'lucide-react';
 import api from '../../lib/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/authStore';

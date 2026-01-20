@@ -258,6 +258,21 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
     // Populate form if editing
     useEffect(() => {
         if (clientToEdit) {
+            // Normalize legacy services
+            const rawServices = parseJsonSafe(clientToEdit.service_engagement, []);
+            const normalizedServices = rawServices.map((s: string) => {
+                if (s === 'Meta Ads') return 'META_ADS';
+                if (s === 'Google Ads') return 'GOOGLE_ADS';
+                if (s === 'SEO') return 'SEO';
+                if (s === 'Web Development' || s === 'Web Design / Development') return 'WEB_DEV';
+                if (s === 'Graphic Design') return 'GRAPHIC_DESIGN';
+                if (s === 'Content Creation' || s === 'Content Creation & Page Handling') return 'CONTENT';
+                if (s === 'Branding' || s === 'Branding & Logo Design') return 'BRANDING';
+                if (s === 'Video Production') return 'VIDEO_PROD';
+                if (s === 'Video Editing') return 'VIDEO_EDIT';
+                return s;
+            });
+
             reset({
                 name: clientToEdit.name,
                 industry: clientToEdit.industry || '',
@@ -266,13 +281,10 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
                 contact_person: clientToEdit.contact_person || '',
                 contact_number: clientToEdit.contact_number || '',
                 company_email: clientToEdit.company_email || '',
-                // operating_country: clientToEdit.operating_country || '', // DEPRECATED
-                // operating_state: clientToEdit.operating_state || '', // DEPRECATED
                 account_manager_id: clientToEdit.account_manager_id || '',
                 assigned_staff_ids: clientToEdit.assigned_staff?.map((s: any) => s.id) || [],
-                ad_accounts: clientToEdit.ad_accounts || [], // Ensure backend includes this
-                // Parse JSON fields safely if they exist
-                service_engagement: parseJsonSafe(clientToEdit.service_engagement, []),
+                ad_accounts: clientToEdit.ad_accounts || [],
+                service_engagement: normalizedServices,
                 social_links: parseJsonSafe(clientToEdit.social_links, {}),
                 competitor_info: parseJsonSafe(clientToEdit.competitor_info, []),
                 customer_avatar: parseJsonSafe(clientToEdit.customer_avatar, { description: '', pain_points: '' }),
@@ -281,8 +293,7 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
                 address: clientToEdit.address || '',
                 ledger_options: {
                     create: clientToEdit.ledger_options?.create || false,
-                    head_id: '' // We don't fetch head_id from list, so we might need to handle this if they check it. 
-                    // Ideally, if it exists, we should show it. But for now this fixes the "Checked" state.
+                    head_id: ''
                 }
             });
         } else {
@@ -538,8 +549,11 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
                                         { id: 'GOOGLE_ADS', label: 'Google Ads' },
                                         { id: 'SEO', label: 'SEO' },
                                         { id: 'WEB_DEV', label: 'Web Design / Development' },
+                                        { id: 'GRAPHIC_DESIGN', label: 'Graphic Design' },
                                         { id: 'CONTENT', label: 'Content Creation' },
-                                        { id: 'BRANDING', label: 'Branding' }
+                                        { id: 'BRANDING', label: 'Branding' },
+                                        { id: 'VIDEO_PROD', label: 'Video Production' },
+                                        { id: 'VIDEO_EDIT', label: 'Video Editing' }
                                     ].map((service) => {
                                         const isActive = watch('service_engagement').includes(service.id);
                                         return (

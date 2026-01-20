@@ -365,10 +365,12 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                                 <button
                                     onClick={handleDeploy}
                                     className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors"
-                                    title="Sync Updates to Cloud"
+                                    title={(import.meta as any).env.DEV ? "Sync Updates to Cloud" : "Update from Cloud"}
                                 >
-                                    <Upload size={18} />
-                                    <span className="hidden md:inline">Sync to Cloud</span>
+                                    {(import.meta as any).env.DEV ? <Upload size={18} /> : <Upload className="rotate-180" size={18} />}
+                                    <span className="hidden md:inline">
+                                        {(import.meta as any).env.DEV ? "Sync to Cloud" : "Update System"}
+                                    </span>
                                 </button>
                             )}
 

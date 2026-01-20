@@ -1,6 +1,7 @@
 import express from 'express';
 import { AttendanceController } from './controller';
 import { LeavePlannerController } from './leave-planner.controller';
+import * as ShiftController from './shift.controller';
 import { protect as authenticate, authorize } from '../../modules/auth/middleware';
 
 const router = express.Router();
@@ -46,5 +47,10 @@ router.post('/planner/holidays/sundays', authenticate, LeavePlannerController.po
 
 router.get('/planner/allocations', authenticate, LeavePlannerController.getAllocations);
 router.post('/planner/allocations', authenticate, LeavePlannerController.updateAllocation);
+
+// Shift Configuration
+router.get('/shifts', authenticate, ShiftController.getShiftPresets);
+router.post('/shifts', authenticate, ShiftController.createShiftPreset);
+router.delete('/shifts/:id', authenticate, ShiftController.deleteShiftPreset);
 
 export default router;

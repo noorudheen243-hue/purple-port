@@ -137,17 +137,26 @@ export class AttendanceService {
         return { start: to24h(parts[0]), end: to24h(parts[1]) };
     }
 
-    static isLate(shiftStart24h: string, checkIn: Date): boolean {
+    static isLate(shiftStart24h: string, checkIn: Date, graceMinutes: number = 15): boolean {
         // shiftStart24h = "09:00"
         const [sh, sm] = shiftStart24h.split(':').map(Number);
 
         const shiftDate = new Date(checkIn);
         shiftDate.setHours(sh, sm, 0, 0);
 
-        // Grace Period 15 minutes
-        const graceLimit = new Date(shiftDate.getTime() + 15 * 60000);
+        // Grace Period
+        const graceLimit = new Date(shiftDate.getTime() + graceMinutes * 60000);
 
         return checkIn > graceLimit;
+    }
+
+    static isEarlyDeparture(shiftEnd24h: string, checkOut: Date): boolean {
+        const [eh, em] = shiftEnd24h.split(':').map(Number);
+        const shiftDate = new Date(checkOut);
+        shiftDate.setHours(eh, em, 0, 0);
+
+        // If checkOut is strictly before shift end
+        return checkOut < shiftDate;
     }
 
     // --- END HELPERS ---
@@ -236,6 +245,7 @@ export class AttendanceService {
 
                 // 2. Determine Shift & Rules
                 const shift = this.parseShiftTiming(staff.shift_timing); // { start: "09:00", end: "18:00" }
+                const graceTime = staff.grace_time || 15;
 
                 // 3. Upsert Attendance Record
                 const existing = await db.attendanceRecord.findUnique({
@@ -281,14 +291,27 @@ export class AttendanceService {
                             const workHours = durationMs / (1000 * 60 * 60);
                             data.work_hours = workHours;
 
-                            const isLate = this.isLate(shift.start, start);
-                            const withinGrace = !isLate;
+                            const isLate = this.isLate(shift.start, start, graceTime);
+                            const isEarly = this.isEarlyDeparture(shift.end, end);
 
+                            // Audit info
+                            data.shift_snapshot = `${shift.start}-${shift.end}`;
+                            data.grace_time_applied = graceTime;
+
+                            // -- Strict Rule Engine --
                             if (workHours >= 8) {
-                                data.status = 'PRESENT';
-                            } else if (workHours >= 4 && workHours < 7.5) {
+                                // Full Day, but check for Late+Early penalty?
+                                // User Rule: "Late + Early together -> downgrade to Half Day"
+                                if (isLate && isEarly) {
+                                    data.status = 'HALF_DAY';
+                                } else {
+                                    data.status = 'PRESENT';
+                                }
+                            } else if (workHours >= 4) {
+                                // Between 4 and 8 hours = Half Day
                                 data.status = 'HALF_DAY';
-                            } else if (workHours < 4) {
+                            } else {
+                                // Less than 4 hours = Absent
                                 data.status = 'ABSENT';
                             }
                         } else {

@@ -139,6 +139,7 @@ model StaffProfile {
   pan_number          String?
   aadhar_number       String?  // NEW
   shift_timing        String?  // NEW
+  grace_time          Int      @default(15) // Minutes (New)
   payment_method      String?  // NEW
 
   // UPI Details
@@ -180,6 +181,8 @@ model AttendanceRecord {
   check_in    DateTime?
   check_out   DateTime?
   work_hours  Float?
+  shift_snapshot String? // JSON or String "09:00-18:00" for audit
+  grace_time_applied Int? // Audit: What grace time was used
   method      String   @default("WEB") // WEB, BIOMETRIC_SYNC
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -256,6 +259,15 @@ model Holiday {
   is_recurring Boolean @default(false) // e.g., Every Sunday
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model ShiftPreset {
+  id        String   @id @default(uuid())
+  name      String   // e.g., "General Shift", "Morning Shift"
+  start_time String  // "09:00"
+  end_time   String  // "18:00"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model PayrollRun {

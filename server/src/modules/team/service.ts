@@ -436,6 +436,7 @@ export const updateStaffFull = async (
         console.error("[BioSync] Update logic failed to load:", bioErr);
     }
 
+
     // LEDGER SYNC: Handle Ledger Options
     if (ledgerOptions && ledgerOptions.create && ledgerOptions.head_id) {
         console.log(`[BioSync] Processing Ledger Options for ${result.user.full_name}:`, JSON.stringify(ledgerOptions));

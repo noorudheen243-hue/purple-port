@@ -17,8 +17,11 @@ import {
     Download,
     Upload,
     AlertTriangle,
-    Wifi
+    Wifi,
+    Settings,
+    Save
 } from 'lucide-react';
+import { ShiftConfigurationModal } from '../../components/attendance/ShiftConfigurationModal';
 // Layout is provided by Dashboard wrapper
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
@@ -36,11 +39,19 @@ const importUsers = async () => (await api.post('/attendance/biometric/users/imp
 const getAuditData = async () => (await api.get('/attendance/biometric/audit')).data;
 const enrollUser = async (data: any) => (await api.post('/attendance/biometric/enroll', data)).data;
 const syncTemplates = async () => (await api.post('/attendance/biometric/sync-templates')).data;
+const getStaffList = async () => (await api.get('/team')).data; // Reuse existing team list
+const getShifts = async () => (await api.get('/attendance/shifts')).data;
+
 
 const BiometricManagerPage = () => {
     const queryClient = useQueryClient();
     const [actionLog, setActionLog] = useState<string[]>([]);
-    const [activeTab, setActiveTab] = useState<'console' | 'audit'>('console');
+    const [activeTab, setActiveTab] = useState<'console' | 'audit' | 'policies'>('console');
+    const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
+
+    // Policy State
+    const [editPolicy, setEditPolicy] = useState<{ [key: string]: { shift: string, grace: number } }>({});
+
 
     // 1. Fetch Device Info (Robust)
     const { data: deviceInfo, isLoading: infoLoading, refetch: refetchInfo, isRefetching } = useQuery({
@@ -56,6 +67,19 @@ const BiometricManagerPage = () => {
     const { data: deviceUsers, isLoading: usersLoading, refetch: refetchUsers } = useQuery({
         queryKey: ['biometric-users'],
         queryFn: getDeviceUsers
+    });
+
+    // 3. Fetch Staff for Policies
+    const { data: staffList, isLoading: staffLoading, refetch: refetchStaff } = useQuery({
+        queryKey: ['staff-list-policies'],
+        queryFn: getStaffList,
+        enabled: activeTab === 'policies'
+    });
+
+    const { data: shifts, refetch: refetchShifts } = useQuery({
+        queryKey: ['shifts-list'],
+        queryFn: getShifts,
+        enabled: activeTab === 'policies'
     });
 
     // Audit Query (Manual Trigger mainly)
@@ -162,6 +186,12 @@ const BiometricManagerPage = () => {
                             className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${activeTab === 'audit' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
                         >
                             Sync Audit
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('policies')}
+                            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${activeTab === 'policies' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            Staff Policies
                         </button>
                     </div>
 

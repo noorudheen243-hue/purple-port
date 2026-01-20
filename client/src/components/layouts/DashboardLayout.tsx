@@ -362,7 +362,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                             </button>
 
                             <div className="hidden md:block text-[10px] text-gray-400 mr-2 border border-gray-200 p-1 rounded">
-                                v2.3 | Role: {user?.role || 'None'}
+                                v2.4 | Role: {user?.role || 'None'}
                             </div>
 
                             {(user?.role === ROLES.DEVELOPER_ADMIN || user?.role === ROLES.ADMIN) && (

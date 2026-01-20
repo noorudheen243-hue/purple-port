@@ -76,7 +76,7 @@ import clientPortalRoutes from './modules/client_portal/routes';
 import path from 'path';
 
 // Serve Uploads
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+app.use('/api/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 import systemRouter from './modules/system/routes'; // Deployment Routes
 

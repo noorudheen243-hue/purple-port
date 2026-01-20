@@ -16,8 +16,8 @@ export const getAssetUrl = (path?: string) => {
 
     // We assume the API_URL env is set, or default to localhost:4001
     const baseUrl = (import.meta as any).env.VITE_API_URL
-        ? (import.meta as any).env.VITE_API_URL.replace('/api', '') // Remove /api suffix if present
-        : 'http://localhost:4001';
+        ? (import.meta as any).env.VITE_API_URL
+        : 'http://localhost:4001/api'; // Default to local API root
 
     // Ensure path starts with /
     const cleanPath = path.startsWith('/') ? path : `/${path}`;

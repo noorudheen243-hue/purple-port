@@ -39,7 +39,7 @@ const importUsers = async () => (await api.post('/attendance/biometric/users/imp
 const getAuditData = async () => (await api.get('/attendance/biometric/audit')).data;
 const enrollUser = async (data: any) => (await api.post('/attendance/biometric/enroll', data)).data;
 const syncTemplates = async () => (await api.post('/attendance/biometric/sync-templates')).data;
-const getStaffList = async () => (await api.get('/team')).data; // Reuse existing team list
+const getStaffList = async () => (await api.get('/team/staff')).data; // Fixed path
 const getShifts = async () => (await api.get('/attendance/shifts')).data;
 
 

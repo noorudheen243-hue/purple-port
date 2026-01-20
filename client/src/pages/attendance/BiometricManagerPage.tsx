@@ -597,6 +597,132 @@ const BiometricManagerPage = () => {
                     </Card>
                 </div>
             )}
+            {/* POLICIES VIEW */}
+            {activeTab === 'policies' && (
+                <div className="space-y-6">
+                    <Card className="p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-800">Staff Policies</h3>
+                                <p className="text-sm text-gray-500">Configure shift timings and grace periods</p>
+                            </div>
+                            <Button onClick={() => setIsShiftModalOpen(true)}>
+                                <Settings className="w-4 h-4 mr-2" /> Manage Shifts
+                            </Button>
+                        </div>
+
+                        {staffLoading ? (
+                            <div className="p-8 text-center text-gray-400">Loading staff details...</div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="bg-gray-50 text-gray-500 uppercase text-xs">
+                                        <tr>
+                                            <th className="px-4 py-2">Staff</th>
+                                            <th className="px-4 py-2">Dep</th>
+                                            <th className="px-4 py-2">Current Shift</th>
+                                            <th className="px-4 py-2">Grace (Min)</th>
+                                            <th className="px-4 py-2 text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {staffList?.map((staff: any) => {
+                                            const isEditing = editPolicy[staff.id] !== undefined;
+                                            const shiftId = isEditing ? editPolicy[staff.id].shift : (staff.shift_timing || '');
+                                            const grace = isEditing ? editPolicy[staff.id].grace : (staff.grace_time || 15);
+
+                                            return (
+                                                <tr key={staff.id} className="hover:bg-gray-50">
+                                                    <td className="px-4 py-3">
+                                                        <div className="font-medium text-gray-900">{staff.user.full_name}</div>
+                                                        <div className="text-xs text-gray-500">{staff.staff_number}</div>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-xs">{staff.department}</td>
+                                                    <td className="px-4 py-3">
+                                                        {isEditing ? (
+                                                            <select
+                                                                className="border rounded p-1 text-xs w-full"
+                                                                value={shiftId}
+                                                                onChange={e => setEditPolicy(prev => ({
+                                                                    ...prev,
+                                                                    [staff.id]: { ...prev[staff.id], shift: e.target.value }
+                                                                }))}
+                                                            >
+                                                                <option value="">Select Shift</option>
+                                                                {shifts?.map((s: any) => (
+                                                                    <option key={s.id} value={s.name}>
+                                                                        {s.name} ({s.start_time} - {s.end_time})
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                        ) : (
+                                                            <span className="text-gray-700">{staff.shift_timing || 'Default (09:30 - 18:30)'}</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        {isEditing ? (
+                                                            <input
+                                                                type="number"
+                                                                className="border rounded p-1 text-xs w-16"
+                                                                value={grace}
+                                                                onChange={e => setEditPolicy(prev => ({
+                                                                    ...prev,
+                                                                    [staff.id]: { ...prev[staff.id], grace: parseInt(e.target.value) || 0 }
+                                                                }))}
+                                                            />
+                                                        ) : (
+                                                            <span className="text-gray-700">{staff.grace_time} min</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right">
+                                                        {isEditing ? (
+                                                            <div className="flex justify-end gap-2">
+                                                                <Button size="sm" variant="ghost" onClick={() => {
+                                                                    const newPolicy = { ...editPolicy };
+                                                                    delete newPolicy[staff.id];
+                                                                    setEditPolicy(newPolicy);
+                                                                }}>Cancel</Button>
+                                                                <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => {
+                                                                    api.put(`/team/${staff.id}`, {
+                                                                        shift_timing: editPolicy[staff.id].shift,
+                                                                        grace_time: editPolicy[staff.id].grace
+                                                                    }).then(() => {
+                                                                        const newPolicy = { ...editPolicy };
+                                                                        delete newPolicy[staff.id];
+                                                                        setEditPolicy(newPolicy);
+                                                                        refetchStaff();
+                                                                    });
+                                                                }}>
+                                                                    <Save className="w-4 h-4" />
+                                                                </Button>
+                                                            </div>
+                                                        ) : (
+                                                            <Button size="sm" variant="outline" onClick={() => setEditPolicy(prev => ({
+                                                                ...prev,
+                                                                [staff.id]: {
+                                                                    shift: staff.shift_timing || '',
+                                                                    grace: staff.grace_time || 15
+                                                                }
+                                                            }))}>
+                                                                Edit
+                                                            </Button>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </Card>
+                </div>
+            )}
+
+            <ShiftConfigurationModal
+                isOpen={isShiftModalOpen}
+                onClose={() => { setIsShiftModalOpen(false); refetchShifts(); }}
+            />
         </div>
     );
 };

@@ -6,36 +6,18 @@ import axios from 'axios';
 const DEVICE_IP = '192.168.1.201'; // Local Device IP
 const DEVICE_PORT = 4370;
 const SERVER_URL = 'http://72.61.246.22/api'; // Live VPS Backend URL
-const API_TOKEN = ''; // Optionally use a long-lived JWT, or we login automatically below.
-
-// Login Credentials for the Bridge to authenticate with Server
-const BRIDGE_USER = {
-    email: 'bridge@antigravity.com', // MUST BE AN ADMIN
-    password: 'bridge_secure_password'
-};
+const BRIDGE_API_KEY = 'default_bridge_key'; // Matches server default
 // ---------------------
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 async function sync() {
-    // 1. Authenticate with Server
-    let token = API_TOKEN;
-    if (!token) {
-        try {
-            const loginResp = await axios.post(`${SERVER_URL}/auth/login`, BRIDGE_USER);
-            token = loginResp.data.token;
-        } catch (error: any) {
-            console.error(`[${new Date().toLocaleTimeString()}] ❌ Server Auth Failed:`, error.message);
-            return; // Try again next cycle
-        }
-    }
-
-    // 2. Connect to Device
+    // 1. Connect to Device
     const zk = new ZKLib(DEVICE_IP, DEVICE_PORT, 5000, 4000);
     try {
         await zk.createSocket();
 
-        // 3. Fetch & Upload
+        // 2. Fetch & Upload
         const logs = await zk.getAttendances();
         const data = logs.data || [];
 
@@ -46,15 +28,25 @@ async function sync() {
                 ip: l.ip
             }));
 
-            console.log(`[${new Date().toLocaleTimeString()}] 📤 Uploading ${data.length} logs...`);
+            console.log(`[${new Date().toLocaleTimeString()}] 📤 Found ${data.length} logs. Uploading...`);
 
-            const uploadResp = await axios.post(
-                `${SERVER_URL}/attendance/biometric/upload-logs`,
-                { logs: cleanLogs },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
+            try {
+                const uploadResp = await axios.post(
+                    `${SERVER_URL}/attendance/biometric/bridge/upload`,
+                    { logs: cleanLogs },
+                    {
+                        headers: {
+                            'x-api-key': BRIDGE_API_KEY,
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
+                console.log(`[${new Date().toLocaleTimeString()}] ✅ Sync Success: ${uploadResp.data.message}`);
+            } catch (apiError: any) {
+                console.error(`[${new Date().toLocaleTimeString()}] ❌ Upload Failed:`, apiError.message);
+                if (apiError.response) console.error('Server Responded:', apiError.response.data);
+            }
 
-            console.log(`[${new Date().toLocaleTimeString()}] ✅ Sync Success: ${uploadResp.data.message}`);
         } else {
             console.log(`[${new Date().toLocaleTimeString()}] 💤 Device Online. No new logs.`);
         }

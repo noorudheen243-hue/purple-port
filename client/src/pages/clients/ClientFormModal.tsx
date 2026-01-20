@@ -597,11 +597,14 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
                                     {staffList?.sort((a: any, b: any) => a.user?.full_name.localeCompare(b.user?.full_name))
                                         .filter((s: any) => (
                                             s.department === 'MANAGEMENT' ||
+                                            s.department === 'MARKETING' || // Requested: Entire Marketing Dept
+                                            s.department === 'WEB' ||       // Requested: Entire Web Dept
                                             s.user?.role === 'ADMIN' ||
                                             s.user?.role === 'MANAGER' ||
                                             s.user?.role === 'DEVELOPER_ADMIN' ||
                                             s.user?.role === 'DM_EXECUTIVE' ||
-                                            s.user?.role === 'WEB_SEO_EXECUTIVE'
+                                            s.user?.role === 'WEB_SEO_EXECUTIVE' ||
+                                            s.user?.role === 'MARKETING_EXEC'
                                         ) && s.payroll_status === 'ACTIVE')
                                         .map((s: any) => (
                                             <option key={s.id} value={s.user_id}>{s.user?.full_name} ({s.user?.role})</option>
@@ -619,7 +622,15 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
                                         type="button"
                                         className="input text-left flex justify-between items-center bg-white min-h-[42px]"
                                         onClick={() => setIsTeamDropdownOpen(!isTeamDropdownOpen)}
-                                        disabled={user?.role !== 'ADMIN' && user?.role !== 'MANAGER' && user?.role !== 'DEVELOPER_ADMIN'}
+                                        // Allow Admins, Managers, and Marketing/SEO Execs to assign staff
+                                        disabled={
+                                            user?.role !== 'ADMIN' &&
+                                            user?.role !== 'MANAGER' &&
+                                            user?.role !== 'DEVELOPER_ADMIN' &&
+                                            user?.role !== 'DM_EXECUTIVE' &&
+                                            user?.role !== 'WEB_SEO_EXECUTIVE' &&
+                                            user?.role !== 'MARKETING_EXEC'
+                                        }
                                     >
                                         <span className="text-sm truncate">
                                             {watch('assigned_staff_ids').length === 0
@@ -630,49 +641,56 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
                                         <Users size={16} className="text-gray-400 flex-shrink-0" />
                                     </button>
 
-                                    {isTeamDropdownOpen && (user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'DEVELOPER_ADMIN') && (
-                                        <>
-                                            <div className="fixed inset-0 z-10" onClick={() => setIsTeamDropdownOpen(false)}></div>
-                                            <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-md shadow-lg z-20 max-h-60 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100">
-                                                <div className="p-2 border-b bg-gray-50">
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Search by name or dept..."
-                                                        className="w-full text-xs p-2 border rounded focus:outline-none focus:border-primary"
-                                                        value={staffSearch}
-                                                        onChange={(e) => setStaffSearch(e.target.value)}
-                                                        autoFocus
-                                                    />
+                                    {isTeamDropdownOpen && (
+                                        user?.role === 'ADMIN' ||
+                                        user?.role === 'MANAGER' ||
+                                        user?.role === 'DEVELOPER_ADMIN' ||
+                                        user?.role === 'DM_EXECUTIVE' ||
+                                        user?.role === 'WEB_SEO_EXECUTIVE' ||
+                                        user?.role === 'MARKETING_EXEC'
+                                    ) && (
+                                            <>
+                                                <div className="fixed inset-0 z-10" onClick={() => setIsTeamDropdownOpen(false)}></div>
+                                                <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-md shadow-lg z-20 max-h-60 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100">
+                                                    <div className="p-2 border-b bg-gray-50">
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Search by name or dept..."
+                                                            className="w-full text-xs p-2 border rounded focus:outline-none focus:border-primary"
+                                                            value={staffSearch}
+                                                            onChange={(e) => setStaffSearch(e.target.value)}
+                                                            autoFocus
+                                                        />
+                                                    </div>
+                                                    <div className="overflow-y-auto p-1 max-h-48">
+                                                        {staffList
+                                                            ?.filter((s: any) => s.user && s.payroll_status === 'ACTIVE')
+                                                            .filter((s: any) =>
+                                                                s.user.full_name.toLowerCase().includes(staffSearch.toLowerCase()) ||
+                                                                s.department.toLowerCase().includes(staffSearch.toLowerCase())
+                                                            )
+                                                            .map((s: any) => {
+                                                                const isSelected = watch('assigned_staff_ids').includes(s.user_id);
+                                                                return (
+                                                                    <label key={s.id} className={`flex items-center gap-2 px-2 py-2 cursor-pointer hover:bg-gray-50 rounded text-sm group ${isSelected ? 'bg-blue-50' : ''}`}>
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            value={s.user_id}
+                                                                            {...register('assigned_staff_ids')}
+                                                                            className="w-4 h-4 rounded text-primary focus:ring-primary accent-primary"
+                                                                        />
+                                                                        <div className="flex-1 flex justify-between items-center">
+                                                                            <span className={`font-medium ${isSelected ? 'text-primary' : 'text-gray-700'}`}>{s.user?.full_name}</span>
+                                                                            <span className="text-[10px] uppercase bg-gray-100 px-1.5 py-0.5 rounded text-gray-500">{s.department}</span>
+                                                                        </div>
+                                                                    </label>
+                                                                );
+                                                            })}
+                                                        {staffList?.length === 0 && <p className="text-xs text-center p-4 text-gray-400">No staff found.</p>}
+                                                    </div>
                                                 </div>
-                                                <div className="overflow-y-auto p-1 max-h-48">
-                                                    {staffList
-                                                        ?.filter((s: any) => s.user && s.payroll_status === 'ACTIVE')
-                                                        .filter((s: any) =>
-                                                            s.user.full_name.toLowerCase().includes(staffSearch.toLowerCase()) ||
-                                                            s.department.toLowerCase().includes(staffSearch.toLowerCase())
-                                                        )
-                                                        .map((s: any) => {
-                                                            const isSelected = watch('assigned_staff_ids').includes(s.user_id);
-                                                            return (
-                                                                <label key={s.id} className={`flex items-center gap-2 px-2 py-2 cursor-pointer hover:bg-gray-50 rounded text-sm group ${isSelected ? 'bg-blue-50' : ''}`}>
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        value={s.user_id}
-                                                                        {...register('assigned_staff_ids')}
-                                                                        className="w-4 h-4 rounded text-primary focus:ring-primary accent-primary"
-                                                                    />
-                                                                    <div className="flex-1 flex justify-between items-center">
-                                                                        <span className={`font-medium ${isSelected ? 'text-primary' : 'text-gray-700'}`}>{s.user?.full_name}</span>
-                                                                        <span className="text-[10px] uppercase bg-gray-100 px-1.5 py-0.5 rounded text-gray-500">{s.department}</span>
-                                                                    </div>
-                                                                </label>
-                                                            );
-                                                        })}
-                                                    {staffList?.length === 0 && <p className="text-xs text-center p-4 text-gray-400">No staff found.</p>}
-                                                </div>
-                                            </div>
-                                        </>
-                                    )}
+                                            </>
+                                        )}
                                 </div>
 
                                 {/* Selected Chips */}

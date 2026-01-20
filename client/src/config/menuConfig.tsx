@@ -155,10 +155,17 @@ export const STAFF_MENU: MenuItem[] = [
         icon: CheckSquare,
         children: [
             { label: "Dashboard", path: "/dashboard/tasks/dashboard", icon: LayoutDashboard },
-            { label: "My Tasks", path: "/dashboard/tasks/my-tasks", icon: ClipboardList },
-            { label: "New Task", path: "/dashboard/tasks?action=new", icon: PlusCircle },
-            { label: "Task Board", path: "/dashboard/tasks/board", icon: KanbanSquare },
-            { label: "Calendar", path: "/dashboard/tasks/calendar", icon: Calendar }
+            { label: "DM Tasks", path: "/dashboard/client-portal", icon: TrendingUp },
+            {
+                label: "Creative Tasks",
+                icon: Zap,
+                children: [
+                    { label: "My Tasks", path: "/dashboard/tasks/my-tasks", icon: ClipboardList },
+                    { label: "New Task", path: "/dashboard/tasks?action=new", icon: PlusCircle },
+                    { label: "Task Board", path: "/dashboard/tasks/board", icon: KanbanSquare },
+                    { label: "Calendar", path: "/dashboard/tasks/calendar", icon: Calendar }
+                ]
+            }
         ]
     },
     {

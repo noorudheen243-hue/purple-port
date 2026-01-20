@@ -207,6 +207,17 @@ const OnboardingPage = () => {
     // --- EDIT MODE LOGIC ---
     const { id } = useParams();
     const isEditMode = Boolean(id);
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [isLedgerLocked, setIsLedgerLocked] = useState(false);
+
+    // Initialize isLedgerLocked when fetching existing staff details
+    useEffect(() => {
+        if (id && id !== 'new') {
+            // Check if ledger was created.
+            // Since we don't have the full object here yet until `getStaffById` runs,
+            // we will set it inside the `api.get` call below.
+        }
+    }, [id]);
 
     useEffect(() => {
         if (id) {
@@ -249,6 +260,9 @@ const OnboardingPage = () => {
                     // Force update specific fields if nested setValue is quirky
                     setValue('ledger_options.create', data.ledger_options.create);
                     setValue('ledger_options.head_id', data.ledger_options.head_id);
+                    if (data.ledger_options.create) {
+                        setIsLedgerLocked(true);
+                    }
                 }
 
             }).catch(err => console.error("Failed to fetch staff details", err));
@@ -496,11 +510,23 @@ const OnboardingPage = () => {
                                         </div>
 
                                         {watch('ledger_options.create') && (
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div>
+                                            <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-2">
+                                                <div className="col-span-2 flex justify-end">
+                                                    {isLedgerLocked && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setIsLedgerLocked(false)}
+                                                            className="text-xs flex items-center gap-1 text-purple-600 hover:text-purple-700 bg-purple-50 px-2 py-1 rounded border border-purple-100 transition-colors"
+                                                        >
+                                                            <Edit2 size={12} /> Edit
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                <div className={isLedgerLocked ? "opacity-60 pointer-events-none grayscale" : ""}>
                                                     <label className="text-xs font-semibold text-gray-600 mb-1 block">Filter Type</label>
                                                     <select
                                                         value={filterAccountType}
+                                                        disabled={isLedgerLocked}
                                                         onChange={(e) => setFilterAccountType(e.target.value)}
                                                         className="w-full border p-2 rounded text-sm bg-white"
                                                     >
@@ -511,7 +537,7 @@ const OnboardingPage = () => {
                                                         <option value="SoW">Salary & Wages</option>
                                                     </select>
                                                 </div>
-                                                <div>
+                                                <div className={isLedgerLocked ? "opacity-60 pointer-events-none grayscale" : ""}>
                                                     <label className="text-xs font-semibold text-gray-600 mb-1 block">Select Account Head <span className="text-red-500">*</span></label>
                                                     {/* We need to use `ledger_options.head_id` but schema currently uses `create_ledger` boolean separately. 
                                                         Wait, `onboardSchema` in this file doesn't have `ledger_options`. 
@@ -523,6 +549,7 @@ const OnboardingPage = () => {
                                                     <select
                                                         {...register('ledger_options.head_id')}
                                                         className="w-full border p-2 rounded text-sm bg-white"
+                                                        disabled={isLedgerLocked}
                                                     >
                                                         <option value="">-- Select Head --</option>
                                                         {accountHeads
@@ -533,132 +560,137 @@ const OnboardingPage = () => {
                                                                 </option>
                                                             ))}
                                                     </select>
+                                                    {isLedgerLocked && <p className="text-[10px] text-green-600 mt-1 flex items-center gap-1"><Lock size={8} /> Linked to active ledger</p>}
                                                 </div>
                                             </div>
-                                        )}
-                                    </div>
-
-                                    <div>
-                                        <label className="label">Bank Name</label>
-                                        <input {...register('bank_name')} className="input-field" placeholder="HDFC, SBI..." />
-                                    </div>
-                                    <div>
-                                        <label className="label">Account Number</label>
-                                        <input {...register('account_number')} className="input-field" />
-                                    </div>
-                                    <div>
-                                        <label className="label">IFSC Code</label>
-                                        <input {...register('ifsc_code')} className="input-field uppercase" />
-                                    </div>
-                                    <div>
-                                        <label className="label">Payment Mode</label>
-                                        <select {...register('payment_method')} className="input-field">
-                                            <option value="BANK_TRANSFER">Bank Transfer</option>
-                                            <option value="UPI">UPI</option>
-                                            <option value="CASH">Cash</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="label">PAN Number</label>
-                                        <input {...register('pan_number')} className="input-field uppercase" />
-                                    </div>
-                                    <div>
-                                        <label className="label">Aadhar Number (New)</label>
-                                        <input {...register('aadhar_number')} className="input-field" placeholder="XXXX-XXXX-XXXX" />
-                                    </div>
-
+                                        )}                                                </div>
                                 </div>
                             )}
+                        </div>
 
-                            {/* --- STEP 4: REVIEW & DOCS --- */}
-                            {currentStep === 4 && (
-                                <div className="max-w-3xl mx-auto space-y-8">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="border border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition-colors cursor-pointer group">
-                                            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 text-gray-400 group-hover:text-primary group-hover:bg-primary/10 transition-colors">
-                                                <Upload size={24} />
-                                            </div>
-                                            <h4 className="font-semibold text-gray-900">Upload Resume</h4>
-                                            <p className="text-xs text-gray-500 mt-1">PDF or DOCX upto 5MB</p>
-                                        </div>
-                                        <div className="border border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition-colors cursor-pointer group">
-                                            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 text-gray-400 group-hover:text-primary group-hover:bg-primary/10 transition-colors">
-                                                <Upload size={24} />
-                                            </div>
-                                            <h4 className="font-semibold text-gray-900">ID Proof (Aadhar/PAN)</h4>
-                                            <p className="text-xs text-gray-500 mt-1">JPG, PNG or PDF</p>
-                                        </div>
-                                    </div>
+                        <div>
+                            <label className="label">Bank Name</label>
+                            <input {...register('bank_name')} className="input-field" placeholder="HDFC, SBI..." />
+                        </div>
+                        <div>
+                            <label className="label">Account Number</label>
+                            <input {...register('account_number')} className="input-field" />
+                        </div>
+                        <div>
+                            <label className="label">IFSC Code</label>
+                            <input {...register('ifsc_code')} className="input-field uppercase" />
+                        </div>
+                        <div>
+                            <label className="label">Payment Mode</label>
+                            <select {...register('payment_method')} className="input-field">
+                                <option value="BANK_TRANSFER">Bank Transfer</option>
+                                <option value="UPI">UPI</option>
+                                <option value="CASH">Cash</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="label">PAN Number</label>
+                            <input {...register('pan_number')} className="input-field uppercase" />
+                        </div>
+                        <div>
+                            <label className="label">Aadhar Number (New)</label>
+                            <input {...register('aadhar_number')} className="input-field" placeholder="XXXX-XXXX-XXXX" />
+                        </div>
 
-                                    <div className="bg-orange-50 p-6 rounded-lg border border-orange-100">
-                                        <h3 className="font-bold text-orange-900 mb-4 flex items-center gap-2"><Lock size={16} /> Set Initial Password</h3>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div>
-                                                <label className="label">Password <span className="text-red-500">*</span></label>
-                                                <input type="password" {...register('password')} className="input-field" />
-                                                {errors.password && <span className="error">{errors.password.message}</span>}
-                                            </div>
-                                            <div>
-                                                <label className="label">Confirm Password <span className="text-red-500">*</span></label>
-                                                <input type="password" {...register('confirm_password')} className="input-field" />
-                                                {errors.confirm_password && <span className="error">{errors.confirm_password.message}</span>}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-gray-50 p-4 rounded-lg">
-                                        <h4 className="font-semibold text-gray-900 mb-2">Review Summary</h4>
-                                        <ul className="text-sm space-y-1 text-gray-600">
-                                            <li><span className="font-medium text-gray-900">Name:</span> {formData.full_name}</li>
-                                            <li><span className="font-medium text-gray-900">Role:</span> {formData.designation} ({formData.department})</li>
-                                            <li><span className="font-medium text-gray-900">Email:</span> {formData.email}</li>
-                                            <li><span className="font-medium text-gray-900">Salary:</span> ₹{formData.base_salary} / {formData.salary_type}</li>
-                                        </ul>
-                                    </div>
-                                </div>
+                </div>
                             )}
-                        </motion.div>
-                    </AnimatePresence>
-                </div>
 
-                {/* Footer Controls */}
-                <div className="pt-6 mt-8 border-t flex justify-between items-center">
-                    <button
-                        onClick={handleBack}
-                        disabled={currentStep === 1}
-                        className="flex items-center gap-2 px-6 py-2.5 text-gray-600 hover:bg-gray-100 rounded-lg disabled:opacity-50 transition-colors font-medium"
-                    >
-                        <ArrowLeft size={18} /> Back
-                    </button>
+                {/* --- STEP 4: REVIEW & DOCS --- */}
+                {currentStep === 4 && (
+                    <div className="max-w-3xl mx-auto space-y-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="border border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition-colors cursor-pointer group">
+                                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 text-gray-400 group-hover:text-primary group-hover:bg-primary/10 transition-colors">
+                                    <Upload size={24} />
+                                </div>
+                                <h4 className="font-semibold text-gray-900">Upload Resume</h4>
+                                <p className="text-xs text-gray-500 mt-1">PDF or DOCX upto 5MB</p>
+                            </div>
+                            <div className="border border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition-colors cursor-pointer group">
+                                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 text-gray-400 group-hover:text-primary group-hover:bg-primary/10 transition-colors">
+                                    <Upload size={24} />
+                                </div>
+                                <h4 className="font-semibold text-gray-900">ID Proof (Aadhar/PAN)</h4>
+                                <p className="text-xs text-gray-500 mt-1">JPG, PNG or PDF</p>
+                            </div>
+                        </div>
 
-                    {currentStep < 4 ? (
-                        <button
-                            onClick={handleNext}
-                            className="bg-primary text-primary-foreground px-8 py-2.5 rounded-lg flex items-center gap-2 hover:bg-primary/90 transition-colors font-medium shadow-sm"
-                        >
-                            Next Step <ArrowRight size={18} />
-                        </button>
-                    ) : (
-                        <button
-                            onClick={handleSubmit((data) => mutation.mutate(data), (errors) => {
-                                console.error("Validation Errors:", errors);
-                                // FormErrorAlert will display details
-                            })}
-                            className="bg-green-600 text-white px-8 py-2.5 rounded-lg flex items-center gap-2 hover:bg-green-700 transition-colors font-bold shadow-md shadow-green-200"
-                        >
-                            <CheckCircle size={18} /> {isEditMode ? "Update Member" : "Confirm Onboarding"}
-                        </button>
-                    )}
-                </div>
-            </div>
+                        <div className="bg-orange-50 p-6 rounded-lg border border-orange-100">
+                            <h3 className="font-bold text-orange-900 mb-4 flex items-center gap-2"><Lock size={16} /> Set Initial Password</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="label">Password <span className="text-red-500">*</span></label>
+                                    <input type="password" {...register('password')} className="input-field" />
+                                    {errors.password && <span className="error">{errors.password.message}</span>}
+                                </div>
+                                <div>
+                                    <label className="label">Confirm Password <span className="text-red-500">*</span></label>
+                                    <input type="password" {...register('confirm_password')} className="input-field" />
+                                    {errors.confirm_password && <span className="error">{errors.confirm_password.message}</span>}
+                                </div>
+                            </div>
+                        </div>
 
-            {/* Global Error Summary at Bottom */}
-            <div className="px-8 pb-8">
-                <FormErrorAlert errors={errors} />
-            </div>
+                        <div className="bg-gray-50 p-4 rounded-lg">
+                            <h4 className="font-semibold text-gray-900 mb-2">Review Summary</h4>
+                            <ul className="text-sm space-y-1 text-gray-600">
+                                <li><span className="font-medium text-gray-900">Name:</span> {formData.full_name}</li>
+                                <li><span className="font-medium text-gray-900">Role:</span> {formData.designation} ({formData.department})</li>
+                                <li><span className="font-medium text-gray-900">Email:</span> {formData.email}</li>
+                                <li><span className="font-medium text-gray-900">Salary:</span> ₹{formData.base_salary} / {formData.salary_type}</li>
+                            </ul>
+                        </div>
+                    </div>
+                )}
+            </motion.div>
+        </AnimatePresence>
+                </div >
+
+    {/* Footer Controls */ }
+    < div className = "pt-6 mt-8 border-t flex justify-between items-center" >
+        <button
+            onClick={handleBack}
+            disabled={currentStep === 1}
+            className="flex items-center gap-2 px-6 py-2.5 text-gray-600 hover:bg-gray-100 rounded-lg disabled:opacity-50 transition-colors font-medium"
+        >
+            <ArrowLeft size={18} /> Back
+        </button>
+
+{
+    currentStep < 4 ? (
+        <button
+            onClick={handleNext}
+            className="bg-primary text-primary-foreground px-8 py-2.5 rounded-lg flex items-center gap-2 hover:bg-primary/90 transition-colors font-medium shadow-sm"
+        >
+            Next Step <ArrowRight size={18} />
+        </button>
+    ) : (
+    <button
+        onClick={handleSubmit((data) => mutation.mutate(data), (errors) => {
+            console.error("Validation Errors:", errors);
+            // FormErrorAlert will display details
+        })}
+        className="bg-green-600 text-white px-8 py-2.5 rounded-lg flex items-center gap-2 hover:bg-green-700 transition-colors font-bold shadow-md shadow-green-200"
+    >
+        <CheckCircle size={18} /> {isEditMode ? "Update Member" : "Confirm Onboarding"}
+    </button>
+)
+}
+                </div >
+            </div >
+
+    {/* Global Error Summary at Bottom */ }
+    < div className = "px-8 pb-8" >
+        <FormErrorAlert errors={errors} />
+            </div >
 
 
-            <style>{`
+    <style>{`
                 .label { display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem; }
                 .input-field { width: 100%; padding: 0.625rem 0.875rem; background-color: #fff; border: 1px solid #d1d5db; border-radius: 0.5rem; color: #111827; font-size: 0.93rem; transition: all 0.2s; outline: none; }
                 .input-field:focus { border-color: #3b82f6; ring: 2px solid #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }

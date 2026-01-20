@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { X, Save, Building, Users, Globe, Target, Briefcase, Plus, Trash2, DollarSign, Lock, Edit2 } from 'lucide-react';
+import { X, Save, Building, Users, Globe, Target, Briefcase, Plus, Trash2, DollarSign, Lock as LockIcon, Edit2 } from 'lucide-react';
 import api from '../../lib/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/authStore';
@@ -865,7 +865,7 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
                                                         </option>
                                                     ))}
                                                 </select>
-                                                {isLedgerLocked && <p className="text-[10px] text-green-600 mt-1 flex items-center gap-1"><Lock size={8} /> Linked to active ledger</p>}
+                                                {isLedgerLocked && <p className="text-[10px] text-green-600 mt-1 flex items-center gap-1"><LockIcon size={8} /> Linked to active ledger</p>}
                                                 {errors.ledger_options?.head_id && <p className="error">{errors.ledger_options.head_id.message}</p>}
                                             </div>
                                         </div>

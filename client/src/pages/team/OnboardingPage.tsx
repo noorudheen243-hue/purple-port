@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Briefcase, FileText, CheckCircle, ArrowRight, ArrowLeft, Upload, Lock, GraduationCap, Edit2 } from 'lucide-react';
+import { User, Briefcase, FileText, CheckCircle, ArrowRight, ArrowLeft, Upload, Lock as LockIcon, GraduationCap, Edit2 } from 'lucide-react';
 import api from '../../lib/api';
 import ImageUpload from '../../components/ui/ImageUpload';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
@@ -31,7 +31,7 @@ const SHIFT_TIMINGS = [
 const STEPS = [
     { id: 1, label: 'Profile & Contact', icon: User },
     { id: 2, label: 'Role & Department', icon: Briefcase },
-    { id: 3, label: 'Payroll & Bank', icon: Lock },
+    { id: 3, label: 'Payroll & Bank', icon: LockIcon },
     { id: 4, label: 'Documents & Review', icon: FileText },
 ];
 
@@ -423,9 +423,9 @@ const OnboardingPage = () => {
                                                     value="Developer Admin (Super User)"
                                                     className="input-field bg-red-50 text-red-700 font-bold border-red-200 opacity-100 cursor-not-allowed"
                                                 />
-                                                <Lock className="absolute right-3 top-1/2 -translate-y-1/2 text-red-400" size={16} />
+                                                <LockIcon className="absolute right-3 top-1/2 -translate-y-1/2 text-red-400" size={16} />
                                                 <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1">
-                                                    <Lock size={10} /> This role is permanently locked to this account.
+                                                    <LockIcon size={10} /> This role is permanently locked to this account.
                                                 </p>
                                                 {/* Hidden input to maintain form state */}
                                                 <input type="hidden" {...register('role')} />
@@ -467,7 +467,7 @@ const OnboardingPage = () => {
                             {currentStep === 3 && (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
                                     <div className="md:col-span-2 bg-blue-50 p-4 rounded-lg border border-blue-100 mb-2">
-                                        <h3 className="font-semibold text-blue-900 mb-4 flex items-center gap-2"><Lock size={16} /> Salary Configuration</h3>
+                                        <h3 className="font-semibold text-blue-900 mb-4 flex items-center gap-2"><LockIcon size={16} /> Salary Configuration</h3>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
                                                 <label className="label text-gray-500">Base Salary (Monthly)</label>
@@ -560,7 +560,7 @@ const OnboardingPage = () => {
                                                                 </option>
                                                             ))}
                                                     </select>
-                                                    {isLedgerLocked && <p className="text-[10px] text-green-600 mt-1 flex items-center gap-1"><Lock size={8} /> Linked to active ledger</p>}
+                                                    {isLedgerLocked && <p className="text-[10px] text-green-600 mt-1 flex items-center gap-1"><LockIcon size={8} /> Linked to active ledger</p>}
                                                 </div>
                                             </div>
                                         )}                                                </div>
@@ -588,7 +588,7 @@ const OnboardingPage = () => {
                                     </div>
 
                                     <div className="bg-orange-50 p-6 rounded-lg border border-orange-100">
-                                        <h3 className="font-bold text-orange-900 mb-4 flex items-center gap-2"><Lock size={16} /> Set Initial Password</h3>
+                                        <h3 className="font-bold text-orange-900 mb-4 flex items-center gap-2"><LockIcon size={16} /> Set Initial Password</h3>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div>
                                                 <label className="label">Password <span className="text-red-500">*</span></label>

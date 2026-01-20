@@ -305,30 +305,39 @@ export class AttendanceService {
                             data.shift_snapshot = `${shift.start}-${shift.end}`;
                             data.grace_time_applied = graceTime;
 
-                            // -- Strict Rule Engine --
-                            if (workHours >= 8) {
-                                // Full Day, but check for Late+Early penalty?
-                                // User Rule: "Late + Early together -> downgrade to Half Day"
-                                if (isLate && isEarly) {
+                            // -- Strict Rule Engine (User Defined) --
+                            // Normal Shift Min: 7.75 hrs (7:45)
+                            // NO BREAK Shift Min: 7.00 hrs
+                            const isNoBreak = staff.shift_timing?.toUpperCase().includes('NO BREAK');
+                            const fullDayThreshold = isNoBreak ? 7.0 : 7.75;
+                            const halfDayThreshold = 4.0;
+
+                            if (workHours >= fullDayThreshold) {
+                                // Full Day
+                                // Check for Late + Early penalty -> Downgrade to Half Day?
+                                // User didn't strictly request this today, but requested hour-based logic.
+                                // Preserving Late+Early logic if it exists, but prioritizing Hours.
+                                if (isLate && isEarly) { // Optional strictness
                                     data.status = 'HALF_DAY';
                                 } else {
                                     data.status = 'PRESENT';
                                 }
-                            } else if (workHours >= 4) {
-                                // Between 4 and 8 hours = Half Day
+                            } else if (workHours >= halfDayThreshold) {
+                                // Between 4 and 7.75/7.0
                                 data.status = 'HALF_DAY';
                             } else {
-                                // Less than 4 hours = Absent
+                                // Less than 4 hours = Absent (LOP)
                                 data.status = 'ABSENT';
                             }
                         } else {
-                            // Single punch scenario (Start === End)
+                            // Single punch scenario (Start === End) or Missing one punch
                             const today = new Date();
                             today.setHours(0, 0, 0, 0);
 
                             // If this record is from a PAST date and still has only one punch
                             if (dateKey.getTime() < today.getTime()) {
-                                data.status = 'MISSING_PUNCH';
+                                // User Request: "missed one punch... mark as Half Day"
+                                data.status = 'HALF_DAY';
                             }
                             // If it's today, leave as PRESENT (they might still work)
                         }

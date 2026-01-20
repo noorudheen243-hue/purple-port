@@ -225,14 +225,15 @@ export default function BiometricDetailsPage() {
                                             <TableCell>
                                                 <Badge variant={
                                                     log.status === 'PRESENT' ? 'default' :
-                                                        log.status === 'ABSENT' ? 'destructive' : 'secondary'
+                                                        (log.status === 'ABSENT' || log.status === 'MISSING_PUNCH') ? 'destructive' :
+                                                            log.status === 'HALF_DAY' ? 'warning' : 'secondary'
                                                 }>
-                                                    {log.status}
+                                                    {log.status.replace('_', ' ')}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 {/* Only show Regularize if Absent, Half-Day, or Missing Punches */}
-                                                {(log.status === 'ABSENT' || log.status === 'HALF_DAY' || !log.check_in || !log.check_out) && (
+                                                {(log.status === 'ABSENT' || log.status === 'HALF_DAY' || log.status === 'MISSING_PUNCH' || !log.check_in || !log.check_out) && (
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"

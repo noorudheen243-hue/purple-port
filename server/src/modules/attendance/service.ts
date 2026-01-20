@@ -281,6 +281,13 @@ export class AttendanceService {
                         shouldUpdate = true;
                     }
 
+                    // Force update if status is 'PRESENT' (provisional) but it's a past date (needs finalization)
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    if (existing.status === 'PRESENT' && existing.date.getTime() < today.getTime()) {
+                        shouldUpdate = true;
+                    }
+
                     if (shouldUpdate) {
                         // Recalculate Status
                         const start = data.check_in || existing.check_in || timestamp;
@@ -315,7 +322,15 @@ export class AttendanceService {
                                 data.status = 'ABSENT';
                             }
                         } else {
-                            // For now, let's leave status as is (Provisional PRESENT) or update calc.
+                            // Single punch scenario (Start === End)
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+
+                            // If this record is from a PAST date and still has only one punch
+                            if (dateKey.getTime() < today.getTime()) {
+                                data.status = 'MISSING_PUNCH';
+                            }
+                            // If it's today, leave as PRESENT (they might still work)
                         }
 
                         await db.attendanceRecord.update({

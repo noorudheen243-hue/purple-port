@@ -14,7 +14,7 @@ const app = express();
 // 1. General Rate Limiter (Relaxed)
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 2000,
+    max: 10000, // Increased for dev/testing
     standardHeaders: true,
     legacyHeaders: false,
     message: 'Too many requests from this IP, please try again after 15 minutes'
@@ -23,7 +23,7 @@ const limiter = rateLimit({
 // 2. Strict Auth Limiter (Brute-force protection)
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 50, // 50 login attempts per 15 min
+    max: 500, // Increased from 50 to 500 to allow frequent logins/testing
     standardHeaders: true,
     legacyHeaders: false,
     message: 'Too many login attempts, please try again later.'

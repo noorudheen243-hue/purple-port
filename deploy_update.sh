@@ -1,9 +1,12 @@
 #!/bin/bash
 
-# Deployment Script for Sticky Notes Feature
-# User: Run this on the VPS (72.61.246.22)
+# Deploy Script
+set -e # Exit immediately if a command exits with a non-zero status
 
-echo ">>> Starting Deployment..."
+# Error Handling
+trap 'echo "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"; echo ">>> ERROR: Deployment Failed! Fix the error above and try again."; echo "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"; exit 1' ERR
+
+echo ">>> Starting Deployment (v2.3)..."
 
 # 1. Pull Latest Code
 echo ">>> Pulling latest changes..."

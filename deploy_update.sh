@@ -60,8 +60,10 @@ npm run build
 # Based on app.ts: app.use(express.static(path.join(process.cwd(), 'public')));
 # So we need to copy dist to server/public
 echo ">>> Deploying Client Build..."
-rm -rf ../server/public
-cp -r dist ../server/public
+# Avoid removing the directory itself if it's locked/busy. Clean contents instead.
+mkdir -p ../server/public
+rm -rf ../server/public/*
+cp -r dist/* ../server/public/
 
 # 5. PERMISSIONS & NGINX FIX
 # Ensure Nginx (www-data) can read the new files

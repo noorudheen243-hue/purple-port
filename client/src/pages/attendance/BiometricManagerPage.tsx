@@ -21,6 +21,7 @@ import {
     Settings,
     Save
 } from 'lucide-react';
+import Swal from 'sweetalert2';
 import { ShiftConfigurationModal } from '../../components/attendance/ShiftConfigurationModal';
 // Layout is provided by Dashboard wrapper
 import { Button } from '../../components/ui/button';
@@ -706,6 +707,19 @@ const BiometricManagerPage = () => {
                                                                         delete newPolicy[staff.id];
                                                                         setEditPolicy(newPolicy);
                                                                         refetchStaff();
+                                                                        Swal.fire({
+                                                                            icon: 'success',
+                                                                            title: 'Updated!',
+                                                                            text: 'Shift policy updated successfully.',
+                                                                            timer: 1500,
+                                                                            showConfirmButton: false
+                                                                        });
+                                                                    }).catch(err => {
+                                                                        Swal.fire({
+                                                                            icon: 'error',
+                                                                            title: 'Error',
+                                                                            text: err.response?.data?.message || 'Failed to update policy'
+                                                                        });
                                                                     });
                                                                 }}>
                                                                     <Save className="w-4 h-4" />

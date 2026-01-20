@@ -17,6 +17,7 @@ import {
 import api from '../../lib/api';
 import Swal from 'sweetalert2';
 import { getAssetUrl } from '../../lib/utils';
+import { ROLES } from '../../utils/roles';
 // ... existing imports ...
 
 // ... inside component ...
@@ -164,10 +165,13 @@ const Sidebar = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) 
             }));
     };
 
+
+    // ...
+
     let rawMenuItems = STAFF_MENU;
-    if (user?.role === 'CLIENT') {
+    if (user?.role === ROLES.CLIENT) {
         rawMenuItems = CLIENT_MENU;
-    } else if (user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'DEVELOPER_ADMIN') {
+    } else if (user?.role === ROLES.ADMIN || user?.role === ROLES.MANAGER || user?.role === ROLES.DEVELOPER_ADMIN) {
         rawMenuItems = ADMIN_MANAGER_MENU;
     }
 

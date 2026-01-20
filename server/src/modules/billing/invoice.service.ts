@@ -1,4 +1,5 @@
 import prisma from '../../utils/prisma';
+import { createJournalEntry, ensureLedger } from '../accounting/service';
 
 export const generateInvoiceNumber = async (date: Date = new Date()): Promise<string> => {
     const year = parseInt(date.getFullYear().toString().slice(-2));
@@ -145,10 +146,74 @@ export const getInvoiceById = async (id: string) => {
 };
 
 export const updateInvoiceStatus = async (id: string, status: string) => {
-    // If status becomes SUBMITTED, maybe lock it?
-    // For now, just update.
-    return await prisma.clientInvoice.update({
-        where: { id },
-        data: { status }
+    return await prisma.$transaction(async (tx) => {
+        const invoice = await tx.clientInvoice.findUnique({ where: { id }, include: { items: true } });
+        if (!invoice) throw new Error("Invoice not found");
+
+        // Idempotency check
+        if (invoice.status === 'SUBMITTED' && status === 'SUBMITTED') return invoice;
+
+        // Post to Ledger on SUBMITTED
+        if (status === 'SUBMITTED' && invoice.status === 'DRAFT') {
+            const clientLedger = await ensureLedger('CLIENT', invoice.client_id || '', '1000'); // '1000' is generic head code fallback
+
+            const creditLines = invoice.items.map(item => ({
+                ledger_id: item.ledger_id,
+                debit: 0,
+                credit: parseFloat(item.amount.toString())
+            }));
+
+            // Handle Additions (e.g. Tax) -> Credit 'Duties & Taxes'
+            if (invoice.additions_total > 0) {
+                // Find Duties & Taxes Ledger. For now, we search by name or create default.
+                let taxLedger = await tx.ledger.findFirst({ where: { name: 'Duties & Taxes' } });
+                if (!taxLedger) {
+                    taxLedger = await tx.ledger.findFirst({ where: { head: { type: 'LIABILITY' }, name: { contains: 'Tax' } } });
+                }
+
+                if (taxLedger) {
+                    creditLines.push({ ledger_id: taxLedger.id, debit: 0, credit: parseFloat(invoice.additions_total.toString()) });
+                }
+            }
+
+            // Credits - Deductions = Net Payable
+            // So Debit(Client) = Net Payable
+            // Deductions must be Debited too to balance.
+
+            const netPayable = parseFloat(invoice.net_payable.toString());
+            const deductionAmount = parseFloat(invoice.deductions_total.toString());
+
+            const debitLines = [
+                { ledger_id: clientLedger.id, debit: netPayable, credit: 0 }
+            ];
+
+            if (deductionAmount > 0) {
+                const isAdvance = invoice.deductions_desc?.toLowerCase().includes('advance');
+                let dedLedgerName = isAdvance ? 'Unearned Revenue' : 'Discount Allowed';
+
+                let dedLedger = await tx.ledger.findFirst({ where: { name: dedLedgerName } });
+                if (!dedLedger) dedLedger = await tx.ledger.findFirst({ where: { name: 'General Adjustments' } });
+
+                if (dedLedger) {
+                    debitLines.push({ ledger_id: dedLedger.id, debit: deductionAmount, credit: 0 });
+                }
+            }
+
+            await createJournalEntry(tx, {
+                date: new Date(),
+                description: `Invoice #${invoice.invoice_number}`,
+                amount: netPayable,
+                type: 'SALES',
+                reference: invoice.invoice_number,
+                invoice_id: invoice.id,
+                created_by_id: invoice.created_by_id,
+                lines: [...debitLines, ...creditLines]
+            });
+        }
+
+        return await tx.clientInvoice.update({
+            where: { id },
+            data: { status }
+        });
     });
 };

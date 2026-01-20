@@ -66,18 +66,22 @@ export const createLedger = async (data: {
     });
 };
 
-// Internal function to post double entry
-const createJournalEntry = async (
+// Exported for internal module usage (Payroll, Invoicing)
+export const createJournalEntry = async (
     tx: Prisma.TransactionClient,
     data: {
         date: Date;
         description: string;
         amount: number;
         type: string;
-        debit_ledger_id: string;
-        credit_ledger_id: string;
+        // Standard Two-Leg Support (Optional if using lines directly)
+        debit_ledger_id?: string;
+        credit_ledger_id?: string;
         reference?: string;
         invoice_id?: string;
+        created_by_id?: string;
+        // Multi-Leg Support
+        lines?: { ledger_id: string; debit: number; credit: number }[];
     }
 ) => {
     const transactionId = await generateTransactionId(tx);
@@ -92,55 +96,54 @@ const createJournalEntry = async (
             reference: data.reference,
             // @ts-ignore
             transaction_number: transactionId,
-            created_by_id: 'SYSTEM', // TODO: Pass user ID
+            created_by_id: data.created_by_id || 'SYSTEM',
             invoice: data.invoice_id ? { connect: { id: data.invoice_id } } : undefined
         }
     });
 
-    // 2. Create Lines
-    await tx.journalLine.create({
-        data: {
-            entry_id: entry.id,
-            ledger_id: data.debit_ledger_id,
-            debit: data.amount,
-            credit: 0
+    // 2. Prepare Lines
+    const linesToCreate = [];
+
+    // Support basic 2-leg inputs
+    if (data.debit_ledger_id && data.credit_ledger_id) {
+        linesToCreate.push({ ledger_id: data.debit_ledger_id, debit: data.amount, credit: 0 });
+        linesToCreate.push({ ledger_id: data.credit_ledger_id, debit: 0, credit: data.amount });
+    }
+
+    // Support explicit multi-leg inputs
+    if (data.lines && data.lines.length > 0) {
+        linesToCreate.push(...data.lines);
+    }
+
+    if (linesToCreate.length === 0) {
+        throw new Error("Journal Entry must have at least 2 lines (Debit/Credit).");
+    }
+
+    // 3. Create Lines & Update Balances
+    for (const line of linesToCreate) {
+        await tx.journalLine.create({
+            data: {
+                entry_id: entry.id,
+                ledger_id: line.ledger_id,
+                debit: line.debit,
+                credit: line.credit
+            }
+        });
+
+        // Update Ledger Balance
+        if (line.debit > 0) {
+            await tx.ledger.update({
+                where: { id: line.ledger_id },
+                data: { balance: { increment: line.debit } }
+            });
         }
-    });
-
-    await tx.journalLine.create({
-        data: {
-            entry_id: entry.id,
-            ledger_id: data.credit_ledger_id,
-            debit: 0,
-            credit: data.amount
+        if (line.credit > 0) {
+            await tx.ledger.update({
+                where: { id: line.ledger_id },
+                data: { balance: { decrement: line.credit } }
+            });
         }
-    });
-
-    // 3. Update Ledger Balances
-    // Debit increases Asset/Expense, decreases Liab/Income
-    // We store "Balance" loosely for quick access? Or strictly calculated? 
-    // Prompt says "All ledger impacts must flow through transaction engine". 
-    // Usually ERPs store a running balance for performance.
-
-    // We will just Add Debit - Credit to balance for simplicity, but sign depends on nature.
-    // Actually, simpler: Store NET Debit-Credit. 
-    // Asset: Positive = Debit. Liability: Positive = Credit.
-    // Let's stick to: Increase Balance logic based on nature?
-    // No, standard is: Balance = Sum(Debit) - Sum(Credit). 
-    // If Asset, result > 0 is Dr. If Liability, result < 0 is Cr.
-    // Let's allow negative balances.
-
-    await tx.ledger.update({
-        where: { id: data.debit_ledger_id },
-        data: { balance: { increment: data.amount } } // Treat all as Dr +
-    });
-
-    await tx.ledger.update({
-        where: { id: data.credit_ledger_id },
-        data: { balance: { decrement: data.amount } } // Treat all as Cr -
-    });
-    // NOTE: This means Assets have +ve balance, Liabilities have -ve balance. 
-    // Display logic must handle the sign.
+    }
 
     return entry;
 };

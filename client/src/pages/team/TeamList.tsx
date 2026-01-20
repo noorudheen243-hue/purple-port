@@ -9,6 +9,7 @@ import ExitWorkflow from './ExitWorkflow';
 import StaffFormModal from './StaffFormModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../../components/ui/dialog';
 import { Button } from '../../components/ui/button';
+import { ROLES, ROLE_LABELS } from '../../utils/roles';
 
 const TeamList = () => {
     const location = useLocation();
@@ -308,7 +309,7 @@ const TeamList = () => {
                                                             <td className="px-4 py-3 text-gray-600 font-mono text-xs">{member.staff_number}</td>
                                                             <td className="px-4 py-3 text-gray-600">{member.designation}</td>
                                                             <td className="px-4 py-3">
-                                                                {currentRole === 'DEVELOPER_ADMIN' ? (
+                                                                {currentRole === ROLES.DEVELOPER_ADMIN ? (
                                                                     <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-red-600 text-white font-bold text-xs shadow-sm w-fit opacity-100 cursor-not-allowed select-none">
                                                                         <span>Developer Admin</span>
                                                                     </div>
@@ -318,13 +319,10 @@ const TeamList = () => {
                                                                         onChange={(e) => handleRoleChange(member.id, e.target.value)}
                                                                         className={`border-none text-xs font-medium focus:ring-0 cursor-pointer rounded px-1 py-0.5 transition-colors bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 ${isChanged ? 'text-amber-600 font-bold' : 'text-gray-700 dark:text-gray-300'}`}
                                                                     >
-                                                                        <option value="ADMIN">Admin</option>
-                                                                        <option value="MANAGER">Manager</option>
-                                                                        <option value="MARKETING_EXEC">Marketing Exec</option>
-                                                                        <option value="DM_EXECUTIVE">DM Executive</option>
-                                                                        <option value="WEB_SEO_EXECUTIVE">SEO Executive</option>
-                                                                        <option value="CREATIVE_DESIGNER">Designer</option>
-                                                                        <option value="OPERATIONS_EXECUTIVE">Operations</option>
+                                                                        {Object.entries(ROLE_LABELS).map(([role, label]) => {
+                                                                            if (role === ROLES.DEVELOPER_ADMIN || role === ROLES.CLIENT) return null;
+                                                                            return <option key={role} value={role}>{label}</option>
+                                                                        })}
                                                                     </select>
                                                                 )}
                                                             </td>

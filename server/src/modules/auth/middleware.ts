@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import prisma from '../../utils/prisma';
+import { ROLES } from './roles';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_secret';
 
@@ -66,7 +67,8 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
 export const authorize = (...roles: string[]) => {
     return (req: Request, res: Response, next: NextFunction) => {
         // Developer Admin has access to everything
-        if (req.user && (req.user.role === 'DEVELOPER_ADMIN' || roles.includes(req.user.role))) {
+        // ADMIN usually has access to everything unless restricted logic is applied elsewhere
+        if (req.user && (req.user.role === ROLES.DEVELOPER_ADMIN || roles.includes(req.user.role))) {
             next();
         } else {
             res.status(403).json({ message: 'Not authorized to access this route' });

@@ -1,4 +1,3 @@
-
 import {
     LayoutDashboard,
     User,
@@ -21,6 +20,7 @@ import {
     Calculator,
     MessageSquare
 } from 'lucide-react';
+import { ROLES } from '../utils/roles';
 
 export interface MenuItem {
     label: string;
@@ -42,7 +42,7 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
         icon: User,
         children: [
             { label: "View Clients", path: "/dashboard/clients", icon: List },
-            { label: "Client Access", path: "/dashboard/clients/credentials", icon: Shield, roles: ['ADMIN', 'DEVELOPER_ADMIN'] },
+            { label: "Client Access", path: "/dashboard/clients/credentials", icon: Shield, roles: [ROLES.ADMIN, ROLES.DEVELOPER_ADMIN] },
             { label: "Add New Client", path: "/dashboard/clients?action=new", icon: PlusCircle },
             { label: "Content Status", path: "/dashboard/clients/content-status", icon: BarChart3 }
         ]
@@ -50,14 +50,14 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
     {
         label: "Financial Management",
         icon: Wallet,
-        roles: ['ADMIN', 'DEVELOPER_ADMIN'],
+        roles: [ROLES.ADMIN, ROLES.DEVELOPER_ADMIN],
         children: [
             { label: "Account Overview", path: "/dashboard/accounts/overview", icon: BarChart3 },
             { label: "Ledger Master", path: "/dashboard/accounts", icon: List },
             { label: "Transaction History", path: "/dashboard/accounts/history", icon: ClipboardList },
             { label: "Record Transaction", path: "/dashboard/accounts/new", icon: PlusCircle },
             { label: "Account Statement", path: "/dashboard/accounts/statement", icon: FileText },
-            { label: "Client Invoice", path: "/dashboard/finance/invoices", icon: FileText, roles: ['ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'] },
+            { label: "Client Invoice", path: "/dashboard/finance/invoices", icon: FileText, roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN] },
         ]
     },
     {
@@ -65,7 +65,7 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
         icon: Users,
         children: [
             { label: "Team", path: "/dashboard/team", icon: List },
-            { label: "Systems Roles", path: "/dashboard/team/roles", icon: Shield, roles: ['ADMIN', 'DEVELOPER_ADMIN'], highlight: true } as MenuItem
+            { label: "Systems Roles", path: "/dashboard/team/roles", icon: Shield, roles: [ROLES.ADMIN, ROLES.DEVELOPER_ADMIN], highlight: true } as MenuItem
         ]
     },
     {
@@ -77,8 +77,8 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
             { label: "New Task", path: "/dashboard/tasks?action=new", icon: PlusCircle },
             { label: "Task Board", path: "/dashboard/tasks/board", icon: KanbanSquare },
             { label: "Calendar", path: "/dashboard/tasks/calendar", icon: Calendar },
-            { label: "Team Performance", path: "/dashboard/tasks/performance", icon: UsersIcon, roles: ['ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'] },
-            { label: "Reports", path: "/dashboard/tasks/reports", icon: BarChart3, roles: ['ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'] }
+            { label: "Team Performance", path: "/dashboard/tasks/performance", icon: UsersIcon, roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN] },
+            { label: "Reports", path: "/dashboard/tasks/reports", icon: BarChart3, roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN] }
         ]
     },
     {
@@ -97,33 +97,33 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
             { label: "Attendance Summary", path: "/dashboard/attendance/summary", icon: ClipboardList },
             { label: "Leave Request", path: "/dashboard/attendance/leave-request", icon: PlusCircle },
             { label: "Leave Summary", path: "/dashboard/attendance/leave-summary", icon: List },
-            { label: "Holiday & Leave Planner", path: "/dashboard/attendance/planner", icon: Calendar, roles: ['ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'] },
+            { label: "Holiday & Leave Planner", path: "/dashboard/attendance/planner", icon: Calendar, roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN] },
             { label: "Calendar", path: "/dashboard/attendance/calendar", icon: Calendar },
             { label: "Regularisation", path: "/dashboard/attendance/regularisation", icon: CheckSquare },
-            { label: "Requests (Admin)", path: "/dashboard/attendance/requests", icon: Shield, roles: ['ADMIN', 'MANAGER'] },
-            { label: "History (Admin)", path: "/dashboard/attendance/history", icon: ClipboardList, roles: ['ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'] },
-            { label: "Biometric Details", path: "/dashboard/attendance/biometric", icon: List, roles: ['ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'] },
-            { label: "Biometric Manager", path: "/dashboard/attendance/biometric-manager", icon: Shield, roles: ['ADMIN', 'DEVELOPER_ADMIN'] },
-            { label: "Reports", path: "/dashboard/attendance/reports", icon: BarChart3, roles: ['ADMIN', 'MANAGER'] }
+            { label: "Requests (Admin)", path: "/dashboard/attendance/requests", icon: Shield, roles: [ROLES.ADMIN, ROLES.MANAGER] },
+            { label: "History (Admin)", path: "/dashboard/attendance/history", icon: ClipboardList, roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN] },
+            { label: "Biometric Details", path: "/dashboard/attendance/biometric", icon: List, roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN] },
+            { label: "Biometric Manager", path: "/dashboard/attendance/biometric-manager", icon: Shield, roles: [ROLES.ADMIN, ROLES.DEVELOPER_ADMIN] },
+            { label: "Reports", path: "/dashboard/attendance/reports", icon: BarChart3, roles: [ROLES.ADMIN, ROLES.MANAGER] }
         ]
     },
     {
         label: "Payroll",
         icon: Banknote,
         children: [
-            { label: "Salary Calculator", path: "/dashboard/payroll/calculator", icon: Calculator, roles: ['ADMIN', 'DEVELOPER_ADMIN'] },
+            { label: "Salary Calculator", path: "/dashboard/payroll/calculator", icon: Calculator, roles: [ROLES.ADMIN, ROLES.DEVELOPER_ADMIN] },
             { label: "Payslip History", path: "/dashboard/payroll/history", icon: FileText },
             { label: "Salary Statement", path: "/dashboard/payroll/statement", icon: FileText },
             { label: "Payroll Calendar", path: "/dashboard/payroll/calendar", icon: Calendar },
-            { label: "Payroll Process", path: "/dashboard/payroll/process", icon: CheckSquare, roles: ['ADMIN', 'DEVELOPER_ADMIN'] }, // Added Payroll Process
-            { label: "Payroll Reports", path: "/dashboard/payroll/reports", icon: BarChart3, roles: ['ADMIN', 'DEVELOPER_ADMIN'] },
-            { label: "Payroll Settings", path: "/dashboard/payroll/settings", icon: Settings, roles: ['ADMIN', 'DEVELOPER_ADMIN'] }
+            { label: "Payroll Process", path: "/dashboard/payroll/process", icon: CheckSquare, roles: [ROLES.ADMIN, ROLES.DEVELOPER_ADMIN] },
+            { label: "Payroll Reports", path: "/dashboard/payroll/reports", icon: BarChart3, roles: [ROLES.ADMIN, ROLES.DEVELOPER_ADMIN] },
+            { label: "Payroll Settings", path: "/dashboard/payroll/settings", icon: Settings, roles: [ROLES.ADMIN, ROLES.DEVELOPER_ADMIN] }
         ]
     },
     {
         label: "System",
         icon: Shield,
-        roles: ['ADMIN', 'DEVELOPER_ADMIN'],
+        roles: [ROLES.ADMIN, ROLES.DEVELOPER_ADMIN],
         children: [
             { label: "Data Sync", path: "/dashboard/admin/sync", icon: TrendingUp }
         ]
@@ -143,10 +143,21 @@ export const STAFF_MENU: MenuItem[] = [
         icon: LayoutDashboard
     },
     {
+        label: "Client",
+        icon: User,
+        children: [
+            { label: "View Clients", path: "/dashboard/clients", icon: List },
+            { label: "Add New Client", path: "/dashboard/clients?action=new", icon: PlusCircle },
+            { label: "Content Status", path: "/dashboard/clients/content-status", icon: BarChart3 }
+        ]
+    },
+    {
         label: "Tasks",
         icon: CheckSquare,
         children: [
+            { label: "Dashboard", path: "/dashboard/tasks/dashboard", icon: LayoutDashboard },
             { label: "My Tasks", path: "/dashboard/tasks/my-tasks", icon: ClipboardList },
+            { label: "New Task", path: "/dashboard/tasks?action=new", icon: PlusCircle },
             { label: "Task Board", path: "/dashboard/tasks/board", icon: KanbanSquare },
             { label: "Calendar", path: "/dashboard/tasks/calendar", icon: Calendar }
         ]

@@ -47,7 +47,7 @@ cp -r /var/www/purple-port/* /root/purple-port/ || true
 # 3. Update Frontend
 echo ">>> Building Client..."
 cd ../client || exit
-npm install
+npm install --production=false
 npm run build
 
 # 4. Copy Build to Public (if served by Express or Nginx root)

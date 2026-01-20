@@ -595,7 +595,14 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
                                 <select {...register('account_manager_id')} className={`input ${errors.account_manager_id ? 'border-red-500' : ''}`}>
                                     <option value="">Select Manager...</option>
                                     {staffList?.sort((a: any, b: any) => a.user?.full_name.localeCompare(b.user?.full_name))
-                                        .filter((s: any) => (s.department === 'MANAGEMENT' || s.user?.role === 'ADMIN' || s.user?.role === 'MANAGER' || s.user?.role === 'DEVELOPER_ADMIN') && s.payroll_status === 'ACTIVE')
+                                        .filter((s: any) => (
+                                            s.department === 'MANAGEMENT' ||
+                                            s.user?.role === 'ADMIN' ||
+                                            s.user?.role === 'MANAGER' ||
+                                            s.user?.role === 'DEVELOPER_ADMIN' ||
+                                            s.user?.role === 'DM_EXECUTIVE' ||
+                                            s.user?.role === 'WEB_SEO_EXECUTIVE'
+                                        ) && s.payroll_status === 'ACTIVE')
                                         .map((s: any) => (
                                             <option key={s.id} value={s.user_id}>{s.user?.full_name} ({s.user?.role})</option>
                                         ))}

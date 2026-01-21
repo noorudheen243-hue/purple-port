@@ -84,23 +84,18 @@ export const createClient = async (data: Prisma.ClientCreateInput, assignedStaff
         delete createData.operating_locations;
     }
 
-    // Verify Account Manager exists and has correct role
+    // Verify Account Manager exists
     const accountManagerId = (data as any).account_manager_id;
     if (accountManagerId) {
-        // We need to check the StaffProfile, not just the User
+        // Check that the user exists and has a staff profile
         const staffProfile = await prisma.staffProfile.findUnique({
-            where: { user_id: accountManagerId }, // clients store user_id, need to find profile by user_id
+            where: { user_id: accountManagerId },
         });
 
-        if (!staffProfile) throw new Error("Invalid Account Manager: Staff profile not found");
-
-        // RELAXED CHECK for Legacy Compatibility or Edge Cases:
-        // We strictly want 'MANAGEMENT', but let's ensure we match the enum values we defined earlier ('MANAGEMENT').
-        if (staffProfile.department !== 'MANAGEMENT') {
-            // Optional: Allow ADMIN role as a fallback override if needed, but Prompt says "Restrict to Department = Management"
-            // Strict compliance:
-            throw new Error("Account Manager must be from the Management department");
+        if (!staffProfile) {
+            throw new Error("Invalid Account Manager: Staff profile not found");
         }
+        // Any team member can be an account manager - no department restriction
     }
 
     const client = await prisma.client.create({

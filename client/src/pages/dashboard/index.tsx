@@ -128,14 +128,20 @@ const Dashboard = () => {
                     {/* Module 4: Ad Intelligence */}
                     <Route path="roi" element={<ROIDashboard />} />
 
+// Module 5: Team Management
+const TeamManagerPage = lazy(() => import('../team/TeamManagerPage'));
+
+                    // ... existing imports ...
+
                     {/* Module 5: Team Management */}
+                    <Route path="team-management" element={<TeamManagerPage />} />
                     <Route path="team" element={<TeamList />} />
                     <Route path="team/onboard" element={<OnboardingPage />} />
                     <Route path="team/edit/:id" element={<OnboardingPage />} />
                     <Route path="team/roles" element={<SystemRoleManagement />} />
                     <Route path="team/:id" element={<TeamProfile />} />
 
-                    {/* Module 6: Payroll Management */}
+                    {/* Module 6: Payroll Management (Legacy routes kept for direct link safety if needed, but menu points to Team Manager) */}
                     <Route path="payroll" element={<PayrollLayout />}>
                         <Route index element={<Navigate to="history" replace />} />
                         <Route path="calculator" element={<SalaryCalculator />} />

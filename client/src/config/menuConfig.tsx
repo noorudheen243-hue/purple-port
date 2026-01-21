@@ -50,27 +50,9 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
     },
     {
         label: "Team Management",
+        path: "/dashboard/team-management",
         icon: Users,
-        children: [
-            { label: "Team", path: "/dashboard/team", icon: List },
-            { label: "Systems Roles", path: "/dashboard/team/roles", icon: Shield, roles: [ROLES.ADMIN, ROLES.DEVELOPER_ADMIN], highlight: true },
-            { label: "Attendance", path: "/dashboard/attendance/summary", icon: ClipboardList },
-            { label: "Biometric Manager", path: "/dashboard/attendance/biometric-manager", icon: Shield, roles: [ROLES.ADMIN, ROLES.DEVELOPER_ADMIN] },
-            { label: "Leave", path: "/dashboard/leave", icon: Calendar },
-            {
-                label: "Payroll",
-                icon: Banknote,
-                children: [
-                    { label: "Salary Calculator", path: "/dashboard/payroll/calculator", icon: Calculator, roles: [ROLES.ADMIN, ROLES.DEVELOPER_ADMIN] },
-                    { label: "Payslip History", path: "/dashboard/payroll/history", icon: FileText },
-                    { label: "Salary Statement", path: "/dashboard/payroll/statement", icon: FileText },
-                    { label: "Payroll Calendar", path: "/dashboard/payroll/calendar", icon: Calendar },
-                    { label: "Payroll Process", path: "/dashboard/payroll/process", icon: CheckSquare, roles: [ROLES.ADMIN, ROLES.DEVELOPER_ADMIN] },
-                    { label: "Payroll Reports", path: "/dashboard/payroll/reports", icon: BarChart3, roles: [ROLES.ADMIN, ROLES.DEVELOPER_ADMIN] },
-                    { label: "Payroll Settings", path: "/dashboard/payroll/settings", icon: Settings, roles: [ROLES.ADMIN, ROLES.DEVELOPER_ADMIN] }
-                ]
-            }
-        ]
+        // Remove children, it's now a single view
     },
     {
         label: "Task Management",

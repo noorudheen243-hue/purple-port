@@ -99,6 +99,42 @@ export default function BiometricDetailsPage() {
         );
     }, [logs, search]);
 
+    // --- Status Calculation Logic (Consistent with Summary) ---
+    const calculateDailyStatus = (log: any, userShift: string = '') => {
+        if (!log) return { status: 'ABSENT' };
+
+        // Respect explicit backend statuses for Leave/Holiday/Regularized
+        if (log.status === 'HOLIDAY') return { status: 'HOLIDAY' };
+        if (log.status === 'LEAVE') return { status: 'LEAVE' };
+        if (log.status === 'REGULARIZED') return { status: 'REGULARIZED' };
+
+        // 1. Missing One Punch Logic
+        if ((log.status === 'PRESENT' || log.status === 'LATE') && (!log.check_in || !log.check_out)) {
+            return { status: 'HALF_DAY' };
+        }
+
+        // 2. Duration Check based on Shift
+        if (log.check_in && log.check_out) {
+            const start = new Date(log.check_in);
+            const end = new Date(log.check_out);
+            const durationHrs = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+
+            // Shift Logic
+            const isNoBreakShift = userShift && userShift.toUpperCase().includes('NO BREAK');
+
+            // Thresholds
+            const halfDayMin = 4;
+            const fullDayMin = isNoBreakShift ? 7.25 : 7.75;
+
+            if (durationHrs >= halfDayMin && durationHrs < fullDayMin) {
+                return { status: 'HALF_DAY' };
+            }
+        }
+
+        if (log.status === 'PRESENT' || log.status === 'LATE') return { status: 'PRESENT' };
+        return { status: log.status || 'ABSENT' };
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -201,51 +237,56 @@ export default function BiometricDetailsPage() {
                                         <TableCell colSpan={9} className="text-center h-24">No logs found for selected range.</TableCell>
                                     </TableRow>
                                 ) : (
-                                    filteredLogs.map((log: any) => (
-                                        <TableRow key={log.id}>
-                                            <TableCell>{format(new Date(log.date), 'MMM dd, yyyy')}</TableCell>
-                                            <TableCell className="font-medium">{log.user_name}</TableCell>
-                                            <TableCell>{log.staff_number}</TableCell>
-                                            <TableCell className="text-muted-foreground text-sm">{log.shift_timing}</TableCell>
-                                            <TableCell>
-                                                {log.check_in ? (
-                                                    <span className="text-green-600 font-mono">
-                                                        {format(new Date(log.check_in), 'hh:mm aa')}
-                                                    </span>
-                                                ) : '-'}
-                                            </TableCell>
-                                            <TableCell>
-                                                {log.check_out ? (
-                                                    <span className="text-red-600 font-mono">
-                                                        {format(new Date(log.check_out), 'hh:mm aa')}
-                                                    </span>
-                                                ) : '-'}
-                                            </TableCell>
-                                            <TableCell>{log.work_hours ? log.work_hours.toFixed(2) + ' hrs' : '-'}</TableCell>
-                                            <TableCell>
-                                                <Badge variant={
-                                                    log.status === 'PRESENT' ? 'default' :
-                                                        (log.status === 'ABSENT' || log.status === 'MISSING_PUNCH') ? 'destructive' :
-                                                            log.status === 'HALF_DAY' ? 'warning' : 'secondary'
-                                                }>
-                                                    {log.status.replace('_', ' ')}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                {/* Only show Regularize if Absent, Half-Day, or Missing Punches */}
-                                                {(log.status === 'ABSENT' || log.status === 'HALF_DAY' || log.status === 'MISSING_PUNCH' || !log.check_in || !log.check_out) && (
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="text-blue-600 hover:text-blue-800"
-                                                        onClick={() => setSelectedDateForRegularization(log.date)}
-                                                    >
-                                                        Regularize
-                                                    </Button>
-                                                )}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
+                                    filteredLogs.map((log: any) => {
+                                        const computed = calculateDailyStatus(log, log.shift_timing);
+                                        const status = computed.status;
+
+                                        return (
+                                            <TableRow key={log.id}>
+                                                <TableCell>{format(new Date(log.date), 'MMM dd, yyyy')}</TableCell>
+                                                <TableCell className="font-medium">{log.user_name}</TableCell>
+                                                <TableCell>{log.staff_number}</TableCell>
+                                                <TableCell className="text-muted-foreground text-sm">{log.shift_timing}</TableCell>
+                                                <TableCell>
+                                                    {log.check_in ? (
+                                                        <span className="text-green-600 font-mono">
+                                                            {format(new Date(log.check_in), 'hh:mm aa')}
+                                                        </span>
+                                                    ) : '-'}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {log.check_out ? (
+                                                        <span className="text-red-600 font-mono">
+                                                            {format(new Date(log.check_out), 'hh:mm aa')}
+                                                        </span>
+                                                    ) : '-'}
+                                                </TableCell>
+                                                <TableCell>{log.work_hours ? log.work_hours.toFixed(2) + ' hrs' : '-'}</TableCell>
+                                                <TableCell>
+                                                    <Badge variant={
+                                                        status === 'PRESENT' ? 'default' :
+                                                            (status === 'ABSENT' || status === 'MISSING_PUNCH') ? 'destructive' :
+                                                                status === 'HALF_DAY' ? 'warning' : 'secondary'
+                                                    }>
+                                                        {status.replace('_', ' ')}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    {/* Only show Regularize if Absent, Half-Day, or Missing Punches */}
+                                                    {(status === 'ABSENT' || status === 'HALF_DAY' || status === 'MISSING_PUNCH' || !log.check_in || !log.check_out) && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="text-blue-600 hover:text-blue-800"
+                                                            onClick={() => setSelectedDateForRegularization(log.date)}
+                                                        >
+                                                            Regularize
+                                                        </Button>
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                        )
+                                    })
                                 )}
                             </TableBody>
                         </Table>

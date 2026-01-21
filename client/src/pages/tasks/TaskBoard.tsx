@@ -118,7 +118,7 @@ const TaskBoard = () => {
                 <table className="w-full text-left text-sm whitespace-nowrap">
                     <thead className="bg-gray-50/50 border-b border-gray-200 font-semibold text-gray-600">
                         <tr>
-                            <th className="p-4">Date</th>
+                            <th className="p-4">Date & Time</th>
                             <th className="p-4">Client / Campaign</th>
                             <th className="p-4">Task Name</th>
                             <th className="p-4">Type / Nature</th>
@@ -132,7 +132,12 @@ const TaskBoard = () => {
                         {filteredTasks?.map((task: any) => (
                             <tr key={task.id} className="hover:bg-gray-50/30">
                                 <td className="p-4 text-gray-500">
-                                    {(task.actual_start_date || task.createdAt).slice(0, 10)}
+                                    <div className="font-medium text-gray-900">
+                                        {(task.actual_start_date || task.createdAt).slice(0, 10)}
+                                    </div>
+                                    <div className="text-xs text-gray-400">
+                                        {new Date(task.actual_start_date || task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </div>
                                 </td>
                                 <td className="p-4">
                                     <div className="font-medium text-gray-800">{task.campaign?.client?.name || task.client?.name || 'General Task'}</div>
@@ -169,9 +174,8 @@ const TaskBoard = () => {
                                                 <span className="text-gray-400 italic">Unassigned</span>
                                             )}
                                         </div>
-                                        <div className="text-xs text-gray-400 flex flex-col">
+                                        <div className="text-xs text-gray-400">
                                             <span>by {task.assigned_by?.full_name || 'System'}</span>
-                                            <span>{new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                         </div>
                                     </div>
                                 </td>

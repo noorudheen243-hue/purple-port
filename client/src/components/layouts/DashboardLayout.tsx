@@ -405,10 +405,6 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                                         <Settings className="mr-2 h-4 w-4" />
                                         <span>Profile</span>
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => navigate('/dashboard/settings')} className="cursor-pointer">
-                                        <Settings className="mr-2 h-4 w-4" />
-                                        <span>General Settings</span>
-                                    </DropdownMenuItem>
                                     {(user?.role === ROLES.ADMIN || user?.role === ROLES.DEVELOPER_ADMIN) && (
                                         <>
                                             <DropdownMenuSeparator />

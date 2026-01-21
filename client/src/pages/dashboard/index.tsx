@@ -4,6 +4,7 @@ import DashboardLayout from '../../components/layouts/DashboardLayout';
 
 // Lazy Load Dashboard Components
 const Overview = lazy(() => import('./Overview'));
+const TeamManagerPage = lazy(() => import('../team/TeamManagerPage'));
 const ChatLayout = lazy(() => import('../../pages/chat/ChatLayout'));
 const TaskList = lazy(() => import('../tasks/TaskList'));
 const CalendarView = lazy(() => import('../calendar/CalendarView'));
@@ -128,10 +129,7 @@ const Dashboard = () => {
                     {/* Module 4: Ad Intelligence */}
                     <Route path="roi" element={<ROIDashboard />} />
 
-// Module 5: Team Management
-const TeamManagerPage = lazy(() => import('../team/TeamManagerPage'));
 
-                    // ... existing imports ...
 
                     {/* Module 5: Team Management */}
                     <Route path="team-management" element={<TeamManagerPage />} />

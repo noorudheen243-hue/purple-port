@@ -195,6 +195,9 @@ export const getSalaryDraft = async (userId: string, month: number, year: number
     const dailyWage = standardEarnings / 30;
     const lopDeduction = Math.round(dailyWage * lopDays);
 
+    // Calculate Gross Total (Per day salary × days in period)
+    const grossTotal = Math.round(dailyWage * daysInPeriod);
+
     // 4. Get existing Draft Slip if any
     const existingSlip = await prisma.payrollSlip.findFirst({
         where: {
@@ -293,6 +296,10 @@ export const getSalaryDraft = async (userId: string, month: number, year: number
             total_working_days: totalWorkingDays,
             net_pay: updatedNetPay > 0 ? updatedNetPay : 0,
 
+            // Gross Total
+            gross_total: grossTotal,
+            daily_wage: Math.round(dailyWage),
+
             // Pro-ration metadata
             calculation_date: calculationDate,
             days_in_period: daysInPeriod,
@@ -328,6 +335,10 @@ export const getSalaryDraft = async (userId: string, month: number, year: number
 
         total_working_days: totalWorkingDays,
         net_pay: netPay > 0 ? netPay : 0,
+
+        // Gross Total
+        gross_total: grossTotal,
+        daily_wage: Math.round(dailyWage),
 
         // Pro-ration metadata
         calculation_date: calculationDate,

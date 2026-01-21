@@ -49,7 +49,9 @@ const SalaryCalculator = () => {
             net_pay: 0,
             calculation_date: undefined as Date | undefined,
             days_in_period: 0,
-            is_prorated: false
+            is_prorated: false,
+            gross_total: 0,
+            daily_wage: 0
         }
     });
 
@@ -242,6 +244,46 @@ const SalaryCalculator = () => {
                                 <div className="space-y-2">
                                     <Label>Incentives</Label>
                                     <Input type="number" {...register('incentives')} />
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* GROSS TOTAL */}
+                    <Card className="border-purple-200 dark:border-purple-900 md:col-span-2">
+                        <CardHeader className="bg-purple-50 dark:bg-purple-950/20">
+                            <CardTitle className="text-purple-700 dark:text-purple-400 flex items-center gap-2">
+                                <DollarSign className="w-5 h-5" /> Gross Total (Before Deductions)
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-6">
+                            <div className="grid grid-cols-3 gap-4">
+                                <div className="bg-purple-50 dark:bg-purple-950/30 rounded-lg p-4">
+                                    <p className="text-xs text-purple-600 dark:text-purple-400 mb-1">Per Day Salary</p>
+                                    <p className="text-2xl font-bold text-purple-900 dark:text-purple-100">
+                                        ₹{(watch('daily_wage') || 0).toLocaleString('en-IN')}
+                                    </p>
+                                    <p className="text-[10px] text-muted-foreground mt-1">
+                                        (Basic+HRA+Conv+Acc) / 30
+                                    </p>
+                                </div>
+                                <div className="bg-purple-50 dark:bg-purple-950/30 rounded-lg p-4">
+                                    <p className="text-xs text-purple-600 dark:text-purple-400 mb-1">Days in Period</p>
+                                    <p className="text-2xl font-bold text-purple-900 dark:text-purple-100">
+                                        {watch('days_in_period') || 0}
+                                    </p>
+                                    <p className="text-[10px] text-muted-foreground mt-1">
+                                        1st to {watch('calculation_date') ? new Date(watch('calculation_date')).getDate() : 'today'}
+                                    </p>
+                                </div>
+                                <div className="bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-800 rounded-lg p-4">
+                                    <p className="text-xs text-purple-700 dark:text-purple-300 mb-1 font-semibold">GROSS TOTAL</p>
+                                    <p className="text-3xl font-bold text-purple-900 dark:text-purple-50">
+                                        ₹{(watch('gross_total') || 0).toLocaleString('en-IN')}
+                                    </p>
+                                    <p className="text-[10px] text-purple-700 dark:text-purple-300 mt-1">
+                                        Per Day × Days
+                                    </p>
                                 </div>
                             </div>
                         </CardContent>

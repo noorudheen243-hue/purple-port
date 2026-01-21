@@ -29,6 +29,9 @@ export const calculateAutoLOP = async (userId: string, month: number, year: numb
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0); // Last day of month
 
+    console.log(`[LOP DEBUG] Calculating LOP for user ${userId}, month ${month}/${year}`);
+    console.log(`[LOP DEBUG] Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+
     // 1. Fetch Attendance Records
     const attendance = await prisma.attendanceRecord.findMany({
         where: {
@@ -36,6 +39,9 @@ export const calculateAutoLOP = async (userId: string, month: number, year: numb
             date: { gte: startDate, lte: endDate }
         }
     });
+
+    console.log(`[LOP DEBUG] Found ${attendance.length} attendance records`);
+    console.log(`[LOP DEBUG] Attendance statuses:`, attendance.map(a => ({ date: a.date, status: a.status })));
 
     let lopDays = 0;
 
@@ -84,6 +90,7 @@ export const calculateAutoLOP = async (userId: string, month: number, year: numb
         lopDays += diffDays;
     });
 
+    console.log(`[LOP DEBUG] Final LOP Days: ${lopDays}`);
     return lopDays;
 };
 
@@ -101,7 +108,9 @@ export const getSalaryDraft = async (userId: string, month: number, year: number
     }
 
     // 2. Calculate LOP (Always fresh)
+    console.log(`[SALARY DRAFT] Fetching LOP for user ${userId}, month ${month}/${year}`);
     const lopDays = await calculateAutoLOP(userId, month, year);
+    console.log(`[SALARY DRAFT] LOP Days returned: ${lopDays}`);
 
     // 3. Calculate Working Days (Always fresh)
     const startDate = new Date(year, month - 1, 1);

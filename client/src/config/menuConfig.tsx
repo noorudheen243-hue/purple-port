@@ -18,7 +18,9 @@ import {
     Banknote,
     Settings,
     Calculator,
-    MessageSquare
+    MessageSquare,
+    UserCheck,
+    ScrollText
 } from 'lucide-react';
 import { ROLES } from '../utils/roles';
 
@@ -71,9 +73,13 @@ export const STAFF_MENU: MenuItem[] = [
         icon: CheckSquare
     },
     {
-        label: "Calendar",
-        path: "/dashboard/calendar",
-        icon: Calendar
+        label: "Attendance",
+        icon: UserCheck,
+        children: [
+            { label: 'Attendance Register', path: '/dashboard/attendance/summary', icon: Calendar },
+            { label: 'Regularisation', path: '/dashboard/attendance/regularisation', icon: CheckSquare },
+            { label: 'Attendance Log', path: '/dashboard/attendance/biometric', icon: ScrollText }
+        ]
     },
     {
         label: "Leave",

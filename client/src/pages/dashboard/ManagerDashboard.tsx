@@ -9,27 +9,7 @@ import PendingRequestsModal from '@/components/attendance/PendingRequestsModalv2
 
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#94a3b8']; // Green, Blue, Yellow, Gray
 
-// Clock Component
-const DigitalClock = () => {
-    const [time, setTime] = useState(new Date());
-
-    useEffect(() => {
-        const timer = setInterval(() => setTime(new Date()), 1000);
-        return () => clearInterval(timer);
-    }, []);
-
-    return (
-        <div className="text-right">
-            {/* UPDATED: Date Bigger, Time Smaller, 12h Format */}
-            <p className="text-xl md:text-2xl font-bold uppercase tracking-wide text-foreground">
-                {time.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-            </p>
-            <h2 className="text-lg font-medium font-mono tracking-widest text-primary/80">
-                {time.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true })}
-            </h2>
-        </div>
-    );
-};
+// Clock Component Removed - Moved to Global Layout
 
 // Theme Hook
 const useTheme = () => {
@@ -129,8 +109,7 @@ const ManagerDashboard = () => {
                         }
                     />
 
-                    {/* Clock Only - Theme Toggle is now in Global Header */}
-                    <DigitalClock />
+                    {/* Clock Removed - Now Global */}
                 </div>
             </div>
 

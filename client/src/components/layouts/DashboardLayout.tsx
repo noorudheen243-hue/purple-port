@@ -42,6 +42,27 @@ import { AppLauncher } from '../launcher/AppLauncher';
 import { WidgetManager } from '../widgets/WidgetManager';
 import { useRealTimeSync } from '../../hooks/useRealTimeSync';
 
+// Clock Component
+const DigitalClock = () => {
+    const [time, setTime] = useState(new Date());
+
+    React.useEffect(() => {
+        const timer = setInterval(() => setTime(new Date()), 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    return (
+        <div className="text-right hidden md:block mr-6">
+            <p className="text-sm font-bold uppercase tracking-wide text-foreground">
+                {time.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </p>
+            <h2 className="text-xs font-medium font-mono tracking-widest text-primary/80">
+                {time.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true })}
+            </h2>
+        </div>
+    );
+};
+
 const SidebarItem = ({ item, isActive, depth = 0, closeSidebar, index }: { item: MenuItem; isActive: (path: string) => boolean; depth?: number; closeSidebar: () => void, index: number }) => {
     const [isOpen, setIsOpen] = useState(false);
     const hasChildren = item.children && item.children.length > 0;
@@ -379,6 +400,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                     <div>
                         <div className="flex items-center gap-4">
                             {/* Theme Toggle Button - Moved to Header as requested */}
+                            <DigitalClock />
                             <button
                                 onClick={toggleTheme}
                                 className={`

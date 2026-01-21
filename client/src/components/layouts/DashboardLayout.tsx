@@ -368,7 +368,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                                 <Home size={28} strokeWidth={2.5} />
                             </Link>
 
-                            {(location.pathname === '/dashboard' || location.pathname === '/dashboard/') && (
+                            {(location.pathname === '/dashboard' || location.pathname === '/dashboard/' || location.pathname === '/dashboard/client-portal') && (
                                 <div>
                                     <h2 className="text-xl md:text-2xl font-semibold">Welcome back, {user?.full_name.split(' ')[0]}</h2>
                                     <p className="text-sm md:text-base text-muted-foreground hidden md:block">Here's what's happening today.</p>

@@ -43,8 +43,7 @@ const PortalDashboard = () => {
     // Fetch Clients for Selector
     const { data: clients, isLoading: isClientsLoading } = useQuery({
         queryKey: ['clients-list-simple'],
-        queryFn: async () => (await api.get('/clients')).data,
-        enabled: isAdminOrManager
+        queryFn: async () => (await api.get('/clients')).data
     });
 
     // Fetch Client Details & Stats

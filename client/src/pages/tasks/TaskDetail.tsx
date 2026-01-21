@@ -63,7 +63,13 @@ const TaskDetail = () => {
         },
         onSuccess: (_, newStatus) => {
             queryClient.invalidateQueries({ queryKey: ['task', id] });
-            if (newStatus === 'IN_PROGRESS' && !activeLog) {
+
+            // Logic: Start Timer if status changed FROM 'PLANNED' (or just IS NOT Planned/Completed) to something active
+            // AND ensure we don't start if already running.
+            // Requirement: "changed the staus from 'planned' from any other status need to start the timer"
+            // "once the status 'Completed' the stop the timer"
+
+            if (newStatus !== 'PLANNED' && newStatus !== 'COMPLETED' && !activeLog) {
                 timerMutation.mutate('start');
             } else if (newStatus === 'COMPLETED' && activeLog) {
                 timerMutation.mutate('stop');
@@ -320,7 +326,16 @@ const TaskDetail = () => {
                                             onClick={() => setPreviewAsset(asset)}
                                         >
                                             {isImage ? (
-                                                <img src={getAssetUrl(asset.file_url)} alt="Asset" className="w-full h-full object-cover" />
+                                                <img
+                                                    src={getAssetUrl(asset.file_url)}
+                                                    onError={(e) => {
+                                                        // Fallback debugging
+                                                        console.error("Asset Load Error:", asset.file_url);
+                                                        e.currentTarget.src = 'https://placehold.co/600x400?text=Error';
+                                                    }}
+                                                    alt="Asset"
+                                                    className="w-full h-full object-cover"
+                                                />
                                             ) : isVideo ? (
                                                 <div className="relative w-full h-full flex items-center justify-center bg-black/5">
                                                     <video src={getAssetUrl(asset.file_url)} className="w-full h-full object-cover opacity-80" />

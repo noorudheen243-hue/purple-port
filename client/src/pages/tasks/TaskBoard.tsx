@@ -185,13 +185,16 @@ const TaskBoard = () => {
                                     </span>
                                 </td>
                                 <td className="p-4 text-gray-600">
-                                    {task.actual_time_minutes > 0 ? (
-                                        <span className={task.actual_time_minutes > (task.estimated_hours * 60) ? 'text-red-600' : 'text-green-600'}>
-                                            {task.actual_time_minutes}m
+                                    {task.timeLogs?.reduce((acc: number, log: any) => acc + (log.duration_minutes || 0), 0) > 0 || task.actual_time_minutes > 0 ? (
+                                        <span className={(task.actual_time_minutes || 0) > (task.estimated_hours * 60) ? 'text-red-600 font-bold' : 'text-green-600 font-bold'}>
+                                            {/* Prefer calculated actual_time_minutes from backend, or sum logs locally if needed */}
+                                            {task.actual_time_minutes || task.timeLogs?.reduce((acc: number, log: any) => acc + (log.duration_minutes || 0), 0)}m
                                         </span>
-                                    ) : '-'}
-                                    <span className="text-gray-400 mx-1">/</span>
-                                    <span className="text-gray-400">{task.estimated_hours ? Math.round(task.estimated_hours * 60) + 'm' : 'N/A'}</span>
+                                    ) : (
+                                        <span className="text-gray-400">-</span>
+                                    )}
+                                    <span className="text-gray-300 mx-1">/</span>
+                                    <span className="text-gray-500 font-medium">{task.estimated_hours ? Math.round(task.estimated_hours * 60) + 'm' : 'N/A'}</span>
                                 </td>
                                 {canModify && (
                                     <td className="p-4 text-right">
@@ -227,14 +230,16 @@ const TaskBoard = () => {
             </div>
 
             {/* Edit Modal */}
-            {editingTask && (
-                <TaskEditModal
-                    isOpen={!!editingTask}
-                    onClose={() => setEditingTask(null)}
-                    task={editingTask}
-                />
-            )}
-        </div>
+            {
+                editingTask && (
+                    <TaskEditModal
+                        isOpen={!!editingTask}
+                        onClose={() => setEditingTask(null)}
+                        task={editingTask}
+                    />
+                )
+            }
+        </div >
     );
 };
 

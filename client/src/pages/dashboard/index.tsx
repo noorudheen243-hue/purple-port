@@ -75,6 +75,7 @@ const ReportsPage = lazy(() => import('../attendance/ReportsPage'));
 const BiometricDetailsPage = lazy(() => import('../attendance/BiometricDetailsPage'));
 const BiometricManagerPage = lazy(() => import('../attendance/BiometricManagerPage'));
 const HolidayLeavePlannerPage = lazy(() => import('../attendance/HolidayLeavePlannerPage'));
+const LeaveManagementPage = lazy(() => import('../attendance/LeaveManagementPage'));
 const InvoiceModule = lazy(() => import('../finance/index'));
 
 const DashboardLoading = () => (

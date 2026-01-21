@@ -104,6 +104,56 @@ export const calculateAutoLOP = async (userId: string, month: number, year: numb
         lopDays += diffDays;
     });
 
+    // 4. Count Missing Attendance Records (Days with no record = Absent)
+    // Only count past dates (not future or today)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Get holidays in the period
+    const holidays = await prisma.holiday.findMany({
+        where: {
+            date: { gte: startDate, lte: endDate }
+        }
+    });
+    const holidayDates = new Set(holidays.map(h => h.date.toDateString()));
+
+    // Get approved leaves
+    const approvedLeaves = await prisma.leaveRequest.findMany({
+        where: {
+            user_id: userId,
+            status: 'APPROVED',
+            start_date: { lte: endDate },
+            end_date: { gte: startDate }
+        }
+    });
+
+    // Create a set of dates with attendance records
+    const attendanceDates = new Set(attendance.map(a => a.date.toDateString()));
+
+    // Iterate through each day in the period
+    let missingDays = 0;
+    for (let d = new Date(startDate); d <= endDate && d < today; d.setDate(d.getDate() + 1)) {
+        const dateStr = d.toDateString();
+        const isSunday = d.getDay() === 0;
+        const isHoliday = holidayDates.has(dateStr);
+
+        // Check if covered by approved leave
+        const hasLeave = approvedLeaves.some(leave => {
+            const leaveStart = new Date(leave.start_date);
+            const leaveEnd = new Date(leave.end_date);
+            leaveStart.setHours(0, 0, 0, 0);
+            leaveEnd.setHours(23, 59, 59, 999);
+            return d >= leaveStart && d <= leaveEnd;
+        });
+
+        // If no attendance record, not Sunday, not holiday, and not on leave = ABSENT
+        if (!attendanceDates.has(dateStr) && !isSunday && !isHoliday && !hasLeave) {
+            missingDays++;
+        }
+    }
+
+    lopDays += missingDays;
+    console.log(`[LOP DEBUG] Missing attendance records (counted as LOP): ${missingDays}`);
     console.log(`[LOP DEBUG] Final LOP Days: ${lopDays}`);
     return lopDays;
 };

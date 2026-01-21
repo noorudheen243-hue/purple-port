@@ -65,6 +65,7 @@ const PayrollCalendar = lazy(() => import('../payroll/PayrollCalendar'));
 const PayrollSettings = lazy(() => import('../payroll/PayrollSettings'));
 const PayrollProcess = lazy(() => import('../payroll/PayrollProcess'));
 const PayrollReports = lazy(() => import('../payroll/PayrollReports'));
+const PayrollManager = lazy(() => import('../payroll/PayrollManager'));
 
 // Attendance Module
 const RequestPage = lazy(() => import('../attendance/RequestPage'));
@@ -142,6 +143,7 @@ const Dashboard = () => {
                     <Route path="team/:id" element={<TeamProfile />} />
 
                     {/* Module 6: Payroll Management (Legacy routes kept for direct link safety if needed, but menu points to Team Manager) */}
+                    <Route path="payroll/manager" element={<PayrollManager />} />
                     <Route path="payroll" element={<PayrollLayout />}>
                         <Route index element={<Navigate to="history" replace />} />
                         <Route path="calculator" element={<SalaryCalculator />} />

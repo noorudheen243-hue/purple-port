@@ -85,11 +85,7 @@ export const STAFF_MENU: MenuItem[] = [
     {
         label: "Payroll",
         icon: Banknote,
-        children: [
-            { label: 'Payslips', path: '/dashboard/payroll/history', icon: FileText },
-            { label: 'Salary Statement', path: '/dashboard/payroll/statement', icon: FileText },
-            { label: 'Payroll Calendar', path: '/dashboard/payroll/calendar', icon: Calendar }
-        ]
+        path: '/dashboard/payroll/manager'
     },
 
 ];

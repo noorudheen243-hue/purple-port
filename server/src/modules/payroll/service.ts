@@ -240,13 +240,19 @@ export const getSalaryDraft = async (userId: string, month: number, year: number
     const accommodation = profile.accommodation_allowance || 0;
     const allowances = profile.allowances || 0;
 
-    // Daily Wage Rule: (Basic + HRA + Conveyance + Accommodation) / 30
-    const standardEarnings = basic + hra + conveyance + accommodation;
+    // Daily Wage Rule: (Basic + HRA + Conveyance + Accommodation + Allowance + Incentives) / 30
+    // Note: Incentives are usually variable, but if part of fixed structure we include them.
+    // Here we include fixed 'allowances' from profile. Incentives currently 0 in draft.
+    const incentives = 0; // Default 0 for draft, user calculates manual or needs schema update
+
+    // Updated Formula: Include Allowances & Incentives in Daily Rate Base
+    const standardEarnings = basic + hra + conveyance + accommodation + allowances + incentives;
     const dailyWage = standardEarnings / 30;
     const lopDeduction = Math.round(dailyWage * lopDays);
 
-    // Calculate Gross Total (Per day salary × days in period)
-    const grossTotal = Math.round(dailyWage * daysInPeriod);
+    // Calculate Gross Total (Per day salary × Total Working Days)
+    // User Request: multiply with "Total Working Days" (which excludes Sundays/Holidays)
+    const grossTotal = Math.round(dailyWage * totalWorkingDays);
 
     // 4. Get existing Draft Slip if any
     const existingSlip = await prisma.payrollSlip.findFirst({

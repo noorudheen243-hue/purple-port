@@ -7,12 +7,14 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { DollarSign, Save, AlertCircle } from 'lucide-react';
+import { DollarSign, Save, AlertCircle, Settings } from 'lucide-react';
+import PayrollSettings from './PayrollSettings';
 import { useAuthStore } from '../../store/authStore';
 
 const SalaryCalculator = () => {
     const { user } = useAuthStore();
     const isAdmin = user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'DEVELOPER_ADMIN';
+    const [viewMode, setViewMode] = useState<'CALCULATOR' | 'SETTINGS'>('CALCULATOR');
 
     // If not admin, redirect or show unauthorized
     if (!isAdmin) {
@@ -23,6 +25,35 @@ const SalaryCalculator = () => {
     const [selectedStaff, setSelectedStaff] = useState<string>('');
     const [month, setMonth] = useState<number>(new Date().getMonth() + 1);
     const [year, setYear] = useState<number>(new Date().getFullYear());
+
+    // Toggle Buttons Section
+    if (viewMode === 'SETTINGS') {
+        return (
+            <div className="space-y-6 p-6">
+                <div className="flex gap-4 mb-6">
+                    <Button
+                        onClick={() => setViewMode('CALCULATOR')}
+                        className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-purple-200"
+                        variant="outline"
+                    >
+                        <DollarSign className="w-4 h-4 mr-2" />
+                        Salary Calculator
+                    </Button>
+                    <Button
+                        onClick={() => setViewMode('SETTINGS')}
+                        className="bg-yellow-500 text-white hover:bg-yellow-600 shadow-md"
+                    >
+                        <Settings className="w-4 h-4 mr-2" />
+                        Payroll Settings
+                    </Button>
+                </div>
+                <PayrollSettings />
+
+                {/* Back Button / Context */}
+                {/* PayrollSettings component has its own layout */}
+            </div>
+        );
+    }
 
     // Staff List
     const { data: staffList } = useQuery({
@@ -144,8 +175,28 @@ const SalaryCalculator = () => {
 
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
+        <div className="p-6 space-y-8 animate-in fade-in duration-500">
+
+            {/* Navigation Toggle */}
+            <div className="flex gap-4 mb-2">
+                <Button
+                    onClick={() => setViewMode('CALCULATOR')}
+                    className="bg-purple-700 text-white hover:bg-purple-800 shadow-md"
+                >
+                    <DollarSign className="w-4 h-4 mr-2" />
+                    Salary Calculator
+                </Button>
+                <Button
+                    onClick={() => setViewMode('SETTINGS')}
+                    className="bg-yellow-100 text-yellow-700 hover:bg-yellow-200 border-yellow-200"
+                    variant="outline"
+                >
+                    <Settings className="w-4 h-4 mr-2" />
+                    Payroll Settings
+                </Button>
+            </div>
+
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-6">
                 <h1 className="text-2xl font-bold tracking-tight">Salary Calculator</h1>
                 <div className="flex gap-2">
                     <Select value={month.toString()} onValueChange={(v: string) => setMonth(parseInt(v))}>

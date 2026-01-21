@@ -31,13 +31,17 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, type = 'dang
     );
 };
 
-const ClientList = () => {
+interface ClientListProps {
+    defaultOpenCreate?: boolean;
+}
+
+const ClientList = ({ defaultOpenCreate = false }: ClientListProps) => {
     const queryClient = useQueryClient();
     const location = useLocation();
     const navigate = useNavigate();
 
     // Modals state
-    const [isFormOpen, setIsFormOpen] = useState(false);
+    const [isFormOpen, setIsFormOpen] = useState(defaultOpenCreate);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
@@ -52,8 +56,12 @@ const ClientList = () => {
         if (params.get('action') === 'new') {
             setClientToEdit(null);
             setIsFormOpen(true);
+        } else if (defaultOpenCreate) {
+            // If tab switched to "Add New", ensuring it opens.
+            setClientToEdit(null);
+            setIsFormOpen(true);
         }
-    }, [location.search]);
+    }, [location.search, defaultOpenCreate]);
 
     const { data: clients, isLoading } = useQuery({
         queryKey: ['clients'],

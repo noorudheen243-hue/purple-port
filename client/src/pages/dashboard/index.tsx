@@ -9,6 +9,7 @@ const TaskList = lazy(() => import('../tasks/TaskList'));
 const CalendarView = lazy(() => import('../calendar/CalendarView'));
 const ClientList = lazy(() => import('../clients/ClientList'));
 const ClientDetail = lazy(() => import('../clients/ClientDetail'));
+const ClientManagerPage = lazy(() => import('../clients/ClientManagerPage'));
 const ClientCredentialsPage = lazy(() => import('../clients/ClientCredentialsPage'));
 const ClientContentStatus = lazy(() => import('../clients/ClientContentStatus'));
 // const ClientAdsPage = lazy(() => import('../../pages/clients/ClientAdsPage')); // DEPRECATED
@@ -93,6 +94,7 @@ const Dashboard = () => {
                     <Route index element={<Overview />} />
                     <Route path="chat" element={<ChatLayout />} />
                     <Route path="clients" element={<ClientList />} />
+                    <Route path="client-manager" element={<ClientManagerPage />} />
                     <Route path="clients/credentials" element={<ClientCredentialsPage />} />
                     <Route path="clients/content-status" element={<ClientContentStatus />} />
                     <Route path="clients/:id" element={<ClientDetail />} />

@@ -38,14 +38,9 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
         icon: LayoutDashboard
     },
     {
-        label: "Client",
-        icon: User,
-        children: [
-            { label: "View Clients", path: "/dashboard/clients", icon: List },
-            { label: "Client Access", path: "/dashboard/clients/credentials", icon: Shield, roles: [ROLES.ADMIN, ROLES.DEVELOPER_ADMIN] },
-            { label: "Add New Client", path: "/dashboard/clients?action=new", icon: PlusCircle },
-            { label: "Content Status", path: "/dashboard/clients/content-status", icon: BarChart3 }
-        ]
+        label: "Client Manager",
+        path: "/dashboard/client-manager",
+        icon: User
     },
     {
         label: "Financial Management",
@@ -140,13 +135,9 @@ export const STAFF_MENU: MenuItem[] = [
         icon: LayoutDashboard
     },
     {
-        label: "Client",
-        icon: User,
-        children: [
-            { label: "View Clients", path: "/dashboard/clients", icon: List },
-            { label: "Add New Client", path: "/dashboard/clients?action=new", icon: PlusCircle },
-            { label: "Content Status", path: "/dashboard/clients/content-status", icon: BarChart3 }
-        ]
+        label: "Client Manager",
+        path: "/dashboard/client-manager",
+        icon: User
     },
     {
         label: "Tasks",

@@ -45,6 +45,7 @@ const SettingsPage = lazy(() => import('../settings/index'));
 
 
 // Advanced Task Views
+const TaskManagerPage = lazy(() => import('../tasks/TaskManagerPage'));
 const TaskDashboard = lazy(() => import('../tasks/TaskDashboard'));
 const MyTasks = lazy(() => import('../tasks/MyTasks'));
 const TaskBoard = lazy(() => import('../tasks/TaskBoard'));
@@ -102,6 +103,7 @@ const Dashboard = () => {
                     <Route path="clients/:id" element={<ClientDetail />} />
 
                     {/* Advanced Task Module */}
+                    <Route path="tasks/manager" element={<TaskManagerPage />} /> {/* New Main View */}
                     <Route path="tasks" element={<TaskList />} />
                     <Route path="tasks/dashboard" element={<TaskDashboard />} />
                     <Route path="tasks/my-tasks" element={<MyTasks />} />

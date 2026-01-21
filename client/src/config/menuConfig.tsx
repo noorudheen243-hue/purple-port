@@ -56,23 +56,8 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
     },
     {
         label: "Task Management",
-        icon: CheckSquare,
-        children: [
-            { label: "Dashboard", path: "/dashboard/tasks/dashboard", icon: LayoutDashboard },
-            { label: "DM Tasks", path: "/dashboard/client-portal", icon: TrendingUp },
-            {
-                label: "Creative Tasks",
-                icon: Zap,
-                children: [
-                    { label: "My Tasks", path: "/dashboard/tasks/my-tasks", icon: ClipboardList },
-                    { label: "New Task", path: "/dashboard/tasks?action=new", icon: PlusCircle },
-                    { label: "Task Board", path: "/dashboard/tasks/board", icon: KanbanSquare },
-                    { label: "Calendar", path: "/dashboard/tasks/calendar", icon: Calendar },
-                    { label: "Team Performance", path: "/dashboard/tasks/performance", icon: UsersIcon, roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN] },
-                    { label: "Reports", path: "/dashboard/tasks/reports", icon: BarChart3, roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN] }
-                ]
-            }
-        ]
+        path: "/dashboard/tasks/manager",
+        icon: CheckSquare
     },
 
 ];
@@ -90,21 +75,8 @@ export const STAFF_MENU: MenuItem[] = [
     },
     {
         label: "Task Management",
-        icon: CheckSquare,
-        children: [
-            { label: "Dashboard", path: "/dashboard/tasks/dashboard", icon: LayoutDashboard },
-            { label: "DM Tasks", path: "/dashboard/client-portal", icon: TrendingUp },
-            {
-                label: "Creative Tasks",
-                icon: Zap,
-                children: [
-                    { label: "My Tasks", path: "/dashboard/tasks/my-tasks", icon: ClipboardList },
-                    { label: "New Task", path: "/dashboard/tasks?action=new", icon: PlusCircle },
-                    { label: "Task Board", path: "/dashboard/tasks/board", icon: KanbanSquare },
-                    { label: "Calendar", path: "/dashboard/tasks/calendar", icon: Calendar }
-                ]
-            }
-        ]
+        path: "/dashboard/tasks/manager",
+        icon: CheckSquare
     },
     {
         label: "Calendar",

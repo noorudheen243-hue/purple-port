@@ -46,7 +46,10 @@ const SalaryCalculator = () => {
             lop_days: 0,
             lop_deduction: 0,
             total_working_days: 30,
-            net_pay: 0
+            net_pay: 0,
+            calculation_date: undefined as Date | undefined,
+            days_in_period: 0,
+            is_prorated: false
         }
     });
 

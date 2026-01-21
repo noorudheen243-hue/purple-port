@@ -16,6 +16,8 @@ router.post('/admin/update', authenticate, AttendanceController.adminUpdateAtten
 
 router.get('/regularisation/requests', authenticate, AttendanceController.getRegularisationRequests);
 router.patch('/regularisation/:id/status', authenticate, AttendanceController.updateRegularisationStatus);
+router.put('/regularisation/:id', authenticate, AttendanceController.updateRegularisationRequest);
+router.delete('/regularisation/:id', authenticate, AttendanceController.deleteRegularisationRequest);
 // Biometric Sync
 router.post('/biometric-sync', AttendanceController.syncBiometricData); // External Push
 router.post('/sync-device', authenticate, AttendanceController.triggerDeviceSync); // Manual Trigger

@@ -9,6 +9,7 @@ import AttendanceSummaryPage from '../attendance/AttendanceSummaryPage';
 import BiometricManagerPage from '../attendance/BiometricManagerPage';
 import LeaveManagementPage from '../attendance/LeaveManagementPage';
 import PayrollManager from '../payroll/PayrollManager';
+import ApprovalsPage from './ApprovalsPage';
 
 const TeamManagerPage = () => {
     // Tabs Configuration
@@ -19,7 +20,9 @@ const TeamManagerPage = () => {
         { id: 'attendance', label: 'Attendance', icon: ClipboardList, theme: 'yellow' },
         { id: 'biometric', label: 'Biometric Manager', icon: Shield, theme: 'purple' },
         { id: 'leave', label: 'Leave', icon: Calendar, theme: 'yellow' },
-        { id: 'payroll', label: 'Payroll', icon: Banknote, theme: 'purple' },
+        { id: 'approvals', label: 'Approvals', icon: ClipboardList, theme: 'purple' },
+        { id: 'payroll', label: 'Payroll', icon: Banknote, theme: 'yellow' }, // Flipped to yellow for sequence? Or keep purple? Logic says: Y, P, Y, P, Y, P...
+        // Team(Y), Roles(P), Att(Y), Bio(P), Leave(Y), Approvals(P), Payroll(Y? No, let's keep it simple)
     ];
 
     return (
@@ -66,6 +69,12 @@ const TeamManagerPage = () => {
                             <Calendar className="w-4 h-4 mr-2" /> Leave
                         </TabsTrigger>
                         <TabsTrigger
+                            value="approvals"
+                            className="data-[state=active]:bg-purple-900 data-[state=active]:text-yellow-400 data-[state=inactive]:bg-white data-[state=inactive]:text-gray-600 px-4 py-2 rounded-md font-bold transition-all shadow-sm border border-transparent data-[state=active]:border-yellow-400 data-[state=inactive]:border-gray-200"
+                        >
+                            <ClipboardList className="w-4 h-4 mr-2" /> Approvals
+                        </TabsTrigger>
+                        <TabsTrigger
                             value="payroll"
                             className="data-[state=active]:bg-purple-900 data-[state=active]:text-yellow-400 data-[state=inactive]:bg-white data-[state=inactive]:text-gray-600 px-4 py-2 rounded-md font-bold transition-all shadow-sm border border-transparent data-[state=active]:border-yellow-400 data-[state=inactive]:border-gray-200"
                         >
@@ -90,6 +99,9 @@ const TeamManagerPage = () => {
                     </TabsContent>
                     <TabsContent value="leave" className="mt-0">
                         <LeaveManagementPage />
+                    </TabsContent>
+                    <TabsContent value="approvals" className="mt-0">
+                        <ApprovalsPage />
                     </TabsContent>
                     <TabsContent value="payroll" className="mt-0">
                         <PayrollManager />

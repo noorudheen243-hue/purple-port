@@ -110,6 +110,39 @@ export class AttendanceController {
         }
     }
 
+    static async updateRegularisationRequest(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+            const { date, type, reason } = req.body;
+            // Admin only or owner? Assuming Admin for "Approvals" page edits
+            if (req.user?.role !== 'ADMIN' && req.user?.role !== 'MANAGER' && req.user?.role !== 'DEVELOPER_ADMIN') {
+                return res.status(403).json({ message: 'Forbidden' });
+            }
+
+            const result = await AttendanceService.updateRegularisationRequest(id, {
+                date: date ? new Date(date) : undefined,
+                type,
+                reason
+            });
+            res.status(200).json(result);
+        } catch (error: any) {
+            res.status(400).json({ message: error.message });
+        }
+    }
+
+    static async deleteRegularisationRequest(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+            if (req.user?.role !== 'ADMIN' && req.user?.role !== 'MANAGER' && req.user?.role !== 'DEVELOPER_ADMIN') {
+                return res.status(403).json({ message: 'Forbidden' });
+            }
+            await AttendanceService.deleteRegularisationRequest(id);
+            res.status(204).send();
+        } catch (error: any) {
+            res.status(400).json({ message: error.message });
+        }
+    }
+
     static async getMonthlyCalendar(req: Request, res: Response) {
         try {
             const { month, year } = req.query;

@@ -205,4 +205,18 @@ export class LeaveService {
             where: { id: requestId }
         });
     }
+    // Update Leave Request Details (Edit)
+    static async updateLeaveDetails(requestId: string, data: { status?: string, start_date?: Date, end_date?: Date, type?: string, reason?: string }) {
+        const request = await db.leaveRequest.findUnique({ where: { id: requestId } });
+        if (!request) throw new Error("Request not found");
+
+        if (request.status !== 'PENDING') {
+            throw new Error("Cannot edit a processed request. Revert or Create new one.");
+        }
+
+        return await db.leaveRequest.update({
+            where: { id: requestId },
+            data
+        });
+    }
 }

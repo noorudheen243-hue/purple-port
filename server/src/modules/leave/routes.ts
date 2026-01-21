@@ -12,6 +12,7 @@ router.get('/requests', authenticate, authorize('ADMIN', 'MANAGER', 'DEVELOPER_A
 router.patch('/:id/status', authenticate, authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'), LeaveController.updateStatus);
 router.get('/history', authenticate, authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'), LeaveController.getHistory);
 router.post('/:id/revert', authenticate, authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'), LeaveController.revertLeave);
+router.put('/:id', authenticate, authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'), LeaveController.updateLeaveDetails);
 router.delete('/:id', authenticate, authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'), LeaveController.deleteLeave);
 
 export default router;

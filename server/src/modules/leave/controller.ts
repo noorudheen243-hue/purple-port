@@ -82,6 +82,27 @@ export class LeaveController {
         }
     }
 
+    static async updateLeaveDetails(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+            const { type, start_date, end_date, reason } = req.body;
+            // Admin only or owner? Assuming Admin for "Approvals" page edits
+            if (req.user?.role !== 'ADMIN' && req.user?.role !== 'MANAGER' && req.user?.role !== 'DEVELOPER_ADMIN') {
+                return res.status(403).json({ message: 'Forbidden' });
+            }
+
+            const result = await LeaveService.updateLeaveDetails(id, {
+                type,
+                start_date: start_date ? new Date(start_date) : undefined,
+                end_date: end_date ? new Date(end_date) : undefined,
+                reason
+            });
+            res.status(200).json(result);
+        } catch (error: any) {
+            res.status(400).json({ message: error.message });
+        }
+    }
+
     static async deleteLeave(req: Request, res: Response) {
         try {
             const { id } = req.params;

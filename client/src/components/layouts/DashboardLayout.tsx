@@ -14,7 +14,8 @@ import {
     Moon,
     Upload,
     MoreVertical,
-    TrendingUp
+    TrendingUp,
+    Home
 } from 'lucide-react';
 import {
     DropdownMenu,
@@ -345,18 +346,56 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
             <main className="ml-0 md:ml-64 p-4 md:p-8 transition-[margin] duration-300">
                 <header className="flex justify-between items-center mb-8">
                     <div className="flex items-center gap-4">
+                        {(location.pathname === '/dashboard' || location.pathname === '/dashboard/') && (
+                            <div className="flex items-center gap-4">
+                                <Link to="/dashboard" className="p-3 bg-purple-600 text-white rounded-xl shadow-lg hover:bg-purple-700 transition-all flex items-center justify-center">
+                                    <Home size={28} strokeWidth={2.5} />
+                                </Link>
+                                <div>
+                                    <h2 className="text-xl md:text-2xl font-semibold">Welcome back, {user?.full_name.split(' ')[0]}</h2>
+                                    <p className="text-sm md:text-base text-muted-foreground hidden md:block">Here's what's happening today.</p>
+                                </div>
+                            </div>
+                        )}
+                        {/* Always show Home button if not on dashboard, for quick access? User said "near to Greeting". 
+                            And "Home Window should be open while starting...". 
+                            Also "should be active in all sub windows as well". 
+                            This implies the button should be VISIBLE even when not on /dashboard, 
+                            essentially REPLACING the sidebar Overview.
+                            So I should move it OUT of this conditional check, or change the check.
+                        */}
+                    </div>
+                </div>
+                    {/* Let's redo the placement to match "active in all sub windows". */}
+                    <div className="flex items-center gap-4">
                         <button
                             className="md:hidden p-2 -ml-2 hover:bg-accent rounded-md"
                             onClick={() => setIsSidebarOpen(true)}
                         >
                             <Menu size={24} />
                         </button>
-                        {(location.pathname === '/dashboard' || location.pathname === '/dashboard/') && (
-                            <div>
-                                <h2 className="text-xl md:text-2xl font-semibold">Welcome back, {user?.full_name.split(' ')[0]}</h2>
-                                <p className="text-sm md:text-base text-muted-foreground hidden md:block">Here's what's happening today.</p>
-                            </div>
-                        )}
+                        
+                        <div className="flex items-center gap-4">
+                            <Link 
+                                to="/dashboard" 
+                                className={`p-3 rounded-xl shadow-md transition-all flex items-center justify-center hidden md:flex
+                                    ${location.pathname === '/dashboard' || location.pathname === '/dashboard/' 
+                                        ? 'bg-purple-700 text-white shadow-purple-200' 
+                                        : 'bg-white text-purple-700 hover:bg-purple-50 border border-purple-100'
+                                    }
+                                `}
+                                title="Home Overview"
+                            >
+                                <Home size={28} strokeWidth={2.5} />
+                            </Link>
+
+                            {(location.pathname === '/dashboard' || location.pathname === '/dashboard/') && (
+                                <div>
+                                    <h2 className="text-xl md:text-2xl font-semibold">Welcome back, {user?.full_name.split(' ')[0]}</h2>
+                                    <p className="text-sm md:text-base text-muted-foreground hidden md:block">Here's what's happening today.</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
                     <div>
                         <div className="flex items-center gap-4">
@@ -444,9 +483,9 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
             </main>
 
             <ProfileSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
-            {/* WhatsApp Floating Icon - Only for certain roles ideally, but global for now as user requested */}
+            {/* WhatsApp Floating Icon - Only for certain roles ideally, but global for now as user requested */ }
 
-        </div>
+        </div >
     );
 };
 

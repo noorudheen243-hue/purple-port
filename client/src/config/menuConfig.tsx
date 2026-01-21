@@ -32,11 +32,7 @@ export interface MenuItem {
 }
 
 export const ADMIN_MANAGER_MENU: MenuItem[] = [
-    {
-        label: "Overview",
-        path: "/dashboard",
-        icon: LayoutDashboard
-    },
+
     {
         label: "Client Management",
         path: "/dashboard/client-manager",
@@ -63,11 +59,7 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
 ];
 
 export const STAFF_MENU: MenuItem[] = [
-    {
-        label: "Overview",
-        path: "/dashboard",
-        icon: LayoutDashboard
-    },
+
     {
         label: "Client Management",
         path: "/dashboard/client-manager",

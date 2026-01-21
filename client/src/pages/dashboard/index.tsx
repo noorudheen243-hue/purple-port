@@ -144,6 +144,7 @@ const Dashboard = () => {
 
                     {/* Module: Attendance & Leave */}
                     <Route path="attendance/summary" element={<AttendanceSummaryPage />} />
+                    <Route path="leave" element={<LeaveManagementPage />} />
                     <Route path="attendance/leave-request" element={<RequestPage />} />
                     <Route path="attendance/leave-summary" element={<LeaveSummaryPage />} />
                     <Route path="attendance/planner" element={<HolidayLeavePlannerPage />} />

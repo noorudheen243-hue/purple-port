@@ -96,21 +96,9 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
         highlight: true // Optional: highlight it as it's new/important? User didn't ask but "Manager" implies importance. I won't add highlight unless sure.
     },
     {
-        label: "Attendance & Leave",
-        icon: Calendar,
-        children: [
-            // Attendance Summary moved out
-            { label: "Leave Request", path: "/dashboard/attendance/leave-request", icon: PlusCircle },
-            { label: "Leave Summary", path: "/dashboard/attendance/leave-summary", icon: List },
-            { label: "Holiday & Leave Planner", path: "/dashboard/attendance/planner", icon: Calendar, roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN] },
-            { label: "Calendar", path: "/dashboard/attendance/calendar", icon: Calendar },
-
-            { label: "Requests (Admin)", path: "/dashboard/attendance/requests", icon: Shield, roles: [ROLES.ADMIN, ROLES.MANAGER] },
-            { label: "History (Admin)", path: "/dashboard/attendance/history", icon: ClipboardList, roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN] },
-
-
-            { label: "Reports", path: "/dashboard/attendance/reports", icon: BarChart3, roles: [ROLES.ADMIN, ROLES.MANAGER] }
-        ]
+        label: "Leave Management",
+        path: "/dashboard/leave",
+        icon: Calendar
     },
     {
         label: "Payroll",
@@ -184,15 +172,9 @@ export const STAFF_MENU: MenuItem[] = [
         icon: Calendar
     },
     {
-        label: "Attendance & Leave",
-        icon: Calendar,
-        children: [
-            { label: "Attendance Summary", path: "/dashboard/attendance/summary", icon: ClipboardList },
-            { label: "Leave Request", path: "/dashboard/attendance/leave-request", icon: PlusCircle },
-            { label: "Leave Summary", path: "/dashboard/attendance/leave-summary", icon: List },
-            { label: "Calendar", path: "/dashboard/attendance/calendar", icon: Calendar },
-
-        ]
+        label: "Leave Management",
+        path: "/dashboard/leave",
+        icon: Calendar
     },
     {
         label: "Payroll",

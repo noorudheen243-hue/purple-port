@@ -84,7 +84,7 @@ export const createTask = async (data: Prisma.TaskCreateInput) => {
         include: {
             assignee: { select: { id: true, full_name: true, avatar_url: true } },
             reporter: { select: { id: true, full_name: true, avatar_url: true } },
-            assigned_by: { select: { id: true, full_name: true } }, // Ensure return
+            assigned_by: { select: { id: true, full_name: true, avatar_url: true } }, // Ensure return
         }
     });
 
@@ -155,7 +155,7 @@ export const getTaskById = async (id: string) => {
         include: {
             assignee: { select: { id: true, full_name: true, avatar_url: true } },
             reporter: { select: { id: true, full_name: true, avatar_url: true } },
-            assigned_by: { select: { id: true, full_name: true } }, // Added
+            assigned_by: { select: { id: true, full_name: true, avatar_url: true } }, // Added
             campaign: { include: { client: true } },
             client: { select: { name: true } },
             sub_tasks: true,

@@ -40,6 +40,7 @@ export const createTask = async (req: Request, res: Response) => {
         const task = await taskService.createTask({
             ...otherData,
             reporter: { connect: { id: req.user.id } },
+            assigned_by: { connect: { id: req.user.id } }, // Added Correctly
             ...(assignee_id ? { assignee: { connect: { id: assignee_id } } } : {}),
             ...(campaign_id ? { campaign: { connect: { id: campaign_id } } } : {}),
             ...(client_id ? { client: { connect: { id: client_id } } } : {}),

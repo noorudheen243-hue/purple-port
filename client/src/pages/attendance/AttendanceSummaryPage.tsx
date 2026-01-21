@@ -59,6 +59,16 @@ const AttendanceSummaryPage = () => {
                 return <div className="w-full h-full bg-red-100 flex items-center justify-center rounded border border-red-200">{code}</div>;
             }
 
+            // 2b. Regularized
+            if (record.status === 'REGULARIZED') {
+                return (
+                    <div className="flex flex-col items-center justify-center h-full">
+                        <span className="text-[10px] font-bold text-purple-600">REG</span>
+                        <CheckSquare className="h-3 w-3 text-purple-600" />
+                    </div>
+                );
+            }
+
             // 3. Present / Half Day Logic check for UI Display
             // We use the same Logic as Summary Calculation for consistency
             const { status } = calculateDailyStatus(record);
@@ -100,9 +110,12 @@ const AttendanceSummaryPage = () => {
     const calculateDailyStatus = (record: any, userShift: string = '') => {
         if (!record) return { status: 'ABSENT', value: 0 };
         if (record.status === 'HOLIDAY') return { status: 'HOLIDAY', value: 1 };
-        if (record.status === 'LEAVE') return { status: 'LEAVE', value: 0 };
 
-        // Half Day Checks
+        // Leaves and Regularization treated as Present for value, keeping status for display
+        if (record.status === 'LEAVE') return { status: 'LEAVE', value: 1 };
+        if (record.status === 'REGULARIZED') return { status: 'REGULARIZED', value: 1 };
+
+        // Half Day Checks (Backend explicit status)
         if (record.status === 'HALF_DAY') return { status: 'HALF_DAY', value: 0.5 };
 
         // 1. Missing One Punch
@@ -119,15 +132,16 @@ const AttendanceSummaryPage = () => {
             // Shift Logic
             const isNoBreakShift = userShift && userShift.toUpperCase().includes('NO BREAK');
 
-            // Thresholds
+            // Thresholds (User Request: Normal 7.45 aka 7.75h, No Break 7.15 aka 7.25h)
             const halfDayMin = 4;
-            const fullDayMin = isNoBreakShift ? 7.15 : 8; // If No Break, > 7.15 is Full. Else > 8 is Full.
-            // Half Day Range: 4 to [fullDayMin]
+            // 7.45 (7h 45m = 7.75), 7.15 (7h 15m = 7.25)
+            const fullDayMin = isNoBreakShift ? 7.25 : 7.75;
 
-            if (durationHrs >= halfDayMin && durationHrs <= fullDayMin) {
+            // Half Day Range: 4 to < fullDayMin
+            if (durationHrs >= halfDayMin && durationHrs < fullDayMin) {
                 return { status: 'HALF_DAY', value: 0.5 };
             }
-            // If duration > fullDayMin -> Full Day (stays PRESENT)
+            // If duration >= fullDayMin -> Full Day (stays PRESENT)
         }
 
         if (record.status === 'PRESENT' || record.status === 'LATE') return { status: 'PRESENT', value: 1 };
@@ -156,16 +170,21 @@ const AttendanceSummaryPage = () => {
             if (record) {
                 if (record.status === 'HOLIDAY') {
                     totalHolidays++;
-                } else if (record.status === 'LEAVE') {
-                    totalLeaves++;
                 } else {
                     const { status, value } = calculateDailyStatus(record, user.user.shift);
-                    if (status === 'HALF_DAY') {
-                        totalPresentValue += 0.5;
+
+                    if (status === 'LEAVE') {
+                        totalLeaves++;
+                        totalPresentValue += value; // Now adds 1
+                    } else if (status === 'REGULARIZED') {
+                        totalPresentValue += value; // Now adds 1
+                    } else if (status === 'HALF_DAY') {
+                        totalPresentValue += value; // Adds 0.5
                         totalHalfDaysCount++;
-                    } else if (status === 'PRESENT') {
-                        totalPresentValue += 1;
+                    } else if (status === 'PRESENT' || status === 'LATE') {
+                        totalPresentValue += value; // Adds 1
                     } else {
+                        // Absent
                         totalLOP++;
                     }
                 }
@@ -205,8 +224,8 @@ const AttendanceSummaryPage = () => {
                         <button
                             onClick={() => setViewMode('LOGS')}
                             className={`px-4 py-2 text-sm font-bold rounded-md transition-all border ${viewMode === 'LOGS'
-                                    ? 'bg-white text-yellow-700 border-yellow-500 shadow-sm ring-1 ring-yellow-100'
-                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-yellow-50 hover:text-yellow-700 hover:border-yellow-200'
+                                ? 'bg-white text-yellow-700 border-yellow-500 shadow-sm ring-1 ring-yellow-100'
+                                : 'bg-white text-gray-600 border-gray-200 hover:bg-yellow-50 hover:text-yellow-700 hover:border-yellow-200'
                                 }`}
                         >
                             <ScrollText className="w-4 h-4 mr-2 inline-block" />

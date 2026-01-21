@@ -78,6 +78,7 @@ const BiometricManagerPage = lazy(() => import('../attendance/BiometricManagerPa
 const HolidayLeavePlannerPage = lazy(() => import('../attendance/HolidayLeavePlannerPage'));
 const LeaveManagementPage = lazy(() => import('../attendance/LeaveManagementPage'));
 const InvoiceModule = lazy(() => import('../finance/index'));
+const FinanceManagerPage = lazy(() => import('../finance/FinanceManagerPage'));
 
 const DashboardLoading = () => (
     <div className="flex-1 flex items-center justify-center h-full min-h-[400px]">
@@ -119,6 +120,7 @@ const Dashboard = () => {
                     <Route path="accounts/history" element={<TransactionHistory />} />
 
                     {/* Finance Module */}
+                    <Route path="finance" element={<FinanceManagerPage />} />
                     <Route path="finance/invoices" element={<InvoiceModule />} />
 
 

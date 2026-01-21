@@ -44,16 +44,9 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
     },
     {
         label: "Financial Management",
+        path: "/dashboard/finance",
         icon: Wallet,
-        roles: [ROLES.ADMIN, ROLES.DEVELOPER_ADMIN],
-        children: [
-            { label: "Account Overview", path: "/dashboard/accounts/overview", icon: BarChart3 },
-            { label: "Ledger Master", path: "/dashboard/accounts", icon: List },
-            { label: "Transaction History", path: "/dashboard/accounts/history", icon: ClipboardList },
-            { label: "Record Transaction", path: "/dashboard/accounts/new", icon: PlusCircle },
-            { label: "Account Statement", path: "/dashboard/accounts/statement", icon: FileText },
-            { label: "Client Invoice", path: "/dashboard/finance/invoices", icon: FileText, roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN] },
-        ]
+        roles: [ROLES.ADMIN, ROLES.DEVELOPER_ADMIN]
     },
     {
         label: "Team Management",

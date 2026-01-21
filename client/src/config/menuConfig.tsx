@@ -56,11 +56,13 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
         ]
     },
     {
-        label: "Team",
+        label: "Team Management",
         icon: Users,
         children: [
             { label: "Team", path: "/dashboard/team", icon: List },
-            { label: "Systems Roles", path: "/dashboard/team/roles", icon: Shield, roles: [ROLES.ADMIN, ROLES.DEVELOPER_ADMIN], highlight: true } as MenuItem
+            { label: "Systems Roles", path: "/dashboard/team/roles", icon: Shield, roles: [ROLES.ADMIN, ROLES.DEVELOPER_ADMIN], highlight: true },
+            { label: "Attendance", path: "/dashboard/attendance/summary", icon: ClipboardList },
+            { label: "Leave", path: "/dashboard/leave", icon: Calendar }
         ]
     },
     {
@@ -82,18 +84,6 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
                 ]
             }
         ]
-    },
-
-    {
-        label: "Attendance Manager",
-        path: "/dashboard/attendance/summary",
-        icon: ClipboardList,
-        highlight: true // Optional: highlight it as it's new/important? User didn't ask but "Manager" implies importance. I won't add highlight unless sure.
-    },
-    {
-        label: "Leave Management",
-        path: "/dashboard/leave",
-        icon: Calendar
     },
     {
         label: "Payroll",
@@ -163,7 +153,7 @@ export const STAFF_MENU: MenuItem[] = [
         icon: Calendar
     },
     {
-        label: "Leave Management",
+        label: "Leave",
         path: "/dashboard/leave",
         icon: Calendar
     },

@@ -30,45 +30,7 @@ const TeamManagerPage = () => {
             </div>
 
             <Tabs defaultValue="team" className="space-y-6">
-                <div className="bg-muted/40 p-2 rounded-lg border overflow-x-auto">
-                    <TabsList className="bg-transparent gap-2 h-auto p-0 min-w-max justify-start">
-                        {tabs.map((tab) => {
-                            const Icon = tab.icon;
-                            const isYellow = tab.theme === 'yellow';
 
-                            return (
-                                <TabsTrigger
-                                    key={tab.id}
-                                    value={tab.id}
-                                    className={`px-6 py-2 rounded-md font-bold transition-all shadow-sm border-2 flex items-center gap-2
-                                        data-[state=active]:border-${isYellow ? 'yellow-400' : 'purple-900'}
-                                        data-[state=active]:bg-${isYellow ? 'yellow-400' : 'purple-900'}
-                                        data-[state=active]:text-${isYellow ? 'purple-900' : 'yellow-400'}
-                                        data-[state=inactive]:bg-white
-                                        data-[state=inactive]:text-gray-600
-                                        data-[state=inactive]:border-transparent
-                                        hover:opacity-90
-                                    `}
-                                // Note: Tailwind dynamic classes might not work if not safe-listed. 
-                                // Using explicit conditionals for safety below if above fails, but let's try explicit classes here.
-                                >
-                                    {/* Re-implementing class logic to ensure Tailwind picks it up */}
-                                    <div className={`hidden`}></div>
-                                    <Icon className="w-4 h-4" />
-                                    {tab.label}
-                                </TabsTrigger>
-                            );
-                        })}
-                        {/* 
-                            Since dynamic template literals for colors (e.g. bg-${color}) might be purged by Tailwind,
-                            I will write out the triggers explicitly below for reliability.
-                        */}
-                    </TabsList>
-
-                    {/* Explicit Tabs List for Reliability */}
-                    <TabsList className="bg-transparent gap-2 h-auto p-0 min-w-max justify-start hidden"> {/* Hidden because we use map above, but wait.. the map above uses dynamic classes which is risky. Let's redo the map with conditional strings. */}
-                    </TabsList>
-                </div>
 
                 {/* Redoing the TabsList properly without dynamic class names for safety */}
                 <div className="bg-muted/40 p-2 rounded-lg border overflow-x-auto">

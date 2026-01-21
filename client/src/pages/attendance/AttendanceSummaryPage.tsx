@@ -1,4 +1,3 @@
-```javascript
 import React, { useState, useEffect } from 'react';
 import { Check, X, Calendar, ClipboardList, CheckSquare, ScrollText } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
@@ -30,7 +29,7 @@ const AttendanceSummaryPage = () => {
     const fetchAttendance = async () => {
         setIsLoading(true);
         try {
-            const { data } = await api.get(`/ attendance / team - summary ? month = ${ month }& year=${ year } `);
+            const { data } = await api.get(`/attendance/team-summary?month=${month}&year=${year}`);
             setAttendanceData(data);
         } catch (error) {
             console.error("Failed to fetch attendance summary", error);
@@ -145,7 +144,7 @@ const AttendanceSummaryPage = () => {
 
         daysInMonth.forEach(day => {
             const dateObj = new Date(parseInt(year), parseInt(month) - 1, day);
-            const dateKey = `${ year } -${ month.padStart(2, '0') } -${ String(day).padStart(2, '0') } `;
+            const dateKey = `${year}-${month.padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             const isSunday = dateObj.getDay() === 0;
 
             if (isSunday) {
@@ -203,44 +202,40 @@ const AttendanceSummaryPage = () => {
                 <div className="flex bg-muted p-1 rounded-lg flex-wrap gap-1">
                     <button
                         onClick={() => setViewMode('REGISTER')}
-                        className={`px - 4 py - 2 text - sm font - medium rounded - md transition - all ${
-    viewMode === 'REGISTER'
-        ? 'bg-purple-700 text-white shadow'
-        : 'text-muted-foreground hover:bg-background/50'
-} `}
+                        className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${viewMode === 'REGISTER'
+                                ? 'bg-purple-700 text-white shadow'
+                                : 'text-muted-foreground hover:bg-background/50'
+                            }`}
                     >
                         <Calendar className="w-4 h-4 mr-2 inline-block" />
                         Attendance Register
                     </button>
                     <button
                         onClick={() => setViewMode('SUMMARY')}
-                        className={`px - 4 py - 2 text - sm font - medium rounded - md transition - all ${
-    viewMode === 'SUMMARY'
-        ? 'bg-yellow-400 text-purple-900 shadow font-semibold'
-        : 'text-muted-foreground hover:bg-background/50'
-} `}
+                        className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${viewMode === 'SUMMARY'
+                                ? 'bg-yellow-400 text-purple-900 shadow font-semibold'
+                                : 'text-muted-foreground hover:bg-background/50'
+                            }`}
                     >
                         <ClipboardList className="w-4 h-4 mr-2 inline-block" />
                         Attendance Summary
                     </button>
-                     <button
+                    <button
                         onClick={() => setViewMode('REGULARIZATION')}
-                        className={`px - 4 py - 2 text - sm font - medium rounded - md transition - all border ${
-    viewMode === 'REGULARIZATION'
-        ? 'bg-white border-purple-600 text-purple-700 shadow font-bold'
-        : 'border-transparent text-muted-foreground hover:bg-background/50'
-} `}
+                        className={`px-4 py-2 text-sm font-medium rounded-md transition-all border ${viewMode === 'REGULARIZATION'
+                                ? 'bg-white border-purple-600 text-purple-700 shadow font-bold'
+                                : 'border-transparent text-muted-foreground hover:bg-background/50'
+                            }`}
                     >
                         <CheckSquare className="w-4 h-4 mr-2 inline-block" />
                         Attendance Regularization
                     </button>
                     <button
                         onClick={() => setViewMode('LOGS')}
-                        className={`px - 4 py - 2 text - sm font - medium rounded - md transition - all border ${
-    viewMode === 'LOGS'
-        ? 'bg-white border-blue-600 text-blue-700 shadow font-bold'
-        : 'border-transparent text-muted-foreground hover:bg-background/50'
-} `}
+                        className={`px-4 py-2 text-sm font-medium rounded-md transition-all border ${viewMode === 'LOGS'
+                                ? 'bg-white border-blue-600 text-blue-700 shadow font-bold'
+                                : 'border-transparent text-muted-foreground hover:bg-background/50'
+                            }`}
                     >
                         <ScrollText className="w-4 h-4 mr-2 inline-block" />
                         Attendance Log
@@ -293,7 +288,7 @@ const AttendanceSummaryPage = () => {
                                             const dateObj = new Date(parseInt(year), parseInt(month) - 1, d);
                                             const isSunday = dateObj.getDay() === 0;
                                             return (
-                                                <TableHead key={d} className={`min - w - [45px] text - center p - 1 border - l ${ isSunday ? 'bg-blue-50 text-blue-700' : '' } `}>
+                                                <TableHead key={d} className={`min-w-[45px] text-center p-1 border-l ${isSunday ? 'bg-blue-50 text-blue-700' : ''}`}>
                                                     <div className="flex flex-col items-center justify-center">
                                                         <span className="font-bold">{d}</span>
                                                         <span className="text-[9px] uppercase">{dateObj.toLocaleDateString('en-US', { weekday: 'narrow' })}</span>
@@ -311,11 +306,11 @@ const AttendanceSummaryPage = () => {
                                                 <div className="text-[10px] text-muted-foreground">{data.user.designation}</div>
                                             </TableCell>
                                             {daysInMonth.map(d => {
-                                                const dateKey = `${ year } -${ month.padStart(2, '0') } -${ String(d).padStart(2, '0') } `;
+                                                const dateKey = `${year}-${month.padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                                                 const record = data.attendance[dateKey];
                                                 const isSunday = new Date(parseInt(year), parseInt(month) - 1, d).getDay() === 0;
                                                 return (
-                                                    <TableCell key={d} className={`p - 0 text - center border - l h - 12 ${ isSunday ? 'bg-blue-50/30' : '' } `}>
+                                                    <TableCell key={d} className={`p-0 text-center border-l h-12 ${isSunday ? 'bg-blue-50/30' : ''}`}>
                                                         {getStatusContent(record, d, data.user.shift)}
                                                     </TableCell>
                                                 );
@@ -372,15 +367,14 @@ const AttendanceSummaryPage = () => {
             )}
 
             {viewMode === 'REGULARIZATION' && (
-                 <RegularisationPage />
+                <RegularisationPage />
             )}
 
             {viewMode === 'LOGS' && (
-                 <BiometricDetailsPage />
+                <BiometricDetailsPage />
             )}
         </div>
     );
 };
 
 export default AttendanceSummaryPage;
-```

@@ -7,7 +7,7 @@ const router = express.Router();
 
 router.use(protect);
 
-router.post('/', upload.single('file'), uploadAsset);
+router.post('/', uploadAsset); // File already uploaded via /upload endpoint
 router.patch('/:id/approve', authorize('ADMIN', 'MANAGER'), approveAsset);
 router.delete('/:id', deleteAsset);
 

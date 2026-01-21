@@ -3,30 +3,24 @@ import * as assetService from './service';
 
 export const uploadAsset = async (req: Request, res: Response) => {
     try {
-        if (!req.file) {
-            return res.status(400).json({ message: 'No file uploaded' });
-        }
+        const { task_id, original_name, file_url, file_type, size_bytes } = req.body;
 
-        const { task_id } = req.body;
-        if (!task_id) {
-            return res.status(400).json({ message: 'Task ID is required' });
+        if (!task_id || !file_url) {
+            return res.status(400).json({ message: 'Task ID and file URL are required' });
         }
-
-        // file_url will be relative path 'uploads/filename'
-        // In production this might be a full S3 URL
-        const file_url = `uploads/${req.file.filename}`;
 
         const asset = await assetService.createAsset({
-            original_name: req.file.originalname,
+            original_name: original_name || 'unknown',
             file_url,
-            file_type: req.file.mimetype,
-            size_bytes: req.file.size,
+            file_type: file_type || 'application/octet-stream',
+            size_bytes: size_bytes || 0,
             task_id,
             uploader_id: req.user!.id
         });
 
         res.status(201).json(asset);
     } catch (error: any) {
+        console.error('Asset creation error:', error);
         res.status(500).json({ message: error.message });
     }
 };

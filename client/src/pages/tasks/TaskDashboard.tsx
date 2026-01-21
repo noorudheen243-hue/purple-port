@@ -26,10 +26,14 @@ const TaskDashboard = ({ view = 'ALL' }: TaskDashboardProps) => {
 
     const { data: dmStats, isLoading: isDmStatsLoading } = useQuery({
         queryKey: ['portal-global-stats'],
-        queryFn: async () => (await api.get('/client-portal/global-stats')).data
+        queryFn: async () => (await api.get('/client-portal/global-stats')).data,
+        enabled: view === 'ALL' || view === 'DM' // Only fetch for DM/ALL views
     });
 
-    if (isTasksLoading || isDmStatsLoading) return <div className="p-8">Loading Dashboard...</div>;
+    // Only block if relevant data is loading
+    const isGlobalLoading = isTasksLoading || (view !== 'CREATIVE' && isDmStatsLoading);
+
+    if (isGlobalLoading) return <div className="p-8">Loading Dashboard...</div>;
 
     // Use Server Stats
     const total = stats?.total || 0;

@@ -367,6 +367,15 @@ export const getStaffById = async (req: Request, res: Response) => {
     }
 };
 
+export const getNextStaffId = async (req: Request, res: Response) => {
+    try {
+        const nextId = await teamService.generateNextStaffId();
+        res.json({ nextId });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 export const recordAttendance = async (req: Request, res: Response) => {
     try {
         const { status } = attendanceSchema.parse(req.body);

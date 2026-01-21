@@ -9,6 +9,7 @@ const router = Router();
 // Staff Management
 router.post('/staff/onboard', protect, authorize(ROLES.ADMIN, ROLES.DEVELOPER_ADMIN), teamController.onboardStaff);
 router.get('/staff', protect, teamController.listStaff);
+router.get('/staff/next-id', protect, authorize(ROLES.ADMIN, ROLES.DEVELOPER_ADMIN, ROLES.MANAGER), teamController.getNextStaffId); // New Route
 router.get('/staff/me', protect, teamController.getMyProfile);
 router.get('/staff/:id', protect, teamController.getStaffById);
 router.post('/staff', protect, authorize(ROLES.ADMIN, ROLES.DEVELOPER_ADMIN), teamController.createStaffProfile);

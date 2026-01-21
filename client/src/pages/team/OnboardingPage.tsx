@@ -147,6 +147,19 @@ const OnboardingPage = () => {
         }
     }, [watchedHeadId, accountHeads]);
 
+    // AUTO-GENERATE STAFF ID (Only for New Profiles)
+    useEffect(() => {
+        if (!isEditMode) {
+            api.get('/team/staff/next-id')
+                .then(res => {
+                    if (res.data.nextId) {
+                        setValue('staff_number', res.data.nextId);
+                    }
+                })
+                .catch(err => console.error("Failed to fetch next Staff ID:", err));
+        }
+    }, [isEditMode, setValue]);
+
     const handleNext = async () => {
         // Validate current step fields before moving
         let fieldsToValidate: any[] = [];

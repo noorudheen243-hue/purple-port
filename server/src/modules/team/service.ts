@@ -12,6 +12,29 @@ export const ensureUserLedger = async (userId: string, headId: string) => {
     throw new Error('Account Head not found');
 };
 
+export const generateNextStaffId = async () => {
+    // pattern to match: QIX followed by digits
+    const profiles = await prisma.staffProfile.findMany({
+        select: { staff_number: true }
+    });
+
+    let maxId = 0;
+    profiles.forEach(p => {
+        if (p.staff_number) {
+            // Robust extraction: Remove non-digits
+            const digits = p.staff_number.replace(/\D/g, '');
+            const numPart = parseInt(digits, 10);
+            if (!isNaN(numPart) && numPart > maxId) {
+                maxId = numPart;
+            }
+        }
+    });
+
+    const nextId = maxId + 1;
+    // User requested format QIX00001 (5 digits padding)
+    return `QIX${nextId.toString().padStart(5, '0')}`;
+};
+
 // --- Staff Profile Management ---
 
 export const createStaffProfile = async (

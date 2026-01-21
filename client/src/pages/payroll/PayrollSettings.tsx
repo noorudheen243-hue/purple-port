@@ -144,16 +144,17 @@ const PayrollSettings = () => {
                                     <TableHead>Accommodation</TableHead>
                                     <TableHead>Fixed Allow.</TableHead>
                                     <TableHead className="text-right font-bold w-[120px]">Total Per Month</TableHead>
+                                    <TableHead className="text-right font-bold w-[120px]">Per Day Wage</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {isLoading ? (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="text-center py-4">Loading...</TableCell>
+                                        <TableCell colSpan={8} className="text-center py-4">Loading...</TableCell>
                                     </TableRow>
                                 ) : filteredStaff.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="text-center py-4">No staff found</TableCell>
+                                        <TableCell colSpan={8} className="text-center py-4">No staff found</TableCell>
                                     </TableRow>
                                 ) : (
                                     filteredStaff.map((staff: any) => (
@@ -207,6 +208,9 @@ const PayrollSettings = () => {
                                             </TableCell>
                                             <TableCell className="text-right font-bold text-green-700">
                                                 ₹{calculateTotal(staff).toLocaleString('en-IN')}
+                                            </TableCell>
+                                            <TableCell className="text-right font-bold text-blue-700">
+                                                ₹{(calculateTotal(staff) / 30).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                                             </TableCell>
                                         </TableRow>
                                     ))

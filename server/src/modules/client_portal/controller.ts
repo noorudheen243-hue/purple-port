@@ -190,35 +190,28 @@ export const getPortalDashboard = async (req: Request, res: Response) => {
 
 export const getGlobalPortalStats = async (req: Request, res: Response) => {
     try {
-        // 1. Meta Ads Total Spend
-        const metaAgg = await prisma.metaAdsLog.aggregate({
-            _sum: { spend: true }
-        });
+        const [metaAgg, googleAgg, pendingContent, activeWebProjects, seoClients] = await Promise.all([
+            // 1. Meta Ads Total Spend
+            prisma.metaAdsLog.aggregate({ _sum: { spend: true } }),
 
-        // 2. Google Ads Total Spend
-        const googleAgg = await prisma.googleAdsLog.aggregate({
-            _sum: { spend: true }
-        });
+            // 2. Google Ads Total Spend
+            prisma.googleAdsLog.aggregate({ _sum: { spend: true } }),
 
-        // 3. Pending Content Items (Draft/Submitted/Changes Requested)
-        const pendingContent = await prisma.contentDeliverable.count({
-            where: {
-                status: { in: ['DRAFT', 'SUBMITTED', 'CHANGES_REQUESTED'] }
-            }
-        });
+            // 3. Pending Content Items
+            prisma.contentDeliverable.count({
+                where: { status: { in: ['DRAFT', 'SUBMITTED', 'CHANGES_REQUESTED'] } }
+            }),
 
-        // 4. Active Web Projects
-        const activeWebProjects = await prisma.webDevProject.count({
-            where: {
-                status: { not: 'DEPLOYED' }
-            }
-        });
+            // 4. Active Web Projects
+            prisma.webDevProject.count({
+                where: { status: { not: 'DEPLOYED' } }
+            }),
 
-        // 5. SEO Total Traffic (Sum of latest month for each client - tricky, so maybe just total logs count or skipping)
-        // Let's just return total managed SEO clients
-        const seoClients = await prisma.client.count({
-            where: { service_engagement: { contains: 'SEO' } }
-        });
+            // 5. SEO Clients
+            prisma.client.count({
+                where: { service_engagement: { contains: 'SEO' } }
+            })
+        ]);
 
         res.json({
             meta_spend: metaAgg._sum.spend || 0,

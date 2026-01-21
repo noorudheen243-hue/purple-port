@@ -285,25 +285,14 @@ export const getCreativeTeamMetrics = async () => {
     const creativeIds = creatives.map(c => c.id);
 
     // 2. Task Counts
-    const totalTasks = await prisma.task.count({
-        where: { assignee_id: { in: creativeIds } }
-    });
-
-    const completedTasks = await prisma.task.count({
-        where: { assignee_id: { in: creativeIds }, status: 'COMPLETED' }
-    });
-
-    const wipTasks = await prisma.task.count({
-        where: { assignee_id: { in: creativeIds }, status: 'IN_PROGRESS' }
-    });
-
-    const reviewTasks = await prisma.task.count({
-        where: { assignee_id: { in: creativeIds }, status: 'REVIEW' }
-    });
-
-    const plannedTasks = await prisma.task.count({
-        where: { assignee_id: { in: creativeIds }, status: 'PLANNED' }
-    });
+    // 2. Task Counts (Parallelized)
+    const [totalTasks, completedTasks, wipTasks, reviewTasks, plannedTasks] = await Promise.all([
+        prisma.task.count({ where: { assignee_id: { in: creativeIds } } }),
+        prisma.task.count({ where: { assignee_id: { in: creativeIds }, status: 'COMPLETED' } }),
+        prisma.task.count({ where: { assignee_id: { in: creativeIds }, status: 'IN_PROGRESS' } }),
+        prisma.task.count({ where: { assignee_id: { in: creativeIds }, status: 'REVIEW' } }),
+        prisma.task.count({ where: { assignee_id: { in: creativeIds }, status: 'PLANNED' } })
+    ]);
 
     return {
         total: totalTasks,

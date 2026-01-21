@@ -203,36 +203,6 @@ const AttendanceSummaryPage = () => {
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-muted/40 p-2 rounded-lg border">
                     <div className="flex flex-wrap items-center gap-2">
                         <button
-                            onClick={() => setViewMode('REGISTER')}
-                            className={`px-4 py-2 text-sm font-bold rounded-md transition-all border ${viewMode === 'REGISTER'
-                                    ? 'bg-purple-700 text-white border-purple-800 shadow-md'
-                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-200'
-                                }`}
-                        >
-                            <Calendar className="w-4 h-4 mr-2 inline-block" />
-                            Attendance Register
-                        </button>
-                        <button
-                            onClick={() => setViewMode('SUMMARY')}
-                            className={`px-4 py-2 text-sm font-bold rounded-md transition-all border ${viewMode === 'SUMMARY'
-                                    ? 'bg-yellow-400 text-black border-yellow-500 shadow-md'
-                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-yellow-50 hover:text-yellow-700 hover:border-yellow-200'
-                                }`}
-                        >
-                            <ClipboardList className="w-4 h-4 mr-2 inline-block" />
-                            Attendance Summary
-                        </button>
-                        <button
-                            onClick={() => setViewMode('REGULARIZATION')}
-                            className={`px-4 py-2 text-sm font-bold rounded-md transition-all border ${viewMode === 'REGULARIZATION'
-                                    ? 'bg-white text-purple-700 border-purple-600 shadow-sm ring-1 ring-purple-100'
-                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-200'
-                                }`}
-                        >
-                            <CheckSquare className="w-4 h-4 mr-2 inline-block" />
-                            Attendance Regularization
-                        </button>
-                        <button
                             onClick={() => setViewMode('LOGS')}
                             className={`px-4 py-2 text-sm font-bold rounded-md transition-all border ${viewMode === 'LOGS'
                                     ? 'bg-white text-yellow-700 border-yellow-500 shadow-sm ring-1 ring-yellow-100'
@@ -241,6 +211,36 @@ const AttendanceSummaryPage = () => {
                         >
                             <ScrollText className="w-4 h-4 mr-2 inline-block" />
                             Attendance Log
+                        </button>
+                        <button
+                            onClick={() => setViewMode('REGISTER')}
+                            className={`px-4 py-2 text-sm font-bold rounded-md transition-all border ${viewMode === 'REGISTER'
+                                ? 'bg-purple-700 text-white border-purple-800 shadow-md'
+                                : 'bg-white text-gray-600 border-gray-200 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-200'
+                                }`}
+                        >
+                            <Calendar className="w-4 h-4 mr-2 inline-block" />
+                            Attendance Register
+                        </button>
+                        <button
+                            onClick={() => setViewMode('SUMMARY')}
+                            className={`px-4 py-2 text-sm font-bold rounded-md transition-all border ${viewMode === 'SUMMARY'
+                                ? 'bg-yellow-400 text-black border-yellow-500 shadow-md'
+                                : 'bg-white text-gray-600 border-gray-200 hover:bg-yellow-50 hover:text-yellow-700 hover:border-yellow-200'
+                                }`}
+                        >
+                            <ClipboardList className="w-4 h-4 mr-2 inline-block" />
+                            Attendance Summary
+                        </button>
+                        <button
+                            onClick={() => setViewMode('REGULARIZATION')}
+                            className={`px-4 py-2 text-sm font-bold rounded-md transition-all border ${viewMode === 'REGULARIZATION'
+                                ? 'bg-white text-purple-700 border-purple-600 shadow-sm ring-1 ring-purple-100'
+                                : 'bg-white text-gray-600 border-gray-200 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-200'
+                                }`}
+                        >
+                            <CheckSquare className="w-4 h-4 mr-2 inline-block" />
+                            Attendance Regularization
                         </button>
                     </div>
 

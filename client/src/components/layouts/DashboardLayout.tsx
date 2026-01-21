@@ -12,8 +12,17 @@ import {
     Settings,
     Sun,
     Moon,
-    Upload
+    Upload,
+    MoreVertical,
+    TrendingUp
 } from 'lucide-react';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "../../components/ui/dropdown-menu";
 import api from '../../lib/api';
 import Swal from 'sweetalert2';
 import { getAssetUrl } from '../../lib/utils';
@@ -381,14 +390,36 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                             )}
 
                             <NotificationBell />
-                            <button
-                                onClick={() => setIsSettingsOpen(true)}
-                                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-md transition-colors"
-                                title="Settings"
-                            >
-                                <Settings size={18} />
-                                <span className="hidden md:inline">Settings</span>
-                            </button>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <button
+                                        className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-md transition-colors"
+                                        title="Settings"
+                                    >
+                                        <Settings size={18} />
+                                        <span className="hidden md:inline">Settings</span>
+                                    </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-56">
+                                    <DropdownMenuItem onClick={() => setIsSettingsOpen(true)} className="cursor-pointer">
+                                        <Settings className="mr-2 h-4 w-4" />
+                                        <span>Profile</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => navigate('/dashboard/settings')} className="cursor-pointer">
+                                        <Settings className="mr-2 h-4 w-4" />
+                                        <span>General Settings</span>
+                                    </DropdownMenuItem>
+                                    {(user?.role === ROLES.ADMIN || user?.role === ROLES.DEVELOPER_ADMIN) && (
+                                        <>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem onClick={() => navigate('/dashboard/admin/sync')} className="cursor-pointer">
+                                                <TrendingUp className="mr-2 h-4 w-4" />
+                                                <span>Data Sync</span>
+                                            </DropdownMenuItem>
+                                        </>
+                                    )}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
 
                             <button
                                 onClick={handleLogout}

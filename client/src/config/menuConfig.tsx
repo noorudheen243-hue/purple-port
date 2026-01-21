@@ -62,6 +62,7 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
             { label: "Team", path: "/dashboard/team", icon: List },
             { label: "Systems Roles", path: "/dashboard/team/roles", icon: Shield, roles: [ROLES.ADMIN, ROLES.DEVELOPER_ADMIN], highlight: true },
             { label: "Attendance", path: "/dashboard/attendance/summary", icon: ClipboardList },
+            { label: "Biometric Manager", path: "/dashboard/attendance/biometric-manager", icon: Shield, roles: [ROLES.ADMIN, ROLES.DEVELOPER_ADMIN] },
             { label: "Leave", path: "/dashboard/leave", icon: Calendar }
         ]
     },
@@ -96,24 +97,6 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
             { label: "Payroll Process", path: "/dashboard/payroll/process", icon: CheckSquare, roles: [ROLES.ADMIN, ROLES.DEVELOPER_ADMIN] },
             { label: "Payroll Reports", path: "/dashboard/payroll/reports", icon: BarChart3, roles: [ROLES.ADMIN, ROLES.DEVELOPER_ADMIN] },
             { label: "Payroll Settings", path: "/dashboard/payroll/settings", icon: Settings, roles: [ROLES.ADMIN, ROLES.DEVELOPER_ADMIN] }
-        ]
-    },
-    {
-        label: "System",
-        icon: Shield,
-        roles: [ROLES.ADMIN, ROLES.DEVELOPER_ADMIN],
-        children: [
-            { label: "Data Sync", path: "/dashboard/admin/sync", icon: TrendingUp }
-        ]
-    },
-
-    {
-        label: "Settings",
-        icon: Settings,
-        roles: [ROLES.ADMIN, ROLES.DEVELOPER_ADMIN],
-        children: [
-            { label: "General", path: "/dashboard/settings", icon: Settings },
-            { label: "Biometric Manager", path: "/dashboard/attendance/biometric-manager", icon: Shield, roles: [ROLES.ADMIN, ROLES.DEVELOPER_ADMIN] }
         ]
     }
 ];
@@ -166,11 +149,7 @@ export const STAFF_MENU: MenuItem[] = [
             { label: 'Payroll Calendar', path: '/dashboard/payroll/calendar', icon: Calendar }
         ]
     },
-    {
-        label: "Settings",
-        path: "/dashboard/settings",
-        icon: Settings
-    }
+
 ];
 
 export const CLIENT_MENU: MenuItem[] = [

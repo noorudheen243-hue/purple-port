@@ -107,8 +107,8 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
             { label: "Regularisation", path: "/dashboard/attendance/regularisation", icon: CheckSquare },
             { label: "Requests (Admin)", path: "/dashboard/attendance/requests", icon: Shield, roles: [ROLES.ADMIN, ROLES.MANAGER] },
             { label: "History (Admin)", path: "/dashboard/attendance/history", icon: ClipboardList, roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN] },
-            { label: "Biometric Details", path: "/dashboard/attendance/biometric", icon: List, roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN] },
-            { label: "Biometric Manager", path: "/dashboard/attendance/biometric-manager", icon: Shield, roles: [ROLES.ADMIN, ROLES.DEVELOPER_ADMIN] },
+
+
             { label: "Reports", path: "/dashboard/attendance/reports", icon: BarChart3, roles: [ROLES.ADMIN, ROLES.MANAGER] }
         ]
     },
@@ -136,8 +136,12 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
 
     {
         label: "Settings",
-        path: "/dashboard/settings",
-        icon: Settings
+        icon: Settings,
+        roles: [ROLES.ADMIN, ROLES.DEVELOPER_ADMIN],
+        children: [
+            { label: "General", path: "/dashboard/settings", icon: Settings },
+            { label: "Biometric Manager", path: "/dashboard/attendance/biometric-manager", icon: Shield, roles: [ROLES.ADMIN, ROLES.DEVELOPER_ADMIN] }
+        ]
     }
 ];
 

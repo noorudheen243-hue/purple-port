@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/api';
-import { format } from 'date-fns';
+import { format, getMonth, getYear } from 'date-fns';
 import {
     Table,
     TableBody,
@@ -19,13 +19,18 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Check, X, Edit2, Trash2, Calendar, Clock, AlertCircle } from 'lucide-react';
+import { Check, X, Edit2, Trash2, Calendar, Clock, AlertCircle, History, RotateCcw } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 const ApprovalsPage = () => {
     const queryClient = useQueryClient();
     const [editModalOpen, setEditModalOpen] = useState(false);
     const [editingRequest, setEditingRequest] = useState<any>(null);
+
+    // Filter States
+    const [historyMonth, setHistoryMonth] = useState<string>((new Date().getMonth() + 1).toString());
+    const [historyYear, setHistoryYear] = useState<string>(new Date().getFullYear().toString());
+    const [historyStatus, setHistoryStatus] = useState<string>('ALL');
 
     // --- DATA FETCHING ---
     const { data: leaves = [], isLoading: leavesLoading } = useQuery({
@@ -37,6 +42,17 @@ const ApprovalsPage = () => {
         queryKey: ['regularisation-requests'],
         queryFn: async () => (await api.get('/attendance/regularisation/requests?status=PENDING')).data,
     });
+
+    const { data: leaveHistory = [], isLoading: lhLoading } = useQuery({
+        queryKey: ['leave-history', historyMonth, historyYear, historyStatus],
+        queryFn: async () => (await api.get(`/leave/history`, { params: { month: historyMonth, year: historyYear, status: historyStatus } })).data,
+    });
+
+    const { data: regHistory = [], isLoading: rhLoading } = useQuery({
+        queryKey: ['regularisation-history', historyMonth, historyYear, historyStatus],
+        queryFn: async () => (await api.get(`/attendance/regularisation/history`, { params: { month: historyMonth, year: historyYear, status: historyStatus } })).data,
+    });
+
 
     // --- MUTATIONS ---
 
@@ -52,6 +68,8 @@ const ApprovalsPage = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['leave-requests'] });
             queryClient.invalidateQueries({ queryKey: ['regularisation-requests'] });
+            queryClient.invalidateQueries({ queryKey: ['leave-history'] });
+            queryClient.invalidateQueries({ queryKey: ['regularisation-history'] });
             Swal.fire({ title: 'Success', text: 'Request updated successfully', icon: 'success', timer: 1500 });
         },
         onError: (error: any) => {
@@ -70,6 +88,8 @@ const ApprovalsPage = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['leave-requests'] });
             queryClient.invalidateQueries({ queryKey: ['regularisation-requests'] });
+            queryClient.invalidateQueries({ queryKey: ['leave-history'] });
+            queryClient.invalidateQueries({ queryKey: ['regularisation-history'] });
             Swal.fire({ title: 'Deleted', text: 'Request deleted successfully', icon: 'success', timer: 1500 });
         },
         onError: (error: any) => {
@@ -91,11 +111,28 @@ const ApprovalsPage = () => {
             setEditingRequest(null);
             queryClient.invalidateQueries({ queryKey: ['leave-requests'] });
             queryClient.invalidateQueries({ queryKey: ['regularisation-requests'] });
+            queryClient.invalidateQueries({ queryKey: ['leave-history'] });
+            queryClient.invalidateQueries({ queryKey: ['regularisation-history'] });
             Swal.fire({ title: 'Updated', text: 'Request updated successfully', icon: 'success', timer: 1500 });
         },
         onError: (error: any) => {
             Swal.fire('Error', error.response?.data?.message || 'Update failed', 'error');
         }
+    });
+
+    const revertMutation = useMutation({
+        mutationFn: async ({ id, type }: { id: string, type: 'LEAVE' | 'REGULARISATION' }) => {
+            const endpoint = type === 'LEAVE' ? `/leave/${id}/revert` : `/attendance/regularisation/${id}/revert`;
+            return api.post(endpoint);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['leave-requests'] });
+            queryClient.invalidateQueries({ queryKey: ['regularisation-requests'] });
+            queryClient.invalidateQueries({ queryKey: ['leave-history'] });
+            queryClient.invalidateQueries({ queryKey: ['regularisation-history'] });
+            Swal.fire({ title: 'Reverted', text: 'Request reverted to Pending', icon: 'success', timer: 1500 });
+        },
+        onError: (error: any) => Swal.fire('Error', error.response?.data?.message || 'Revert failed', 'error')
     });
 
 
@@ -140,7 +177,7 @@ const ApprovalsPage = () => {
     const handleDelete = (id: string, type: 'LEAVE' | 'REGULARISATION') => {
         Swal.fire({
             title: 'Delete Request?',
-            text: "This action cannot be undone. Ensuring no trace remains.",
+            text: "This action cannot be undone.",
             icon: 'error',
             showCancelButton: true,
             confirmButtonColor: '#d33',
@@ -157,6 +194,21 @@ const ApprovalsPage = () => {
         setEditModalOpen(true);
     };
 
+    const handleRevert = (req: any, type: 'LEAVE' | 'REGULARISATION') => {
+        Swal.fire({
+            title: 'Revert to Pending?',
+            text: "This will undo the approval/rejection and allow you to process it again.",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#f59e0b',
+            confirmButtonText: 'Yes, Revert'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                revertMutation.mutate({ id: req.id, type });
+            }
+        });
+    }
+
     const saveEdit = (e: React.FormEvent) => {
         e.preventDefault();
         const formData = new FormData(e.target as HTMLFormElement);
@@ -168,14 +220,15 @@ const ApprovalsPage = () => {
 
     // --- RENDER HELPERS ---
 
-    const RequestTable = ({ requests, type }: { requests: any[], type: 'LEAVE' | 'REGULARISATION' }) => (
+    const RequestTable = ({ requests, type, isHistory = false }: { requests: any[], type: 'LEAVE' | 'REGULARISATION', isHistory?: boolean }) => (
         <div className="rounded-md border">
             <Table>
                 <TableHeader>
                     <TableRow>
                         <TableHead>Staff Name</TableHead>
                         <TableHead>Date(s)</TableHead>
-                        <TableHead>Reason</TableHead>
+                        <TableHead>Type/Reason</TableHead>
+                        {isHistory && <TableHead>Actioned By</TableHead>}
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -183,8 +236,8 @@ const ApprovalsPage = () => {
                 <TableBody>
                     {requests.length === 0 ? (
                         <TableRow>
-                            <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
-                                No pending requests found.
+                            <TableCell colSpan={isHistory ? 6 : 5} className="text-center h-24 text-muted-foreground">
+                                No requests found.
                             </TableCell>
                         </TableRow>
                     ) : (
@@ -199,42 +252,58 @@ const ApprovalsPage = () => {
                                 <TableCell>
                                     {type === 'LEAVE' ? (
                                         <div className="flex flex-col">
-                                            <span>{format(new Date(req.start_date), 'MMM dd, yyyy')} - {format(new Date(req.end_date), 'MMM dd, yyyy')}</span>
-                                            <span className="text-xs text-muted-foreground">{req.type}</span>
+                                            <span>{format(new Date(req.start_date), 'MMM dd')} - {format(new Date(req.end_date), 'MMM dd, yyyy')}</span>
                                         </div>
                                     ) : (
-                                        <div className="flex flex-col">
-                                            <span>{format(new Date(req.date), 'MMM dd, yyyy')}</span>
-                                            <span className="text-xs text-muted-foreground">{req.type}</span>
-                                        </div>
+                                        <span>{format(new Date(req.date), 'MMM dd, yyyy')}</span>
                                     )}
                                 </TableCell>
-                                <TableCell className="max-w-[300px]">
-                                    <p className="truncate text-sm" title={req.reason}>{req.reason}</p>
+                                <TableCell className="max-w-[250px]">
+                                    <div className="flex flex-col">
+                                        <span className="font-medium text-xs">{req.type}</span>
+                                        <p className="truncate text-sm text-muted-foreground" title={req.reason}>{req.reason}</p>
+                                    </div>
                                 </TableCell>
+                                {isHistory && (
+                                    <TableCell>
+                                        <span className="text-sm">{req.approver?.full_name || '-'}</span>
+                                    </TableCell>
+                                )}
                                 <TableCell>
                                     <Badge variant={req.status === 'PENDING' ? 'secondary' : req.status === 'APPROVED' ? 'default' : 'destructive'}>
                                         {req.status}
                                     </Badge>
                                 </TableCell>
                                 <TableCell className="text-right">
-                                    {req.status === 'PENDING' && (
-                                        <div className="flex justify-end gap-2">
-                                            <Button variant="ghost" size="icon" onClick={() => handleEdit(req, type)} title="Edit">
-                                                <Edit2 className="h-4 w-4 text-blue-600" />
-                                            </Button>
-                                            <Button variant="ghost" size="icon" onClick={() => handleDelete(req.id, type)} title="Delete">
-                                                <Trash2 className="h-4 w-4 text-red-600" />
-                                            </Button>
-                                            <div className="w-px h-6 bg-border mx-1" />
-                                            <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => handleReject(req, type)}>
-                                                Reject
-                                            </Button>
-                                            <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => handleApprove(req, type)}>
-                                                Approve
-                                            </Button>
-                                        </div>
-                                    )}
+                                    <div className="flex justify-end gap-2">
+                                        {req.status === 'PENDING' ? (
+                                            <>
+                                                <Button variant="ghost" size="icon" onClick={() => handleEdit(req, type)} title="Edit">
+                                                    <Edit2 className="h-4 w-4 text-blue-600" />
+                                                </Button>
+                                                <Button variant="ghost" size="icon" onClick={() => handleDelete(req.id, type)} title="Delete">
+                                                    <Trash2 className="h-4 w-4 text-red-600" />
+                                                </Button>
+                                                {!isHistory && (
+                                                    <>
+                                                        <div className="w-px h-6 bg-border mx-1" />
+                                                        <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => handleReject(req, type)}>
+                                                            Reject
+                                                        </Button>
+                                                        <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => handleApprove(req, type)}>
+                                                            Approve
+                                                        </Button>
+                                                    </>
+                                                )}
+                                            </>
+                                        ) : (
+                                            isHistory && (
+                                                <Button size="sm" variant="outline" onClick={() => handleRevert(req, type)} title="Revert to Pending">
+                                                    <RotateCcw className="h-4 w-4 mr-2" /> Revert
+                                                </Button>
+                                            )
+                                        )}
+                                    </div>
                                 </TableCell>
                             </TableRow>
                         ))
@@ -247,39 +316,94 @@ const ApprovalsPage = () => {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <Card>
-                <CardHeader>
-                    <CardTitle>Approvals Management</CardTitle>
-                    <CardDescription>Manage and process all pending leave and attendance regularization requests.</CardDescription>
+                <CardHeader className="pb-3">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <CardTitle>Approvals Management</CardTitle>
+                            <CardDescription>Process pending requests or review history.</CardDescription>
+                        </div>
+                    </div>
                 </CardHeader>
                 <CardContent>
-                    <Tabs defaultValue="leave" className="w-full">
-                        <TabsList className="grid w-full grid-cols-2 mb-4">
-                            <TabsTrigger value="leave" className="flex items-center gap-2">
-                                <Calendar className="h-4 w-4" />
-                                Leave Requests
-                                {leaves.filter((l: any) => l.status === 'PENDING').length > 0 && (
-                                    <Badge variant="destructive" className="ml-1 rounded-full px-1.5 py-0.5 text-[10px] h-auto min-w-[18px]">
-                                        {leaves.filter((l: any) => l.status === 'PENDING').length}
-                                    </Badge>
-                                )}
-                            </TabsTrigger>
-                            <TabsTrigger value="regularisation" className="flex items-center gap-2">
-                                <Clock className="h-4 w-4" />
-                                Attendance Requests
-                                {regularisation.length > 0 && (
-                                    <Badge variant="destructive" className="ml-1 rounded-full px-1.5 py-0.5 text-[10px] h-auto min-w-[18px]">
-                                        {regularisation.length}
-                                    </Badge>
-                                )}
-                            </TabsTrigger>
+                    <Tabs defaultValue="pending" className="w-full">
+                        <TabsList className="grid w-full grid-cols-2 mb-6">
+                            <TabsTrigger value="pending">Pending Actions</TabsTrigger>
+                            <TabsTrigger value="history">Approval History</TabsTrigger>
                         </TabsList>
 
-                        <TabsContent value="leave" className="space-y-4">
-                            <RequestTable requests={leaves.filter((l: any) => l.status === 'PENDING')} type="LEAVE" />
+                        <TabsContent value="pending" className="space-y-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <h3 className="font-semibold flex items-center gap-2">
+                                        <Calendar className="h-4 w-4 text-yellow-600" /> Leave Requests
+                                        {leaves.filter((l: any) => l.status === 'PENDING').length > 0 && (
+                                            <Badge variant="destructive" className="ml-1 rounded-full px-1.5 py-0.5 text-[10px] h-auto min-w-[20px] justify-center">{leaves.filter((l: any) => l.status === 'PENDING').length}</Badge>
+                                        )}
+                                    </h3>
+                                    <RequestTable requests={leaves.filter((l: any) => l.status === 'PENDING')} type="LEAVE" />
+                                </div>
+                                <div className="space-y-2">
+                                    <h3 className="font-semibold flex items-center gap-2">
+                                        <Clock className="h-4 w-4 text-purple-600" /> Regularization Requests
+                                        {regularisation.length > 0 && (
+                                            <Badge variant="destructive" className="ml-1 rounded-full px-1.5 py-0.5 text-[10px] h-auto min-w-[20px] justify-center">{regularisation.length}</Badge>
+                                        )}
+                                    </h3>
+                                    <RequestTable requests={regularisation} type="REGULARISATION" />
+                                </div>
+                            </div>
                         </TabsContent>
 
-                        <TabsContent value="regularisation" className="space-y-4">
-                            <RequestTable requests={regularisation} type="REGULARISATION" />
+                        <TabsContent value="history" className="space-y-4">
+                            <div className="flex gap-4 items-end bg-muted/50 p-4 rounded-lg">
+                                <div className="space-y-1">
+                                    <Label>Month</Label>
+                                    <Select value={historyMonth} onValueChange={setHistoryMonth}>
+                                        <SelectTrigger className="w-[150px] bg-white"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            {Array.from({ length: 12 }, (_, i) => (
+                                                <SelectItem key={i + 1} value={(i + 1).toString()}>{format(new Date(2000, i, 1), 'MMMM')}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-1">
+                                    <Label>Year</Label>
+                                    <Select value={historyYear} onValueChange={setHistoryYear}>
+                                        <SelectTrigger className="w-[100px] bg-white"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="2024">2024</SelectItem>
+                                            <SelectItem value="2025">2025</SelectItem>
+                                            <SelectItem value="2026">2026</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-1">
+                                    <Label>Status</Label>
+                                    <Select value={historyStatus} onValueChange={setHistoryStatus}>
+                                        <SelectTrigger className="w-[150px] bg-white"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="ALL">All Status</SelectItem>
+                                            <SelectItem value="APPROVED">Approved</SelectItem>
+                                            <SelectItem value="REJECTED">Rejected</SelectItem>
+                                            <SelectItem value="PENDING">Pending</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            <Tabs defaultValue="hist-leave" className="w-full">
+                                <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent space-x-6">
+                                    <TabsTrigger value="hist-leave" className="data-[state=active]:border-b-2 data-[state=active]:border-yellow-500 rounded-none px-0 py-2">Leave History</TabsTrigger>
+                                    <TabsTrigger value="hist-reg" className="data-[state=active]:border-b-2 data-[state=active]:border-purple-500 rounded-none px-0 py-2">Regularization History</TabsTrigger>
+                                </TabsList>
+                                <TabsContent value="hist-leave" className="mt-4">
+                                    <RequestTable requests={leaveHistory} type="LEAVE" isHistory={true} />
+                                </TabsContent>
+                                <TabsContent value="hist-reg" className="mt-4">
+                                    <RequestTable requests={regHistory} type="REGULARISATION" isHistory={true} />
+                                </TabsContent>
+                            </Tabs>
                         </TabsContent>
                     </Tabs>
                 </CardContent>

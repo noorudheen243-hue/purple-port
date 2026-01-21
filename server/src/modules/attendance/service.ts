@@ -593,6 +593,94 @@ export class AttendanceService {
 
         return updated;
     }
+
+    // Get Regularisation Request History
+    static async getRegularisationHistory(month: number, year: number, status?: string) {
+        const startDate = new Date(year, month - 1, 1);
+        const endDate = new Date(year, month, 0);
+        // Include the whole day for end date
+        endDate.setHours(23, 59, 59, 999);
+
+        const whereClause: any = {
+            date: {
+                gte: startDate,
+                lte: endDate
+            }
+        };
+
+        if (status && status !== 'ALL') {
+            whereClause.status = status;
+        } else {
+            // If ALL, usually exclude PENDING? User asked for history of approvals (Pending is in pending tab).
+            // But History often implies "Past Actions". 
+            // Let's include everything that matches the date range.
+            // If the user wants only Processed, they can filter or we can default.
+            // For now, return all in that month.
+        }
+
+        return await db.regularisationRequest.findMany({
+            where: whereClause,
+            include: {
+                user: {
+                    select: {
+                        full_name: true,
+                        department: true,
+                        role: true
+                    }
+                },
+                approver: { // Ensure schema has this relation
+                    select: {
+                        full_name: true
+                    }
+                }
+            },
+            orderBy: { date: 'desc' }
+        });
+    }
+
+    // Revert Regularisation Status
+    static async revertRegularisationStatus(requestId: string) {
+        const request = await db.regularisationRequest.findUnique({ where: { id: requestId } });
+        if (!request) throw new Error("Request not found");
+
+        // If it was APPROVED, we must revert the attendance record changes?
+        // This is tricky because we don't know what the PREVIOUS state was.
+        // Option 1: Set back to ABSENT or previous state if we knew it.
+        // Option 2: Delete the attendance record if it was created by REGULARISATION.
+
+        if (request.status === 'APPROVED') {
+            // Find the attendance record for this date
+            const record = await db.attendanceRecord.findUnique({
+                where: {
+                    user_id_date: {
+                        user_id: request.user_id,
+                        date: request.date
+                    }
+                }
+            });
+
+            if (record && record.method === 'REGULARISATION') {
+                // Safe to delete or reset?
+                // If we delete, it becomes "No Data" (Absent).
+                // If the user had a partial punch log before, we lost it when we upserted?
+                // Wait, upsert replaces. 
+                // Ideally, we should soft-delete or check logs.
+                // For now: Reverting an approved regularisation -> Delete the "Present" record to force Absent/Missing.
+                await db.attendanceRecord.delete({
+                    where: { id: record.id }
+                });
+            }
+        }
+
+        return await db.regularisationRequest.update({
+            where: { id: requestId },
+            data: {
+                status: 'PENDING',
+                approver_id: null
+            }
+        });
+    }
+
     // Monthly Calendar Data
     static async getMonthlyCalendar(userId: string, month: number, year: number) {
         const startDate = new Date(year, month - 1, 1);

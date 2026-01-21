@@ -18,6 +18,9 @@ router.get('/regularisation/requests', authenticate, AttendanceController.getReg
 router.patch('/regularisation/:id/status', authenticate, AttendanceController.updateRegularisationStatus);
 router.put('/regularisation/:id', authenticate, AttendanceController.updateRegularisationRequest);
 router.delete('/regularisation/:id', authenticate, AttendanceController.deleteRegularisationRequest);
+router.get('/regularisation/history', authenticate, AttendanceController.getRegularisationHistory);
+router.post('/regularisation/:id/revert', authenticate, AttendanceController.revertRegularisationStatus);
+
 // Biometric Sync
 router.post('/biometric-sync', AttendanceController.syncBiometricData); // External Push
 router.post('/sync-device', authenticate, AttendanceController.triggerDeviceSync); // Manual Trigger

@@ -143,6 +143,35 @@ export class AttendanceController {
         }
     }
 
+    static async getRegularisationHistory(req: Request, res: Response) {
+        try {
+            const { month, year, status } = req.query;
+            const history = await AttendanceService.getRegularisationHistory(
+                parseInt(month as string),
+                parseInt(year as string),
+                status as string
+            );
+            res.status(200).json(history);
+        } catch (error: any) {
+            res.status(500).json({ message: error.message });
+        }
+    }
+
+    static async revertRegularisationStatus(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+            // Admin/Manager only
+            if (req.user?.role !== 'ADMIN' && req.user?.role !== 'MANAGER' && req.user?.role !== 'DEVELOPER_ADMIN') {
+                return res.status(403).json({ message: 'Forbidden' });
+            }
+
+            const updated = await AttendanceService.revertRegularisationStatus(id);
+            res.status(200).json(updated);
+        } catch (error: any) {
+            res.status(400).json({ message: error.message });
+        }
+    }
+
     static async getMonthlyCalendar(req: Request, res: Response) {
         try {
             const { month, year } = req.query;

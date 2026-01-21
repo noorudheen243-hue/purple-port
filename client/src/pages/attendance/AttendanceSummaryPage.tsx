@@ -95,34 +95,37 @@ const AttendanceSummaryPage = () => {
 
     // --- Summary Logic ---
 
-    const calculateDailyStatus = (record: any) => {
+    const calculateDailyStatus = (record: any, userShift: string = '') => {
         if (!record) return { status: 'ABSENT', value: 0 };
-        if (record.status === 'HOLIDAY') return { status: 'HOLIDAY', value: 1 }; // Weekends/Holidays don't count as "Present" work days usually, but they are paid. However, for "Total Present Days" count, usually we count ACTUAL worked days.
-        // Wait, "Total Holidays" is separate. "Total Present Days" typically means days worked. 
-
+        if (record.status === 'HOLIDAY') return { status: 'HOLIDAY', value: 1 };
         if (record.status === 'LEAVE') return { status: 'LEAVE', value: 0 };
 
         // Half Day Checks
-        // 1. Backend explicit Half Day
         if (record.status === 'HALF_DAY') return { status: 'HALF_DAY', value: 0.5 };
 
-        // 2. Missing One Punch (Check In exists but No Check Out OR Vice Versa? Usually backend sends what it has)
-        // If status is PRESENT/LATE but one punch is missing
+        // 1. Missing One Punch
         if ((record.status === 'PRESENT' || record.status === 'LATE') && (!record.check_in || !record.check_out)) {
             return { status: 'HALF_DAY', value: 0.5 };
         }
 
-        // 3. Duration Check (>= 4 hrs)
+        // 2. Duration Check based on Shift
         if (record.check_in && record.check_out) {
             const start = new Date(record.check_in);
             const end = new Date(record.check_out);
             const durationHrs = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
 
-            if (durationHrs >= 4 && durationHrs <= 7) {
-                // User defined: 4-7 hours is Half Day
+            // Shift Logic
+            const isNoBreakShift = userShift && userShift.toUpperCase().includes('NO BREAK');
+
+            // Thresholds
+            const halfDayMin = 4;
+            const fullDayMin = isNoBreakShift ? 7.15 : 8; // If No Break, > 7.15 is Full. Else > 8 is Full.
+            // Half Day Range: 4 to [fullDayMin]
+
+            if (durationHrs >= halfDayMin && durationHrs <= fullDayMin) {
                 return { status: 'HALF_DAY', value: 0.5 };
             }
-            // If duration > 7 -> Full Day
+            // If duration > fullDayMin -> Full Day (stays PRESENT)
         }
 
         if (record.status === 'PRESENT' || record.status === 'LATE') return { status: 'PRESENT', value: 1 };
@@ -132,26 +135,15 @@ const AttendanceSummaryPage = () => {
 
     const calculateSummary = (user: any) => {
         let totalHolidays = 0;
-        let totalPresentValue = 0; // Full = 1, Half = 0.5
+        let totalPresentValue = 0;
         let totalLeaves = 0;
         let totalLOP = 0;
-        let totalHalfDaysCount = 0; // For separate count if needed
+        let totalHalfDaysCount = 0;
 
-        // We need to iterate ALL days in month, not just records
         daysInMonth.forEach(day => {
             const dateObj = new Date(parseInt(year), parseInt(month) - 1, day);
             const dateKey = `${year}-${month.padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             const isSunday = dateObj.getDay() === 0;
-            const isFuture = dateObj > new Date(); // Ignore future dates for LOP calculation? Or count as 0? 
-            // "Payroll Process Days" usually implies for the whole month, assuming 30.
-
-            // Priority:
-            // 1. Sunday -> Holiday (unless worked? usually treat as Holiday/Off)
-            // 2. Holiday Record -> Holiday
-            // 3. Leave -> Leave
-            // 4. Present/Half -> Present
-            // 5. No Record (Past) -> LOP
-            // 6. Future -> Ignore (or treat as projected? Standard payroll assumes 30 days usually).
 
             if (isSunday) {
                 totalHolidays++;
@@ -165,61 +157,34 @@ const AttendanceSummaryPage = () => {
                 } else if (record.status === 'LEAVE') {
                     totalLeaves++;
                 } else {
-                    const { status, value } = calculateDailyStatus(record);
+                    const { status, value } = calculateDailyStatus(record, user.user.shift);
                     if (status === 'HALF_DAY') {
                         totalPresentValue += 0.5;
                         totalHalfDaysCount++;
                     } else if (status === 'PRESENT') {
                         totalPresentValue += 1;
                     } else {
-                        // Absent record
                         totalLOP++;
                     }
                 }
             } else {
-                // No Record
-                // If Past Date (and not Sunday), it is LOP
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
                 if (dateObj < today) {
                     totalLOP++;
                 }
-                // Future dates don't count as LOP or Present yet.
             }
         });
 
-        // Payroll Process Days = 30 - (LOP) + (HalfDays * 0.5)? 
-        // User Formula: "30 - (Number of LOP Days x 1 ) + Nomber of Half-Days x .5"
-        // Wait, if Half Day is worked, it is PAID. 
-        // If LOP is Absent, it is DEDUCTED.
-        // User likely means: Start with 30. Deduct Full Absences.
-        // What about Half Days? If they worked half day, they lose 0.5 day pay? Or get 0.5 pay?
-        // "30 - (LOP) + (Half * 0.5)" -> This adds to 30? No.
-        // If I am Absent 1 day -> 29.
-        // If I work Half Day 1 day -> Is it 29.5?
-        // Formula: 30 - (LOP_Days) - (Half_Day_Count * 0.5). 
-        // Example: 1 Half Day. LOP = 0. Process = 30 - 0 - 0.5 = 29.5. (Correct, lost half day pay).
-        // Example: 1 Absent (LOP). Process = 30 - 1 = 29.
-
-        // CORRECTION: User formula text was "30 - (Number of LOP Days x 1 ) + Nomber of Half-Days x .5"
-        // The "+" is suspicious. If "Number of Half-Days x .5" is deducted, it should be "-".
-        // IF the user meant "Effective Worked Days" it would be different.
-        // "Payroll Process Days" usually means "Paid Days".
-        // I will assume logic: Pay for 30 days minus deductions.
-        // Deductions = Full LOP + 0.5 * Half LOP.
-        // If a Half Day is worked, it counts as 0.5 LOP (0.5 Worked).
-        // So Process Days = 30 - LOP_Count - (Half_Day_Count * 0.5).
-
-        const processDays = 30 - totalLOP - (totalHalfDaysCount * 0.5);
+        // "Payroll Process Days" removed as per request
 
         return {
             totalDays: daysInMonth.length,
             totalHolidays,
-            totalPresentValue, // (Green Tick = 1, Half = 0.5)
+            totalPresentValue,
             totalLeaves,
-            totalLOP, // Full Absences
-            totalHalfDaysCount,
-            processDays
+            totalLOP,
+            totalHalfDaysCount
         };
     };
 
@@ -238,8 +203,8 @@ const AttendanceSummaryPage = () => {
                     <button
                         onClick={() => setViewMode('REGISTER')}
                         className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${viewMode === 'REGISTER'
-                            ? 'bg-purple-700 text-white shadow'
-                            : 'text-muted-foreground hover:bg-background/50'
+                                ? 'bg-purple-700 text-white shadow'
+                                : 'text-muted-foreground hover:bg-background/50'
                             }`}
                     >
                         <Calendar className="w-4 h-4 mr-2 inline-block" />
@@ -248,8 +213,8 @@ const AttendanceSummaryPage = () => {
                     <button
                         onClick={() => setViewMode('SUMMARY')}
                         className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${viewMode === 'SUMMARY'
-                            ? 'bg-yellow-400 text-purple-900 shadow font-semibold'
-                            : 'text-muted-foreground hover:bg-background/50'
+                                ? 'bg-yellow-400 text-purple-900 shadow font-semibold'
+                                : 'text-muted-foreground hover:bg-background/50'
                             }`}
                     >
                         <ClipboardList className="w-4 h-4 mr-2 inline-block" />
@@ -351,7 +316,6 @@ const AttendanceSummaryPage = () => {
                                     <TableHead className="text-center text-orange-600">Half Days</TableHead>
                                     <TableHead className="text-center text-purple-600">Approved Leaves</TableHead>
                                     <TableHead className="text-center text-red-600">LOP Days</TableHead>
-                                    <TableHead className="text-center font-bold bg-slate-100">Payroll Process Days</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -369,7 +333,6 @@ const AttendanceSummaryPage = () => {
                                             <TableCell className="text-center text-orange-700">{summary.totalHalfDaysCount}</TableCell>
                                             <TableCell className="text-center text-purple-700">{summary.totalLeaves}</TableCell>
                                             <TableCell className="text-center font-bold text-red-600">{summary.totalLOP}</TableCell>
-                                            <TableCell className="text-center font-bold text-lg bg-slate-50">{summary.processDays}</TableCell>
                                         </TableRow>
                                     );
                                 })}

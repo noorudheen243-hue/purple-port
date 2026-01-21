@@ -26,7 +26,7 @@ router.post('/users/delete', authenticate, authorize('ADMIN', 'MANAGER', 'DEVELO
 // dedicated API Key Middleware for Bridge
 const requireApiKey = (req: any, res: any, next: any) => {
     const apiKey = req.headers['x-api-key'];
-    const envKey = process.env.BIOMETRIC_API_KEY || 'default_bridge_key';
+    const envKey = process.env.BIOMETRIC_API_KEY || 'ag_bio_sync_v1_secret_key';
 
     if (apiKey && apiKey === envKey) {
         next();

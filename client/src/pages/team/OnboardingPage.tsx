@@ -19,14 +19,7 @@ const AGENCY_DESIGNATIONS = [
     "HR Manager", "Office Administrator", "Intern"
 ];
 
-const SHIFT_TIMINGS = [
-    "09:00 AM – 05:00 PM",
-    "09:30 AM – 05:30 PM",
-    "10:00 AM – 06:00 PM",
-    "10:30 AM – 06:30 PM",
-    "11:00 AM – 07:00 PM",
-    "Flexible / On-Demand"
-];
+// Removed hardcoded SHIFT_TIMINGS
 
 const STEPS = [
     { id: 1, label: 'Profile & Contact', icon: User },
@@ -35,7 +28,13 @@ const STEPS = [
     { id: 4, label: 'Documents & Review', icon: FileText },
 ];
 
-// --- Extended Schema with "New Fields" ---
+interface ShiftPreset {
+    id: string;
+    name: string;
+    start_time: string;
+    end_time: string;
+}
+
 const onboardingSchema = z.object({
     // Step 1: Personal
     full_name: z.string().min(1, "Name is required"), // Keep minimal check
@@ -103,6 +102,24 @@ const OnboardingPage = () => {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [currentStep, setCurrentStep] = useState(1);
+
+    // Shifts Logic
+    const [shifts, setShifts] = useState<ShiftPreset[]>([]);
+
+    useEffect(() => {
+        api.get('/attendance/shifts')
+            .then(res => setShifts(res.data))
+            .catch(err => console.error("Failed to fetch shifts:", err));
+    }, []);
+
+    const formatTime12 = (time: string) => {
+        if (!time) return '';
+        const [h, m] = time.split(':');
+        const hour = parseInt(h);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const hour12 = hour % 12 || 12;
+        return `${hour12}:${m} ${ampm}`;
+    };
 
     // Animation Variants
     const variants = {
@@ -468,8 +485,10 @@ const OnboardingPage = () => {
                                         <label className="label">Shift Timing</label>
                                         <select {...register('shift_timing')} className="input-field">
                                             <option value="">Select Shift...</option>
-                                            {SHIFT_TIMINGS.map(shift => (
-                                                <option key={shift} value={shift}>{shift}</option>
+                                            {shifts.map(shift => (
+                                                <option key={shift.id} value={shift.name}>
+                                                    {shift.name} ({formatTime12(shift.start_time)} - {formatTime12(shift.end_time)})
+                                                </option>
                                             ))}
                                         </select>
                                     </div>

@@ -135,8 +135,8 @@ const TaskBoard = () => {
                                     {(task.actual_start_date || task.createdAt).slice(0, 10)}
                                 </td>
                                 <td className="p-4">
-                                    <div className="font-medium text-gray-800">{task.campaign?.client?.name}</div>
-                                    <div className="text-xs text-gray-400">{task.campaign?.title}</div>
+                                    <div className="font-medium text-gray-800">{task.campaign?.client?.name || task.client?.name || 'General Task'}</div>
+                                    <div className="text-xs text-gray-400">{task.campaign?.title || 'No Campaign'}</div>
                                 </td>
                                 <td className="p-4 font-medium text-gray-900">
                                     {task.title}
@@ -152,21 +152,27 @@ const TaskBoard = () => {
                                     )}
                                 </td>
                                 <td className="p-4">
-                                    <div className="flex items-center gap-2">
-                                        {task.assignee ? (
-                                            <>
-                                                {task.assignee.avatar_url ? (
-                                                    <img src={task.assignee.avatar_url} className="w-6 h-6 rounded-full" />
-                                                ) : (
-                                                    <div className="w-6 h-6 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-xs font-bold">
-                                                        {task.assignee.full_name?.charAt(0) || '?'}
-                                                    </div>
-                                                )}
-                                                <span className="text-gray-700">{task.assignee.full_name.split(' ')[0]}</span>
-                                            </>
-                                        ) : (
-                                            <span className="text-gray-400 italic">Unassigned</span>
-                                        )}
+                                    <div className="flex flex-col gap-1">
+                                        <div className="flex items-center gap-2">
+                                            {task.assignee ? (
+                                                <>
+                                                    {task.assignee.avatar_url ? (
+                                                        <img src={task.assignee.avatar_url} className="w-6 h-6 rounded-full" />
+                                                    ) : (
+                                                        <div className="w-6 h-6 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-xs font-bold">
+                                                            {task.assignee.full_name?.charAt(0) || '?'}
+                                                        </div>
+                                                    )}
+                                                    <span className="text-gray-700">{task.assignee.full_name.split(' ')[0]}</span>
+                                                </>
+                                            ) : (
+                                                <span className="text-gray-400 italic">Unassigned</span>
+                                            )}
+                                        </div>
+                                        <div className="text-xs text-gray-400 flex flex-col">
+                                            <span>by {task.assigned_by?.full_name || 'System'}</span>
+                                            <span>{new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                        </div>
                                     </div>
                                 </td>
                                 <td className="p-4">

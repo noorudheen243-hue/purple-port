@@ -467,21 +467,26 @@ export const processBiometricLogs = async (logs: any[]) => {
     let skipped = 0;
 
     // 2. Iterate Logs
+    if (logs.length > 0) {
+        console.log("First Log Sample Keys:", Object.keys(logs[0]));
+    }
+
     for (const log of logs) {
-        // log structure: { userSn, deviceUserId, recordTime, ip }
+        // log structure: { userSn, deviceUserId, recordTime, ip } OR { user_id, record_time }
         // Ensure deviceUserId is treated as string for lookup
-        const staffNumber = String(log.user_id);
+        // Support both formats: Bridge (user_id) AND Direct ZK (deviceUserId)
+        const staffNumber = String(log.user_id || log.deviceUserId);
         const userId = staffMap.get(staffNumber);
 
         if (!userId) {
-            console.warn(`[Sync skipped] Unknown Staff Number on Device: ${staffNumber} (Type: ${typeof log.user_id})`);
+            console.warn(`[Sync skipped] Unknown Staff Number on Device: ${staffNumber} (Type: ${typeof (log.user_id || log.deviceUserId)}) - Log: ${JSON.stringify(log)}`);
             skipped++;
             continue;
         }
 
-        const logTime = new Date(log.record_time);
+        const logTime = new Date(log.record_time || log.recordTime);
         if (isNaN(logTime.getTime())) {
-            console.warn(`[Sync skipped] Invalid Time: ${log.record_time}`);
+            console.warn(`[Sync skipped] Invalid Time: ${log.record_time || log.recordTime}`);
             skipped++;
             continue;
         }

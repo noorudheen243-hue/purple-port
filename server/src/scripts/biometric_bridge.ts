@@ -15,7 +15,10 @@ async function sync() {
     // 1. Connect to Device
     const zk = new ZKLib(DEVICE_IP, DEVICE_PORT, 5000, 4000);
     try {
-        await zk.createSocket();
+        // Robust TCP Connection (matching service.ts)
+        await (zk as any).ztcp.createSocket();
+        await (zk as any).ztcp.connect();
+        (zk as any).connectionType = 'tcp';
 
         // 2. Fetch & Upload
         const logs = await zk.getAttendances();

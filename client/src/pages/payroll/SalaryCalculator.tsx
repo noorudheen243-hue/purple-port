@@ -273,7 +273,7 @@ const SalaryCalculator = () => {
                                         {watch('days_in_period') || 0}
                                     </p>
                                     <p className="text-[10px] text-muted-foreground mt-1">
-                                        1st to {watch('calculation_date') ? new Date(watch('calculation_date')).getDate() : 'today'}
+                                        1st to {watch('calculation_date') ? new Date(watch('calculation_date')!).getDate() : 'today'}
                                     </p>
                                 </div>
                                 <div className="bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-800 rounded-lg p-4">

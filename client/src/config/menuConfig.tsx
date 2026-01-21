@@ -104,7 +104,7 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
             { label: "Leave Summary", path: "/dashboard/attendance/leave-summary", icon: List },
             { label: "Holiday & Leave Planner", path: "/dashboard/attendance/planner", icon: Calendar, roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN] },
             { label: "Calendar", path: "/dashboard/attendance/calendar", icon: Calendar },
-            { label: "Regularisation", path: "/dashboard/attendance/regularisation", icon: CheckSquare },
+
             { label: "Requests (Admin)", path: "/dashboard/attendance/requests", icon: Shield, roles: [ROLES.ADMIN, ROLES.MANAGER] },
             { label: "History (Admin)", path: "/dashboard/attendance/history", icon: ClipboardList, roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN] },
 
@@ -191,7 +191,7 @@ export const STAFF_MENU: MenuItem[] = [
             { label: "Leave Request", path: "/dashboard/attendance/leave-request", icon: PlusCircle },
             { label: "Leave Summary", path: "/dashboard/attendance/leave-summary", icon: List },
             { label: "Calendar", path: "/dashboard/attendance/calendar", icon: Calendar },
-            { label: "Regularisation", path: "/dashboard/attendance/regularisation", icon: CheckSquare }
+
         ]
     },
     {

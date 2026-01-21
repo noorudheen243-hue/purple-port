@@ -38,7 +38,7 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
         icon: LayoutDashboard
     },
     {
-        label: "Client Manager",
+        label: "Client Management",
         path: "/dashboard/client-manager",
         icon: User
     },
@@ -67,7 +67,7 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
         ]
     },
     {
-        label: "Tasks",
+        label: "Task Management",
         icon: CheckSquare,
         children: [
             { label: "Dashboard", path: "/dashboard/tasks/dashboard", icon: LayoutDashboard },
@@ -108,12 +108,12 @@ export const STAFF_MENU: MenuItem[] = [
         icon: LayoutDashboard
     },
     {
-        label: "Client Manager",
+        label: "Client Management",
         path: "/dashboard/client-manager",
         icon: User
     },
     {
-        label: "Tasks",
+        label: "Task Management",
         icon: CheckSquare,
         children: [
             { label: "Dashboard", path: "/dashboard/tasks/dashboard", icon: LayoutDashboard },

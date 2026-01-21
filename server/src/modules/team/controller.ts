@@ -178,11 +178,16 @@ export const onboardStaff = async (req: Request, res: Response) => {
                 payment_method: data.payment_method || undefined,
 
                 previous_company: data.previous_company || undefined,
-                total_experience_years: data.total_experience_years,
+                total_experience_years: data.total_experience_years ? Number(data.total_experience_years) : undefined,
 
-                base_salary: data.base_salary,
+                base_salary: data.base_salary ? Number(data.base_salary) : undefined,
+                hra: data.hra ? Number(data.hra) : undefined,
+                allowances: data.allowances ? Number(data.allowances) : undefined,
+                conveyance_allowance: data.conveyance_allowance ? Number(data.conveyance_allowance) : undefined,
+                accommodation_allowance: data.accommodation_allowance ? Number(data.accommodation_allowance) : undefined,
+
                 salary_type: data.salary_type,
-                incentive_eligible: data.incentive_eligible,
+                incentive_eligible: data.incentive_eligible === 'true' || data.incentive_eligible === true,
                 payroll_status: data.payroll_status,
                 bank_name: data.bank_name,
                 account_holder_name: data.account_holder_name,
@@ -271,16 +276,16 @@ export const updateStaffFull = async (req: Request, res: Response) => {
             emergency_contact_name: data.emergency_contact_name,
             emergency_contact_number: data.emergency_contact_number,
             previous_company: data.previous_company,
-            total_experience_years: data.total_experience_years,
-            base_salary: data.base_salary,
-            hra: data.hra,
-            allowances: data.allowances, // Fixed Allowance
-            conveyance_allowance: data.conveyance_allowance,
-            accommodation_allowance: data.accommodation_allowance,
+            total_experience_years: data.total_experience_years ? Number(data.total_experience_years) : undefined,
+            base_salary: data.base_salary ? Number(data.base_salary) : undefined,
+            hra: data.hra ? Number(data.hra) : undefined,
+            allowances: data.allowances ? Number(data.allowances) : undefined,
+            conveyance_allowance: data.conveyance_allowance ? Number(data.conveyance_allowance) : undefined,
+            accommodation_allowance: data.accommodation_allowance ? Number(data.accommodation_allowance) : undefined,
 
             // Payroll & Financial
             salary_type: data.salary_type,
-            incentive_eligible: data.incentive_eligible,
+            incentive_eligible: data.incentive_eligible === 'true' || data.incentive_eligible === true,
             payroll_status: data.payroll_status,
 
             // Bank Details

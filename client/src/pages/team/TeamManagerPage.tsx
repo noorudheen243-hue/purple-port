@@ -44,13 +44,13 @@ const TeamManagerPage = () => {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center mb-6">
-                 {/* Left side empty or title if needed */}
-                 <div></div> 
-                 {/* Right Side: Approvals Button */}
-                 <Button 
+                {/* Left side empty or title if needed */}
+                <div></div>
+                {/* Right Side: Approvals Button */}
+                <Button
                     className={`relative h-12 px-6 text-lg font-bold shadow-lg transition-all ${activeTab === 'approvals' ? 'bg-red-600 hover:bg-red-700 text-white ring-2 ring-red-300' : 'bg-white text-gray-800 border hover:bg-gray-50'}`}
                     onClick={() => setActiveTab('approvals')}
-                 >
+                >
                     <ClipboardList className="w-5 h-5 mr-3" />
                     Approvals
                     {pendingStats > 0 && (
@@ -58,53 +58,56 @@ const TeamManagerPage = () => {
                             {pendingStats}
                         </span>
                     )}
-                 </Button>
+                </Button>
             </div>
 
-                        >
-                            <Calendar className="w-4 h-4 mr-2" /> Leave
-                        </TabsTrigger>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="flex flex-wrap h-auto gap-2 bg-transparent p-0 mb-6 w-full justify-start border-b pb-2">
+                    {tabs.map((tab) => (
                         <TabsTrigger
-                            value="approvals"
-                            className="data-[state=active]:bg-purple-900 data-[state=active]:text-yellow-400 data-[state=inactive]:bg-white data-[state=inactive]:text-gray-600 px-4 py-2 rounded-md font-bold transition-all shadow-sm border border-transparent data-[state=active]:border-yellow-400 data-[state=inactive]:border-gray-200"
+                            key={tab.id}
+                            value={tab.id}
+                            className={`
+                                data-[state=active]:bg-${tab.theme === 'purple' ? 'purple-900' : 'yellow-400'} 
+                                data-[state=active]:text-${tab.theme === 'purple' ? 'yellow-400' : 'purple-900'} 
+                                data-[state=inactive]:bg-white data-[state=inactive]:text-gray-600 
+                                px-4 py-2 rounded-md font-bold transition-all shadow-sm border border-transparent 
+                                data-[state=active]:border-${tab.theme === 'purple' ? 'yellow-400' : 'purple-900'} 
+                                data-[state=inactive]:border-gray-200
+                            `}
                         >
-                            <ClipboardList className="w-4 h-4 mr-2" /> Approvals
+                            <tab.icon className="w-4 h-4 mr-2" /> {tab.label}
                         </TabsTrigger>
-                        <TabsTrigger
-                            value="payroll"
-                            className="data-[state=active]:bg-purple-900 data-[state=active]:text-yellow-400 data-[state=inactive]:bg-white data-[state=inactive]:text-gray-600 px-4 py-2 rounded-md font-bold transition-all shadow-sm border border-transparent data-[state=active]:border-yellow-400 data-[state=inactive]:border-gray-200"
-                        >
-                            <Banknote className="w-4 h-4 mr-2" /> Payroll
-                        </TabsTrigger>
-                    </TabsList >
-                </div >
+                    ))}
+                    {/* Hidden Trigger for Approvals to allow switching via state */}
+                    <TabsTrigger value="approvals" className="hidden">Approvals</TabsTrigger>
+                </TabsList>
 
-
-    <div className="bg-card rounded-lg border shadow-sm p-6 min-h-[500px]">
-        <TabsContent value="team" className="mt-0">
-            <TeamList />
-        </TabsContent>
-        <TabsContent value="roles" className="mt-0">
-            <SystemRoleManagement />
-        </TabsContent>
-        <TabsContent value="attendance" className="mt-0">
-            <AttendanceSummaryPage />
-        </TabsContent>
-        <TabsContent value="biometric" className="mt-0">
-            <BiometricManagerPage />
-        </TabsContent>
-        <TabsContent value="leave" className="mt-0">
-            <LeaveManagementPage />
-        </TabsContent>
-        <TabsContent value="approvals" className="mt-0">
-            <ApprovalsPage />
-        </TabsContent>
-        <TabsContent value="payroll" className="mt-0">
-            <PayrollManager />
-        </TabsContent>
-    </div>
-            </Tabs >
-        </div >
+                <div className="bg-white rounded-lg shadow-sm border p-6 min-h-[600px]">
+                    <TabsContent value="team" className="mt-0">
+                        <TeamList />
+                    </TabsContent>
+                    <TabsContent value="roles" className="mt-0">
+                        <SystemRoleManagement />
+                    </TabsContent>
+                    <TabsContent value="attendance" className="mt-0">
+                        <AttendanceSummaryPage />
+                    </TabsContent>
+                    <TabsContent value="biometric" className="mt-0">
+                        <BiometricManagerPage />
+                    </TabsContent>
+                    <TabsContent value="leave" className="mt-0">
+                        <LeaveManagementPage />
+                    </TabsContent>
+                    <TabsContent value="payroll" className="mt-0">
+                        <PayrollManager />
+                    </TabsContent>
+                    <TabsContent value="approvals" className="mt-0">
+                        <ApprovalsPage />
+                    </TabsContent>
+                </div>
+            </Tabs>
+        </div>
     );
 };
 

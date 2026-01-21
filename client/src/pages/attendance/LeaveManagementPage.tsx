@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { ClipboardList, Calendar, PlusCircle, FileText, CheckSquare, List } from 'lucide-react';
+import { useAuthStore } from '../../store/authStore';
+import { ROLES } from '../../utils/roles';
 import LeaveSummaryPage from './LeaveSummaryPage';
 import CalendarPage from './CalendarPage';
 import RequestPage from './RequestPage';
@@ -7,6 +9,7 @@ import LeaveHistoryPage from './LeaveHistoryPage';
 import HolidayLeavePlannerPage from './HolidayLeavePlannerPage';
 
 const LeaveManagementPage = () => {
+    const { user } = useAuthStore();
     const [activeTab, setActiveTab] = useState<'SUMMARY' | 'CALENDAR' | 'REQUEST' | 'HISTORY' | 'PLANNER'>('SUMMARY');
 
     const renderContent = () => {
@@ -40,8 +43,8 @@ const LeaveManagementPage = () => {
                         <button
                             onClick={() => setActiveTab('SUMMARY')}
                             className={`px-4 py-2 text-sm font-bold rounded-md transition-all border flex items-center gap-2 ${activeTab === 'SUMMARY'
-                                    ? 'bg-yellow-400 text-black border-yellow-500 shadow-md'
-                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-yellow-50 hover:text-yellow-700 hover:border-yellow-200'
+                                ? 'bg-yellow-400 text-black border-yellow-500 shadow-md'
+                                : 'bg-white text-gray-600 border-gray-200 hover:bg-yellow-50 hover:text-yellow-700 hover:border-yellow-200'
                                 }`}
                         >
                             <List className="w-4 h-4" />
@@ -52,8 +55,8 @@ const LeaveManagementPage = () => {
                         <button
                             onClick={() => setActiveTab('CALENDAR')}
                             className={`px-4 py-2 text-sm font-bold rounded-md transition-all border flex items-center gap-2 ${activeTab === 'CALENDAR'
-                                    ? 'bg-purple-700 text-white border-purple-800 shadow-md'
-                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-200'
+                                ? 'bg-purple-700 text-white border-purple-800 shadow-md'
+                                : 'bg-white text-gray-600 border-gray-200 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-200'
                                 }`}
                         >
                             <Calendar className="w-4 h-4" />
@@ -64,8 +67,8 @@ const LeaveManagementPage = () => {
                         <button
                             onClick={() => setActiveTab('REQUEST')}
                             className={`px-4 py-2 text-sm font-bold rounded-md transition-all border flex items-center gap-2 ${activeTab === 'REQUEST'
-                                    ? 'bg-yellow-400 text-black border-yellow-500 shadow-md'
-                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-yellow-50 hover:text-yellow-700 hover:border-yellow-200'
+                                ? 'bg-yellow-400 text-black border-yellow-500 shadow-md'
+                                : 'bg-white text-gray-600 border-gray-200 hover:bg-yellow-50 hover:text-yellow-700 hover:border-yellow-200'
                                 }`}
                         >
                             <PlusCircle className="w-4 h-4" />
@@ -76,25 +79,27 @@ const LeaveManagementPage = () => {
                         <button
                             onClick={() => setActiveTab('HISTORY')}
                             className={`px-4 py-2 text-sm font-bold rounded-md transition-all border flex items-center gap-2 ${activeTab === 'HISTORY'
-                                    ? 'bg-purple-700 text-white border-purple-800 shadow-md'
-                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-200'
+                                ? 'bg-purple-700 text-white border-purple-800 shadow-md'
+                                : 'bg-white text-gray-600 border-gray-200 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-200'
                                 }`}
                         >
                             <ClipboardList className="w-4 h-4" />
                             Leave History
                         </button>
 
-                        {/* 5. Leave & Holiday Planner (Yellow) */}
-                        <button
-                            onClick={() => setActiveTab('PLANNER')}
-                            className={`px-4 py-2 text-sm font-bold rounded-md transition-all border flex items-center gap-2 ${activeTab === 'PLANNER'
+                        {/* 5. Leave & Holiday Planner (Yellow) - Restricted to Admins & Managers */}
+                        {(user?.role === ROLES.ADMIN || user?.role === ROLES.MANAGER || user?.role === ROLES.DEVELOPER_ADMIN) && (
+                            <button
+                                onClick={() => setActiveTab('PLANNER')}
+                                className={`px-4 py-2 text-sm font-bold rounded-md transition-all border flex items-center gap-2 ${activeTab === 'PLANNER'
                                     ? 'bg-yellow-400 text-black border-yellow-500 shadow-md'
                                     : 'bg-white text-gray-600 border-gray-200 hover:bg-yellow-50 hover:text-yellow-700 hover:border-yellow-200'
-                                }`}
-                        >
-                            <CheckSquare className="w-4 h-4" />
-                            Leave & Holiday Planner
-                        </button>
+                                    }`}
+                            >
+                                <CheckSquare className="w-4 h-4" />
+                                Leave & Holiday Planner
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>

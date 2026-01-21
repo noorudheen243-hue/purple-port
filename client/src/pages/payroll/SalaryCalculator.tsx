@@ -187,6 +187,24 @@ const SalaryCalculator = () => {
                 </CardContent>
             </Card>
 
+            {selectedStaff && values.is_prorated && (
+                <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+                            <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div className="flex-1">
+                            <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">Pro-rated Calculation</h4>
+                            <p className="text-sm text-blue-700 dark:text-blue-300">
+                                Salary calculated for <strong>{values.days_in_period || 0} days</strong> (1st to {values.calculation_date ? new Date(values.calculation_date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' }) : 'today'}).
+                                <br />
+                                LOP and deductions are based on attendance data up to this date.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {selectedStaff && (
                 <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* EARNINGS */}

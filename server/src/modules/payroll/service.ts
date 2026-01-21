@@ -25,9 +25,23 @@ export const deleteHoliday = async (id: string) => {
  * - HALF_DAY = 0.5 LOP
  * - Approved Leave (Type: UNPAID/LOP) = 1 LOP
  */
-export const calculateAutoLOP = async (userId: string, month: number, year: number) => {
+export const calculateAutoLOP = async (userId: string, month: number, year: number, calculationDate?: Date) => {
     const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0); // Last day of month
+
+    // Use calculation date if provided, else use month end
+    let endDate: Date;
+    if (calculationDate) {
+        endDate = new Date(calculationDate);
+        endDate.setHours(23, 59, 59, 999); // End of day
+    } else {
+        endDate = new Date(year, month, 0); // Last day of month
+    }
+
+    // Ensure endDate doesn't exceed month boundary
+    const monthEnd = new Date(year, month, 0);
+    if (endDate > monthEnd) {
+        endDate = new Date(monthEnd);
+    }
 
     console.log(`[LOP DEBUG] Calculating LOP for user ${userId}, month ${month}/${year}`);
     console.log(`[LOP DEBUG] Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
@@ -94,7 +108,7 @@ export const calculateAutoLOP = async (userId: string, month: number, year: numb
     return lopDays;
 };
 
-export const getSalaryDraft = async (userId: string, month: number, year: number) => {
+export const getSalaryDraft = async (userId: string, month: number, year: number, asOfDate?: string) => {
     // 1. Get Staff Profile
     const profile = await prisma.staffProfile.findUnique({
         where: { user_id: userId },
@@ -107,16 +121,44 @@ export const getSalaryDraft = async (userId: string, month: number, year: number
         throw new Error("Payroll processing is disabled for Co-founders (Manual Processing Only).");
     }
 
-    // 2. Calculate LOP (Always fresh)
+    // 2. Determine Calculation Date
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const requestedMonth = new Date(year, month - 1, 1);
+    const monthEnd = new Date(year, month, 0);
+
+    let calculationDate: Date;
+    let isProrated = false;
+
+    if (asOfDate) {
+        // User explicitly specified a date
+        calculationDate = new Date(asOfDate);
+        calculationDate.setHours(23, 59, 59, 999);
+        isProrated = calculationDate < monthEnd;
+    } else if (today.getMonth() === month - 1 && today.getFullYear() === year) {
+        // Calculating for current month - use today
+        calculationDate = new Date(today);
+        calculationDate.setHours(23, 59, 59, 999);
+        isProrated = true;
+    } else {
+        // Calculating for past/future month - use month end
+        calculationDate = new Date(monthEnd);
+        isProrated = false;
+    }
+
+    console.log(`[SALARY DRAFT] Calculation for ${month}/${year}, as of ${calculationDate.toISOString()}, prorated: ${isProrated}`);
+
+    // 3. Calculate LOP with date range
     console.log(`[SALARY DRAFT] Fetching LOP for user ${userId}, month ${month}/${year}`);
-    const lopDays = await calculateAutoLOP(userId, month, year);
+    const lopDays = await calculateAutoLOP(userId, month, year, calculationDate);
     console.log(`[SALARY DRAFT] LOP Days returned: ${lopDays}`);
 
-    // 3. Calculate Working Days (Always fresh)
+    // 4. Calculate Working Days in the ACTUAL period
     const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0); // Last day of month
+    const endDate = new Date(calculationDate);
 
-    // Fetch Holidays for the month
+    // Fetch Holidays for the period
     const holidays = await prisma.holiday.findMany({
         where: {
             date: { gte: startDate, lte: endDate }
@@ -126,7 +168,7 @@ export const getSalaryDraft = async (userId: string, month: number, year: number
     const holidayDates = new Set(holidays.map(h => h.date.toDateString()));
     let nonWorkingDays = 0;
 
-    // Iterate through each day of the month
+    // Iterate through each day of the PERIOD (not full month)
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
         const isSunday = d.getDay() === 0;
         const isHoliday = holidayDates.has(d.toDateString());
@@ -136,8 +178,9 @@ export const getSalaryDraft = async (userId: string, month: number, year: number
         }
     }
 
-    const daysInMonth = endDate.getDate();
-    const totalWorkingDays = Math.max(0, daysInMonth - nonWorkingDays);
+    // Days in period
+    const daysInPeriod = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const totalWorkingDays = Math.max(0, daysInPeriod - nonWorkingDays);
 
 
     // Calculate Standard Earnings for Deduction logic
@@ -248,7 +291,12 @@ export const getSalaryDraft = async (userId: string, month: number, year: number
             lop_deduction: lopDeduction,
             advance_salary: currentAdvance, // Reflected from Ledger
             total_working_days: totalWorkingDays,
-            net_pay: updatedNetPay > 0 ? updatedNetPay : 0
+            net_pay: updatedNetPay > 0 ? updatedNetPay : 0,
+
+            // Pro-ration metadata
+            calculation_date: calculationDate,
+            days_in_period: daysInPeriod,
+            is_prorated: isProrated
         };
     }
 
@@ -280,6 +328,11 @@ export const getSalaryDraft = async (userId: string, month: number, year: number
 
         total_working_days: totalWorkingDays,
         net_pay: netPay > 0 ? netPay : 0,
+
+        // Pro-ration metadata
+        calculation_date: calculationDate,
+        days_in_period: daysInPeriod,
+        is_prorated: isProrated,
 
         isDraft: false
     };

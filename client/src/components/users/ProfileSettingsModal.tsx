@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
-import { User, Mail, Lock, Shield, Database, Download, Upload, RefreshCw, Eye, EyeOff, AlertTriangle } from 'lucide-react';
+import { User, Mail, Lock, Shield, Database, Download, Upload, RefreshCw, Eye, EyeOff, AlertTriangle, Trash2, Wrench } from 'lucide-react';
 import clsx from 'clsx';
 
 // --- Types ---
@@ -302,12 +302,52 @@ const SyncLedgersButton = () => {
     );
 };
 
+// --- Component: Admin Tools Tab (System Cleanup) ---
+const AdminToolsTab = () => {
+    const cleanupMutation = useMutation({
+        mutationFn: async () => await api.post('/system/cleanup-assets'),
+        onSuccess: (res) => alert(res.data.message),
+        onError: (err: any) => alert("Cleanup Failed: " + (err.response?.data?.message || err.message))
+    });
+
+    return (
+        <div className="space-y-6 pt-2">
+            <div className="bg-red-50 border border-red-200 rounded-xl p-6">
+                <div className="flex items-start gap-4">
+                    <div className="p-3 bg-red-100 text-red-600 rounded-full">
+                        <Trash2 size={24} />
+                    </div>
+                    <div className="flex-1">
+                        <h3 className="font-bold text-red-900">Clear Attachments & Temp Files</h3>
+                        <p className="text-sm text-red-700 mt-1">
+                            Permanently deletes all uploaded assets (images, videos) from the server and clears the database asset records.
+                            <br /><b>This action cannot be undone.</b>
+                        </p>
+                        <button
+                            onClick={() => {
+                                if (confirm("DANGER: Are you sure you want to delete ALL uploaded files? This is irreversible.")) {
+                                    cleanupMutation.mutate();
+                                }
+                            }}
+                            disabled={cleanupMutation.isPending}
+                            className="mt-4 px-4 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 flex items-center gap-2"
+                        >
+                            {cleanupMutation.isPending ? <RefreshCw className="animate-spin" size={16} /> : <Trash2 size={16} />}
+                            {cleanupMutation.isPending ? 'Cleaning...' : 'Clear All Attachments'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 
 // --- Main Modal ---
 const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOpen, onClose }) => {
     const { user } = useAuthStore();
     const isAdmin = user?.role === 'ADMIN' || user?.role === 'DEVELOPER_ADMIN';
-    const [activeTab, setActiveTab] = useState<'profile' | 'team' | 'sync'>('profile');
+    const [activeTab, setActiveTab] = useState<'profile' | 'team' | 'sync' | 'tools'>('profile');
 
     // Reset tab on close
     useEffect(() => { if (!isOpen) setActiveTab('profile'); }, [isOpen]);
@@ -351,6 +391,15 @@ const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOpen, onC
                             >
                                 <Database size={18} /> Data Sync
                             </button>
+
+                            <button
+                                onClick={() => setActiveTab('tools')}
+                                className={clsx("flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                                    activeTab === 'tools' ? "bg-white text-purple-700 shadow-sm ring-1 ring-gray-200" : "text-gray-600 hover:bg-gray-100"
+                                )}
+                            >
+                                <Wrench size={18} /> System Tools
+                            </button>
                         </>
                     )}
                 </div>
@@ -366,6 +415,7 @@ const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOpen, onC
                     {activeTab === 'profile' && <MyProfileTab user={user} onClose={onClose} />}
                     {activeTab === 'team' && isAdmin && <TeamCredentialsTab />}
                     {activeTab === 'sync' && isAdmin && <DataSyncTab />}
+                    {activeTab === 'tools' && isAdmin && <AdminToolsTab />}
                 </div>
 
             </DialogContent>

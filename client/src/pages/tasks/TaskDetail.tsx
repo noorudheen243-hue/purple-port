@@ -2,16 +2,24 @@ import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/api';
-import { ArrowLeft, Paperclip, Send, Clock, User as UserIcon } from 'lucide-react';
+import { ArrowLeft, Paperclip, Send, Clock, User as UserIcon, Trash2, Eye, FileText, Play, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuthStore } from '../../store/authStore';
 import { getAssetUrl } from '../../lib/utils';
+import { Dialog, DialogContent, DialogTrigger } from '../../components/ui/dialog';
+import * as Select from '@radix-ui/react-select'; // Using native HTML select for simplicity or if UI component complexity is high. 
+// Actually sticking to standard HTML select or if I want the UI component I need to check its export.
+// Let's use standard HTML select or a simple styling for now to avoid complexity with Radix/UI imports if I can't see the file content.
+// But I saw select.tsx. Let's try to use standard tailored UI if possible, but for speed standard Select with custom styling is safer unless I read select.tsx.
+// I will use standard standard HTML select styled beautifully.
+
 
 const TaskDetail = () => {
     const { id } = useParams();
     const { user } = useAuthStore();
     const queryClient = useQueryClient();
     const [commentText, setCommentText] = useState('');
+    const [previewAsset, setPreviewAsset] = useState<any>(null); // For Modal
 
     const { data: task, isLoading } = useQuery({
         queryKey: ['task', id],
@@ -46,6 +54,23 @@ const TaskDetail = () => {
         return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     };
 
+
+
+    // Status Mutation with Auto-Timer
+    const statusMutation = useMutation({
+        mutationFn: async (newStatus: string) => {
+            return await api.patch(`/tasks/${id}`, { status: newStatus });
+        },
+        onSuccess: (_, newStatus) => {
+            queryClient.invalidateQueries({ queryKey: ['task', id] });
+            if (newStatus === 'IN_PROGRESS' && !activeLog) {
+                timerMutation.mutate('start');
+            } else if (newStatus === 'COMPLETED' && activeLog) {
+                timerMutation.mutate('stop');
+            }
+        }
+    });
+
     const timerMutation = useMutation({
         mutationFn: async (action: 'start' | 'stop') => {
             return await api.post(`/tasks/${id}/timer/${action}`);
@@ -53,13 +78,25 @@ const TaskDetail = () => {
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['task', id] })
     });
 
+    // Delete Asset Mutation
+    const deleteAssetMutation = useMutation({
+        mutationFn: async (assetId: string) => {
+            return await api.delete(`/assets/${assetId}`);
+        },
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['task', id] })
+    });
+
     // Upload Logic
     const uploadMutation = useMutation({
         mutationFn: async (file: File) => {
+            if (file.size > 50 * 1024 * 1024) {
+                alert('File size exceeds 50MB limit.');
+                return;
+            }
+
             const formData = new FormData();
             formData.append('file', file);
-            // Assuming a generic upload endpoint exists, or we use a specific asset upload
-            // adapting to: POST /upload -> returns { url, ... } -> POST /assets
+            // Non-interactive upload
             const uploadRes = await api.post('/upload', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
@@ -68,7 +105,7 @@ const TaskDetail = () => {
             return await api.post('/assets', {
                 task_id: id,
                 original_name: file.name,
-                file_url: uploadRes.data.url, // Corrected: controller returns 'url'
+                file_url: uploadRes.data.url,
                 file_type: file.type,
                 size_bytes: file.size
             });
@@ -114,9 +151,19 @@ const TaskDetail = () => {
                 <div className="flex-1">
                     <div className="flex items-center gap-3 mb-1">
                         <span className="text-sm font-mono text-muted-foreground">#{qixId}</span>
-                        <span className={`text-xs px-2 py-1 rounded font-medium ${task.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
-                            {task.status}
-                        </span>
+                        <select
+                            value={task.status}
+                            onChange={(e) => statusMutation.mutate(e.target.value)}
+                            disabled={statusMutation.isPending}
+                            className={`text-xs px-2 py-1 rounded font-medium border-0 cursor-pointer focus:ring-2 focus:ring-offset-1 focus:ring-primary outline-none transition-colors
+                                ${task.status === 'COMPLETED' ? 'bg-green-100 text-green-700 hover:bg-green-200' :
+                                    task.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' :
+                                        'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                        >
+                            {['PLANNED', 'IN_PROGRESS', 'REVIEW', 'COMPLETED', 'ON_HOLD'].map(s => (
+                                <option key={s} value={s}>{s.replace('_', ' ')}</option>
+                            ))}
+                        </select>
                     </div>
                     <h1 className="text-2xl font-bold">{task.title}</h1>
                 </div>
@@ -259,27 +306,89 @@ const TaskDetail = () => {
                                 <input type="file" className="hidden" onChange={handleFileUpload} disabled={uploadMutation.isPending} />
                             </label>
                         </div>
-                        <div className="space-y-2">
-                            {task.assets?.length === 0 && <div className="text-xs text-muted-foreground italic">No assets attached.</div>}
-                            {task.assets?.map((asset: any) => (
-                                <a
-                                    href={asset.file_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    key={asset.id}
-                                    className="flex items-center gap-2 p-2 border rounded bg-background hover:bg-muted/50 transition-colors"
-                                >
-                                    <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center text-[10px] font-mono uppercase">
-                                        {asset.file_type?.split('/')[1] || 'file'}
+
+                        <div className="grid grid-cols-2 lg:grid-cols-2 gap-3">
+                            {task.assets?.length === 0 && <div className="col-span-2 text-xs text-muted-foreground italic text-center py-4">No assets attached.</div>}
+                            {task.assets?.map((asset: any) => {
+                                const isImage = asset.file_type?.startsWith('image/');
+                                const isVideo = asset.file_type?.startsWith('video/');
+
+                                return (
+                                    <div key={asset.id} className="relative group bg-muted/30 border border-border rounded-lg overflow-hidden flex flex-col hover:shadow-md transition-shadow">
+                                        <div
+                                            className="aspect-video bg-gray-100 flex items-center justify-center cursor-pointer overflow-hidden relative"
+                                            onClick={() => setPreviewAsset(asset)}
+                                        >
+                                            {isImage ? (
+                                                <img src={getAssetUrl(asset.file_url)} alt="Asset" className="w-full h-full object-cover" />
+                                            ) : isVideo ? (
+                                                <div className="relative w-full h-full flex items-center justify-center bg-black/5">
+                                                    <video src={getAssetUrl(asset.file_url)} className="w-full h-full object-cover opacity-80" />
+                                                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 text-white">
+                                                        <Play size={24} fill="white" />
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <FileText size={32} className="text-muted-foreground" />
+                                            )}
+
+                                            {/* Hover Overlay */}
+                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                                <Eye className="text-white drop-shadow-md" size={20} />
+                                            </div>
+                                        </div>
+
+                                        <div className="p-2 flex items-center justify-between bg-white dark:bg-card">
+                                            <div className="flex-1 overflow-hidden mr-2">
+                                                <div className="text-xs font-medium truncate" title={asset.original_name}>{asset.original_name}</div>
+                                                <div className="text-[10px] text-muted-foreground">{(asset.size_bytes / 1024 / 1024).toFixed(1)} MB • {format(new Date(asset.createdAt), 'MMM d')}</div>
+                                            </div>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); deleteAssetMutation.mutate(asset.id); }}
+                                                className="text-red-400 hover:text-red-600 p-1 hover:bg-red-50 rounded"
+                                                title="Delete Asset"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div className="flex-1 overflow-hidden">
-                                        <div className="text-xs font-medium truncate" title={asset.original_name}>{asset.original_name}</div>
-                                        <div className="text-[10px] text-muted-foreground">v{asset.version} • {format(new Date(asset.createdAt), 'MMM d')}</div>
-                                    </div>
-                                </a>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
+
+                    {/* Asset Preview Modal */}
+                    <Dialog open={!!previewAsset} onOpenChange={(open) => !open && setPreviewAsset(null)}>
+                        <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black/95 border-none text-white">
+                            <div className="relative w-full h-[80vh] flex items-center justify-center">
+                                <button
+                                    onClick={() => setPreviewAsset(null)}
+                                    className="absolute top-4 right-4 z-50 p-2 bg-black/50 hover:bg-black/80 rounded-full text-white transition-colors"
+                                >
+                                    <X size={24} />
+                                </button>
+
+                                {previewAsset?.file_type?.startsWith('image/') ? (
+                                    <img src={getAssetUrl(previewAsset.file_url)} className="max-w-full max-h-full object-contain" />
+                                ) : previewAsset?.file_type?.startsWith('video/') ? (
+                                    <video src={getAssetUrl(previewAsset.file_url)} controls autoPlay className="max-w-full max-h-full" />
+                                ) : (
+                                    <div className="text-center p-10">
+                                        <FileText size={64} className="mx-auto mb-4 text-gray-400" />
+                                        <p className="text-xl font-semibold">{previewAsset?.original_name}</p>
+                                        <a
+                                            href={getAssetUrl(previewAsset?.file_url)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="mt-4 inline-block bg-white text-black px-4 py-2 rounded hover:bg-gray-200"
+                                        >
+                                            Download / Open Original
+                                        </a>
+                                    </div>
+                                )}
+                            </div>
+                        </DialogContent>
+                    </Dialog>
                 </div>
             </div>
         </div>

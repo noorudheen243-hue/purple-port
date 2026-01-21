@@ -3,6 +3,8 @@ import { exec } from 'child_process';
 import util from 'util';
 
 import path from 'path';
+import prisma from '../../utils/prisma';
+import fs from 'fs';
 
 const execAsync = util.promisify(exec);
 import { spawn } from 'child_process';
@@ -84,5 +86,44 @@ export const syncToCloud = async (req: Request, res: Response) => {
                 error: error.message
             });
         }
+    }
+};
+
+export const cleanupAssets = async (req: Request, res: Response) => {
+    try {
+        // Security Check
+        if (req.user?.role !== 'DEVELOPER_ADMIN' && req.user?.role !== 'ADMIN') {
+            return res.status(403).json({ message: 'Forbidden. Only Admins can perform cleanup.' });
+        }
+
+        console.log('Starting Asset Cleanup...');
+
+        // 1. Delete all Asset records from DB
+        const result = await prisma.asset.deleteMany({});
+        console.log(`Deleted ${result.count} asset records from DB.`);
+
+        // 2. Clear Uploads Directory
+        const uploadDir = path.join(process.cwd(), 'uploads');
+        let deletedFiles = 0;
+
+        if (fs.existsSync(uploadDir)) {
+            const files = fs.readdirSync(uploadDir);
+            for (const file of files) {
+                const filePath = path.join(uploadDir, file);
+                if (fs.statSync(filePath).isFile()) {
+                    fs.unlinkSync(filePath);
+                    deletedFiles++;
+                }
+            }
+        }
+
+        res.json({
+            message: 'Cleanup Successful',
+            details: `Removed ${result.count} database records and ${deletedFiles} physical files.`
+        });
+
+    } catch (error: any) {
+        console.error('Cleanup Error:', error);
+        res.status(500).json({ message: 'Cleanup Failed', error: error.message });
     }
 };

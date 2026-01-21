@@ -10,7 +10,7 @@ const ClientManagerPage = () => {
     const [activeTab, setActiveTab] = useState<'LIST' | 'NEW' | 'STATUS' | 'ACCESS'>('LIST');
     const { user } = useAuthStore();
 
-    const isAdmin = user?.role === ROLES.ADMIN || user?.role === ROLES.DEVELOPER_ADMIN;
+    const canManageAccess = user?.role === ROLES.ADMIN || user?.role === ROLES.DEVELOPER_ADMIN || user?.role === ROLES.MANAGER;
 
     const renderContent = () => {
         switch (activeTab) {
@@ -22,7 +22,7 @@ const ClientManagerPage = () => {
             case 'STATUS':
                 return <ClientContentStatus />;
             case 'ACCESS':
-                if (!isAdmin) return <div className="p-4 text-red-500">Access Restricted</div>;
+                if (!canManageAccess) return <div className="p-4 text-red-500">Access Restricted</div>;
                 return <ClientCredentialsPage />;
             default:
                 return <ClientList />;
@@ -43,8 +43,8 @@ const ClientManagerPage = () => {
                         <button
                             onClick={() => setActiveTab('LIST')}
                             className={`px-4 py-2 text-sm font-bold rounded-md transition-all border flex items-center gap-2 ${activeTab === 'LIST'
-                                    ? 'bg-yellow-400 text-black border-yellow-500 shadow-md'
-                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-yellow-50 hover:text-yellow-700 hover:border-yellow-200'
+                                ? 'bg-yellow-400 text-black border-yellow-500 shadow-md'
+                                : 'bg-white text-gray-600 border-gray-200 hover:bg-yellow-50 hover:text-yellow-700 hover:border-yellow-200'
                                 }`}
                         >
                             <User className="w-4 h-4" />
@@ -55,8 +55,8 @@ const ClientManagerPage = () => {
                         <button
                             onClick={() => setActiveTab('NEW')}
                             className={`px-4 py-2 text-sm font-bold rounded-md transition-all border flex items-center gap-2 ${activeTab === 'NEW'
-                                    ? 'bg-purple-700 text-white border-purple-800 shadow-md'
-                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-200'
+                                ? 'bg-purple-700 text-white border-purple-800 shadow-md'
+                                : 'bg-white text-gray-600 border-gray-200 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-200'
                                 }`}
                         >
                             <PlusCircle className="w-4 h-4" />
@@ -67,21 +67,21 @@ const ClientManagerPage = () => {
                         <button
                             onClick={() => setActiveTab('STATUS')}
                             className={`px-4 py-2 text-sm font-bold rounded-md transition-all border flex items-center gap-2 ${activeTab === 'STATUS'
-                                    ? 'bg-yellow-400 text-black border-yellow-500 shadow-md'
-                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-yellow-50 hover:text-yellow-700 hover:border-yellow-200'
+                                ? 'bg-yellow-400 text-black border-yellow-500 shadow-md'
+                                : 'bg-white text-gray-600 border-gray-200 hover:bg-yellow-50 hover:text-yellow-700 hover:border-yellow-200'
                                 }`}
                         >
                             <BarChart3 className="w-4 h-4" />
                             Client Content Status
                         </button>
 
-                        {/* 4. Client Access (Purple) - Only for Admins */}
-                        {isAdmin && (
+                        {/* 4. Client Access (Purple) - Only for Admins & Managers */}
+                        {canManageAccess && (
                             <button
                                 onClick={() => setActiveTab('ACCESS')}
                                 className={`px-4 py-2 text-sm font-bold rounded-md transition-all border flex items-center gap-2 ${activeTab === 'ACCESS'
-                                        ? 'bg-purple-700 text-white border-purple-800 shadow-md'
-                                        : 'bg-white text-gray-600 border-gray-200 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-200'
+                                    ? 'bg-purple-700 text-white border-purple-800 shadow-md'
+                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-200'
                                     }`}
                             >
                                 <Shield className="w-4 h-4" />

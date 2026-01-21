@@ -193,84 +193,87 @@ const AttendanceSummaryPage = () => {
 
     return (
         <div className="p-6 space-y-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            {/* Header Section */}
+            <div className="flex flex-col gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Attendance Management</h1>
+                    <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Attendance Management</h1>
                     <p className="text-muted-foreground">Monitor daily attendance and generate monthly summaries.</p>
                 </div>
 
-                <div className="flex bg-muted p-1 rounded-lg flex-wrap gap-1">
-                    <button
-                        onClick={() => setViewMode('REGISTER')}
-                        className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${viewMode === 'REGISTER'
-                                ? 'bg-purple-700 text-white shadow'
-                                : 'text-muted-foreground hover:bg-background/50'
-                            }`}
-                    >
-                        <Calendar className="w-4 h-4 mr-2 inline-block" />
-                        Attendance Register
-                    </button>
-                    <button
-                        onClick={() => setViewMode('SUMMARY')}
-                        className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${viewMode === 'SUMMARY'
-                                ? 'bg-yellow-400 text-purple-900 shadow font-semibold'
-                                : 'text-muted-foreground hover:bg-background/50'
-                            }`}
-                    >
-                        <ClipboardList className="w-4 h-4 mr-2 inline-block" />
-                        Attendance Summary
-                    </button>
-                    <button
-                        onClick={() => setViewMode('REGULARIZATION')}
-                        className={`px-4 py-2 text-sm font-medium rounded-md transition-all border ${viewMode === 'REGULARIZATION'
-                                ? 'bg-white border-purple-600 text-purple-700 shadow font-bold'
-                                : 'border-transparent text-muted-foreground hover:bg-background/50'
-                            }`}
-                    >
-                        <CheckSquare className="w-4 h-4 mr-2 inline-block" />
-                        Attendance Regularization
-                    </button>
-                    <button
-                        onClick={() => setViewMode('LOGS')}
-                        className={`px-4 py-2 text-sm font-medium rounded-md transition-all border ${viewMode === 'LOGS'
-                                ? 'bg-white border-blue-600 text-blue-700 shadow font-bold'
-                                : 'border-transparent text-muted-foreground hover:bg-background/50'
-                            }`}
-                    >
-                        <ScrollText className="w-4 h-4 mr-2 inline-block" />
-                        Attendance Log
-                    </button>
-                </div>
-
-                {viewMode !== 'LOGS' && viewMode !== 'REGULARIZATION' && (
-                    <div className="flex items-center gap-2">
-                        <Select value={month} onValueChange={setMonth}>
-                            <SelectTrigger className="w-[120px] bg-background">
-                                <SelectValue placeholder="Month" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {Array.from({ length: 12 }, (_, i) => (
-                                    <SelectItem key={i + 1} value={(i + 1).toString()}>
-                                        {new Date(0, i).toLocaleString('default', { month: 'long' })}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <Select value={year} onValueChange={setYear}>
-                            <SelectTrigger className="w-[100px] bg-background">
-                                <SelectValue placeholder="Year" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {years.map(y => (
-                                    <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <Button variant="outline" onClick={fetchAttendance} disabled={isLoading}>
-                            {isLoading ? 'Loading...' : 'Refresh'}
-                        </Button>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-muted/40 p-2 rounded-lg border">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <button
+                            onClick={() => setViewMode('REGISTER')}
+                            className={`px-4 py-2 text-sm font-bold rounded-md transition-all border ${viewMode === 'REGISTER'
+                                    ? 'bg-purple-700 text-white border-purple-800 shadow-md'
+                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-200'
+                                }`}
+                        >
+                            <Calendar className="w-4 h-4 mr-2 inline-block" />
+                            Attendance Register
+                        </button>
+                        <button
+                            onClick={() => setViewMode('SUMMARY')}
+                            className={`px-4 py-2 text-sm font-bold rounded-md transition-all border ${viewMode === 'SUMMARY'
+                                    ? 'bg-yellow-400 text-black border-yellow-500 shadow-md'
+                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-yellow-50 hover:text-yellow-700 hover:border-yellow-200'
+                                }`}
+                        >
+                            <ClipboardList className="w-4 h-4 mr-2 inline-block" />
+                            Attendance Summary
+                        </button>
+                        <button
+                            onClick={() => setViewMode('REGULARIZATION')}
+                            className={`px-4 py-2 text-sm font-bold rounded-md transition-all border ${viewMode === 'REGULARIZATION'
+                                    ? 'bg-white text-purple-700 border-purple-600 shadow-sm ring-1 ring-purple-100'
+                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-200'
+                                }`}
+                        >
+                            <CheckSquare className="w-4 h-4 mr-2 inline-block" />
+                            Attendance Regularization
+                        </button>
+                        <button
+                            onClick={() => setViewMode('LOGS')}
+                            className={`px-4 py-2 text-sm font-bold rounded-md transition-all border ${viewMode === 'LOGS'
+                                    ? 'bg-white text-yellow-700 border-yellow-500 shadow-sm ring-1 ring-yellow-100'
+                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-yellow-50 hover:text-yellow-700 hover:border-yellow-200'
+                                }`}
+                        >
+                            <ScrollText className="w-4 h-4 mr-2 inline-block" />
+                            Attendance Log
+                        </button>
                     </div>
-                )}
+
+                    {viewMode !== 'LOGS' && viewMode !== 'REGULARIZATION' && (
+                        <div className="flex items-center gap-2">
+                            <Select value={month} onValueChange={setMonth}>
+                                <SelectTrigger className="w-[120px] bg-background">
+                                    <SelectValue placeholder="Month" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {Array.from({ length: 12 }, (_, i) => (
+                                        <SelectItem key={i + 1} value={(i + 1).toString()}>
+                                            {new Date(0, i).toLocaleString('default', { month: 'long' })}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <Select value={year} onValueChange={setYear}>
+                                <SelectTrigger className="w-[100px] bg-background">
+                                    <SelectValue placeholder="Year" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {years.map(y => (
+                                        <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <Button variant="outline" onClick={fetchAttendance} disabled={isLoading}>
+                                {isLoading ? 'Loading...' : 'Refresh'}
+                            </Button>
+                        </div>
+                    )}
+                </div>
             </div>
 
             {viewMode === 'REGISTER' && (

@@ -342,10 +342,12 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                         >
                             <Menu size={24} />
                         </button>
-                        <div>
-                            <h2 className="text-xl md:text-2xl font-semibold">Welcome back, {user?.full_name.split(' ')[0]}</h2>
-                            <p className="text-sm md:text-base text-muted-foreground hidden md:block">Here's what's happening today.</p>
-                        </div>
+                        {(location.pathname === '/dashboard' || location.pathname === '/dashboard/') && (
+                            <div>
+                                <h2 className="text-xl md:text-2xl font-semibold">Welcome back, {user?.full_name.split(' ')[0]}</h2>
+                                <p className="text-sm md:text-base text-muted-foreground hidden md:block">Here's what's happening today.</p>
+                            </div>
+                        )}
                     </div>
                     <div>
                         <div className="flex items-center gap-4">

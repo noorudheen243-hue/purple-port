@@ -75,11 +75,7 @@ export const STAFF_MENU: MenuItem[] = [
     {
         label: "Attendance",
         icon: UserCheck,
-        children: [
-            { label: 'Attendance Register', path: '/dashboard/attendance/summary', icon: Calendar },
-            { label: 'Regularisation', path: '/dashboard/attendance/regularisation', icon: CheckSquare },
-            { label: 'Attendance Log', path: '/dashboard/attendance/biometric', icon: ScrollText }
-        ]
+        path: '/dashboard/attendance/summary'
     },
     {
         label: "Leave",

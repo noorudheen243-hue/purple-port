@@ -16,6 +16,10 @@ router.get('/stats', getStats);
 
 router.delete('/reset-data', authorize(ROLES.DEVELOPER_ADMIN), resetData); // Developer Admin Only
 
+// Timer routes
+router.post('/:id/timer/start', startTaskTimer);
+router.post('/:id/timer/stop', stopTaskTimer);
+
 router.route('/:id')
     .get(getTask)
     .patch(updateTask) // Content restriction logic usually in service

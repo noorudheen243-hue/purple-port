@@ -118,17 +118,11 @@ const AttendanceSummaryPage = () => {
             const end = new Date(record.check_out);
             const durationHrs = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
 
-            if (durationHrs >= 4 && durationHrs < 8.5) { // Assuming < 8.5 is not full day? Or use < 8? Let's use user's "min 4 hours" rule implies anything < 4 is absent/short? 
-                // User said: "completed minimum 4 Work Hours mark as Half Day". Implicitly > X is Full Day.
-                // We'll treat >= 4 as AT LEAST Half Day. If it was marked PRESENT by backend, we trust it UNLESS it's short duration?
-                // Let's be strict: if < 9 (standard shift usually 9h incl break) -> Half Day? 
-                // Let's safely say if < 5 it is definitely Half Day. 
-                // But the user rule is "Missed one punch OR >= 4 hrs".
-                // If they punched BOTH and duration is 4.5 hours -> Half Day.
-                // If they punched BOTH and duration is 9 hours -> Full Day.
+            if (durationHrs >= 4 && durationHrs <= 7) {
+                // User defined: 4-7 hours is Half Day
                 return { status: 'HALF_DAY', value: 0.5 };
             }
-            // If duration >= 8.5 -> Full
+            // If duration > 7 -> Full Day
         }
 
         if (record.status === 'PRESENT' || record.status === 'LATE') return { status: 'PRESENT', value: 1 };
@@ -244,8 +238,8 @@ const AttendanceSummaryPage = () => {
                     <button
                         onClick={() => setViewMode('REGISTER')}
                         className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${viewMode === 'REGISTER'
-                                ? 'bg-purple-700 text-white shadow'
-                                : 'text-muted-foreground hover:bg-background/50'
+                            ? 'bg-purple-700 text-white shadow'
+                            : 'text-muted-foreground hover:bg-background/50'
                             }`}
                     >
                         <Calendar className="w-4 h-4 mr-2 inline-block" />
@@ -254,8 +248,8 @@ const AttendanceSummaryPage = () => {
                     <button
                         onClick={() => setViewMode('SUMMARY')}
                         className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${viewMode === 'SUMMARY'
-                                ? 'bg-yellow-400 text-purple-900 shadow font-semibold'
-                                : 'text-muted-foreground hover:bg-background/50'
+                            ? 'bg-yellow-400 text-purple-900 shadow font-semibold'
+                            : 'text-muted-foreground hover:bg-background/50'
                             }`}
                     >
                         <ClipboardList className="w-4 h-4 mr-2 inline-block" />

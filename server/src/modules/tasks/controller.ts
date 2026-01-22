@@ -31,7 +31,8 @@ export const createTask = async (req: Request, res: Response) => {
         console.log("Create Task Payload:", JSON.stringify(req.body, null, 2)); // DEBUG LOG
 
         if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
-        if (isCreative(req)) return res.status(403).json({ message: 'Creative team cannot create tasks.' });
+        // Removed isCreative check to allow Creative team to create tasks as per new requirements
+        // if (isCreative(req)) return res.status(403).json({ message: 'Creative team cannot create tasks.' });
 
         const validatedData = createTaskSchema.parse(req.body);
 

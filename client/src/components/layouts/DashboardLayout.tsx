@@ -400,7 +400,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                     <div>
                         <div className="flex items-center gap-4">
                             {/* Theme Toggle Button - Moved to Header as requested */}
-                            <DigitalClock />
+
                             <button
                                 onClick={toggleTheme}
                                 className={`

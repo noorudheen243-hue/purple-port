@@ -99,28 +99,12 @@ export const updateTask = async (req: Request, res: Response) => {
         const { assignee_id, campaign_id, client_id, due_date, ...rest } = validatedData;
         let updateData: any = { ...rest };
 
-        // Access Control: Creative team can ONLY update STATUS
-        if (isCreative(req)) {
-            console.log("User identified as CREATIVE");
-            // Force strict sanitization: Only allow status
-            updateData = {};
-            if (validatedData.status) updateData.status = validatedData.status;
-
-            console.log("Sanitized Creative Update Data:", updateData);
-
-            // If no status provided (and only defaults/garbage), return error or just success with no-op
-            if (!updateData.status) {
-                console.log("Error: No status provided by creative");
-                return res.status(400).json({ message: 'Creative team must provide a status update.' });
-            }
-        } else {
-            console.log("User identified as ADMIN/MANAGER");
-            // Regular logic for Admin/Manager
-            if (assignee_id) updateData.assignee = { connect: { id: assignee_id } };
-            if (campaign_id) updateData.campaign = { connect: { id: campaign_id } };
-            if (client_id) updateData.client = { connect: { id: client_id } };
-            if (due_date) updateData.due_date = new Date(due_date);
-        }
+        // Access Control: Removed Creative Team Restriction
+        // All roles authorized in routes can update tasks fully
+        if (assignee_id) updateData.assignee = { connect: { id: assignee_id } };
+        if (campaign_id) updateData.campaign = { connect: { id: campaign_id } };
+        if (client_id) updateData.client = { connect: { id: client_id } };
+        if (due_date) updateData.due_date = new Date(due_date);
 
         console.log("Final Update Payload sent to Service:", JSON.stringify(updateData, null, 2));
         const task = await taskService.updateTask(req.params.id, updateData);
@@ -136,7 +120,6 @@ export const updateTask = async (req: Request, res: Response) => {
 
 export const deleteTask = async (req: Request, res: Response) => {
     try {
-        if (isCreative(req)) return res.status(403).json({ message: 'Creative team cannot delete tasks.' });
 
         await taskService.deleteTask(req.params.id);
         res.json({ message: 'Task deleted' });

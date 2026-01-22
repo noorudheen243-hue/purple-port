@@ -30,9 +30,10 @@ type TaskFormData = z.infer<typeof schema>;
 interface NewTaskModalProps {
     isOpen: boolean;
     onClose: () => void;
+    initialData?: any; // Added for Edit Mode
 }
 
-const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose }) => {
+const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialData }) => {
     const queryClient = useQueryClient();
     const { user } = useAuthStore();
     const [isClientModalOpen, setIsClientModalOpen] = useState(false);
@@ -54,6 +55,33 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose }) => {
         }
     });
 
+    // Populate form when initialData changes
+    React.useEffect(() => {
+        if (isOpen && initialData) {
+            reset({
+                title: initialData.title,
+                description: initialData.description || '',
+                type: initialData.type,
+                priority: initialData.priority,
+                category: initialData.category,
+                nature: initialData.nature,
+                client_id: initialData.client_id || (initialData.category === 'INTERNAL' ? 'GENERAL' : ''),
+                assignee_id: initialData.assignee_id,
+                due_date: initialData.due_date ? new Date(initialData.due_date).toISOString().split('T')[0] : '',
+                content_type: initialData.content_type || ''
+            });
+            if (initialData.client_id) setValue('client_id', initialData.client_id); // Trigger watcher
+        } else if (isOpen && !initialData) {
+            reset({
+                priority: 'MEDIUM',
+                type: 'GENERIC',
+                category: 'CAMPAIGN',
+                nature: 'NEW',
+                description: ''
+            });
+        }
+    }, [isOpen, initialData, reset, setValue]);
+
     const category = watch('category');
     const nature = watch('nature');
     const selectedClientId = watch('client_id');
@@ -61,30 +89,19 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose }) => {
     // Filter campaigns by selected client
     const filteredCampaigns = campaigns?.filter((c: any) => c.client_id === selectedClientId) || [];
 
-    const createMutation = useMutation({
+    const mutation = useMutation({
         mutationFn: async (data: TaskFormData) => {
             const payload: any = { ...data };
 
-            // Campaign ID Logic Removed as per request (or kept optional if needed, but UI hidden)
-            // if (data.campaign_id) ...
-
-            // Content Type is passed directly
             if (data.content_type) payload.content_type = data.content_type;
-
-            // Handle General/Empty Client
             if (!data.client_id || data.client_id === 'GENERAL') delete payload.client_id;
-
-            // FIX: Send plain IDs, let backend handle connections
-            // payload.assignee = { connect: { id: data.assignee_id } }; // INCORRECT
-            // delete payload.assignee_id; // INCORRECT
-
-            // Reporter is added by backend from token
-            // payload.reporter = { connect: { id: user?.id } };
-
-
             if (data.due_date) payload.due_date = new Date(data.due_date);
 
-            return await api.post('/tasks', payload);
+            if (initialData) {
+                return await api.put(`/tasks/${initialData.id}`, payload);
+            } else {
+                return await api.post('/tasks', payload);
+            }
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -94,7 +111,7 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose }) => {
     });
 
     const onSubmit = (data: TaskFormData) => {
-        createMutation.mutate(data);
+        mutation.mutate(data);
     };
 
     const handleClientCreated = (newClient: any) => {
@@ -111,7 +128,7 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose }) => {
                     <DialogHeader className="p-6 pb-2">
                         <DialogTitle className="text-xl font-bold flex items-center gap-2 text-gray-800">
                             <Layers className="text-purple-600" />
-                            Create New Task
+                            {initialData ? 'Edit Task' : 'Create New Task'}
                         </DialogTitle>
                     </DialogHeader>
 
@@ -304,10 +321,10 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose }) => {
                             </button>
                             <button
                                 type="submit"
-                                disabled={createMutation.isPending}
+                                disabled={mutation.isPending}
                                 className="px-6 py-2.5 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2 shadow-sm transition-all hover:shadow-md"
                             >
-                                {createMutation.isPending ? 'Creating...' : 'Create Task'}
+                                {mutation.isPending ? (initialData ? 'Saving...' : 'Creating...') : (initialData ? 'Save Changes' : 'Create Task')}
                             </button>
                         </div>
                     </form>

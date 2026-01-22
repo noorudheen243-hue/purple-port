@@ -52,12 +52,12 @@ const DigitalClock = () => {
     }, []);
 
     return (
-        <div className="text-right hidden md:block mr-6">
-            <p className="text-sm font-bold uppercase tracking-wide text-foreground">
-                {time.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+        <div className="text-center hidden md:block mt-1">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground leading-tight">
+                {time.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
             </p>
-            <h2 className="text-xs font-medium font-mono tracking-widest text-primary/80">
-                {time.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true })}
+            <h2 className="text-[10px] font-mono tracking-widest text-primary/80 leading-tight">
+                {time.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}
             </h2>
         </div>
     );
@@ -466,16 +466,20 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                                 <span className="hidden md:inline">Logout</span>
                             </button>
 
-                            <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold overflow-hidden shadow-sm border-2 border-white print-hidden">
-                                {user?.avatar_url ? (
-                                    <img
-                                        src={getAssetUrl(user.avatar_url)}
-                                        alt={user.full_name}
-                                        className="w-full h-full object-cover"
-                                    />
-                                ) : (
-                                    <span className="text-xl">{user?.full_name.charAt(0)}</span>
-                                )}
+                            <div className="flex flex-col items-center gap-1">
+                                <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold overflow-hidden shadow-sm border-2 border-white print-hidden">
+                                    {user?.avatar_url ? (
+                                        <img
+                                            src={getAssetUrl(user.avatar_url)}
+                                            alt={user.full_name}
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : (
+                                        <span className="text-xl">{user?.full_name.charAt(0)}</span>
+                                    )}
+                                </div>
+                                {/* Clock Moved Here - Below Profile */}
+                                <DigitalClock />
                             </div>
                         </div>
                     </div>

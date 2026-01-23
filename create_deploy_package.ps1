@@ -18,8 +18,8 @@ Remove-Item "$temp\server\dev.db-journal" -Force -ErrorAction SilentlyContinue
 
 # Copy Client Build
 Write-Host "Copying Client Build..."
-New-Item -ItemType Directory -Path "$temp\client\dist" | Out-Null
-Copy-Item -Path "client\dist\*" -Destination "$temp\client\dist" -Recurse
+New-Item -ItemType Directory -Path "$temp\server\public" | Out-Null
+Copy-Item -Path "client\dist\*" -Destination "$temp\server\public" -Recurse
 
 # Copy Configs
 Copy-Item "package.json" -Destination "$temp"

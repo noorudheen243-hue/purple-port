@@ -146,7 +146,6 @@ const ClientList = ({ defaultOpenCreate = false }: ClientListProps) => {
                 <table className="w-full text-left text-sm">
                     <thead className="bg-gray-50 border-b border-gray-200">
                         <tr>
-                            <th className="px-6 py-4 font-semibold text-gray-700 w-16">S.No</th>
                             <th className="px-6 py-4 font-semibold text-gray-700 w-24">ID</th>
                             <th className="px-6 py-4 font-semibold text-gray-700">Client Name</th>
                             <th className="px-6 py-4 font-semibold text-gray-700">Industry</th>
@@ -158,7 +157,7 @@ const ClientList = ({ defaultOpenCreate = false }: ClientListProps) => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                        {clients?.map((client: any, index: number) => {
+                        {clients?.map((client: any) => {
                             const services = client.service_engagement ? (typeof client.service_engagement === 'string' ? JSON.parse(client.service_engagement) : client.service_engagement) : [];
                             return (
                                 <tr
@@ -166,9 +165,6 @@ const ClientList = ({ defaultOpenCreate = false }: ClientListProps) => {
                                     className="hover:bg-gray-50 transition-colors group cursor-pointer"
                                     onClick={() => handleViewProfile(client)}
                                 >
-                                    <td className="px-6 py-4 text-gray-500 font-medium">
-                                        {index + 1}
-                                    </td>
                                     <td className="px-6 py-4 font-mono text-xs text-gray-500 font-semibold">
                                         {client.client_code || '-'}
                                     </td>

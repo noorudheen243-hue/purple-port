@@ -225,19 +225,11 @@ const ClientList = ({ defaultOpenCreate = false }: ClientListProps) => {
                                                 <Pencil size={16} />
                                             </button>
 
-                                            {canDeleteClients ? (
+                                            {canDeleteClients && (
                                                 <button
                                                     onClick={(e) => initiateDelete(e, client.id)}
                                                     className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
                                                     title="Delete"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            ) : (
-                                                <button
-                                                    disabled
-                                                    className="p-2 text-gray-300 cursor-not-allowed rounded"
-                                                    title="Delete Restricted"
                                                 >
                                                     <Trash2 size={16} />
                                                 </button>

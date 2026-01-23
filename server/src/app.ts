@@ -122,7 +122,11 @@ app.use('/api/launcher', launcherRoutes);
 // In production, we assume the React build is copied to a 'public' folder in the root
 if (process.env.NODE_ENV === 'production') {
     // Serve static files from the React app
-    const publicPath = path.join(process.cwd(), 'public');
+    // Serve static files from the React app
+    // Correct Path: One level up from server root -> client -> dist
+    // process.cwd() is /var/www/purple-port/server
+    const publicPath = path.join(process.cwd(), '../client/dist');
+
     app.use(express.static(publicPath, {
         setHeaders: (res, filePath) => {
             if (filePath.endsWith('index.html')) {
@@ -136,6 +140,12 @@ if (process.env.NODE_ENV === 'production') {
     // The "catchall" handler: for any request that doesn't
     // match one above, send back React's index.html file.
     app.get('*', (req: express.Request, res: express.Response) => {
+        // Prevent API calls from returning HTML
+        if (req.path.startsWith('/api')) {
+            res.status(404).json({ message: "API endpoint not found" });
+            return;
+        }
+
         res.sendFile(path.join(publicPath, 'index.html'), {
             headers: {
                 'Cache-Control': 'no-cache, no-store, must-revalidate',

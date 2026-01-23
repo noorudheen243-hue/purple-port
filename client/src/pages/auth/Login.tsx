@@ -96,8 +96,8 @@ const Login = () => {
                     <Link to="/register" className="text-primary hover:underline">Register</Link>
                 </div>
                 {/* Version Tag for Debugging */}
-                <div className="text-center text-xs text-gray-300 mt-4">
-                    v{APP_VERSION}
+                <div className="text-center text-xs text-gray-400 mt-4">
+                    v{APP_VERSION} (Live Update Confirmed)
                 </div>
             </div>
         </div>

@@ -4,7 +4,8 @@ echo (Enter password 'EzdanAdam@243' when prompted)
 echo.
 
 echo --- PM2 STATUS ---
-ssh root@72.61.246.22 "pm2 describe qix-api"
+echo --- PM2 STATUS ---
+ssh root@72.61.246.22 "pm2 list"
 
 echo.
 echo --- PM2 LOGS (LAST 50 LINES) ---

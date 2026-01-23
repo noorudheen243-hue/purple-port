@@ -43,6 +43,7 @@ echo ">>> Restarting PM2..."
 pm2 stop all || true
 pm2 delete "qix-api" || true
 pm2 delete "purple-port-api" || true
+pm2 delete "qix-ads" || true
 
 # Start Clean Instance
 pm2 start dist/server.js --name "qix-api"

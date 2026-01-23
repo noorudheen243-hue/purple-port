@@ -3,11 +3,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/api';
 import { getAssetUrl } from '../../lib/utils';
 // import { Link } from 'react-router-dom'; // Using Link for name only? No, requirement says "clicking the client... popup".
-import { Link, useNavigate } from 'react-router-dom'; // Keep Link for other navigations if needed, but row click is modal.
+import { Link, useNavigate } from 'react-router-dom';
 import { Users, Pencil, Trash2, Plus, ArrowRight, CheckCircle } from 'lucide-react';
 import ClientFormModal from './ClientFormModal';
 import ClientProfileModal from './ClientProfileModal';
 import { useLocation } from 'react-router-dom';
+import { useAuthStore } from '../../store/authStore';
+import { ROLES } from '../../utils/roles';
 
 // Custom Confirmation Modal Component (Inline for simplicity or split file if needed)
 const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, type = 'danger' }: any) => {
@@ -39,6 +41,10 @@ const ClientList = ({ defaultOpenCreate = false }: ClientListProps) => {
     const queryClient = useQueryClient();
     const location = useLocation();
     const navigate = useNavigate();
+    const { user } = useAuthStore();
+
+    // Permission check - Delete restricted to Admins & Managers
+    const canDeleteClients = user?.role === ROLES.ADMIN || user?.role === ROLES.DEVELOPER_ADMIN || user?.role === ROLES.MANAGER;
 
     // Modals state
     const [isFormOpen, setIsFormOpen] = useState(defaultOpenCreate);
@@ -218,13 +224,24 @@ const ClientList = ({ defaultOpenCreate = false }: ClientListProps) => {
                                             >
                                                 <Pencil size={16} />
                                             </button>
-                                            <button
-                                                onClick={(e) => initiateDelete(e, client.id)}
-                                                className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                                                title="Delete"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
+
+                                            {canDeleteClients ? (
+                                                <button
+                                                    onClick={(e) => initiateDelete(e, client.id)}
+                                                    className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                                    title="Delete"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    disabled
+                                                    className="p-2 text-gray-300 cursor-not-allowed rounded"
+                                                    title="Delete Restricted"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>

@@ -7,6 +7,10 @@ echo --- PM2 STATUS ---
 ssh root@72.61.246.22 "pm2 describe qix-api"
 
 echo.
+echo --- PM2 LOGS (LAST 50 LINES) ---
+ssh root@72.61.246.22 "pm2 logs qix-api --lines 50 --nostream"
+
+echo.
 echo --- CHECKING SERVER/PUBLIC ---
 ssh root@72.61.246.22 "ls -l /var/www/purple-port/server/public/index.html"
 

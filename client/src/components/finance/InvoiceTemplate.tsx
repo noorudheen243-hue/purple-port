@@ -38,9 +38,9 @@ export const InvoiceTemplate = forwardRef<HTMLDivElement, { data: InvoiceData }>
                 <div className="flex justify-between items-start mb-8">
                     <div>
                         {/* Logo Placeholder - User provided image implies a purple Qix logo */}
-                        <img src="/qix_logo.png" alt="Qix Ads" className="h-24 object-contain mb-2" />
+                        <img src="/qix_logo.png" alt="Qix Ads" className="h-16 object-contain mb-2" />
                     </div>
-                    <div className="text-right text-sm text-gray-600 leading-normal font-medium tracking-wide">
+                    <div className="text-right text-xs text-gray-600 leading-tight font-medium tracking-wide">
                         {/* Company Name removed, Address Only */}
                         <p>2nd floor City Center Complex, Pattambi Rd,</p>
                         <p>Perinthalmanna, Kerala 679322</p>

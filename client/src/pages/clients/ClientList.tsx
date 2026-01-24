@@ -44,7 +44,9 @@ const ClientList = ({ defaultOpenCreate = false }: ClientListProps) => {
     const { user } = useAuthStore();
 
     // Permission check - Delete restricted to Admins & Managers
-    const canDeleteClients = user?.role === ROLES.ADMIN || user?.role === ROLES.DEVELOPER_ADMIN || user?.role === ROLES.MANAGER;
+    // Permission check - Delete restricted to Admins & Managers
+    // Explicitly allowed roles only. All others (Staff) will see false.
+    const canDeleteClients = [ROLES.ADMIN, ROLES.DEVELOPER_ADMIN, ROLES.MANAGER].includes(user?.role as any);
 
     // Modals state
     const [isFormOpen, setIsFormOpen] = useState(defaultOpenCreate);

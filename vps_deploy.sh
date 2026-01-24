@@ -1,67 +1,42 @@
 #!/bin/bash
-set -e # Exit on error
 
-# Configuration
-PROJECT_DIR="/root/Antigravity/server"
-CLIENT_DIR="/root/Antigravity/client"
+# Purple Port VPS Deployment Script
+# Usage: ./vps_deploy.sh
 
-echo "============================================="
-echo "   STARTING FRESH DEPLOYMENT - QIX ADS   "
-echo "============================================="
+echo "----------------------------------------"
+echo "🚀 Starting Purple Port Deployment"
+echo "----------------------------------------"
 
-echo "[1/6] Stopping Services..."
-pm2 delete all || true
+# 1. Update Code from GitHub
+echo "📥 Pulling latest code..."
+git pull origin main
 
-echo "[2/6] Backing up Environment..."
-# Assuming .env exists in server root
-if [ -f "$PROJECT_DIR/.env" ]; then
-  cp "$PROJECT_DIR/.env" /root/env.backup
-  echo "Backup saved to /root/env.backup"
-else
-  echo "WARNING: No .env found at $PROJECT_DIR/.env! You may need to create it manually."
-fi
-
-echo "[3/6] Refreshing Codebase..."
-# Navigate to Repo Root (Parent of server/client)
-cd "$PROJECT_DIR/.."
-git fetch origin
-git reset --hard origin/main
-git clean -fd # Remove untracked files (Clean slate)
-
-# Restore Env
-if [ -f /root/env.backup ]; then
-  mv /root/env.backup "$PROJECT_DIR/.env"
-  echo "Environment file restored."
-fi
-
-echo "[4/6] Backend: Resetting Database & Building..."
-cd "$PROJECT_DIR"
-echo "Installing Backend Dependencies..."
+# 2. Build Server
+echo "🛠️ Building Server..."
+cd server
 npm install
-echo "Wiping Database..."
-rm -f prisma/dev.db 
-echo "Running Migrations..."
-npx prisma migrate deploy 
-echo "Seeding Users (Admin/Staff only)..."
-npx prisma db seed 
-echo "Building Backend..."
+npx prisma generate
 npm run build
 
-echo "[5/6] Frontend: Building..."
-cd "$CLIENT_DIR"
-echo "Installing Frontend Dependencies..."
+# 3. Build Client
+echo "🎨 Building Client..."
+cd ../client
+rm -rf dist
 npm install
-echo "Building Frontend..."
-npm run build
+# Set memory limit to avoid crash on small VPS
+NODE_OPTIONS="--max-old-space-size=4096" npm run build
 
-# Nginx Handling (Optional - Adjust if you use Nginx)
-# cp -r dist/* /var/www/html/ 
+# 4. Fix Permissions
+echo "🔒 Fixing Permissions..."
+cd ..
+chown -R www-data:www-data client/dist
+chmod -R 755 client/dist
 
-echo "[6/6] Restarting Services..."
-cd "$PROJECT_DIR"
-pm2 start dist/server.js --name "qix-backend"
-pm2 save
+# 5. Restart Services
+echo "🔄 Restarting Services..."
+pm2 restart all
+systemctl restart nginx
 
-echo "============================================="
-echo "   ✅ FRESH DEPLOYMENT COMPLETE!   "
-echo "============================================="
+echo "----------------------------------------"
+echo "✅ Deployment Complete!"
+echo "----------------------------------------"

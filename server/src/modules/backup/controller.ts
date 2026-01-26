@@ -72,250 +72,211 @@ export const downloadBackup = async (req: Request, res: Response) => {
             archive.file(dbPath, { name: 'database.sqlite' });
         } else {
             console.warn('[Backup] Database file not found to backup!');
-            archive.append('Database file missing at time of backup', { name: 'db_missing.txt' });
+            if (secret !== (process.env.BACKUP_SECRET || 'CHANGE_THIS_SECRET')) return res.status(403).json({ message: 'Forbidden' });
+
+            const archive = archiver('zip', { zlib: { level: 9 } });
+            res.setHeader('Content-Type', 'application/zip');
+            res.setHeader('Content-Disposition', `attachment; filename=legacy-backup.zip`);
+            archive.pipe(res);
+
+            const dbPath = process.env.DATABASE_URL?.replace('file:', '') || 'prisma/dev.db';
+            if (fs.existsSync(dbPath)) archive.file(dbPath, { name: 'database.sqlite' });
+
+            const uploadsDir = path.join(process.cwd(), 'uploads');
+            if (fs.existsSync(uploadsDir)) archive.directory(uploadsDir, 'uploads');
+
+            await archive.finalize();
+        } catch (e) {
+            if (!res.headersSent) res.status(500).json({ error: String(e) });
         }
+    };
 
-        // 5. Add Uploads Directory
-        const uploadsDir = path.join(process.cwd(), 'uploads');
-        if (fs.existsSync(uploadsDir)) {
-            console.log(`[Backup] Adding Uploads: ${uploadsDir}`);
-            archive.directory(uploadsDir, 'uploads');
-        } else {
-            archive.append('Uploads directory missing', { name: 'uploads_missing.txt' });
-        }
+    // ... (Previous imports)
+    // No changes to imports
 
-        // 6. Finalize
-        await archive.finalize();
-        console.log('[Backup] Backup stream complete.');
+    // 6. Refactored Export (Memory Efficient)
+    export const exportFullBackupZip = async (req: Request, res: Response) => {
+        try {
+            console.log(`[Backup] Starting Streamed Backup (ZIP) for ${req.ip}`);
 
-    } catch (error: any) {
-        console.error('[Backup] Critical Error:', error);
-        if (!res.headersSent) {
-            res.status(500).json({ message: error.message });
-        }
-    }
-};
+            const archive = archiver('zip', { zlib: { level: 9 } });
+            const filename = `purple-port-backup-${new Date().toISOString().split('T')[0]}.zip`;
 
-// ... (Previous imports)
-// No changes to imports
+            res.setHeader('Content-Type', 'application/zip');
+            res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
 
-// 6. Refactored Export (Memory Efficient)
-export const exportFullBackupZip = async (req: Request, res: Response) => {
-    try {
-        console.log(`[Backup] Starting Full Backup (ZIP) for ${req.ip}`);
+            archive.on('error', (err) => {
+                console.error('[Backup] Archive Error:', err);
+                // Can't send JSON if headers sent, but we log it.
+            });
 
-        const archive = archiver('zip', { zlib: { level: 9 } });
-        const filename = `purple-port-backup-${new Date().toISOString().split('T')[0]}.zip`;
+            archive.pipe(res);
 
-        res.setHeader('Content-Type', 'application/zip');
-        res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+            // -- Stream Tables --
+            const addTableToArchive = (name: string, model: any) => {
+                const stream = new TableStream(model);
+                archive.append(stream, { name: `${name}.json` });
+            };
 
-        // Handle Archiver Errors
-        archive.on('error', (err) => {
-            console.error('[Backup] Archive Error:', err);
-            if (!res.headersSent) res.status(500).json({ message: 'Backup generation failed' });
-        });
+            // Core
+            addTableToArchive('users', prisma.user);
+            addTableToArchive('staffProfiles', prisma.staffProfile);
+            addTableToArchive('clients', prisma.client);
+            addTableToArchive('campaigns', prisma.campaign);
+            addTableToArchive('tasks', prisma.task);
+            addTableToArchive('taskDependencies', prisma.taskDependency);
+            addTableToArchive('assets', prisma.asset);
+            addTableToArchive('comments', prisma.comment);
+            // TimeLogs can be huge -> Streaming is Critical
+            addTableToArchive('timeLogs', prisma.timeLog);
 
-        // Pipe early
-        archive.pipe(res);
+            // Accounting
+            addTableToArchive('accountHeads', prisma.accountHead);
+            addTableToArchive('ledgers', prisma.ledger);
+            addTableToArchive('journalEntries', prisma.journalEntry);
+            addTableToArchive('journalLines', prisma.journalLine);
+            addTableToArchive('invoices', prisma.invoice);
+            addTableToArchive('invoiceItems', prisma.invoiceItem);
 
-        // -- Add Data Files individually to avoid One Giant String --
+            // HR & Payroll
+            addTableToArchive('notifications', prisma.notification);
+            // AttendanceRecords can be huge -> Streaming is Critical
+            addTableToArchive('attendanceRecords', prisma.attendanceRecord);
+            addTableToArchive('leaveRequests', prisma.leaveRequest);
+            addTableToArchive('holidays', prisma.holiday);
+            addTableToArchive('payrollRuns', prisma.payrollRun);
+            addTableToArchive('payrollSlips', prisma.payrollSlip);
 
-        const backupTable = async (name: string, model: any) => {
-            try {
-                const data = await model.findMany();
-                archive.append(JSON.stringify(data, null, 2), { name: `${name}.json` });
-            } catch (e) {
-                console.error(`[Backup] Failed to backup table ${name}:`, e);
-                archive.append(JSON.stringify({ error: String(e) }), { name: `${name}_error.json` });
+            // Other
+            addTableToArchive('stickyNotes', prisma.stickyNote);
+            addTableToArchive('stickyTasks', prisma.stickyTask);
+            addTableToArchive('stickyNotePermissions', prisma.stickyNotePermission);
+            addTableToArchive('adAccounts', prisma.adAccount);
+            addTableToArchive('spendSnapshots', prisma.spendSnapshot);
+            addTableToArchive('leads', prisma.lead);
+
+            // Uploads
+            const uploadsDir = path.join(process.cwd(), 'uploads');
+            if (fs.existsSync(uploadsDir)) {
+                console.log(`[Backup] Streaming Uploads Directory...`);
+                archive.directory(uploadsDir, 'uploads');
             }
-        };
 
-        // Core
-        await backupTable('users', prisma.user);
-        await backupTable('staffProfiles', prisma.staffProfile);
-        await backupTable('clients', prisma.client);
-        await backupTable('campaigns', prisma.campaign);
-        await backupTable('tasks', prisma.task);
-        await backupTable('taskDependencies', prisma.taskDependency);
-        await backupTable('assets', prisma.asset);
-        await backupTable('comments', prisma.comment);
-        await backupTable('timeLogs', prisma.timeLog);
+            await archive.finalize();
+            console.log(`[Backup] Backup Stream Finalized.`);
 
-        // Accounting
-        await backupTable('accountHeads', prisma.accountHead);
-        await backupTable('ledgers', prisma.ledger);
-        await backupTable('journalEntries', prisma.journalEntry);
-        await backupTable('journalLines', prisma.journalLine);
-        await backupTable('invoices', prisma.invoice);
-        await backupTable('invoiceItems', prisma.invoiceItem);
-
-        // HR & Payroll
-        await backupTable('notifications', prisma.notification);
-        await backupTable('attendanceRecords', prisma.attendanceRecord);
-        await backupTable('leaveRequests', prisma.leaveRequest);
-        await backupTable('holidays', prisma.holiday);
-        await backupTable('payrollRuns', prisma.payrollRun);
-        await backupTable('payrollSlips', prisma.payrollSlip);
-
-        // Other
-        await backupTable('stickyNotes', prisma.stickyNote);
-        await backupTable('stickyTasks', prisma.stickyTask);
-        await backupTable('stickyNotePermissions', prisma.stickyNotePermission);
-        await backupTable('adAccounts', prisma.adAccount);
-        await backupTable('spendSnapshots', prisma.spendSnapshot);
-        await backupTable('leads', prisma.lead);
-
-        // Uploads
-        const uploadsDir = path.join(process.cwd(), 'uploads');
-        if (fs.existsSync(uploadsDir)) {
-            console.log(`[Backup] Adding Uploads: ${uploadsDir}`);
-            archive.directory(uploadsDir, 'uploads');
+        } catch (error: any) {
+            console.error('[Backup] Export Error:', error);
+            if (!res.headersSent) res.status(500).json({ message: `Export failed: ${error.message}` });
         }
+    };
 
-        await archive.finalize();
-        console.log(`[Backup] Full Backup ZIP sent.`);
+    export const importFullBackupZip = async (req: Request, res: Response) => {
+        try {
+            if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
 
-    } catch (error: any) {
-        console.error('[Backup] Export Error:', error);
-        if (!res.headersSent) res.status(500).json({ message: `Export failed: ${error.message}` });
-    }
-};
+            console.log(`[Backup] Starting Import from ${req.file.originalname}`);
+            const zipPath = req.file.path;
 
-export const importFullBackupZip = async (req: Request, res: Response) => {
-    try {
-        if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+            const zip = new AdmZip(zipPath);
+            const zipEntries = zip.getEntries();
+            // Limit Max JSON size to prevent OOM during Import parsing
+            // If files are huge, simple JSON.parse might still fail. 
+            // For import, we might need a stream parser if it fails, but usually import is rarer / controlled.
+            // For now, we keep Memory Import logic but add handling for individual files.
 
-        console.log(`[Backup] Starting Import from ${req.file.originalname}`);
-        const zipPath = req.file.path;
-
-        const zip = new AdmZip(zipPath);
-        const zipEntries = zip.getEntries();
-
-        let data: any = {};
-
-        // 1. Check for consolidated data.json (Legacy)
-        const dataEntry = zipEntries.find(entry => entry.entryName === 'data.json');
-        if (dataEntry) {
-            console.log('[Backup] Found legacy data.json');
-            data = JSON.parse(dataEntry.getData().toString('utf8'));
-        } else {
-            console.log('[Backup] Extracting individual JSON files...');
-            // 2. Reconstruct from individual files
-            const tables = [
-                'users', 'staffProfiles', 'clients', 'campaigns', 'tasks', 'taskDependencies',
-                'assets', 'comments', 'timeLogs', 'accountHeads', 'ledgers', 'journalEntries',
-                'journalLines', 'invoices', 'invoiceItems', 'notifications', 'attendanceRecords',
-                'leaveRequests', 'holidays', 'payrollRuns', 'payrollSlips', 'stickyNotes',
-                'stickyTasks', 'stickyNotePermissions', 'adAccounts', 'spendSnapshots', 'leads'
-            ];
-
-            for (const table of tables) {
-                const entry = zipEntries.find(e => e.entryName === `${table}.json`);
+            // Helper: Safe Parse
+            const parseEntry = (name: string) => {
+                const entry = zipEntries.find(e => e.entryName === name || e.entryName === `${name}.json`);
                 if (entry) {
                     try {
-                        data[table] = JSON.parse(entry.getData().toString('utf8'));
+                        return JSON.parse(entry.getData().toString('utf8'));
                     } catch (e) {
-                        console.warn(`[Backup] Failed to parse ${table}.json, skipping.`);
+                        console.error(`[Backup] Failed to parse ${name}:`, e);
+                        return [];
                     }
                 }
+                return [];
+            };
+
+            // 2. Extract Uploads
+            const uploadsEntry = zipEntries.filter(entry => entry.entryName.startsWith('uploads/'));
+            if (uploadsEntry.length > 0) {
+                console.log(`[Backup] Restoring ${uploadsEntry.length} files to uploads/...`);
+                zip.extractAllTo(process.cwd(), true);
             }
+
+            await prisma.$transaction(async (tx) => {
+                // Wiping (Order: Leaf -> Root)
+                console.log('[Backup] Wiping tables...');
+                const deleteTables = [
+                    tx.stickyTask, tx.stickyNotePermission, tx.taskDependency, tx.invoiceItem,
+                    tx.journalLine, tx.timeLog, tx.comment, tx.asset, tx.notification,
+                    tx.leaveRequest, tx.attendanceRecord, tx.payrollSlip, tx.spendSnapshot, tx.lead,
+                    tx.stickyNote, tx.task, tx.invoice, tx.journalEntry, tx.ledger, tx.adAccount,
+                    tx.campaign, tx.payrollRun, tx.holiday, tx.staffProfile,
+                    tx.accountHead, tx.client, tx.user
+                ];
+                for (const table of deleteTables) await table.deleteMany();
+
+                console.log('[Backup] Tables Wiped. Starting Restoration...');
+
+                // Inserting (Order: Root -> Leaf)
+                // We read from ZIP just-in-time to save memory
+
+                const restore = async (name: string, table: any) => {
+                    const rows = parseEntry(name);
+                    if (rows && rows.length > 0) {
+                        // Insert in chunks of 500 to invoke less SQLite variable limit issues
+                        for (let i = 0; i < rows.length; i += 500) {
+                            const chunk = rows.slice(i, i + 500);
+                            await table.createMany({ data: chunk });
+                        }
+                        console.log(`[Backup] Restored ${rows.length} records to ${name}`);
+                    }
+                };
+
+                await restore('users', tx.user);
+                await restore('staffProfiles', tx.staffProfile);
+                await restore('accountHeads', tx.accountHead);
+                await restore('clients', tx.client);
+                await restore('adAccounts', tx.adAccount);
+                await restore('leads', tx.lead);
+
+                await restore('campaigns', tx.campaign);
+                await restore('spendSnapshots', tx.spendSnapshot);
+
+                await restore('tasks', tx.task);
+                await restore('taskDependencies', tx.taskDependency);
+
+                await restore('assets', tx.asset);
+                await restore('comments', tx.comment);
+                await restore('timeLogs', tx.timeLog);
+
+                await restore('notifications', tx.notification);
+                await restore('stickyNotes', tx.stickyNote);
+                await restore('stickyTasks', tx.stickyTask);
+                await restore('stickyNotePermissions', tx.stickyNotePermission);
+
+                await restore('holidays', tx.holiday);
+                await restore('attendanceRecords', tx.attendanceRecord);
+                await restore('leaveRequests', tx.leaveRequest);
+                await restore('payrollRuns', tx.payrollRun);
+                await restore('payrollSlips', tx.payrollSlip);
+
+                await restore('ledgers', tx.ledger);
+                await restore('journalEntries', tx.journalEntry);
+                await restore('journalLines', tx.journalLine);
+                await restore('invoices', tx.invoice);
+                await restore('invoiceItems', tx.invoiceItem);
+            });
+
+            // Cleanup
+            fs.unlinkSync(req.file.path);
+            res.json({ message: 'Full Backup restored successfully' });
+
+        } catch (error: any) {
+            console.error('[Backup] Import Error:', error);
+            res.status(500).json({ message: error.message || 'Import failed' });
         }
-
-        // 2. Extract Uploads (Unchanged)
-        const uploadsEntry = zipEntries.filter(entry => entry.entryName.startsWith('uploads/'));
-        if (uploadsEntry.length > 0) {
-            console.log(`[Backup] Restoring ${uploadsEntry.length} files to uploads/...`);
-            zip.extractAllTo(process.cwd(), true);
-            // Cleanup data.json from root if it was extracted (Legacy artifact)
-            if (fs.existsSync(path.join(process.cwd(), 'data.json'))) {
-                try { fs.unlinkSync(path.join(process.cwd(), 'data.json')); } catch (e) { /* ignore */ }
-            }
-        }
-
-        // 3. Import Database
-        // Note: Using the exact same transaction logic, just passing the constructed 'data' object
-        // ... (Transaction Logic - Inserted directly below to ensure scope)
-        await prisma.$transaction(async (tx) => {
-            console.log('[Backup] Wiping tables...');
-
-            // -- Wipe Old Data --
-            await tx.stickyTask.deleteMany();
-            await tx.stickyNotePermission.deleteMany();
-            await tx.taskDependency.deleteMany();
-            await tx.invoiceItem.deleteMany();
-            await tx.journalLine.deleteMany();
-            await tx.timeLog.deleteMany();
-            await tx.comment.deleteMany();
-            await tx.asset.deleteMany();
-            await tx.notification.deleteMany();
-            await tx.leaveRequest.deleteMany();
-            await tx.attendanceRecord.deleteMany();
-            await tx.payrollSlip.deleteMany();
-            await tx.spendSnapshot.deleteMany();
-            await tx.lead.deleteMany();
-
-            await tx.stickyNote.deleteMany();
-            await tx.task.deleteMany();
-            await tx.invoice.deleteMany();
-            await tx.journalEntry.deleteMany();
-            await tx.ledger.deleteMany();
-            await tx.adAccount.deleteMany();
-            await tx.campaign.deleteMany();
-            await tx.payrollRun.deleteMany();
-            await tx.holiday.deleteMany();
-            await tx.staffProfile.deleteMany();
-
-            await tx.accountHead.deleteMany();
-            await tx.client.deleteMany();
-            await tx.user.deleteMany();
-
-            console.log('[Backup] DB Wiped. Inserting new data...');
-
-            // -- Insert New Data --
-            if (data.users?.length) await tx.user.createMany({ data: data.users });
-            if (data.staffProfiles?.length) await tx.staffProfile.createMany({ data: data.staffProfiles });
-            if (data.accountHeads?.length) await tx.accountHead.createMany({ data: data.accountHeads });
-            if (data.clients?.length) await tx.client.createMany({ data: data.clients });
-            if (data.adAccounts?.length) await tx.adAccount.createMany({ data: data.adAccounts });
-            if (data.leads?.length) await tx.lead.createMany({ data: data.leads });
-
-            if (data.campaigns?.length) await tx.campaign.createMany({ data: data.campaigns });
-            if (data.spendSnapshots?.length) await tx.spendSnapshot.createMany({ data: data.spendSnapshots });
-
-            if (data.tasks?.length) await tx.task.createMany({ data: data.tasks });
-            if (data.taskDependencies?.length) await tx.taskDependency.createMany({ data: data.taskDependencies });
-
-            if (data.assets?.length) await tx.asset.createMany({ data: data.assets });
-            if (data.comments?.length) await tx.comment.createMany({ data: data.comments });
-            if (data.timeLogs?.length) await tx.timeLog.createMany({ data: data.timeLogs });
-
-            if (data.notifications?.length) await tx.notification.createMany({ data: data.notifications });
-            if (data.stickyNotes?.length) await tx.stickyNote.createMany({ data: data.stickyNotes });
-            if (data.stickyTasks?.length) await tx.stickyTask.createMany({ data: data.stickyTasks });
-            if (data.stickyNotePermissions?.length) await tx.stickyNotePermission.createMany({ data: data.stickyNotePermissions });
-
-            if (data.holidays?.length) await tx.holiday.createMany({ data: data.holidays });
-            if (data.attendanceRecords?.length) await tx.attendanceRecord.createMany({ data: data.attendanceRecords });
-            if (data.leaveRequests?.length) await tx.leaveRequest.createMany({ data: data.leaveRequests });
-            if (data.payrollRuns?.length) await tx.payrollRun.createMany({ data: data.payrollRuns });
-            if (data.payrollSlips?.length) await tx.payrollSlip.createMany({ data: data.payrollSlips });
-
-            if (data.accountHeads?.length) {
-                if (data.ledgers?.length) await tx.ledger.createMany({ data: data.ledgers });
-                if (data.journalEntries?.length) await tx.journalEntry.createMany({ data: data.journalEntries });
-                if (data.journalLines?.length) await tx.journalLine.createMany({ data: data.journalLines });
-                if (data.invoices?.length) await tx.invoice.createMany({ data: data.invoices });
-                if (data.invoiceItems?.length) await tx.invoiceItem.createMany({ data: data.invoiceItems });
-            }
-        });
-
-        // Cleanup
-        fs.unlinkSync(req.file.path);
-        res.json({ message: 'Full Backup restored successfully' });
-
-    } catch (error: any) {
-        console.error('[Backup] Import Error:', error);
-        res.status(500).json({ message: error.message || 'Import failed' });
-    }
-};
+    };

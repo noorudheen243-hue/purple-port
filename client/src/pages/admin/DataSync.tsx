@@ -23,9 +23,18 @@ const DataSync = () => {
             link.click();
             link.remove();
             setStatus('Export Complete!');
-        } catch (e) {
+        } catch (e: any) {
             console.error(e);
-            setStatus('Export Failed');
+            // Try to extract backend error message
+            let errMsg = 'Export Failed';
+            if (e.response && e.response.data && e.response.data instanceof Blob) {
+                // Blobs are hard to read in interceptors, but let's try
+                const text = await e.response.data.text();
+                try { const json = JSON.parse(text); errMsg = json.message || errMsg; } catch { /* ignore */ }
+            } else if (e.message) {
+                errMsg = e.message;
+            }
+            setStatus(errMsg);
         }
     };
 
@@ -78,7 +87,7 @@ const DataSync = () => {
                         onClick={handleExport}
                         className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
                     >
-                        Download Backup (.json)
+                        Download Backup (.zip)
                     </button>
                 </div>
 

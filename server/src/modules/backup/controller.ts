@@ -4,8 +4,76 @@ import path from 'path';
 import fs from 'fs';
 import { PrismaClient } from '@prisma/client';
 import AdmZip from 'adm-zip';
+import { Readable } from 'stream';
 
 const prisma = new PrismaClient();
+
+// Helper: Stream Prisma Data in Chunks to avoid OOM
+class TableStream extends Readable {
+    private model: any;
+    private batchSize: number;
+    private cursor: string | null = null;
+    private isFirst: boolean = true;
+    private hasStarted: boolean = false;
+    private totalProcessed: number = 0;
+
+    constructor(model: any, batchSize = 500) {
+        super();
+        this.model = model;
+        this.batchSize = batchSize;
+    }
+
+    async _read() {
+        try {
+            if (!this.hasStarted) {
+                this.push('[');
+                this.hasStarted = true;
+            }
+
+            const params: any = {
+                take: this.batchSize,
+                orderBy: { id: 'asc' } // Ensure deterministic order
+            };
+
+            if (this.cursor) {
+                params.cursor = { id: this.cursor };
+                params.skip = 1; // Skip the cursor itself
+            }
+
+            const chunk = await this.model.findMany(params);
+
+            if (chunk.length === 0) {
+                this.push(']'); // Close Array
+                this.push(null); // EOF
+                return;
+            }
+
+            // Process Chunk
+            let jsonChunk = '';
+            for (let i = 0; i < chunk.length; i++) {
+                const record = chunk[i];
+                if (!this.isFirst) {
+                    jsonChunk += ',';
+                } else {
+                    this.isFirst = false;
+                }
+                jsonChunk += JSON.stringify(record);
+
+                // Update Cursor
+                if (i === chunk.length - 1) {
+                    this.cursor = record.id;
+                }
+            }
+
+            this.totalProcessed += chunk.length;
+            this.push(jsonChunk);
+
+        } catch (error) {
+            console.error('[Backup] Stream Error:', error);
+            this.destroy(error as Error);
+        }
+    }
+}
 
 export const downloadBackup = async (req: Request, res: Response) => {
     try {

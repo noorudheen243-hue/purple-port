@@ -107,7 +107,7 @@ export const updateTask = async (req: Request, res: Response) => {
         if (due_date) updateData.due_date = new Date(due_date);
 
         console.log("Final Update Payload sent to Service:", JSON.stringify(updateData, null, 2));
-        const task = await taskService.updateTask(req.params.id, updateData);
+        const task = await taskService.updateTask(req.params.id, updateData, req.user?.id); // Pass User ID for history logging
         console.log("Task Updated Successfully");
 
         res.json(task);

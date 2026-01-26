@@ -231,7 +231,7 @@ export const stopTimer = async (taskId: string, userId: string) => {
     });
 };
 
-export const updateTask = async (id: string, data: Prisma.TaskUpdateInput) => {
+export const updateTask = async (id: string, data: Prisma.TaskUpdateInput, userId?: string) => {
     // Automatic Timestamping Logic
     if (data.status) {
         if (data.status === 'IN_PROGRESS') {
@@ -257,6 +257,23 @@ export const updateTask = async (id: string, data: Prisma.TaskUpdateInput) => {
 
     try {
         if (existingTask) {
+            // -- SYSTEM COMMENT LOGIC (Status History) --
+            if (updatedTask.status !== existingTask.status && userId) {
+                // Fetch actor name
+                const actor = await prisma.user.findUnique({ where: { id: userId }, select: { full_name: true } });
+                const actorName = actor ? actor.full_name : 'System';
+
+                // Create System Comment
+                await prisma.comment.create({
+                    data: {
+                        task_id: id,
+                        author_id: userId, // The user performing the action
+                        content: `System: Status changed from ${existingTask.status} to ${updatedTask.status} by ${actorName}`,
+                        is_revision_request: false // Reuse existing boolean or add 'is_system' later if needed. For now, text prefix suffices.
+                    }
+                });
+            }
+
             // Notify new assignee
             if (updatedTask.assignee_id && updatedTask.assignee_id !== existingTask.assignee_id) {
                 await createNotification(

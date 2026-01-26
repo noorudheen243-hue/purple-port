@@ -330,26 +330,43 @@ const TaskDetail = () => {
                         <div className="bg-card border border-border rounded-lg flex flex-col shadow-sm overflow-hidden min-h-[400px]">
                             <div className="p-4 border-b font-semibold bg-muted/30">Activity & Comments</div>
                             <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                                {task.comments?.map((comment: any) => (
-                                    <div key={comment.id} className="flex gap-4">
-                                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold shrink-0 overflow-hidden">
-                                            {comment.author.avatar_url ? (
-                                                <img src={getAssetUrl(comment.author.avatar_url)} alt="Avatar" className="w-full h-full object-cover" />
-                                            ) : (
-                                                comment.author.full_name.charAt(0)
-                                            )}
-                                        </div>
-                                        <div className="w-full">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="font-semibold text-sm">{comment.author.full_name}</span>
-                                                <span className="text-xs text-muted-foreground">{format(new Date(comment.createdAt), 'MMM d, h:mm a')}</span>
+                                {task.comments?.map((comment: any) => {
+                                    const isSystem = comment.content.startsWith('System:');
+
+                                    if (isSystem) {
+                                        return (
+                                            <div key={comment.id} className="flex justify-center my-4">
+                                                <span className="text-xs text-center bg-gray-100 text-gray-500 px-3 py-1 rounded-full border border-gray-200 shadow-sm">
+                                                    {comment.content.replace('System: ', '')}
+                                                    <span className="ml-2 text-[10px] text-gray-400 opacity-75">
+                                                        • {format(new Date(comment.createdAt), 'h:mm a, MMM d')}
+                                                    </span>
+                                                </span>
                                             </div>
-                                            <div className="text-sm text-foreground bg-muted/30 p-3 rounded-md whitespace-pre-wrap">
-                                                {comment.content}
+                                        );
+                                    }
+
+                                    return (
+                                        <div key={comment.id} className="flex gap-4">
+                                            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold shrink-0 overflow-hidden">
+                                                {comment.author.avatar_url ? (
+                                                    <img src={getAssetUrl(comment.author.avatar_url)} alt="Avatar" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    comment.author.full_name.charAt(0)
+                                                )}
+                                            </div>
+                                            <div className="w-full">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="font-semibold text-sm">{comment.author.full_name}</span>
+                                                    <span className="text-xs text-muted-foreground">{format(new Date(comment.createdAt), 'MMM d, h:mm a')}</span>
+                                                </div>
+                                                <div className="text-sm text-foreground bg-muted/30 p-3 rounded-md whitespace-pre-wrap">
+                                                    {comment.content}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                             <div className="p-4 border-t bg-background">
                                 <form onSubmit={handlePostComment} className="flex gap-2 items-end">
@@ -393,6 +410,62 @@ const TaskDetail = () => {
                                 <option value="ON_HOLD">On Hold</option>
                             </select>
                         </div>
+
+                        {/* Assignment Details Card */}
+                        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm space-y-4">
+                            <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">Assignment Details</h4>
+
+                            {/* Assigned By */}
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-gray-500">Assigned By:</span>
+                                <div className="flex items-center gap-2">
+                                    {task.assigned_by?.avatar_url ? (
+                                        <img src={getAssetUrl(task.assigned_by.avatar_url)} className="w-6 h-6 rounded-full object-cover" />
+                                    ) : (
+                                        <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600">
+                                            {task.assigned_by?.full_name?.charAt(0) || '?'}
+                                        </div>
+                                    )}
+                                    <span className="font-medium">{task.assigned_by?.full_name || 'System'}</span>
+                                </div>
+                            </div>
+
+                            {/* Assigned To */}
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-gray-500">Assigned To:</span>
+                                <div className="flex items-center gap-2">
+                                    {task.assignee ? (
+                                        <>
+                                            {task.assignee.avatar_url ? (
+                                                <img src={getAssetUrl(task.assignee.avatar_url)} className="w-6 h-6 rounded-full object-cover" />
+                                            ) : (
+                                                <div className="w-6 h-6 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-xs font-bold">
+                                                    {task.assignee.full_name?.charAt(0)}
+                                                </div>
+                                            )}
+                                            <span className="font-medium">{task.assignee.full_name}</span>
+                                        </>
+                                    ) : (
+                                        <span className="text-gray-400 italic">Unassigned</span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Dates */}
+                            <div className="pt-2 border-t mt-2 space-y-2">
+                                <div className="flex justify-between items-center text-xs text-gray-500">
+                                    <span>Created:</span>
+                                    <span className="font-mono">{new Date(task.createdAt).toLocaleString()}</span>
+                                </div>
+                                {task.due_date && (
+                                    <div className="flex justify-between items-center text-xs text-gray-500">
+                                        <span>Due Date:</span>
+                                        <span className="font-mono text-red-500 font-medium">{new Date(task.due_date).toLocaleDateString()}</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
                     </div>
 
                     {/* Asset Preview Modal */}

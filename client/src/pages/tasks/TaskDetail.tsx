@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/api';
-import { ArrowLeft, Clock, User as UserIcon, Trash2, Eye, FileText, Play, X, Pencil, Send, Link as LinkIcon } from 'lucide-react';
+import { ArrowLeft, Clock, User as UserIcon, Trash2, Eye, FileText, Play, X, Pencil, Send, Link as LinkIcon, Paperclip } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuthStore } from '../../store/authStore';
 import { getAssetUrl } from '../../lib/utils';

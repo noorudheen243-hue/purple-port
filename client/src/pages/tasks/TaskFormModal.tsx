@@ -318,29 +318,51 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                                     </div>
                                 )}
 
-                                {/* Attachments List */}
-                                <div className="space-y-2">
-                                    {files.map((file, idx) => (
-                                        <div key={`file-${idx}`} className="flex items-center justify-between text-sm bg-white p-2 rounded border border-gray-200">
-                                            <div className="flex items-center gap-2 truncate">
-                                                <FileText size={14} className="text-blue-500 shrink-0" />
-                                                <span className="truncate max-w-[200px]">{file.name}</span>
-                                                <span className="text-xs text-gray-400">({(file.size / 1024 / 1024).toFixed(1)} MB)</span>
+                                {/* Attachments List with Previews */}
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
+                                    {files.map((file, idx) => {
+                                        const isImage = file.type.startsWith('image/');
+                                        const isVideo = file.type.startsWith('video/');
+                                        const previewUrl = URL.createObjectURL(file);
+
+                                        // Cleanup blob url on unmount (React handles somewhat, but good practice to note)
+                                        return (
+                                            <div key={`file-${idx}`} className="group relative border rounded-lg overflow-hidden bg-white shadow-sm h-32 flex flex-col">
+                                                <div className="flex-1 overflow-hidden relative bg-gray-100 flex items-center justify-center">
+                                                    {isImage ? (
+                                                        <img src={previewUrl} className="w-full h-full object-cover" alt="Preview" />
+                                                    ) : isVideo ? (
+                                                        <video src={previewUrl} className="w-full h-full object-cover opacity-80" />
+                                                    ) : (
+                                                        <FileText size={32} className="text-gray-400" />
+                                                    )}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setFiles(files.filter((_, i) => i !== idx))}
+                                                        className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                                    >
+                                                        <X size={12} />
+                                                    </button>
+                                                </div>
+                                                <div className="px-2 py-1 bg-white text-[10px] truncate border-t font-medium text-gray-600" title={file.name}>
+                                                    {file.name}
+                                                </div>
                                             </div>
-                                            <button type="button" onClick={() => setFiles(files.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-600">
-                                                <X size={14} />
-                                            </button>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                     {links.map((link, idx) => (
-                                        <div key={`link-${idx}`} className="flex items-center justify-between text-sm bg-white p-2 rounded border border-gray-200">
-                                            <div className="flex items-center gap-2 truncate">
-                                                <LinkIcon size={14} className="text-green-500 shrink-0" />
-                                                <a href={link} target="_blank" rel="noopener" className="truncate max-w-[200px] hover:underline text-blue-600">{link}</a>
+                                        <div key={`link-${idx}`} className="group relative border rounded-lg overflow-hidden bg-white shadow-sm h-32 flex flex-col">
+                                            <div className="flex-1 relative bg-blue-50 flex flex-col items-center justify-center p-2 text-center">
+                                                <LinkIcon size={24} className="text-blue-500 mb-1" />
+                                                <span className="text-[10px] text-blue-600 line-clamp-2 break-all">{link}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setLinks(links.filter((_, i) => i !== idx))}
+                                                    className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    <X size={12} />
+                                                </button>
                                             </div>
-                                            <button type="button" onClick={() => setLinks(links.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-600">
-                                                <X size={14} />
-                                            </button>
                                         </div>
                                     ))}
                                 </div>

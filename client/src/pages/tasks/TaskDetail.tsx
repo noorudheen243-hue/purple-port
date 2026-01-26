@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/api';
-import { ArrowLeft, Clock, User as UserIcon, Trash2, Eye, FileText, Play, X, Pencil, Send, Link as LinkIcon, Paperclip } from 'lucide-react';
+import { ArrowLeft, Clock, User as UserIcon, Trash2, Eye, FileText, Play, X, Pencil, Send, Link as LinkIcon, Paperclip, Upload } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuthStore } from '../../store/authStore';
 import { getAssetUrl } from '../../lib/utils';
@@ -211,11 +211,11 @@ const TaskDetail = () => {
             <div className="flex-1 overflow-y-auto p-6">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-7xl mx-auto h-full">
 
-                    {/* Main Content */}
-                    <div className="lg:col-span-2 flex flex-col overflow-hidden h-full">
+                    {/* Main Content (Left Column) */}
+                    <div className="lg:col-span-2 flex flex-col gap-6 overflow-y-auto pr-2">
 
-                        {/* Description Section */}
-                        <div className="bg-card border border-border rounded-lg p-6 mb-6 shadow-sm group relative">
+                        {/* 1. Description Section */}
+                        <div className="bg-card border border-border rounded-lg p-6 shadow-sm group relative">
                             <div className="flex justify-between items-start mb-2">
                                 <h3 className="font-semibold text-lg">Description</h3>
                                 {!isEditingDescription && (
@@ -264,8 +264,61 @@ const TaskDetail = () => {
                             )}
                         </div>
 
-                        {/* Comments Section */}
-                        <div className="bg-card border border-border rounded-lg flex-1 flex flex-col shadow-sm overflow-hidden">
+                        {/* 2. Reference Attachments (Middle) */}
+                        <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="font-semibold text-lg flex items-center gap-2">
+                                    <Paperclip size={18} /> Reference Attachments
+                                </h3>
+                                <label className="cursor-pointer text-purple-600 hover:text-purple-700 text-sm font-medium flex items-center gap-2 bg-purple-50 px-3 py-1.5 rounded-lg border border-purple-100 hover:bg-purple-100 transition-colors">
+                                    <Upload size={14} /> Upload New
+                                    <input type="file" className="hidden" multiple onChange={handleFileUpload} />
+                                </label>
+                            </div>
+
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                {task.assets?.length === 0 && <div className="col-span-full text-sm text-muted-foreground italic text-center py-6 bg-gray-50 rounded-lg border border-dashed">No attachments found.</div>}
+                                {task.assets?.map((asset: any) => {
+                                    const isImage = asset.file_type?.startsWith('image/');
+                                    const isVideo = asset.file_type?.startsWith('video/');
+                                    const isLink = asset.file_type === 'link/url';
+
+                                    return (
+                                        <div key={asset.id} className="relative group bg-white border border-gray-200 rounded-lg overflow-hidden flex flex-col hover:shadow-md transition-all h-40">
+                                            {/* Preview */}
+                                            <div className="flex-1 bg-gray-100 flex items-center justify-center overflow-hidden relative cursor-pointer" onClick={() => setPreviewAsset(asset)}>
+                                                {isImage ? (
+                                                    <img src={getAssetUrl(asset.file_url)} className="w-full h-full object-cover" />
+                                                ) : isVideo ? (
+                                                    <video src={getAssetUrl(asset.file_url)} controls autoPlay className="w-full h-full object-cover opacity-80" />
+                                                ) : isLink ? (
+                                                    <div className="text-center px-4">
+                                                        <LinkIcon size={24} className="mx-auto text-blue-500 mb-1" />
+                                                        <p className="text-[10px] text-blue-600 truncate underline max-w-full">{asset.file_url}</p>
+                                                    </div>
+                                                ) : (
+                                                    <FileText size={32} className="text-gray-400" />
+                                                )}
+
+                                                {/* Hover Overlay */}
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                                    <button onClick={(e) => { e.stopPropagation(); setPreviewAsset(asset); }} className="bg-white text-gray-800 p-1.5 rounded-full hover:bg-purple-50 hover:text-purple-600"><Eye size={16} /></button>
+                                                    <button onClick={(e) => { e.stopPropagation(); deleteAssetMutation.mutate(asset.id); }} className="bg-white text-red-600 p-1.5 rounded-full hover:bg-red-50"><Trash2 size={16} /></button>
+                                                </div>
+                                            </div>
+
+                                            <div className="p-2 bg-white border-t text-xs">
+                                                <div className="font-medium truncate" title={asset.original_name}>{asset.original_name}</div>
+                                                <div className="text-gray-400 text-[10px]">{format(new Date(asset.createdAt), 'MMM d, h:mm a')}</div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* 3. Comments Section (Bottom) */}
+                        <div className="bg-card border border-border rounded-lg flex flex-col shadow-sm overflow-hidden min-h-[400px]">
                             <div className="p-4 border-b font-semibold bg-muted/30">Activity & Comments</div>
                             <div className="flex-1 overflow-y-auto p-4 space-y-6">
                                 {task.comments?.map((comment: any) => (
@@ -315,10 +368,10 @@ const TaskDetail = () => {
                         </div>
                     </div>
 
-                    {/* Sidebar */}
-                    <div className="grid grid-cols-1 gap-3 content-start">
+                    {/* Sidebar (Right Column) */}
+                    <div className="lg:col-span-1 grid grid-cols-1 gap-3 content-start">
                         {/* Status Select */}
-                        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm sticky top-0">
                             <label className="text-xs font-semibold text-gray-500 uppercase mb-2 block">Status</label>
                             <select
                                 className="w-full p-2 border rounded-md text-sm bg-gray-50"
@@ -331,69 +384,6 @@ const TaskDetail = () => {
                                 <option value="ON_HOLD">On Hold</option>
                             </select>
                         </div>
-
-                        {/* Assets Section */}
-                        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-                            <div className="flex justify-between items-center mb-4">
-                                <label className="text-xs font-semibold text-gray-500 uppercase">Assets</label>
-                                <label className="cursor-pointer text-purple-600 hover:text-purple-700 text-xs font-medium flex items-center gap-1">
-                                    <Paperclip size={14} /> Attach
-                                    <input type="file" className="hidden" onChange={handleFileUpload} />
-                                </label>
-                            </div>
-
-                            <div className="space-y-3">
-                                {task.assets?.length === 0 && <div className="text-xs text-muted-foreground italic text-center py-4">No assets attached.</div>}
-                                {task.assets?.map((asset: any) => {
-                                    const isImage = asset.file_type?.startsWith('image/');
-                                    const isVideo = asset.file_type?.startsWith('video/');
-                                    const isLink = asset.file_type === 'link/url';
-
-                                    return (
-                                        <div key={asset.id} className="relative group bg-white border border-gray-200 rounded-lg overflow-hidden flex flex-col hover:shadow-md transition-all">
-                                            {/* Preview */}
-                                            <div className="h-32 bg-gray-50 flex items-center justify-center overflow-hidden relative border-b border-gray-100">
-                                                {isImage ? (
-                                                    <img src={getAssetUrl(asset.file_url)} className="w-full h-full object-cover" />
-                                                ) : isVideo ? (
-                                                    <video src={getAssetUrl(asset.file_url)} className="w-full h-full object-cover opacity-80" />
-                                                ) : isLink ? (
-                                                    <div className="text-center px-4">
-                                                        <LinkIcon size={32} className="mx-auto text-blue-500 mb-2" />
-                                                        <p className="text-xs text-blue-600 truncate underline">{asset.file_url}</p>
-                                                    </div>
-                                                ) : (
-                                                    <FileText size={32} className="text-gray-400" />
-                                                )}
-                                            </div>
-
-                                            <div className="p-3">
-                                                <div className="text-sm font-medium truncate mb-1" title={asset.original_name}>{asset.original_name}</div>
-                                                <div className="text-[10px] text-gray-500 mb-3">
-                                                    {isLink ? 'External Link' : `${(asset.size_bytes / 1024 / 1024).toFixed(1)} MB`} • {format(new Date(asset.createdAt), 'MMM d')}
-                                                </div>
-
-                                                <div className="flex gap-2">
-                                                    {isLink ? (
-                                                        <a href={asset.file_url} target="_blank" rel="noopener" className="flex-1 bg-blue-50 text-blue-700 py-1.5 rounded text-xs font-semibold hover:bg-blue-100 flex items-center justify-center gap-1">
-                                                            <LinkIcon size={12} /> Open
-                                                        </a>
-                                                    ) : (
-                                                        <button onClick={() => setPreviewAsset(asset)} className="flex-1 bg-purple-50 text-purple-700 py-1.5 rounded text-xs font-semibold hover:bg-purple-100 flex items-center justify-center gap-1">
-                                                            <Eye size={12} /> View
-                                                        </button>
-                                                    )}
-                                                    <button onClick={(e) => { e.stopPropagation(); deleteAssetMutation.mutate(asset.id); }} className="px-3 bg-red-50 text-red-600 rounded hover:bg-red-100 flex items-center justify-center border border-red-100" title="Delete">
-                                                        <Trash2 size={14} />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
                     </div>
 
                     {/* Asset Preview Modal */}
@@ -427,3 +417,4 @@ const TaskDetail = () => {
 };
 
 export default TaskDetail;
+

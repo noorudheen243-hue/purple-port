@@ -127,11 +127,25 @@ export const getTasks = async (filters: {
     if (filters.priority) whereClause.priority = filters.priority;
 
     // Date Range Filtering (Mixed: Due Date OR Created At OR Start Date)
-    // Common pattern: If start/end provided, check if task overlaps or was created in range
     if (filters.startDate && filters.endDate) {
         whereClause.OR = [
             { createdAt: { gte: filters.startDate, lte: filters.endDate } },
             { actual_start_date: { gte: filters.startDate, lte: filters.endDate } }
+        ];
+    } else if (!filters.status) {
+        // PERF FIX: "Smart Board View"
+        // If no specific status or date range is requested (default board view),
+        // fetch ALL Active tasks, but restrict COMPLETED tasks to last 30 days.
+        // This prevents loading 10,000 old completed tasks on the board.
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        whereClause.OR = [
+            { status: { not: 'COMPLETED' } },
+            {
+                status: 'COMPLETED',
+                updatedAt: { gte: thirtyDaysAgo }
+            }
         ];
     }
 

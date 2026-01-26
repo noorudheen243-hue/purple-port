@@ -32,6 +32,15 @@ cd ..
 chown -R www-data:www-data client/dist
 chmod -R 755 client/dist
 
+# Ensure Uploads & Database are writable by www-data
+echo "📂 Setting Data Permissions..."
+mkdir -p uploads
+chown -R www-data:www-data uploads
+chmod -R 775 uploads
+
+chown -R www-data:www-data server/prisma
+chmod -R 775 server/prisma
+
 # 5. Restart Services
 echo "🔄 Restarting Services..."
 pm2 restart all

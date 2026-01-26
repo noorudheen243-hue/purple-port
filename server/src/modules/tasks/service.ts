@@ -156,7 +156,7 @@ export const getTasks = async (filters: {
             reporter: { select: { id: true, full_name: true, avatar_url: true } },
             campaign: { include: { client: true } },
             client: { select: { name: true } },
-            assigned_by: { select: { id: true, full_name: true } }, // Ensure assigned_by is fetched
+            assigned_by: { select: { id: true, full_name: true, avatar_url: true } }, // Ensure assigned_by is fetched with avatar
             _count: { select: { comments: true, assets: true, sub_tasks: true } }
         },
         orderBy: { createdAt: 'desc' }

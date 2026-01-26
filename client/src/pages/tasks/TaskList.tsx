@@ -129,52 +129,92 @@ const TaskBoard = () => {
                                     key={task.id}
                                     draggable
                                     onDragStart={(e) => handleDragStart(e, task.id)}
-                                    className="bg-card p-4 rounded border shadow-sm cursor-move hover:border-primary/50 transition-colors group relative"
+                                    className="bg-card p-3 rounded-lg border shadow-sm cursor-move hover:border-primary/50 transition-colors group relative flex flex-col gap-2"
                                 >
-                                    <div className="flex justify-between items-start mb-2">
-                                        <span className={`text-[10px] px-2 py-0.5 rounded font-medium 
+                                    {/* Header: Type, Priority, Date */}
+                                    <div className="flex justify-between items-start">
+                                        <div className="flex items-center gap-1.5">
+                                            <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider 
                                             ${task.type === 'GRAPHIC' ? 'bg-purple-100 text-purple-700' :
-                                                task.type === 'VIDEO' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}`}>
-                                            {task.type}
-                                        </span>
+                                                    task.type === 'VIDEO' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}`}>
+                                                {task.type}
+                                            </span>
+                                            {task.priority === 'URGENT' && <AlertCircle size={12} className="text-red-500" />}
+                                        </div>
 
+                                        {/* Action Menu */}
                                         {canModify(task) && (
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity outline-none">
-                                                    <MoreHorizontal size={16} />
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem onClick={() => {
-                                                        setTaskToEdit(task);
-                                                        setSearchParams({ action: 'new' }); // Re-use modal open logic
-                                                    }}>
-                                                        <Pencil className="mr-2 h-4 w-4" /> Modify
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem onClick={() => setDeleteId(task.id)} className="text-red-600 focus:text-red-600">
-                                                        <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
+                                            <div className="absolute top-2 right-2">
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity outline-none bg-white/80 p-1 rounded-full">
+                                                        <MoreHorizontal size={14} />
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem onClick={() => {
+                                                            setTaskToEdit(task);
+                                                            setSearchParams({ action: 'new' });
+                                                        }}>
+                                                            <Pencil className="mr-2 h-4 w-4" /> Modify
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuSeparator />
+                                                        <DropdownMenuItem onClick={() => setDeleteId(task.id)} className="text-red-600 focus:text-red-600">
+                                                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </div>
                                         )}
                                     </div>
-                                    <Link to={`/dashboard/tasks/${task.id}`} className="font-medium hover:underline block mb-2">
+
+                                    {/* Title & Link */}
+                                    <Link to={`/dashboard/tasks/${task.id}`} className="font-semibold text-sm hover:text-primary leading-tight line-clamp-2" title={task.title}>
                                         {task.title}
                                     </Link>
 
-                                    <div className="flex justify-between items-center mt-3">
-                                        <div className="flex -space-x-2">
-                                            {task.assignee ? (
-                                                <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold ring-2 ring-background" title={task.assignee.full_name}>
-                                                    {task.assignee.full_name.charAt(0)}
-                                                </div>
-                                            ) : (
-                                                <div className="w-6 h-6 rounded-full bg-muted border border-dashed flex items-center justify-center text-[10px]">?</div>
-                                            )}
+                                    {/* Date & Time */}
+                                    <div className="text-[10px] text-muted-foreground font-mono flex items-center gap-1">
+                                        <span>{new Date(task.createdAt).toLocaleDateString()}</span>
+                                        <span className="text-gray-300">•</span>
+                                        <span>{new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                    </div>
+
+                                    {/* Footer: People */}
+                                    <div className="flex justify-between items-center pt-2 border-t mt-1">
+                                        {/* Assigned By (Left) */}
+                                        <div className="flex items-center gap-1.5 text-[10px] text-gray-500">
+                                            <span className="text-[9px] uppercase tracking-wide opacity-70">By</span>
+                                            <div className="flex items-center gap-1" title={`Assigned By: ${task.assigned_by?.full_name || 'System'}`}>
+                                                {task.assigned_by?.avatar_url ? (
+                                                    <img src={task.assigned_by.avatar_url} className="w-4 h-4 rounded-full object-cover" />
+                                                ) : (
+                                                    <div className="w-4 h-4 rounded-full bg-gray-200 flex items-center justify-center font-bold text-gray-600">
+                                                        {task.assigned_by?.full_name?.charAt(0) || '?'}
+                                                    </div>
+                                                )}
+                                                <span className="truncate max-w-[60px]">{task.assigned_by?.full_name?.split(' ')[0]}</span>
+                                            </div>
                                         </div>
-                                        <span className={`text-xs ${task.priority === 'URGENT' ? 'text-red-500 font-bold' : 'text-muted-foreground'}`}>
-                                            {task.priority}
-                                        </span>
+
+                                        {/* Assigned To (Right) */}
+                                        <div className="flex items-center gap-1.5 text-[10px] text-gray-500">
+                                            <span className="text-[9px] uppercase tracking-wide opacity-70">To</span>
+                                            <div className="flex items-center gap-1" title={`Assigned To: ${task.assignee?.full_name || 'Unassigned'}`}>
+                                                {task.assignee ? (
+                                                    <>
+                                                        <span className="truncate max-w-[60px] font-medium text-gray-700">{task.assignee.full_name.split(' ')[0]}</span>
+                                                        {task.assignee.avatar_url ? (
+                                                            <img src={task.assignee.avatar_url} className="w-5 h-5 rounded-full object-cover ring-1 ring-white shadow-sm" />
+                                                        ) : (
+                                                            <div className="w-5 h-5 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-bold ring-1 ring-white shadow-sm">
+                                                                {task.assignee.full_name.charAt(0)}
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                ) : (
+                                                    <span className="italic text-gray-400">Unassigned</span>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             ))}

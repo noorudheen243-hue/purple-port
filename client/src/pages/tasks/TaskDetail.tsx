@@ -281,7 +281,8 @@ const TaskDetail = () => {
                                 {task.assets?.map((asset: any) => {
                                     const isImage = asset.file_type?.startsWith('image/');
                                     const isVideo = asset.file_type?.startsWith('video/');
-                                    const isLink = asset.file_type === 'link/url';
+                                    // Robust check for link type
+                                    const isLink = asset.file_type === 'link/url' || asset.file_type?.includes('link');
 
                                     return (
                                         <div key={asset.id} className="relative group bg-white border border-gray-200 rounded-lg overflow-hidden flex flex-col hover:shadow-md transition-all h-40">
@@ -290,11 +291,19 @@ const TaskDetail = () => {
                                                 {isImage ? (
                                                     <img src={getAssetUrl(asset.file_url)} className="w-full h-full object-cover" />
                                                 ) : isVideo ? (
-                                                    <video src={getAssetUrl(asset.file_url)} controls autoPlay className="w-full h-full object-cover opacity-80" />
+                                                    <video src={getAssetUrl(asset.file_url)} className="w-full h-full object-cover opacity-80" />
                                                 ) : isLink ? (
-                                                    <div className="text-center px-4">
-                                                        <LinkIcon size={24} className="mx-auto text-blue-500 mb-1" />
-                                                        <p className="text-[10px] text-blue-600 truncate underline max-w-full">{asset.file_url}</p>
+                                                    <div className="text-center px-4 w-full flex flex-col items-center">
+                                                        <LinkIcon size={24} className="text-blue-500 mb-2" />
+                                                        <a
+                                                            href={asset.file_url.startsWith('http') ? asset.file_url : `https://${asset.file_url}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            className="text-[10px] text-blue-600 block w-full hover:text-blue-800 break-all leading-tight bg-blue-50/50 px-2 py-1 rounded"
+                                                        >
+                                                            {asset.original_name || asset.file_url}
+                                                        </a>
                                                     </div>
                                                 ) : (
                                                     <FileText size={32} className="text-gray-400" />

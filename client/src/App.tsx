@@ -30,6 +30,28 @@ function App() {
 
     useEffect(() => {
         checkAuth();
+
+        // Auto-Reload on Version Mismatch (Chunk Load Error)
+        const handleChunkError = (event: ErrorEvent) => {
+            const isChunkError =
+                event.message?.includes('Failed to fetch dynamically imported module') ||
+                event.message?.includes('Importing a module script failed');
+
+            if (isChunkError) {
+                console.log('Version mismatch detected. Reloading...');
+                // Prevent infinite loops: check if we just reloaded
+                const lastReload = sessionStorage.getItem('last_chunk_reload');
+                const now = Date.now();
+                if (!lastReload || now - parseInt(lastReload) > 10000) {
+                    sessionStorage.setItem('last_chunk_reload', String(now));
+                    window.location.reload();
+                }
+            }
+        }
+
+        window.addEventListener('error', handleChunkError);
+        return () => window.removeEventListener('error', handleChunkError);
+
     }, [checkAuth]);
 
     return (
@@ -50,7 +72,7 @@ function App() {
                         </Suspense>
                         {/* VERSION INDICATOR */}
                         <div className="fixed bottom-1 right-1 opacity-50 text-[10px] bg-black/80 text-white px-2 py-0.5 rounded pointer-events-none z-[9999]">
-                            v2.0 - Reset Enabled
+                            v2.1 - Auto-Reload Enabled
                         </div>
                     </div>
                 </BrowserRouter>

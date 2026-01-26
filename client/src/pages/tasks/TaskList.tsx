@@ -1,9 +1,19 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/api';
-import { MoreHorizontal, Plus } from 'lucide-react';
+import { MoreHorizontal, Plus, Pencil, Trash2, Check, AlertCircle } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import TaskFormModal from './TaskFormModal';
+import { useAuthStore } from '../../store/authStore';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "../../components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog";
 
 const COLUMNS = [
     { id: 'PLANNED', label: 'Planned' },
@@ -16,7 +26,9 @@ const COLUMNS = [
 
 const TaskBoard = () => {
     const queryClient = useQueryClient();
-    // const [filter, setFilter] = useState('ALL'); // Placeholder for filters
+    const { user } = useAuthStore();
+    const [taskToEdit, setTaskToEdit] = useState<any>(null);
+    const [deleteId, setDeleteId] = useState<string | null>(null);
 
     const { data: tasks, isLoading } = useQuery({
         queryKey: ['tasks'],
@@ -35,6 +47,16 @@ const TaskBoard = () => {
         }
     });
 
+    const deleteTaskMutation = useMutation({
+        mutationFn: async (id: string) => {
+            await api.delete(`/tasks/${id}`);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            setDeleteId(null);
+        }
+    });
+
     // Group tasks by status
     const tasksByStatus = tasks?.reduce((acc: any, task: any) => {
         const status = task.status;
@@ -48,6 +70,7 @@ const TaskBoard = () => {
 
     const handleCloseModal = () => {
         setSearchParams({});
+        setTaskToEdit(null);
     };
 
     if (isLoading) return <div>Loading tasks...</div>;
@@ -67,12 +90,18 @@ const TaskBoard = () => {
         e.preventDefault();
     };
 
+    const canModify = (task: any) => {
+        if (!user) return false;
+        if (['ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'].includes(user.role)) return true;
+        if (task.assigned_by?.id === user.id) return true; // Creator
+        return false;
+    };
+
     return (
         <div className="h-full flex flex-col">
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold">Task Board</h1>
                 <div className="flex gap-2">
-                    {/* Filter controls would go here */}
                     <Link to="?action=new" className="bg-primary text-primary-foreground px-4 py-2 rounded-md font-medium text-sm flex items-center gap-2">
                         <Plus size={16} /> New Task
                     </Link>
@@ -100,7 +129,7 @@ const TaskBoard = () => {
                                     key={task.id}
                                     draggable
                                     onDragStart={(e) => handleDragStart(e, task.id)}
-                                    className="bg-card p-4 rounded border shadow-sm cursor-move hover:border-primary/50 transition-colors group"
+                                    className="bg-card p-4 rounded border shadow-sm cursor-move hover:border-primary/50 transition-colors group relative"
                                 >
                                     <div className="flex justify-between items-start mb-2">
                                         <span className={`text-[10px] px-2 py-0.5 rounded font-medium 
@@ -108,9 +137,26 @@ const TaskBoard = () => {
                                                 task.type === 'VIDEO' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}`}>
                                             {task.type}
                                         </span>
-                                        <button className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <MoreHorizontal size={16} />
-                                        </button>
+
+                                        {canModify(task) && (
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity outline-none">
+                                                    <MoreHorizontal size={16} />
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem onClick={() => {
+                                                        setTaskToEdit(task);
+                                                        setSearchParams({ action: 'new' }); // Re-use modal open logic
+                                                    }}>
+                                                        <Pencil className="mr-2 h-4 w-4" /> Modify
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem onClick={() => setDeleteId(task.id)} className="text-red-600 focus:text-red-600">
+                                                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        )}
                                     </div>
                                     <Link to={`/dashboard/tasks/${task.id}`} className="font-medium hover:underline block mb-2">
                                         {task.title}
@@ -140,7 +186,30 @@ const TaskBoard = () => {
             <TaskFormModal
                 isOpen={isNewTaskModalOpen}
                 onClose={handleCloseModal}
+                initialData={taskToEdit}
             />
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete Task?</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to delete this task? This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <button onClick={() => setDeleteId(null)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-md">Cancel</button>
+                        <button
+                            onClick={() => deleteId && deleteTaskMutation.mutate(deleteId)}
+                            className="px-4 py-2 text-sm bg-red-600 text-white hover:bg-red-700 rounded-md flex items-center gap-2"
+                            disabled={deleteTaskMutation.isPending}
+                        >
+                            {deleteTaskMutation.isPending ? 'Deleting...' : 'Delete'}
+                        </button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

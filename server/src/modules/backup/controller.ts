@@ -278,15 +278,39 @@ export const importFullBackupZip = async (req: Request, res: Response) => {
         await prisma.$transaction(async (tx) => {
             // Wiping (Order: Leaf -> Root)
             console.log('[Backup] Wiping tables...');
-            const deleteTables = [
-                tx.stickyTask, tx.stickyNotePermission, tx.taskDependency, tx.invoiceItem,
-                tx.journalLine, tx.timeLog, tx.comment, tx.asset, tx.notification,
-                tx.leaveRequest, tx.attendanceRecord, tx.payrollSlip, tx.spendSnapshot, tx.lead,
-                tx.stickyNote, tx.task, tx.invoice, tx.journalEntry, tx.ledger, tx.adAccount,
-                tx.campaign, tx.payrollRun, tx.holiday, tx.staffProfile,
-                tx.accountHead, tx.client, tx.user
-            ];
-            for (const table of deleteTables) await table.deleteMany();
+            // Wiping (Order: Leaf -> Root)
+            console.log('[Backup] Wiping tables...');
+
+            // Explicit calls to satisfy TypeScript union complexity
+            await tx.stickyTask.deleteMany();
+            await tx.stickyNotePermission.deleteMany();
+            await tx.taskDependency.deleteMany();
+            await tx.invoiceItem.deleteMany();
+            await tx.journalLine.deleteMany();
+            await tx.timeLog.deleteMany();
+            await tx.comment.deleteMany();
+            await tx.asset.deleteMany();
+            await tx.notification.deleteMany();
+            await tx.leaveRequest.deleteMany();
+            await tx.attendanceRecord.deleteMany();
+            await tx.payrollSlip.deleteMany();
+            await tx.spendSnapshot.deleteMany();
+            await tx.lead.deleteMany();
+
+            await tx.stickyNote.deleteMany();
+            await tx.task.deleteMany();
+            await tx.invoice.deleteMany();
+            await tx.journalEntry.deleteMany();
+            await tx.ledger.deleteMany();
+            await tx.adAccount.deleteMany();
+            await tx.campaign.deleteMany();
+            await tx.payrollRun.deleteMany();
+            await tx.holiday.deleteMany();
+            await tx.staffProfile.deleteMany();
+
+            await tx.accountHead.deleteMany();
+            await tx.client.deleteMany();
+            await tx.user.deleteMany();
 
             console.log('[Backup] Tables Wiped. Starting Restoration...');
 

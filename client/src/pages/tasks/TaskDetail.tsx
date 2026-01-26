@@ -2,19 +2,25 @@ import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/api';
-import { ArrowLeft, Paperclip, Send, Clock, User as UserIcon, Trash2, Eye, FileText, Play, X, Pencil, Save, Link as LinkIcon, Check } from 'lucide-react';
+import { ArrowLeft, Clock, User as UserIcon, Trash2, Eye, FileText, Play, X, Pencil, Send, Link as LinkIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuthStore } from '../../store/authStore';
 import { getAssetUrl } from '../../lib/utils';
-import { Dialog, DialogContent, DialogTrigger } from '../../components/ui/dialog';
+import { Dialog, DialogContent } from '../../components/ui/dialog';
 
 const TaskDetail = () => {
     const { id } = useParams();
     const { user } = useAuthStore();
     const queryClient = useQueryClient();
-    const [commentText, setCommentText] = useState('');
-    const [previewAsset, setPreviewAsset] = useState<any>(null); // For Modal
 
+    // -- STATE & HOOKS (Moved to Top to fix React Error #310) --
+    const [isEditingDescription, setIsEditingDescription] = useState(false);
+    const [editedDescription, setEditedDescription] = useState('');
+    const [commentText, setCommentText] = useState('');
+    const [previewAsset, setPreviewAsset] = useState<any>(null);
+    const [timerDuration, setTimerDuration] = useState(0);
+
+    // -- QUERIES --
     const { data: task, isLoading } = useQuery({
         queryKey: ['task', id],
         queryFn: async () => {
@@ -23,10 +29,9 @@ const TaskDetail = () => {
         }
     });
 
-    // Timer Logic
-    const [timerDuration, setTimerDuration] = useState(0);
     const activeLog = task?.timeLogs?.[0]; // Provided by backend if running
 
+    // -- EFFECTS --
     React.useEffect(() => {
         let interval: any;
         if (activeLog) {
@@ -41,14 +46,28 @@ const TaskDetail = () => {
         return () => clearInterval(interval);
     }, [activeLog]);
 
-    const formatDuration = (seconds: number) => {
-        const h = Math.floor(seconds / 3600);
-        const m = Math.floor((seconds % 3600) / 60);
-        const s = seconds % 60;
-        return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-    };
+    // -- MUTATIONS --
 
-    // Status Mutation with Auto-Timer
+    // 1. Update Task (Description etc)
+    const updateTaskMutation = useMutation({
+        mutationFn: async (data: any) => {
+            return await api.put(`/tasks/${id}`, data);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['task', id] });
+            setIsEditingDescription(false);
+        }
+    });
+
+    // 2. Timer Controls
+    const timerMutation = useMutation({
+        mutationFn: async (action: 'start' | 'stop') => {
+            return await api.post(`/tasks/${id}/timer/${action}`);
+        },
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['task', id] })
+    });
+
+    // 3. Status Change (Auto-Timer Logic)
     const statusMutation = useMutation({
         mutationFn: async (newStatus: string) => {
             return await api.patch(`/tasks/${id}`, { status: newStatus });
@@ -64,14 +83,7 @@ const TaskDetail = () => {
         }
     });
 
-    const timerMutation = useMutation({
-        mutationFn: async (action: 'start' | 'stop') => {
-            return await api.post(`/tasks/${id}/timer/${action}`);
-        },
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['task', id] })
-    });
-
-    // Delete Asset Mutation
+    // 4. Assets
     const deleteAssetMutation = useMutation({
         mutationFn: async (assetId: string) => {
             return await api.delete(`/assets/${assetId}`);
@@ -79,7 +91,6 @@ const TaskDetail = () => {
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['task', id] })
     });
 
-    // Upload Logic
     const uploadMutation = useMutation({
         mutationFn: async (file: File) => {
             if (file.size > 50 * 1024 * 1024) {
@@ -89,12 +100,10 @@ const TaskDetail = () => {
 
             const formData = new FormData();
             formData.append('file', file);
-            // Non-interactive upload
             const uploadRes = await api.post('/upload', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
 
-            // Link to Task
             return await api.post('/assets', {
                 task_id: id,
                 original_name: file.name,
@@ -106,12 +115,7 @@ const TaskDetail = () => {
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['task', id] })
     });
 
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files?.[0]) {
-            uploadMutation.mutate(e.target.files[0]);
-        }
-    };
-
+    // 5. Comments
     const commentMutation = useMutation({
         mutationFn: async (content: string) => {
             return await api.post('/comments', { task_id: id, content });
@@ -122,6 +126,24 @@ const TaskDetail = () => {
         }
     });
 
+    // -- HANDLERS --
+    const formatDuration = (seconds: number) => {
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        const s = seconds % 60;
+        return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    };
+
+    const handleSaveDescription = () => {
+        updateTaskMutation.mutate({ description: editedDescription });
+    };
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files?.[0]) {
+            uploadMutation.mutate(e.target.files[0]);
+        }
+    };
+
     const handlePostComment = (e: React.FormEvent) => {
         e.preventDefault();
         if (commentText.trim()) {
@@ -129,29 +151,11 @@ const TaskDetail = () => {
         }
     };
 
-    if (isLoading) return <div>Loading task...</div>;
-    if (!task) return <div>Task not found</div>;
+    // -- RENDER CHECKS --
+    if (isLoading) return <div className="p-8 text-center text-gray-500">Loading task...</div>;
+    if (!task) return <div className="p-8 text-center text-red-500">Task not found</div>;
 
     const qixId = `QIX${(task.sequence_id || 0).toString().padStart(8, '0')}`;
-
-    // ADDED: State for Description Editing
-    const [isEditingDescription, setIsEditingDescription] = useState(false);
-    const [editedDescription, setEditedDescription] = useState('');
-
-    // ADDED: Update Task Mutation
-    const updateTaskMutation = useMutation({
-        mutationFn: async (data: any) => {
-            return await api.put(`/tasks/${id}`, data);
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['task', id] });
-            setIsEditingDescription(false);
-        }
-    });
-
-    const handleSaveDescription = () => {
-        updateTaskMutation.mutate({ description: editedDescription });
-    };
 
     return (
         <div className="h-full flex flex-col overflow-hidden">
@@ -168,8 +172,8 @@ const TaskDetail = () => {
                         </div>
                         <div className="flex items-center gap-4 text-xs text-gray-500 mt-1">
                             <span className={`px-2 py-0.5 rounded-full font-medium ${task.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
-                                    task.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
-                                        'bg-gray-100 text-gray-700'
+                                task.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
+                                    'bg-gray-100 text-gray-700'
                                 }`}>
                                 {task.status.replace('_', ' ')}
                             </span>
@@ -210,7 +214,7 @@ const TaskDetail = () => {
                     {/* Main Content */}
                     <div className="lg:col-span-2 flex flex-col overflow-hidden h-full">
 
-                        {/* Description Section with Edit Mode */}
+                        {/* Description Section */}
                         <div className="bg-card border border-border rounded-lg p-6 mb-6 shadow-sm group relative">
                             <div className="flex justify-between items-start mb-2">
                                 <h3 className="font-semibold text-lg">Description</h3>
@@ -260,6 +264,7 @@ const TaskDetail = () => {
                             )}
                         </div>
 
+                        {/* Comments Section */}
                         <div className="bg-card border border-border rounded-lg flex-1 flex flex-col shadow-sm overflow-hidden">
                             <div className="p-4 border-b font-semibold bg-muted/30">Activity & Comments</div>
                             <div className="flex-1 overflow-y-auto p-4 space-y-6">
@@ -311,84 +316,93 @@ const TaskDetail = () => {
                     </div>
 
                     {/* Sidebar */}
-    // ... (Sidebar Code remains, checking Assets Section) ...
+                    <div className="grid grid-cols-1 gap-3 content-start">
+                        {/* Status Select */}
+                        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                            <label className="text-xs font-semibold text-gray-500 uppercase mb-2 block">Status</label>
+                            <select
+                                className="w-full p-2 border rounded-md text-sm bg-gray-50"
+                                value={task.status}
+                                onChange={(e) => statusMutation.mutate(e.target.value)}
+                            >
+                                <option value="PLANNED">Planned</option>
+                                <option value="IN_PROGRESS">In Progress</option>
+                                <option value="COMPLETED">Completed</option>
+                                <option value="ON_HOLD">On Hold</option>
+                            </select>
+                        </div>
 
-                    <div className="grid grid-cols-1 gap-3"> {/* Changed to 1 col for bigger cards if needed, or keeping 2 */}
-                        {task.assets?.length === 0 && <div className="col-span-1 text-xs text-muted-foreground italic text-center py-4">No assets attached.</div>}
-                        {task.assets?.map((asset: any) => {
-                            const isImage = asset.file_type?.startsWith('image/');
-                            const isVideo = asset.file_type?.startsWith('video/');
-                            const isLink = asset.file_type === 'link/url';
+                        {/* Assets Section */}
+                        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                            <div className="flex justify-between items-center mb-4">
+                                <label className="text-xs font-semibold text-gray-500 uppercase">Assets</label>
+                                <label className="cursor-pointer text-purple-600 hover:text-purple-700 text-xs font-medium flex items-center gap-1">
+                                    <Paperclip size={14} /> Attach
+                                    <input type="file" className="hidden" onChange={handleFileUpload} />
+                                </label>
+                            </div>
 
-                            return (
-                                <div key={asset.id} className="relative group bg-white border border-gray-200 rounded-lg overflow-hidden flex flex-col hover:shadow-md transition-all">
-                                    {/* Asset Preview Area */}
-                                    <div className="h-32 bg-gray-50 flex items-center justify-center overflow-hidden relative border-b border-gray-100">
-                                        {isImage ? (
-                                            <img src={getAssetUrl(asset.file_url)} className="w-full h-full object-cover" />
-                                        ) : isVideo ? (
-                                            <video src={getAssetUrl(asset.file_url)} className="w-full h-full object-cover opacity-80" />
-                                        ) : isLink ? (
-                                            <div className="text-center px-4">
-                                                <LinkIcon size={32} className="mx-auto text-blue-500 mb-2" />
-                                                <p className="text-xs text-blue-600 truncate underline">{asset.file_url}</p>
+                            <div className="space-y-3">
+                                {task.assets?.length === 0 && <div className="text-xs text-muted-foreground italic text-center py-4">No assets attached.</div>}
+                                {task.assets?.map((asset: any) => {
+                                    const isImage = asset.file_type?.startsWith('image/');
+                                    const isVideo = asset.file_type?.startsWith('video/');
+                                    const isLink = asset.file_type === 'link/url';
+
+                                    return (
+                                        <div key={asset.id} className="relative group bg-white border border-gray-200 rounded-lg overflow-hidden flex flex-col hover:shadow-md transition-all">
+                                            {/* Preview */}
+                                            <div className="h-32 bg-gray-50 flex items-center justify-center overflow-hidden relative border-b border-gray-100">
+                                                {isImage ? (
+                                                    <img src={getAssetUrl(asset.file_url)} className="w-full h-full object-cover" />
+                                                ) : isVideo ? (
+                                                    <video src={getAssetUrl(asset.file_url)} className="w-full h-full object-cover opacity-80" />
+                                                ) : isLink ? (
+                                                    <div className="text-center px-4">
+                                                        <LinkIcon size={32} className="mx-auto text-blue-500 mb-2" />
+                                                        <p className="text-xs text-blue-600 truncate underline">{asset.file_url}</p>
+                                                    </div>
+                                                ) : (
+                                                    <FileText size={32} className="text-gray-400" />
+                                                )}
                                             </div>
-                                        ) : (
-                                            <FileText size={32} className="text-gray-400" />
-                                        )}
-                                    </div>
 
-                                    <div className="p-3">
-                                        <div className="text-sm font-medium truncate mb-1" title={asset.original_name}>{asset.original_name}</div>
-                                        <div className="text-[10px] text-gray-500 mb-3">
-                                            {isLink ? 'External Link' : `${(asset.size_bytes / 1024 / 1024).toFixed(1)} MB`} • {format(new Date(asset.createdAt), 'MMM d')}
+                                            <div className="p-3">
+                                                <div className="text-sm font-medium truncate mb-1" title={asset.original_name}>{asset.original_name}</div>
+                                                <div className="text-[10px] text-gray-500 mb-3">
+                                                    {isLink ? 'External Link' : `${(asset.size_bytes / 1024 / 1024).toFixed(1)} MB`} • {format(new Date(asset.createdAt), 'MMM d')}
+                                                </div>
+
+                                                <div className="flex gap-2">
+                                                    {isLink ? (
+                                                        <a href={asset.file_url} target="_blank" rel="noopener" className="flex-1 bg-blue-50 text-blue-700 py-1.5 rounded text-xs font-semibold hover:bg-blue-100 flex items-center justify-center gap-1">
+                                                            <LinkIcon size={12} /> Open
+                                                        </a>
+                                                    ) : (
+                                                        <button onClick={() => setPreviewAsset(asset)} className="flex-1 bg-purple-50 text-purple-700 py-1.5 rounded text-xs font-semibold hover:bg-purple-100 flex items-center justify-center gap-1">
+                                                            <Eye size={12} /> View
+                                                        </button>
+                                                    )}
+                                                    <button onClick={(e) => { e.stopPropagation(); deleteAssetMutation.mutate(asset.id); }} className="px-3 bg-red-50 text-red-600 rounded hover:bg-red-100 flex items-center justify-center border border-red-100" title="Delete">
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
 
-                                        {/* Bigger Action Buttons */}
-                                        <div className="flex gap-2">
-                                            {isLink ? (
-                                                <a
-                                                    href={asset.file_url}
-                                                    target="_blank"
-                                                    rel="noopener"
-                                                    className="flex-1 bg-blue-50 text-blue-700 py-1.5 rounded text-xs font-semibold hover:bg-blue-100 flex items-center justify-center gap-1"
-                                                >
-                                                    <LinkIcon size={12} /> Open
-                                                </a>
-                                            ) : (
-                                                <button
-                                                    onClick={() => setPreviewAsset(asset)}
-                                                    className="flex-1 bg-purple-50 text-purple-700 py-1.5 rounded text-xs font-semibold hover:bg-purple-100 flex items-center justify-center gap-1"
-                                                >
-                                                    <Eye size={12} /> View
-                                                </button>
-                                            )}
-
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); deleteAssetMutation.mutate(asset.id); }}
-                                                className="px-3 bg-red-50 text-red-600 rounded hover:bg-red-100 flex items-center justify-center border border-red-100"
-                                                title="Delete"
-                                            >
-                                                <Trash2 size={14} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
                     </div>
 
                     {/* Asset Preview Modal */}
                     <Dialog open={!!previewAsset} onOpenChange={(open) => !open && setPreviewAsset(null)}>
                         <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black/95 border-none text-white">
                             <div className="relative w-full h-[80vh] flex items-center justify-center">
-                                <button
-                                    onClick={() => setPreviewAsset(null)}
-                                    className="absolute top-4 right-4 z-50 p-2 bg-black/50 hover:bg-black/80 rounded-full text-white transition-colors"
-                                >
+                                <button onClick={() => setPreviewAsset(null)} className="absolute top-4 right-4 z-50 p-2 bg-black/50 hover:bg-black/80 rounded-full text-white transition-colors">
                                     <X size={24} />
                                 </button>
-
                                 {previewAsset?.file_type?.startsWith('image/') ? (
                                     <img src={getAssetUrl(previewAsset.file_url)} className="max-w-full max-h-full object-contain" />
                                 ) : previewAsset?.file_type?.startsWith('video/') ? (
@@ -397,12 +411,7 @@ const TaskDetail = () => {
                                     <div className="text-center p-10">
                                         <FileText size={64} className="mx-auto mb-4 text-gray-400" />
                                         <p className="text-xl font-semibold">{previewAsset?.original_name}</p>
-                                        <a
-                                            href={getAssetUrl(previewAsset?.file_url)}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="mt-4 inline-block bg-white text-black px-4 py-2 rounded hover:bg-gray-200"
-                                        >
+                                        <a href={getAssetUrl(previewAsset?.file_url)} target="_blank" rel="noopener noreferrer" className="mt-4 inline-block bg-white text-black px-4 py-2 rounded hover:bg-gray-200">
                                             Download / Open Original
                                         </a>
                                     </div>
@@ -410,6 +419,7 @@ const TaskDetail = () => {
                             </div>
                         </DialogContent>
                     </Dialog>
+
                 </div >
             </div >
         </div >

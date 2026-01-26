@@ -51,8 +51,18 @@ const DataSync = () => {
             // Optional: reload window
             setTimeout(() => window.location.reload(), 2000);
         },
-        onError: (err: any) => {
-            setStatus(`Error: ${err.message || 'Import failed'}`);
+        onError: async (err: any) => {
+            console.error('Import Error:', err);
+            let errMsg = 'Import Failed';
+            if (err.response?.data instanceof Blob) {
+                const text = await err.response.data.text();
+                try { const json = JSON.parse(text); errMsg = json.message || errMsg; } catch { }
+            } else if (err.response?.data?.message) {
+                errMsg = err.response.data.message;
+            } else if (err.message) {
+                errMsg = err.message;
+            }
+            setStatus(`Error: ${errMsg}`);
         }
     });
 

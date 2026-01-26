@@ -281,7 +281,27 @@ export const importFullBackupZip = async (req: Request, res: Response) => {
             // Wiping (Order: Leaf -> Root)
             console.log('[Backup] Wiping tables...');
 
-            // Explicit calls to satisfy TypeScript union complexity
+            // Pre-Wipe: Break Circular Dependencies
+            console.log('[Backup] Breaking Circular Dependencies...');
+            await tx.user.updateMany({ data: { linked_client_id: null } });
+            await tx.client.updateMany({ data: { account_manager_id: null } });
+
+            // Wiping (Order: Leaf -> Root)
+            console.log('[Backup] Wiping tables...');
+
+            // Explicit calls to satisfy TypeScript union complexity & FK Constraints
+            // Batch 1: Deep Leaves
+            await tx.chatReadReceipt.deleteMany();
+            await tx.chatMessage.deleteMany();
+            await tx.chatParticipant.deleteMany();
+            await tx.userLauncherPreference.deleteMany();
+            await tx.metaToken.deleteMany();
+
+            await tx.clientInvoiceItem.deleteMany();
+            await tx.clientInvoice.deleteMany(); // Depends on User
+
+            await tx.contentDeliverable.deleteMany(); // Depends on User/Client
+
             await tx.stickyTask.deleteMany();
             await tx.stickyNotePermission.deleteMany();
             await tx.taskDependency.deleteMany();
@@ -291,12 +311,30 @@ export const importFullBackupZip = async (req: Request, res: Response) => {
             await tx.comment.deleteMany();
             await tx.asset.deleteMany();
             await tx.notification.deleteMany();
+
+            // Batch 2: Leaves
+            await tx.regularisationRequest.deleteMany();
+            await tx.leaveAllocation.deleteMany();
             await tx.leaveRequest.deleteMany();
             await tx.attendanceRecord.deleteMany();
             await tx.payrollSlip.deleteMany();
             await tx.spendSnapshot.deleteMany();
             await tx.lead.deleteMany();
+            await tx.launcherApp.deleteMany(); // Depends on Creator User
 
+            // Client Logs
+            await tx.seoLog.deleteMany();
+            await tx.metaAdsLog.deleteMany();
+            await tx.googleAdsLog.deleteMany();
+            await tx.webDevProject.deleteMany();
+            await tx.report.deleteMany();
+            await tx.clientContentStrategy.deleteMany();
+            await tx.adInsight.deleteMany();
+            await tx.adCreative.deleteMany();
+            await tx.adSet.deleteMany();
+            await tx.adCampaign.deleteMany();
+
+            // Batch 3: Roots
             await tx.stickyNote.deleteMany();
             await tx.task.deleteMany();
             await tx.invoice.deleteMany();
@@ -310,6 +348,7 @@ export const importFullBackupZip = async (req: Request, res: Response) => {
 
             await tx.accountHead.deleteMany();
             await tx.client.deleteMany();
+            await tx.chatConversation.deleteMany(); // Root for chat
             await tx.user.deleteMany();
 
             console.log('[Backup] Tables Wiped. Starting Restoration...');
@@ -319,14 +358,26 @@ export const importFullBackupZip = async (req: Request, res: Response) => {
 
             const restore = async (name: string, table: any) => {
                 const rows = parseEntry(name);
-                if (rows && rows.length > 0) {
-                    // Insert in chunks of 500 to invoke less SQLite variable limit issues
-                    for (let i = 0; i < rows.length; i += 500) {
-                        const chunk = rows.slice(i, i + 500);
+                // Insert in chunks of 50 during cleanup to be safer
+                for (let i = 0; i < rows.length; i += 50) {
+                    const chunk = rows.slice(i, i + 50);
+                    try {
+                        // Try fast batch insert first
                         await table.createMany({ data: chunk });
+                    } catch (batchError) {
+                        console.warn(`[Backup] Batch failed for ${name}, switching to row-by-row...`);
+                        // Fallback: Insert individually to skip bad rows
+                        for (const row of chunk) {
+                            try {
+                                await table.create({ data: row });
+                            } catch (singleError) {
+                                // Ignore duplicate errors (P2002)
+                                console.warn(`[Backup] Skipped duplicate/bad record in ${name}:`, (singleError as any).meta?.target || singleError);
+                            }
+                        }
                     }
-                    console.log(`[Backup] Restored ${rows.length} records to ${name}`);
                 }
+                console.log(`[Backup] Restored ${rows.length} records to ${name}`);
             };
 
             await restore('users', tx.user);

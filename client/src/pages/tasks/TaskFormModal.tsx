@@ -5,7 +5,7 @@ import api from '../../lib/api';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { AlertCircle, Briefcase, FileText, Layers, RefreshCw, User, Calendar as CalendarIcon, Check, Plus, Search } from 'lucide-react';
+import { AlertCircle, Briefcase, FileText, Layers, RefreshCw, User, Calendar as CalendarIcon, Check, Plus, Search, Paperclip, Upload, Link as LinkIcon, Trash2, X } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import ClientFormModal from '../clients/ClientFormModal';
 import FormErrorAlert from '../../components/ui/FormErrorAlert';
@@ -37,6 +37,12 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
     const queryClient = useQueryClient();
     const { user } = useAuthStore();
     const [isClientModalOpen, setIsClientModalOpen] = useState(false);
+
+    // Attachments State
+    const [files, setFiles] = useState<File[]>([]);
+    const [links, setLinks] = useState<string[]>([]);
+    const [linkInput, setLinkInput] = useState('');
+    const [showLinkInput, setShowLinkInput] = useState(false);
 
     // Fetch Data
     const { data: campaigns } = useQuery({ queryKey: ['campaigns'], queryFn: () => api.get('/campaigns').then(res => res.data) });
@@ -71,6 +77,7 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                 content_type: initialData.content_type || ''
             });
             if (initialData.client_id) setValue('client_id', initialData.client_id); // Trigger watcher
+            // Note: Attachments editing in Create Modal not supported yet, rely on Task Detail
         } else if (isOpen && !initialData) {
             reset({
                 priority: 'MEDIUM',
@@ -79,6 +86,9 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                 nature: 'NEW',
                 description: ''
             });
+            setFiles([]);
+            setLinks([]);
+            setLinkInput('');
         }
     }, [isOpen, initialData, reset, setValue]);
 
@@ -97,15 +107,56 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
             if (!data.client_id || data.client_id === 'GENERAL') delete payload.client_id;
             if (data.due_date) payload.due_date = new Date(data.due_date);
 
+            let taskId = initialData?.id;
+            let response;
+
             if (initialData) {
-                return await api.put(`/tasks/${initialData.id}`, payload);
+                response = await api.put(`/tasks/${initialData.id}`, payload);
             } else {
-                return await api.post('/tasks', payload);
+                response = await api.post('/tasks', payload);
+                taskId = response.data.id;
             }
+
+            // Handle Attachments (Only on Create for now, Edit handled in TaskDetail)
+            if (taskId && !initialData) {
+                // Upload Files
+                if (files.length > 0) {
+                    await Promise.all(files.map(async (file) => {
+                        const formData = new FormData();
+                        formData.append('file', file);
+                        const uploadRes = await api.post('/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+
+                        await api.post('/assets', {
+                            task_id: taskId,
+                            original_name: file.name,
+                            file_url: uploadRes.data.url,
+                            file_type: file.type,
+                            size_bytes: file.size
+                        });
+                    }));
+                }
+
+                // Create Links
+                if (links.length > 0) {
+                    await Promise.all(links.map(async (link) => {
+                        await api.post('/assets', {
+                            task_id: taskId,
+                            original_name: link, // Store URL as name for links
+                            file_url: link,
+                            file_type: 'link/url',
+                            size_bytes: 0
+                        });
+                    }));
+                }
+            }
+
+            return response;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['tasks'] });
             reset();
+            setFiles([]);
+            setLinks([]);
             onClose();
         }
     });
@@ -121,11 +172,19 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
         });
     };
 
+    const addLink = () => {
+        if (linkInput.trim()) {
+            setLinks([...links, linkInput.trim()]);
+            setLinkInput('');
+            setShowLinkInput(false);
+        }
+    };
+
     return (
         <>
             <Dialog open={isOpen} onOpenChange={onClose}>
-                <DialogContent className="max-w-2xl bg-white p-0 overflow-hidden gap-0">
-                    <DialogHeader className="p-6 pb-2">
+                <DialogContent className="max-w-2xl bg-white p-0 overflow-hidden gap-0 max-h-[90vh] flex flex-col">
+                    <DialogHeader className="p-6 pb-2 shrink-0">
                         <DialogTitle className="text-xl font-bold flex items-center gap-2 text-gray-800">
                             <Layers className="text-purple-600" />
                             {initialData ? 'Edit Task' : 'Create New Task'}
@@ -134,7 +193,7 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
 
                     <form onSubmit={handleSubmit(onSubmit, (errors) => {
                         console.error("Task Validation Failed:", errors);
-                    })} className="p-6 pt-2 space-y-5">
+                    })} className="p-6 pt-2 space-y-5 overflow-y-auto flex-1">
 
                         <FormErrorAlert errors={errors} />
 
@@ -198,6 +257,95 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                             />
                             {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title.message}</p>}
                         </div>
+
+                        {/* Description Field */}
+                        <div className="space-y-1">
+                            <label className="text-sm font-medium text-gray-700">Description</label>
+                            <textarea
+                                {...register('description')}
+                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-200 focus:border-purple-500 outline-none transition-shadow min-h-[100px] resize-y"
+                                placeholder="Detailed task description & requirements..."
+                            />
+                        </div>
+
+                        {/* Attachments Section */}
+                        {!initialData && (
+                            <div className="space-y-2 border rounded-lg p-4 bg-gray-50/50">
+                                <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                                    <Paperclip size={16} /> Reference Attachments
+                                </label>
+
+                                <div className="flex flex-wrap gap-2 mb-3">
+                                    {/* Upload Button */}
+                                    <label className="cursor-pointer bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded text-sm hover:bg-gray-50 flex items-center gap-2 transition-colors shadow-sm">
+                                        <Upload size={14} /> Upload File
+                                        <input
+                                            type="file"
+                                            className="hidden"
+                                            multiple
+                                            onChange={(e) => {
+                                                if (e.target.files) {
+                                                    setFiles([...files, ...Array.from(e.target.files)]);
+                                                }
+                                            }}
+                                        />
+                                    </label>
+
+                                    {/* Link Button */}
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowLinkInput(true)}
+                                        className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded text-sm hover:bg-gray-50 flex items-center gap-2 transition-colors shadow-sm"
+                                    >
+                                        <LinkIcon size={14} /> Add Link
+                                    </button>
+                                </div>
+
+                                {/* Link Input Popover */}
+                                {showLinkInput && (
+                                    <div className="flex gap-2 items-center mb-3 animate-in fade-in slide-in-from-top-1">
+                                        <input
+                                            type="text"
+                                            className="flex-1 px-3 py-1.5 text-sm border rounded bg-white shadow-sm outline-none focus:ring-1 focus:ring-purple-500"
+                                            placeholder="Paste URL (e.g. Drive link, Figma...)"
+                                            value={linkInput}
+                                            onChange={(e) => setLinkInput(e.target.value)}
+                                            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addLink())}
+                                            autoFocus
+                                        />
+                                        <button type="button" onClick={addLink} className="text-xs bg-purple-600 text-white px-3 py-1.5 rounded hover:bg-purple-700">Add</button>
+                                        <button type="button" onClick={() => setShowLinkInput(false)} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
+                                    </div>
+                                )}
+
+                                {/* Attachments List */}
+                                <div className="space-y-2">
+                                    {files.map((file, idx) => (
+                                        <div key={`file-${idx}`} className="flex items-center justify-between text-sm bg-white p-2 rounded border border-gray-200">
+                                            <div className="flex items-center gap-2 truncate">
+                                                <FileText size={14} className="text-blue-500 shrink-0" />
+                                                <span className="truncate max-w-[200px]">{file.name}</span>
+                                                <span className="text-xs text-gray-400">({(file.size / 1024 / 1024).toFixed(1)} MB)</span>
+                                            </div>
+                                            <button type="button" onClick={() => setFiles(files.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-600">
+                                                <X size={14} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {links.map((link, idx) => (
+                                        <div key={`link-${idx}`} className="flex items-center justify-between text-sm bg-white p-2 rounded border border-gray-200">
+                                            <div className="flex items-center gap-2 truncate">
+                                                <LinkIcon size={14} className="text-green-500 shrink-0" />
+                                                <a href={link} target="_blank" rel="noopener" className="truncate max-w-[200px] hover:underline text-blue-600">{link}</a>
+                                            </div>
+                                            <button type="button" onClick={() => setLinks(links.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-600">
+                                                <X size={14} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         <div className="grid grid-cols-2 gap-5">
                             <div className="space-y-1">
@@ -315,7 +463,7 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                             </div>
                         </div>
 
-                        <div className="flex justify-end gap-3 pt-6 border-t mt-4">
+                        <div className="flex justify-end gap-3 pt-6 border-t mt-4 sticky bottom-0 bg-white z-10">
                             <button type="button" onClick={onClose} className="px-5 py-2.5 text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition-colors">
                                 Cancel
                             </button>

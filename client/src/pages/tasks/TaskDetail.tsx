@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/api';
-import { ArrowLeft, Clock, User as UserIcon, Trash2, Eye, FileText, Play, X, Pencil, Send, Link as LinkIcon, Paperclip, Upload } from 'lucide-react';
+import { ArrowLeft, Clock, User as UserIcon, Trash2, Eye, FileText, Play, X, Pencil, Send, Link as LinkIcon, Paperclip, Upload, Check } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuthStore } from '../../store/authStore';
 import { getAssetUrl } from '../../lib/utils';
@@ -19,6 +19,7 @@ const TaskDetail = () => {
     const [commentText, setCommentText] = useState('');
     const [previewAsset, setPreviewAsset] = useState<any>(null);
     const [timerDuration, setTimerDuration] = useState(0);
+    const [draftStatus, setDraftStatus] = useState(''); // Local draft for status
 
     // -- QUERIES --
     const { data: task, isLoading } = useQuery({
@@ -28,6 +29,13 @@ const TaskDetail = () => {
             return data;
         }
     });
+
+    // Sync draft status when task loads or changes
+    React.useEffect(() => {
+        if (task && task.status) {
+            setDraftStatus(task.status);
+        }
+    }, [task]);
 
     const activeLog = task?.timeLogs?.[0]; // Provided by backend if running
 
@@ -56,6 +64,7 @@ const TaskDetail = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['task', id] });
             setIsEditingDescription(false);
+            // Show toast or generic success feedback here if we had a toast library
         }
     });
 
@@ -68,6 +77,10 @@ const TaskDetail = () => {
     });
 
     // 3. Status Change (Auto-Timer Logic)
+    // NOTE: This mutation is now triggered by the Save Button via updateTaskMutation, OR we can keep it for direct timer-related status logic if needed.
+    // However, user wants "Save Button" to trigger update.
+    // We will merge status update into updateTaskMutation in handleSaveChanges.
+    // Keeping this hook reference if needed for timer specific status logic, but usually updateTask handles it too.
     const statusMutation = useMutation({
         mutationFn: async (newStatus: string) => {
             return await api.patch(`/tasks/${id}`, { status: newStatus });
@@ -151,6 +164,27 @@ const TaskDetail = () => {
         }
     };
 
+    // HANDLE GLOBAL SAVE
+    const handleSaveChanges = () => {
+        const payload: any = {};
+
+        // Status check
+        if (draftStatus && draftStatus !== task.status) {
+            payload.status = draftStatus;
+        }
+        // Description check (if currently editing)
+        if (isEditingDescription && editedDescription !== task.description) {
+            payload.description = editedDescription;
+        }
+
+        if (Object.keys(payload).length > 0) {
+            updateTaskMutation.mutate(payload);
+        } else {
+            // Force refresh just in case to satisfy "update everywhere" feeling
+            queryClient.invalidateQueries({ queryKey: ['task', id] });
+        }
+    };
+
     // -- RENDER CHECKS --
     if (isLoading) return <div className="p-8 text-center text-gray-500">Loading task...</div>;
     if (!task) return <div className="p-8 text-center text-red-500">Task not found</div>;
@@ -184,6 +218,23 @@ const TaskDetail = () => {
                 </div>
 
                 <div className="flex items-center gap-3">
+                    {/* SAVE BUTTON (Prominent Green) */}
+                    <button
+                        onClick={handleSaveChanges}
+                        disabled={updateTaskMutation.isPending}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-white shadow-md transition-all
+                            ${draftStatus !== task.status ? 'bg-amber-500 hover:bg-amber-600 animate-pulse' : 'bg-green-600 hover:bg-green-700'}
+                        `}
+                    >
+                        {updateTaskMutation.isPending ? 'Saving...' : (
+                            <>
+                                <Check size={18} /> {draftStatus !== task.status ? 'Save Pending Changes' : 'Save Task'}
+                            </>
+                        )}
+                    </button>
+
+                    <div className="h-8 w-px bg-gray-200 mx-2"></div>
+
                     {/* Timer Controls */}
                     {activeLog ? (
                         <div className="flex items-center gap-3 bg-red-50 px-3 py-1.5 rounded-full border border-red-100 animate-pulse">
@@ -400,15 +451,44 @@ const TaskDetail = () => {
                         <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm sticky top-0">
                             <label className="text-xs font-semibold text-gray-500 uppercase mb-2 block">Status</label>
                             <select
-                                className="w-full p-2 border rounded-md text-sm bg-gray-50"
-                                value={task.status}
-                                onChange={(e) => statusMutation.mutate(e.target.value)}
+                                className="w-full p-2 border rounded-md text-sm bg-gray-50 mb-2"
+                                value={draftStatus}
+                                onChange={(e) => setDraftStatus(e.target.value)}
                             >
                                 <option value="PLANNED">Planned</option>
                                 <option value="IN_PROGRESS">In Progress</option>
                                 <option value="COMPLETED">Completed</option>
                                 <option value="ON_HOLD">On Hold</option>
                             </select>
+                            {/* Visual Indicator of Draft Chnage */}
+                            {draftStatus !== task.status && (
+                                <p className="text-[10px] text-amber-600 font-medium animate-pulse">
+                                    * Change pending save
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Status History System Log Sidebar */}
+                        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                            <h4 className="text-xs font-semibold text-gray-500 uppercase mb-3 flex items-center gap-2">
+                                <Clock size={12} /> Status History
+                            </h4>
+                            <div className="space-y-3 max-h-[200px] overflow-y-auto pr-1">
+                                {task.comments?.filter((c: any) => c.content.startsWith('System:')).length === 0 && (
+                                    <p className="text-xs text-gray-400 italic">No status changes recorded.</p>
+                                )}
+                                {task.comments?.filter((c: any) => c.content.startsWith('System:')).map((log: any) => (
+                                    <div key={log.id} className="text-xs border-l-2 border-purple-200 pl-2 py-1">
+                                        <div className="text-gray-700 font-medium">
+                                            {log.content.replace('System: ', '').split(' by ')[0]}
+                                        </div>
+                                        <div className="text-[10px] text-gray-500 flex justify-between mt-1">
+                                            <span>{log.content.split(' by ')[1] || 'System'}</span>
+                                            <span>{format(new Date(log.createdAt), 'MMM d, h:mm a')}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
 
                         {/* Assignment Details Card */}

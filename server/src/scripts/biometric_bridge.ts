@@ -5,7 +5,7 @@ import axios from 'axios';
 // --- CONFIGURATION ---
 const DEVICE_IP = '192.168.1.201'; // Local Device IP
 const DEVICE_PORT = 4370;
-const SERVER_URL = 'http://72.61.246.22/api'; // Live VPS Backend URL
+const SERVER_URL = 'http://66.116.224.221/api'; // Live VPS Backend URL
 const BRIDGE_API_KEY = 'ag_bio_sync_v1_secret_key'; // Matches server default
 // ---------------------
 

@@ -20,8 +20,8 @@ const TaskManagerPage = () => {
                 <button
                     onClick={() => setActiveTab('dm')}
                     className={`p-6 rounded-xl border-2 transition-all flex items-center gap-4 group ${activeTab === 'dm'
-                            ? 'border-purple-600 bg-purple-50 shadow-md'
-                            : 'border-gray-200 bg-white hover:border-purple-200 hover:bg-purple-50/50'
+                        ? 'border-purple-600 bg-purple-50 shadow-md'
+                        : 'border-gray-200 bg-white hover:border-purple-200 hover:bg-purple-50/50'
                         }`}
                 >
                     <div className={`p-4 rounded-full ${activeTab === 'dm' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-400 group-hover:bg-purple-100 group-hover:text-purple-600'}`}>
@@ -36,8 +36,8 @@ const TaskManagerPage = () => {
                 <button
                     onClick={() => setActiveTab('creative')}
                     className={`p-6 rounded-xl border-2 transition-all flex items-center gap-4 group ${activeTab === 'creative'
-                            ? 'border-blue-600 bg-blue-50 shadow-md'
-                            : 'border-gray-200 bg-white hover:border-blue-200 hover:bg-blue-50/50'
+                        ? 'border-blue-600 bg-blue-50 shadow-md'
+                        : 'border-gray-200 bg-white hover:border-blue-200 hover:bg-blue-50/50'
                         }`}
                 >
                     <div className={`p-4 rounded-full ${activeTab === 'creative' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-400 group-hover:bg-blue-100 group-hover:text-blue-600'}`}>

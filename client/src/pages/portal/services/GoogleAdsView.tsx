@@ -25,8 +25,16 @@ const GoogleAdsView = () => {
         ? (user as any)?.linked_client_id
         : urlClientId;
 
-    const isAdmin = user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'DEVELOPER_ADMIN';
-    const isManageMode = isAdmin && mode === 'manage';
+    const canManage = user?.role === 'ADMIN'
+        || user?.role === 'MANAGER'
+        || user?.role === 'DEVELOPER_ADMIN'
+        || user?.role === 'MARKETING_EXEC'
+        || user?.role === 'DM_EXECUTIVE'
+        || user?.role === 'WEB_SEO_EXECUTIVE'
+        || user?.role === 'CREATIVE_DESIGNER'
+        || user?.role === 'OPERATIONS_EXECUTIVE';
+
+    const isManageMode = canManage && mode === 'manage';
 
     const { data: logs, isLoading } = useQuery({
         queryKey: ['google-ads-logs', clientId],
@@ -63,9 +71,9 @@ const GoogleAdsView = () => {
                         {clientDetails && <p className="text-muted-foreground">{clientDetails.name}</p>}
                     </div>
                 </div>
-                {isAdmin && !isManageMode && (
+                {canManage && !isManageMode && (
                     <Button variant="outline" onClick={() => navigate(`?mode=manage&clientId=${clientId}`)}>
-                        Manage Data
+                        Add Entry / Manage
                     </Button>
                 )}
                 {isManageMode && (
@@ -144,8 +152,15 @@ const GoogleAdsView = () => {
                                     </TableRow>
                                 )) : (
                                     <TableRow>
-                                        <TableCell colSpan={9} className="text-center h-24 text-muted-foreground">
-                                            No records found.
+                                        <TableCell colSpan={9} className="text-center h-32 text-muted-foreground">
+                                            <div className="flex flex-col items-center justify-center gap-2">
+                                                <p>No records found.</p>
+                                                {canManage && !isManageMode && (
+                                                    <Button variant="outline" size="sm" onClick={() => navigate(`?mode=manage&clientId=${clientId}`)}>
+                                                        Add First Daily Entry
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 )}

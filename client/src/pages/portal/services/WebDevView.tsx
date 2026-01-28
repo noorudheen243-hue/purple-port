@@ -24,8 +24,16 @@ const WebDevView = () => {
         ? (user as any)?.linked_client_id
         : urlClientId;
 
-    const isAdmin = user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'DEVELOPER_ADMIN';
-    const isManageMode = isAdmin && mode === 'manage';
+    const canManage = user?.role === 'ADMIN'
+        || user?.role === 'MANAGER'
+        || user?.role === 'DEVELOPER_ADMIN'
+        || user?.role === 'MARKETING_EXEC'
+        || user?.role === 'DM_EXECUTIVE'
+        || user?.role === 'WEB_SEO_EXECUTIVE'
+        || user?.role === 'CREATIVE_DESIGNER'
+        || user?.role === 'OPERATIONS_EXECUTIVE';
+
+    const isManageMode = canManage && mode === 'manage';
 
     const { data: projects, isLoading } = useQuery({
         queryKey: ['web-dev-projects', clientId],
@@ -65,13 +73,18 @@ const WebDevView = () => {
                         <ArrowLeft className="mr-2 h-4 w-4" /> Back
                     </Button>
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight text-gray-900">Web Development Projects</h1>
-                        {clientDetails && <p className="text-muted-foreground">{clientDetails.name}</p>}
+                        <div>
+                            <h1 className="text-3xl font-bold tracking-tight text-gray-900">Web Development Projects</h1>
+                            <div className="text-[10px] text-red-500 font-mono">
+                                DEBUG: Role=[{user?.role}] Manage=[{canManage ? 'YES' : 'NO'}] Client=[{clientId}]
+                            </div>
+                            {clientDetails && <p className="text-muted-foreground">{clientDetails.name}</p>}
+                        </div>
                     </div>
                 </div>
-                {isAdmin && !isManageMode && (
+                {canManage && !isManageMode && (
                     <Button variant="outline" onClick={() => navigate(`?mode=manage&clientId=${clientId}`)}>
-                        Manage Projects
+                        Add Entry / Manage
                     </Button>
                 )}
                 {isManageMode && (
@@ -192,8 +205,8 @@ const WebDevView = () => {
                         <Code className="mx-auto h-12 w-12 text-gray-300 mb-3" />
                         <h3 className="text-lg font-medium text-gray-900">No Web Projects Tracking</h3>
                         <p className="text-sm text-gray-500 max-w-sm mx-auto mt-2">Activate a new project in management mode to start tracking milestones and progress.</p>
-                        {isAdmin && !isManageMode && (
-                            <Button className="mt-4" onClick={() => navigate(`?mode=manage&clientId=${clientId}`)}>Manage Projects</Button>
+                        {canManage && !isManageMode && (
+                            <Button className="mt-4" onClick={() => navigate(`?mode=manage&clientId=${clientId}`)}>Add First Project</Button>
                         )}
                     </div>
                 )}

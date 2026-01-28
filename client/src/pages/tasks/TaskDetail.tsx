@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import { useAuthStore } from '../../store/authStore';
 import { getAssetUrl } from '../../lib/utils';
 import { Dialog, DialogContent } from '../../components/ui/dialog';
+import Swal from 'sweetalert2';
 
 const TaskDetail = () => {
     const { id } = useParams();
@@ -64,7 +65,16 @@ const TaskDetail = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['task', id] });
             setIsEditingDescription(false);
-            // Show toast or generic success feedback here if we had a toast library
+            // Show toast
+            Swal.fire({
+                icon: 'success',
+                title: 'Task saved Successfully',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
         }
     });
 
@@ -182,6 +192,15 @@ const TaskDetail = () => {
         } else {
             // Force refresh just in case to satisfy "update everywhere" feeling
             queryClient.invalidateQueries({ queryKey: ['task', id] });
+            Swal.fire({
+                icon: 'success',
+                title: 'Task saved Successfully',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
         }
     };
 

@@ -25,8 +25,16 @@ const ContentBrandingView = () => {
         ? (user as any)?.linked_client_id
         : urlClientId;
 
-    const isAdmin = user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'DEVELOPER_ADMIN';
-    const isManageMode = isAdmin && mode === 'manage';
+    const canManage = user?.role === 'ADMIN'
+        || user?.role === 'MANAGER'
+        || user?.role === 'DEVELOPER_ADMIN'
+        || user?.role === 'MARKETING_EXEC'
+        || user?.role === 'DM_EXECUTIVE'
+        || user?.role === 'WEB_SEO_EXECUTIVE'
+        || user?.role === 'CREATIVE_DESIGNER'
+        || user?.role === 'OPERATIONS_EXECUTIVE';
+
+    const isManageMode = canManage && mode === 'manage';
 
     const { data: deliverables, isLoading } = useQuery({
         queryKey: ['content-deliverables', clientId],
@@ -87,7 +95,16 @@ const ContentBrandingView = () => {
             ? deliverables?.filter((d: any) => d.type === filterType)
             : deliverables;
 
-        if (!list || list.length === 0) return <div className="text-center py-12 text-muted-foreground italic">No deliverables found.</div>;
+        if (!list || list.length === 0) return (
+            <div className="text-center py-12 text-muted-foreground italic flex flex-col items-center gap-4">
+                <span>No deliverables found.</span>
+                {canManage && !isManageMode && (
+                    <Button variant="outline" size="sm" onClick={() => navigate(`?mode=manage&clientId=${clientId}`)}>
+                        Add First Daily Entry
+                    </Button>
+                )}
+            </div>
+        );
 
         return (
             <div className="grid grid-cols-1 gap-4">
@@ -119,7 +136,7 @@ const ContentBrandingView = () => {
                                 {getStatusBadge(item.status)}
                             </div>
                             {/* Actions for Admin/Client */}
-                            {(isAdmin || isManageMode) && (
+                            {(canManage || isManageMode) && (
                                 <div className="flex flex-col gap-1 items-end">
                                     {/* Simple Status Toggles for quick management */}
                                     {item.status === 'SUBMITTED' && (
@@ -145,13 +162,18 @@ const ContentBrandingView = () => {
                         <ArrowLeft className="mr-2 h-4 w-4" /> Back
                     </Button>
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight text-gray-900">Content & Branding</h1>
-                        {clientDetails && <p className="text-muted-foreground">{clientDetails.name}</p>}
+                        <div>
+                            <h1 className="text-3xl font-bold tracking-tight text-gray-900">Content & Branding</h1>
+                            <div className="text-[10px] text-red-500 font-mono">
+                                DEBUG: Role=[{user?.role}] Manage=[{canManage ? 'YES' : 'NO'}] Client=[{clientId}]
+                            </div>
+                            {clientDetails && <p className="text-muted-foreground">{clientDetails.name}</p>}
+                        </div>
                     </div>
                 </div>
-                {isAdmin && !isManageMode && (
+                {canManage && !isManageMode && (
                     <Button variant="outline" onClick={() => navigate(`?mode=manage&clientId=${clientId}`)}>
-                        Manage Deliverables
+                        Add Entry / Manage
                     </Button>
                 )}
                 {isManageMode && (

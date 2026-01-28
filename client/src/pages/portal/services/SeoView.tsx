@@ -24,8 +24,16 @@ const SeoView = () => {
         ? (user as any)?.linked_client_id
         : urlClientId;
 
-    const isAdmin = user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'DEVELOPER_ADMIN';
-    const isManageMode = isAdmin && mode === 'manage';
+    const canManage = user?.role === 'ADMIN'
+        || user?.role === 'MANAGER'
+        || user?.role === 'DEVELOPER_ADMIN'
+        || user?.role === 'MARKETING_EXEC'
+        || user?.role === 'DM_EXECUTIVE'
+        || user?.role === 'WEB_SEO_EXECUTIVE'
+        || user?.role === 'CREATIVE_DESIGNER'
+        || user?.role === 'OPERATIONS_EXECUTIVE';
+
+    const isManageMode = canManage && mode === 'manage';
 
     const { data: logs, isLoading } = useQuery({
         queryKey: ['seo-logs', clientId],
@@ -57,12 +65,15 @@ const SeoView = () => {
                     </Button>
                     <div>
                         <h1 className="text-3xl font-bold tracking-tight text-gray-900">SEO Performance</h1>
+                        <div className="text-[10px] text-red-500 font-mono">
+                            DEBUG: Role=[{user?.role}] Manage=[{canManage ? 'YES' : 'NO'}] Client=[{clientId}]
+                        </div>
                         {clientDetails && <p className="text-muted-foreground">{clientDetails.name}</p>}
                     </div>
                 </div>
-                {isAdmin && !isManageMode && (
+                {canManage && !isManageMode && (
                     <Button variant="outline" onClick={() => navigate(`?mode=manage&clientId=${clientId}`)}>
-                        Manage Data
+                        Add Entry / Manage
                     </Button>
                 )}
                 {isManageMode && (
@@ -120,7 +131,18 @@ const SeoView = () => {
             <div className="space-y-8">
                 {isLoading && <div className="text-center py-8">Loading SEO data...</div>}
 
-                {logs?.map((log: any) => {
+                {!isLoading && (!logs || logs.length === 0) && (
+                    <div className="text-center py-12 border rounded-lg bg-gray-50 border-dashed">
+                        <p className="text-muted-foreground mb-4">No SEO reports found.</p>
+                        {canManage && !isManageMode && (
+                            <Button onClick={() => navigate(`?mode=manage&clientId=${clientId}`)}>
+                                Add First Daily Entry
+                            </Button>
+                        )}
+                    </div>
+                )}
+
+                {logs?.map((log: any, idx: number) => {
                     const activities = typeof log.activities_json === 'string' ? JSON.parse(log.activities_json) : log.activities_json;
                     const rankings = typeof log.keyword_rankings_json === 'string' ? JSON.parse(log.keyword_rankings_json) : log.keyword_rankings_json;
                     const monthName = new Date(0, log.month - 1).toLocaleString('default', { month: 'long' });
@@ -130,6 +152,9 @@ const SeoView = () => {
                             <CardHeader className="bg-gray-50/50 border-b">
                                 <div className="flex justify-between items-center">
                                     <div className="flex items-center gap-3">
+                                        {canManage && !isManageMode && logs && logs.length > 0 && idx === 0 && (
+                                            <Button size="sm" variant="ghost" onClick={() => navigate(`?mode=manage&clientId=${clientId}`)}>Add New</Button>
+                                        )}
                                         <div className="bg-white border rounded-lg px-3 py-1.5 text-center shadow-sm">
                                             <div className="text-xs font-bold text-gray-500 uppercase">{monthName.slice(0, 3)}</div>
                                             <div className="text-lg font-bold text-gray-900">{log.year}</div>

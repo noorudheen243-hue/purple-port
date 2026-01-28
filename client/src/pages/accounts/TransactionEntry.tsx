@@ -78,7 +78,9 @@ const TransactionEntry = () => {
             });
         },
         onError: (err: any) => {
-            alert("Failed: " + (err.response?.data?.message || err.message));
+            const serverMsg = err.response?.data?.message || "Transaction Failed";
+            const serverDetail = err.response?.data?.error || err.message;
+            alert(`❌ Error: ${serverMsg}\nDetails: ${serverDetail}`);
         }
     });
 

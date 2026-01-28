@@ -57,6 +57,7 @@ export const recordTransaction = async (req: Request, res: Response) => {
         });
         res.status(201).json(entry);
     } catch (error) {
+        console.error("TRANSACTION_ERROR:", error);
         if (error instanceof z.ZodError) {
             return res.status(400).json({ errors: error.errors });
         }

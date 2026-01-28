@@ -596,6 +596,46 @@ const OnboardingPage = () => {
                                                 </div>
                                             </div>
                                         )}                                                </div>
+                                    {/* --- BANK & PAYMENT --- */}
+                                    <div className="md:col-span-2 bg-white p-4 rounded-lg border border-gray-200 mt-2">
+                                        <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                                            <Briefcase size={18} /> Bank & Payment Details
+                                        </h4>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="label">Payment Method</label>
+                                                <select {...register('payment_method')} className="input-field">
+                                                    <option value="">Select Method...</option>
+                                                    <option value="BANK_TRANSFER">Bank Transfer</option>
+                                                    <option value="UPI">UPI</option>
+                                                    <option value="CASH">Cash</option>
+                                                    <option value="CHEQUE">Cheque</option>
+                                                </select>
+                                                {errors.payment_method && <span className="error">{errors.payment_method.message}</span>}
+                                            </div>
+                                            <div>
+                                                <label className="label">Bank Name</label>
+                                                <input {...register('bank_name')} className="input-field" placeholder="e.g. HDFC Bank" />
+                                            </div>
+                                            <div>
+                                                <label className="label">Account Number</label>
+                                                <input {...register('account_number')} className="input-field" placeholder="Account No." />
+                                            </div>
+                                            <div>
+                                                <label className="label">IFSC Code</label>
+                                                <input {...register('ifsc_code')} className="input-field uppercase" placeholder="e.g. HDFC0001234" />
+                                            </div>
+                                            <div>
+                                                <label className="label">PAN Number</label>
+                                                <input {...register('pan_number')} className="input-field uppercase" placeholder="e.g. ABCDE1234F" />
+                                            </div>
+                                            <div>
+                                                <label className="label">Aadhar Number</label>
+                                                <input {...register('aadhar_number')} className="input-field" placeholder="12-digit number" />
+                                                {errors.aadhar_number && <span className="error">{errors.aadhar_number.message}</span>}
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
 
@@ -642,6 +682,8 @@ const OnboardingPage = () => {
                                             <li><span className="font-medium text-gray-900">Role:</span> {formData.designation} ({formData.department})</li>
                                             <li><span className="font-medium text-gray-900">Email:</span> {formData.email}</li>
                                             <li><span className="font-medium text-gray-900">Salary:</span> ₹{formData.base_salary} / {formData.salary_type}</li>
+                                            {formData.payment_method && <li><span className="font-medium text-gray-900">Payment:</span> {formData.payment_method}</li>}
+                                            {formData.pan_number && <li><span className="font-medium text-gray-900">PAN:</span> {formData.pan_number}</li>}
                                         </ul>
                                     </div>
                                 </div>

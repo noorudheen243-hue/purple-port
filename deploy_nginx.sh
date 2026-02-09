@@ -2,7 +2,7 @@
 #!/bin/bash
 
 # Configuration
-DOMAIN="72.61.246.22" # Or your domain
+DOMAIN="66.116.225.152" # Or your domain
 APP_PORT=4001
 CONFIG_FILE="/etc/nginx/sites-available/default"
 
@@ -16,6 +16,14 @@ server {
     listen [::]:80 default_server;
 
     server_name $DOMAIN _;
+
+    # Increase upload size limit (Critical for Backups)
+    client_max_body_size 500M; 
+
+    # Increase timeouts for long running requests
+    proxy_read_timeout 600s; # 10 Minutes
+    proxy_connect_timeout 600s;
+    proxy_send_timeout 600s;
 
     root /var/www/purple-port/server/public;
     index index.html;

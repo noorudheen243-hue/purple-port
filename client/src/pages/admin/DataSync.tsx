@@ -42,7 +42,8 @@ const DataSync = () => {
     const importMutation = useMutation({
         mutationFn: async (formData: FormData) => {
             return await api.post('/backup/import-json', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
+                headers: { 'Content-Type': 'multipart/form-data' },
+                timeout: 1800000 // 30 Minutes
             });
         },
         onSuccess: () => {

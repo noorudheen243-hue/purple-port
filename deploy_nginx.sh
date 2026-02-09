@@ -2,7 +2,7 @@
 #!/bin/bash
 
 # Configuration
-DOMAIN="66.116.225.152" # Or your domain
+DOMAIN="66.116.224.221" # Or your domain
 APP_PORT=4001
 CONFIG_FILE="/etc/nginx/sites-available/default"
 

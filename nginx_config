@@ -2,7 +2,7 @@ server {
     listen 80 default_server;
     listen [::]:80 default_server;
 
-    server_name 66.116.225.152 _;
+    server_name 66.116.224.221 _;
     
     # Increase upload size limit (Critical for Backups)
     client_max_body_size 500M; 

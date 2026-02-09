@@ -461,8 +461,8 @@ export const importFullBackupZip = async (req: Request, res: Response) => {
             await restore('invoices', tx.invoice);
             await restore('invoiceItems', tx.invoiceItem);
         }, {
-            maxWait: 20000,
-            timeout: 600000
+            maxWait: 30000,
+            timeout: 1800000 // 30 mins
         });
 
         // Cleanup

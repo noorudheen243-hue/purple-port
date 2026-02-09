@@ -20,10 +20,10 @@ server {
     # Increase upload size limit (Critical for Backups)
     client_max_body_size 500M; 
 
-    # Increase timeouts for long running requests
-    proxy_read_timeout 600s; # 10 Minutes
-    proxy_connect_timeout 600s;
-    proxy_send_timeout 600s;
+    # Increase timeouts for long running requests - 30 Minutes
+    proxy_read_timeout 1800s; 
+    proxy_connect_timeout 1800s;
+    proxy_send_timeout 1800s;
 
     root /var/www/purple-port/server/public;
     index index.html;

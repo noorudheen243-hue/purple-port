@@ -11,9 +11,9 @@ const ZKLib = require('node-zklib');
 const axios = require('axios');
 
 // --- CONFIGURATION ---
-const DEVICE_IP = '192.168.1.201'; // User provided IP
+const DEVICE_IP = '192.168.1.201'; // Ensure this matches your Device's Local IP
 const DEVICE_PORT = 4370;          // Default ZK Port
-const SERVER_URL = 'http://localhost:4001/api/attendance/biometric-sync'; // CHANGE THIS to your Live URL if different
+const SERVER_URL = 'http://66.116.224.221/api/attendance/biometric-sync'; // Updated to Live VPS
 const API_KEY = 'ag_bio_sync_v1_secret_key'; // Set this in your server .env as well
 
 async function sync() {
@@ -88,7 +88,8 @@ async function sync() {
         if (err.response) {
             console.error(`Server Error: ${err.response.status} - ${JSON.stringify(err.response.data)}`);
         } else {
-            console.error('Sync Error:', err.message);
+            console.error('Sync Error:', err.message || err);
+            if (err.code) console.error('Error Code:', err.code);
         }
     } finally {
         // Disconnect

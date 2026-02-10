@@ -36,7 +36,7 @@ const PendingRequestsModalv2 = ({ trigger, highlightId, autoOpen, onOpenChange }
                 const element = document.getElementById(`request-${highlightId}`);
                 if (element) {
                     element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    element.classList.add('ring-2', 'ring-orange-500'); // Highlight effect
+                    element.classList.add('ring-2', 'ring-primary'); // Highlight effect
                 }
             }, 500); // Small delay to ensure render
         }
@@ -88,9 +88,9 @@ const PendingRequestsModalv2 = ({ trigger, highlightId, autoOpen, onOpenChange }
                 {trigger}
             </DialogTrigger>
             <DialogContent className="sm:max-w-[600px] h-[80vh] flex flex-col p-0 gap-0">
-                <DialogHeader className="p-6 pb-2 border-b">
+                <DialogHeader className="p-6 pb-2 border-b border-border">
                     <DialogTitle className="text-xl font-bold flex items-center gap-2">
-                        <Clock className="h-5 w-5 text-orange-500" />
+                        <Clock className="h-5 w-5 text-primary" />
                         Pending Approvals
                         <Badge variant="secondary" className="ml-2">{requests.length}</Badge>
                     </DialogTitle>
@@ -118,7 +118,7 @@ const PendingRequestsModalv2 = ({ trigger, highlightId, autoOpen, onOpenChange }
                                                 <span className="text-xs text-muted-foreground">{req.user?.department} • {req.user?.role}</span>
                                             </div>
                                         </div>
-                                        <Badge variant={req.category === 'LEAVE' ? 'default' : 'outline'} className={req.category === 'LEAVE' ? 'bg-purple-100 text-purple-700 hover:bg-purple-100' : 'text-blue-600 border-blue-200'}>
+                                        <Badge variant={req.category === 'LEAVE' ? 'default' : 'outline'} className={req.category === 'LEAVE' ? 'bg-primary/20 text-primary hover:bg-primary/30 border-primary/20' : 'text-blue-500 border-blue-500/50'}>
                                             {req.category === 'LEAVE' ? 'Leave Application' : 'Attendance Regularisation'}
                                         </Badge>
                                     </div>
@@ -147,10 +147,10 @@ const PendingRequestsModalv2 = ({ trigger, highlightId, autoOpen, onOpenChange }
                                     </div>
 
                                     <div className="flex justify-end gap-3 pt-2 border-t mt-2">
-                                        <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => handleAction(req.id, req.category, 'REJECTED')}>
+                                        <Button variant="outline" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20" onClick={() => handleAction(req.id, req.category, 'REJECTED')}>
                                             <X className="h-4 w-4 mr-1" /> Reject
                                         </Button>
-                                        <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => handleAction(req.id, req.category, 'APPROVED')}>
+                                        <Button size="sm" className="bg-green-600 dark:bg-green-700 hover:bg-green-700 dark:hover:bg-green-600 text-white" onClick={() => handleAction(req.id, req.category, 'APPROVED')}>
                                             <Check className="h-4 w-4 mr-1" /> Approve
                                         </Button>
                                     </div>

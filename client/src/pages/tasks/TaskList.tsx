@@ -4,6 +4,7 @@ import api from '../../lib/api';
 import { MoreHorizontal, Plus, Pencil, Trash2, Check, AlertCircle } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import TaskFormModal from './TaskFormModal';
+import ClearTasksModal from '../../components/tasks/ClearTasksModal';
 import { useAuthStore } from '../../store/authStore';
 import {
     DropdownMenu,
@@ -14,6 +15,7 @@ import {
     DropdownMenuTrigger,
 } from "../../components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog";
+import Swal from 'sweetalert2';
 
 const COLUMNS = [
     { id: 'PLANNED', label: 'Planned' },
@@ -29,6 +31,7 @@ const TaskBoard = () => {
     const { user } = useAuthStore();
     const [taskToEdit, setTaskToEdit] = useState<any>(null);
     const [deleteId, setDeleteId] = useState<string | null>(null);
+    const [isClearModalOpen, setIsClearModalOpen] = useState(false);
 
     const { data: tasks, isLoading } = useQuery({
         queryKey: ['tasks'],
@@ -54,6 +57,19 @@ const TaskBoard = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['tasks'] });
             setDeleteId(null);
+        }
+    });
+
+    const clearActiveMutation = useMutation({
+        mutationFn: async () => {
+            return await api.delete('/tasks/clear-active');
+        },
+        onSuccess: (data: any) => {
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            Swal.fire('Cleared!', data.message || 'Active tasks have been wiped.', 'success');
+        },
+        onError: (err: any) => {
+            Swal.fire('Error', err.response?.data?.message || 'Failed to clear tasks', 'error');
         }
     });
 
@@ -97,11 +113,38 @@ const TaskBoard = () => {
         return false;
     };
 
+
+
+
+    const handleClearTasks = () => {
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "This will wipe out ALL task data (Planned, Assigned, In Progress, Review, Revision) including attachments! This action cannot be undone.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, wipe it!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                clearActiveMutation.mutate();
+            }
+        });
+    };
+
     return (
         <div className="h-full flex flex-col">
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold">Task Board</h1>
                 <div className="flex gap-2">
+                    {user?.role === 'DEVELOPER_ADMIN' && (
+                        <button
+                            onClick={() => setIsClearModalOpen(true)}
+                            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium text-sm flex items-center gap-2 transition-colors shadow-sm"
+                        >
+                            <Trash2 size={16} /> Clear All Tasks
+                        </button>
+                    )}
                     <Link to="?action=new" className="bg-primary text-primary-foreground px-4 py-2 rounded-md font-medium text-sm flex items-center gap-2">
                         <Plus size={16} /> New Task
                     </Link>
@@ -224,7 +267,7 @@ const TaskBoard = () => {
             </div>
 
             <TaskFormModal
-                isOpen={isNewTaskModalOpen}
+                isOpen={isNewTaskModalOpen || !!taskToEdit}
                 onClose={handleCloseModal}
                 initialData={taskToEdit}
             />
@@ -250,6 +293,12 @@ const TaskBoard = () => {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Clear All Tasks Modal */}
+            <ClearTasksModal
+                isOpen={isClearModalOpen}
+                onClose={() => setIsClearModalOpen(false)}
+            />
         </div>
     );
 };

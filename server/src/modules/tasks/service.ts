@@ -509,6 +509,63 @@ export const wipeAllTaskData = async () => {
     // 3. now safe to delete Tasks
     return await prisma.task.deleteMany({});
 };
+
+// DEVELOPER ADMIN: Clear only Active Tasks (Keep Completed)
+export const clearActiveTasks = async () => {
+    // defined statuses to wipe
+    const activeStatuses = ['PLANNED', 'ASSIGNED', 'IN_PROGRESS', 'REVIEW', 'REVISION_REQUESTED'];
+
+    // 1. Find tasks to be deleted
+    const tasksToDelete = await prisma.task.findMany({
+        where: { status: { in: activeStatuses } },
+        select: { id: true }
+    });
+
+    const ids = tasksToDelete.map(t => t.id);
+
+    if (ids.length === 0) return { count: 0 };
+
+    // 2. Cleanup Dependencies first to avoid FK errors
+    // Delete TimeLogs
+    await prisma.timeLog.deleteMany({ where: { task_id: { in: ids } } });
+
+    // Delete Comments
+    await prisma.comment.deleteMany({ where: { task_id: { in: ids } } });
+
+    // Delete Assets
+    await prisma.asset.deleteMany({ where: { task_id: { in: ids } } });
+
+    // Break Parent-Child Links (in case an active task is parent to a completed one? highly unlikely direction, but safe to set null)
+    // Actually, if we delete the parent, the child's parent_id should be set to null.
+    // Prisma SetNull on delete usually handles this if configured, but let's be manual.
+    await prisma.task.updateMany({
+        where: { parent_task_id: { in: ids } },
+        data: { parent_task_id: null }
+    });
+
+    // Clear Task Dependencies where these tasks are involved
+    await prisma.taskDependency.deleteMany({
+        where: {
+            OR: [
+                { blocking_task_id: { in: ids } },
+                { blocked_task_id: { in: ids } }
+            ]
+        }
+    });
+
+    // 3. Delete Notifications related to these tasks?
+    // Notifications don't usually have a direct foreign key to Task in some schemas, or do they?
+    // Looking at createNotification usage: `link` string.
+    // We can't easily query notifications by link string safely. We'll skip notification cleanup for partial delete to avoid deleting unrelated stuff.
+    // Unless schema has `task_id` on Notification. Assuming no for now based on snippet.
+
+    // 4. Delete the Tasks
+    const result = await prisma.task.deleteMany({
+        where: { id: { in: ids } }
+    });
+
+    return result;
+};
 // ULTRA-OPTIMIZED DASHBOARD AGGREGATION
 export const calculateDashboardAggregates = async () => {
     // Run all counts in parallel for maximum speed

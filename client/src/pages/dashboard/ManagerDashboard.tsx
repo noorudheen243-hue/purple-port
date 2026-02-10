@@ -6,6 +6,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { Moon, Sun, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import PendingRequestsModal from '@/components/attendance/PendingRequestsModalv2';
+import { getAssetUrl } from '@/lib/utils';
 
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#94a3b8']; // Green, Blue, Yellow, Gray
 
@@ -239,8 +240,7 @@ const ManagerDashboard = () => {
                                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xl mb-3 overflow-hidden ring-2 ring-background">
                                     {member.avatar ? (
                                         <img
-                                            // UPDATED: Avatar URL Fix (prepend backend URL if relative)
-                                            src={member.avatar.startsWith('http') ? member.avatar : `${(import.meta as any).env.VITE_API_URL?.replace('/api', '') || 'http://localhost:4001'}${member.avatar}`}
+                                            src={getAssetUrl(member.avatar)}
                                             alt={member.name}
                                             className="w-full h-full object-cover"
                                         />

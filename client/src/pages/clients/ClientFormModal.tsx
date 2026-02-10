@@ -1022,25 +1022,27 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
                                 Cancel
                             </button>
 
-                            {currentStepIndex < STEPS.length - 1 ? (
+                            {/* Save Button - Always visible */}
+                            <button
+                                onClick={handleSubmit(onSubmit, (errors) => {
+                                    console.error("Form Validation Errors:", errors);
+                                    // FormErrorAlert will display details
+                                })}
+                                disabled={isSubmitting}
+                                className="flex items-center gap-2 px-6 py-2 text-sm font-medium bg-green-600 text-white hover:bg-green-700 rounded-md disabled:opacity-50 shadow-sm transition-colors"
+                            >
+                                <Save size={16} />
+                                {isSubmitting ? 'Saving...' : 'Save'}
+                            </button>
+
+                            {/* Next Button - Only on intermediate steps */}
+                            {currentStepIndex < STEPS.length - 1 && (
                                 <button
                                     type="button"
                                     onClick={handleNext}
                                     className="px-6 py-2 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 rounded-md shadow-sm transition-colors"
                                 >
                                     Next
-                                </button>
-                            ) : (
-                                <button
-                                    onClick={handleSubmit(onSubmit, (errors) => {
-                                        console.error("Form Validation Errors:", errors);
-                                        // FormErrorAlert will display details
-                                    })}
-                                    disabled={isSubmitting}
-                                    className="flex items-center gap-2 px-6 py-2 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 rounded-md disabled:opacity-50 shadow-sm animate-in fade-in"
-                                >
-                                    <Save size={16} />
-                                    {isSubmitting ? 'Saving...' : 'Save and Close'}
                                 </button>
                             )}
                         </div>

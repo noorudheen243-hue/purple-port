@@ -252,18 +252,29 @@ export const ensureLedger = async (entityType: string, entityId: string, headCod
     if (!head) throw new Error(`Account Head Code ${headCode} not found.`);
 
     // 3. Find Existing Ledger
-    const existing = await prisma.ledger.findFirst({
-        where: {
-            entity_type: entityType,
-            name: entityName
-        }
-    });
+    let existing;
+    if (entityId) {
+        existing = await prisma.ledger.findFirst({
+            where: {
+                entity_type: entityType,
+                entity_id: entityId
+            }
+        });
+    } else {
+        existing = await prisma.ledger.findFirst({
+            where: {
+                entity_type: entityType,
+                name: entityName
+            }
+        });
+    }
 
     if (existing) {
-        // UPDATE Logic: If head is different or entity_id is missing, update it.
+        // UPDATE Logic: If head is different, entity_id is missing, OR NAME is different (Sync Name)
         const updates: any = {};
         if (existing.head_id !== head.id) updates.head_id = head.id;
         if (existing.entity_id !== entityId) updates.entity_id = entityId;
+        if (existing.name !== entityName) updates.name = entityName;
 
         if (Object.keys(updates).length > 0) {
             console.log(`[Ledger] Automatic update of ${Object.keys(updates).join(', ')} for ${entityType} ${entityId}`);

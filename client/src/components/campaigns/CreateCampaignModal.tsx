@@ -46,7 +46,7 @@ const CreateCampaignModal = ({ clientId, isOpen, onClose }: CreateCampaignModalP
         <Dialog.Root open={isOpen} onOpenChange={onClose}>
             <Dialog.Portal>
                 <Dialog.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50" />
-                <Dialog.Content className="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] bg-card p-6 rounded-lg shadow-lg w-[90vw] max-w-md z-50 border border-border">
+                <Dialog.Content className="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] bg-background text-foreground p-6 rounded-lg shadow-lg w-[90vw] max-w-md z-50 border border-border">
                     <div className="flex justify-between items-center mb-4">
                         <Dialog.Title className="text-xl font-semibold">Create New Campaign</Dialog.Title>
                         <Dialog.Close className="text-muted-foreground hover:text-foreground">

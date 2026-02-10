@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import * as taskService from './service';
+import * as bulkOperations from './bulk-operations.service';
 
 const createTaskSchema = z.object({
     title: z.string().min(1),
@@ -192,3 +193,67 @@ export const resetData = async (req: Request, res: Response) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+export const clearActiveTasks = async (req: Request, res: Response) => {
+    try {
+        console.log('CLEAR ACTIVE TASKS REQUESTED by ' + req.user?.id);
+        const result = await taskService.clearActiveTasks();
+        res.json({ message: `Successfully cleared ${result.count} active tasks.` });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+/**
+ * Clear all tasks and related data (DEVELOPER_ADMIN only)
+ * This is a destructive operation that cannot be undone
+ */
+export const clearAllTasks = async (req: Request, res: Response) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({ message: 'Unauthorized' });
+        }
+
+        // Only DEVELOPER_ADMIN can clear all tasks
+        if (req.user.role !== 'DEVELOPER_ADMIN') {
+            return res.status(403).json({
+                message: 'Access denied. Only Developer Admins can clear all tasks.'
+            });
+        }
+
+        const result = await bulkOperations.clearAllTasks(req.user.id);
+
+        res.json(result);
+    } catch (error: any) {
+        console.error('Error in clearAllTasks:', error);
+        res.status(500).json({
+            message: error.message || 'Failed to clear tasks'
+        });
+    }
+};
+
+/**
+ * Get statistics about what will be deleted
+ */
+export const getTaskClearanceStats = async (req: Request, res: Response) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({ message: 'Unauthorized' });
+        }
+
+        if (req.user.role !== 'DEVELOPER_ADMIN') {
+            return res.status(403).json({
+                message: 'Access denied.'
+            });
+        }
+
+        const stats = await bulkOperations.getTaskClearanceStats();
+        res.json(stats);
+    } catch (error: any) {
+        console.error('Error in getTaskClearanceStats:', error);
+        res.status(500).json({
+            message: error.message || 'Failed to get stats'
+        });
+    }
+};
+

@@ -4,10 +4,11 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Briefcase, FileText, CheckCircle, ArrowRight, ArrowLeft, Upload, Lock as LockIcon, GraduationCap, Edit2 } from 'lucide-react';
+import { User, Briefcase, FileText, CheckCircle, ArrowRight, ArrowLeft, Upload, Lock as LockIcon, GraduationCap, Edit2, Save } from 'lucide-react';
 import api from '../../lib/api';
 import ImageUpload from '../../components/ui/ImageUpload';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
+import Swal from 'sweetalert2';
 import FormErrorAlert from '../../components/ui/FormErrorAlert';
 
 // --- Configuration & Constants ---
@@ -129,7 +130,7 @@ const OnboardingPage = () => {
     };
     const [direction, setDirection] = useState(0);
 
-    const { register, handleSubmit, watch, setValue, trigger, formState: { errors } } = useForm<FormValues>({
+    const { register, handleSubmit, watch, setValue, trigger, setError, getValues, formState: { errors } } = useForm<FormValues>({
         resolver: zodResolver(onboardingSchema) as any,
         mode: 'onChange',
         defaultValues: {
@@ -164,17 +165,47 @@ const OnboardingPage = () => {
         }
     }, [watchedHeadId, accountHeads]);
 
-    const handleNext = async () => {
-        // Validate current step fields before moving
-        let fieldsToValidate: any[] = [];
-        if (currentStep === 1) fieldsToValidate = ['full_name', 'email', 'personal_contact', 'date_of_birth', 'current_address'];
-        if (currentStep === 2) fieldsToValidate = ['staff_number', 'designation', 'department', 'date_of_joining', 'role'];
-        if (currentStep === 3) fieldsToValidate = ['base_salary', 'salary_type', 'ledger_options'];
+    // Field Groups for Validation
+    const STEP_FIELDS: Record<number, any[]> = {
+        1: ['full_name', 'email', 'personal_contact', 'date_of_birth', 'current_address', 'permanent_address'],
+        2: ['staff_number', 'designation', 'department', 'date_of_joining', 'role'],
+        3: ['base_salary', 'salary_type', 'ledger_options']
+    };
 
-        const isValid = await trigger(fieldsToValidate);
+    const handleNext = async () => {
+        const fields = STEP_FIELDS[currentStep] || [];
+        const isValid = await trigger(fields);
         if (isValid) {
             setDirection(1);
             setCurrentStep(prev => Math.min(prev + 1, 4));
+        }
+    };
+
+    const handlePartialSave = async () => {
+        const fields = STEP_FIELDS[currentStep] || [];
+        // Trigger validation ONLY for current step fields
+        const isValid = await trigger(fields);
+
+        if (isValid) {
+            // Check for Ledger Logic specifically if in Step 3
+            if (currentStep === 3) {
+                const ledger = watch('ledger_options');
+                if (ledger?.create && !ledger.head_id) {
+                    setError('ledger_options.head_id', {
+                        type: 'custom',
+                        message: 'Account Head is required'
+                    });
+                    return; // Stop save
+                }
+            }
+
+            console.log("Partial Save Triggered for Step:", currentStep);
+            isSaveAndKeepOpen.current = true;
+            // Send current form values (merged with existing)
+            mutation.mutate(getValues());
+        } else {
+            // Errors will be displayed automatically by RHF
+            console.warn("Validation failed for step", currentStep);
         }
     };
 
@@ -182,6 +213,8 @@ const OnboardingPage = () => {
         setDirection(-1);
         setCurrentStep(prev => Math.max(prev - 1, 1));
     };
+
+    const isSaveAndKeepOpen = React.useRef(false);
 
     const mutation = useMutation({
         mutationFn: async (data: FormValues) => {
@@ -206,8 +239,32 @@ const OnboardingPage = () => {
         },
         onSuccess: async () => {
             await queryClient.refetchQueries({ queryKey: ['staff'] });
-            alert(isEditMode ? "Staff Profile Updated Successfully!" : "Staff Onboarded Successfully!");
-            navigate('/dashboard/team');
+
+            if (isSaveAndKeepOpen.current) {
+                // Intermediate Save
+                Swal.fire({
+                    title: 'Saved!',
+                    text: 'Changes saved. You can continue editing.',
+                    icon: 'success',
+                    confirmButtonText: 'OK',
+                    confirmButtonColor: '#8b5cf6', // Purple-500
+                    customClass: {
+                        popup: 'rounded-xl shadow-xl border border-gray-100',
+                        title: 'text-xl font-bold text-gray-800',
+                        htmlContainer: 'text-gray-500'
+                    }
+                });
+            } else {
+                // Final Save
+                await Swal.fire({
+                    title: 'Success!',
+                    text: isEditMode ? "Staff Profile Updated Successfully!" : "Staff Onboarded Successfully!",
+                    icon: 'success',
+                    confirmButtonText: 'Great!',
+                    confirmButtonColor: '#10b981' // Green-500
+                });
+                navigate('/dashboard/team');
+            }
         },
         onError: (err: any) => {
             console.error("Submission Error:", err);
@@ -398,14 +455,31 @@ const OnboardingPage = () => {
                                             </select>
                                         </div>
                                         <div className="md:col-span-2">
-                                            <label className="label">Current Address</label>
-                                            <textarea {...register('current_address')} className="input-field" rows={2} placeholder="Full residential address" />
-                                            {errors.current_address && <span className="error">{errors.current_address.message}</span>}
+                                            <label className="label">Permanent Address</label>
+                                            <textarea {...register('permanent_address')} className="input-field" rows={2} placeholder="Full permanent address" />
+                                            {errors.permanent_address && <span className="error">{errors.permanent_address.message}</span>}
                                         </div>
                                         <div className="md:col-span-2">
-                                            <label className="label">Permanent Address</label>
-                                            <textarea {...register('permanent_address')} className="input-field" rows={2} placeholder="Same as current if applicable" />
-                                            {errors.permanent_address && <span className="error">{errors.permanent_address.message}</span>}
+                                            <div className="flex justify-between items-center mb-1">
+                                                <label className="label mb-0">Current Address</label>
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="rounded text-primary focus:ring-primary"
+                                                        onChange={(e) => {
+                                                            if (e.target.checked) {
+                                                                const perm = watch('permanent_address');
+                                                                setValue('current_address', perm, { shouldDirty: true });
+                                                            } else {
+                                                                setValue('current_address', '', { shouldDirty: true });
+                                                            }
+                                                        }}
+                                                    />
+                                                    <span className="text-xs text-gray-500 font-medium">Same as Permanent Address</span>
+                                                </label>
+                                            </div>
+                                            <textarea {...register('current_address')} className="input-field" rows={2} placeholder="Full residential address" />
+                                            {errors.current_address && <span className="error">{errors.current_address.message}</span>}
                                         </div>
                                     </div>
                                 </div>
@@ -703,12 +777,20 @@ const OnboardingPage = () => {
                     </button>
 
                     {currentStep < 4 ? (
-                        <button
-                            onClick={handleNext}
-                            className="bg-primary text-primary-foreground px-8 py-2.5 rounded-lg flex items-center gap-2 hover:bg-primary/90 transition-colors font-medium shadow-sm"
-                        >
-                            Next Step <ArrowRight size={18} />
-                        </button>
+                        <>
+                            <button
+                                onClick={handlePartialSave}
+                                className="bg-green-600 text-white px-6 py-2.5 rounded-lg flex items-center gap-2 hover:bg-green-700 transition-colors font-medium shadow-sm mr-2"
+                            >
+                                <Save size={18} /> Save
+                            </button>
+                            <button
+                                onClick={handleNext}
+                                className="bg-primary text-primary-foreground px-8 py-2.5 rounded-lg flex items-center gap-2 hover:bg-primary/90 transition-colors font-medium shadow-sm"
+                            >
+                                Next Step <ArrowRight size={18} />
+                            </button>
+                        </>
                     ) : (
                         <button
                             onClick={handleSubmit((data) => mutation.mutate(data), (errors) => {

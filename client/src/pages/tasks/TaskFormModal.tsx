@@ -183,13 +183,17 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
     return (
         <>
             <Dialog open={isOpen} onOpenChange={onClose}>
-                <DialogContent className="max-w-2xl bg-white p-0 overflow-hidden gap-0 max-h-[90vh] flex flex-col">
-                    <DialogHeader className="p-6 pb-2 shrink-0">
-                        <DialogTitle className="text-xl font-bold flex items-center gap-2 text-gray-800">
-                            <Layers className="text-purple-600" />
+                <DialogContent
+                    title={
+                        <div className="flex items-center gap-2">
+                            <Layers size={14} className="text-purple-600" />
                             {initialData ? 'Edit Task' : 'Create New Task'}
-                        </DialogTitle>
-                    </DialogHeader>
+                        </div>
+                    }
+                    initialWidth={1000}
+                    initialHeight={800}
+                    className="max-w-none bg-background p-0 overflow-hidden gap-0 max-h-[95vh] flex flex-col text-foreground"
+                >
 
                     <form onSubmit={handleSubmit(onSubmit, (errors) => {
                         console.error("Task Validation Failed:", errors);
@@ -200,12 +204,12 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                         {/* 1. Category & Nature (Visual Ticks) */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <label className="text-sm font-semibold text-gray-700">Category</label>
+                                <label className="text-sm font-semibold text-foreground">Category</label>
                                 <div className="flex gap-2">
                                     <button
                                         type="button"
                                         onClick={() => setValue('category', 'CAMPAIGN')}
-                                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg border transition-all ${category === 'CAMPAIGN' ? 'bg-purple-50 border-purple-500 text-purple-700 ring-1 ring-purple-500' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg border transition-all ${category === 'CAMPAIGN' ? 'bg-purple-50 border-purple-500 text-purple-700 ring-1 ring-purple-500 dark:bg-purple-900/20 dark:text-purple-300' : 'bg-background border-border text-muted-foreground hover:bg-muted/50'}`}
                                     >
                                         Campaign
                                         {category === 'CAMPAIGN' && <Check size={16} className="text-purple-600" />}
@@ -213,7 +217,7 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                                     <button
                                         type="button"
                                         onClick={() => setValue('category', 'INTERNAL')}
-                                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg border transition-all ${category === 'INTERNAL' ? 'bg-blue-50 border-blue-500 text-blue-700 ring-1 ring-blue-500' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg border transition-all ${category === 'INTERNAL' ? 'bg-blue-50 border-blue-500 text-blue-700 ring-1 ring-blue-500 dark:bg-blue-900/20 dark:text-blue-300' : 'bg-background border-border text-muted-foreground hover:bg-muted/50'}`}
                                     >
                                         Internal
                                         {category === 'INTERNAL' && <Check size={16} className="text-blue-600" />}
@@ -223,12 +227,12 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-semibold text-gray-700">Nature</label>
+                                <label className="text-sm font-semibold text-foreground">Nature</label>
                                 <div className="flex gap-2">
                                     <button
                                         type="button"
                                         onClick={() => setValue('nature', 'NEW')}
-                                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg border transition-all ${nature === 'NEW' ? 'bg-green-50 border-green-500 text-green-700 ring-1 ring-green-500' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg border transition-all ${nature === 'NEW' ? 'bg-green-50 border-green-500 text-green-700 ring-1 ring-green-500 dark:bg-green-900/20 dark:text-green-300' : 'bg-background border-border text-muted-foreground hover:bg-muted/50'}`}
                                     >
                                         New Task
                                         {nature === 'NEW' && <Check size={16} className="text-green-600" />}
@@ -236,7 +240,7 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                                     <button
                                         type="button"
                                         onClick={() => setValue('nature', 'REWORK')}
-                                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg border transition-all ${nature === 'REWORK' ? 'bg-red-50 border-red-500 text-red-700 ring-1 ring-red-500' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg border transition-all ${nature === 'REWORK' ? 'bg-red-50 border-red-500 text-red-700 ring-1 ring-red-500 dark:bg-red-900/20 dark:text-red-300' : 'bg-background border-border text-muted-foreground hover:bg-muted/50'}`}
                                     >
                                         <RefreshCw size={14} className={nature === 'REWORK' ? 'text-red-600' : 'text-gray-400'} />
                                         Rework
@@ -249,10 +253,10 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
 
                         {/* Title (Always visible) */}
                         <div className="space-y-1">
-                            <label className="text-sm font-medium text-gray-700">Task Title <span className="text-red-500">*</span></label>
+                            <label className="text-sm font-medium text-foreground">Task Title <span className="text-red-500">*</span></label>
                             <input
                                 {...register('title')}
-                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-200 focus:border-purple-500 outline-none transition-shadow"
+                                className="w-full px-4 py-2.5 border border-input bg-background rounded-lg focus:ring-2 focus:ring-purple-200 focus:border-purple-500 outline-none transition-shadow text-foreground placeholder:text-muted-foreground"
                                 placeholder="e.g. Design Holiday Banner"
                             />
                             {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title.message}</p>}
@@ -260,24 +264,24 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
 
                         {/* Description Field */}
                         <div className="space-y-1">
-                            <label className="text-sm font-medium text-gray-700">Description</label>
+                            <label className="text-sm font-medium text-foreground">Description</label>
                             <textarea
                                 {...register('description')}
-                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-200 focus:border-purple-500 outline-none transition-shadow min-h-[100px] resize-y"
+                                className="w-full px-4 py-2.5 border border-input bg-background rounded-lg focus:ring-2 focus:ring-purple-200 focus:border-purple-500 outline-none transition-shadow min-h-[100px] resize-y text-foreground placeholder:text-muted-foreground"
                                 placeholder="Detailed task description & requirements..."
                             />
                         </div>
 
                         {/* Attachments Section */}
                         {!initialData && (
-                            <div className="space-y-2 border rounded-lg p-4 bg-gray-50/50">
-                                <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                            <div className="space-y-2 border border-border rounded-lg p-4 bg-muted/30">
+                                <label className="text-sm font-medium text-foreground flex items-center gap-2">
                                     <Paperclip size={16} /> Reference Attachments
                                 </label>
 
                                 <div className="flex flex-wrap gap-2 mb-3">
                                     {/* Upload Button */}
-                                    <label className="cursor-pointer bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded text-sm hover:bg-gray-50 flex items-center gap-2 transition-colors shadow-sm">
+                                    <label className="cursor-pointer bg-background border border-border text-foreground px-3 py-1.5 rounded text-sm hover:bg-muted flex items-center gap-2 transition-colors shadow-sm">
                                         <Upload size={14} /> Upload File
                                         <input
                                             type="file"
@@ -295,7 +299,7 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                                     <button
                                         type="button"
                                         onClick={() => setShowLinkInput(true)}
-                                        className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded text-sm hover:bg-gray-50 flex items-center gap-2 transition-colors shadow-sm"
+                                        className="bg-background border border-border text-foreground px-3 py-1.5 rounded text-sm hover:bg-muted flex items-center gap-2 transition-colors shadow-sm"
                                     >
                                         <LinkIcon size={14} /> Add Link
                                     </button>
@@ -306,7 +310,7 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                                     <div className="flex gap-2 items-center mb-3 animate-in fade-in slide-in-from-top-1">
                                         <input
                                             type="text"
-                                            className="flex-1 px-3 py-1.5 text-sm border rounded bg-white shadow-sm outline-none focus:ring-1 focus:ring-purple-500"
+                                            className="flex-1 px-3 py-1.5 text-sm border border-input rounded bg-background shadow-sm outline-none focus:ring-1 focus:ring-purple-500 text-foreground"
                                             placeholder="Paste URL (e.g. Drive link, Figma...)"
                                             value={linkInput}
                                             onChange={(e) => setLinkInput(e.target.value)}
@@ -314,7 +318,7 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                                             autoFocus
                                         />
                                         <button type="button" onClick={addLink} className="text-xs bg-purple-600 text-white px-3 py-1.5 rounded hover:bg-purple-700">Add</button>
-                                        <button type="button" onClick={() => setShowLinkInput(false)} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
+                                        <button type="button" onClick={() => setShowLinkInput(false)} className="text-muted-foreground hover:text-foreground"><X size={16} /></button>
                                     </div>
                                 )}
 
@@ -327,14 +331,14 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
 
                                         // Cleanup blob url on unmount (React handles somewhat, but good practice to note)
                                         return (
-                                            <div key={`file-${idx}`} className="group relative border rounded-lg overflow-hidden bg-white shadow-sm h-32 flex flex-col">
-                                                <div className="flex-1 overflow-hidden relative bg-gray-100 flex items-center justify-center">
+                                            <div key={`file-${idx}`} className="group relative border border-border rounded-lg overflow-hidden bg-card shadow-sm h-32 flex flex-col">
+                                                <div className="flex-1 overflow-hidden relative bg-muted flex items-center justify-center">
                                                     {isImage ? (
                                                         <img src={previewUrl} className="w-full h-full object-cover" alt="Preview" />
                                                     ) : isVideo ? (
                                                         <video src={previewUrl} className="w-full h-full object-cover opacity-80" />
                                                     ) : (
-                                                        <FileText size={32} className="text-gray-400" />
+                                                        <FileText size={32} className="text-muted-foreground" />
                                                     )}
                                                     <button
                                                         type="button"
@@ -344,17 +348,17 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                                                         <X size={12} />
                                                     </button>
                                                 </div>
-                                                <div className="px-2 py-1 bg-white text-[10px] truncate border-t font-medium text-gray-600" title={file.name}>
+                                                <div className="px-2 py-1 bg-card text-[10px] truncate border-t border-border font-medium text-foreground" title={file.name}>
                                                     {file.name}
                                                 </div>
                                             </div>
                                         );
                                     })}
                                     {links.map((link, idx) => (
-                                        <div key={`link-${idx}`} className="group relative border rounded-lg overflow-hidden bg-white shadow-sm h-32 flex flex-col">
-                                            <div className="flex-1 relative bg-blue-50 flex flex-col items-center justify-center p-2 text-center">
+                                        <div key={`link-${idx}`} className="group relative border border-border rounded-lg overflow-hidden bg-card shadow-sm h-32 flex flex-col">
+                                            <div className="flex-1 relative bg-blue-50 dark:bg-blue-900/20 flex flex-col items-center justify-center p-2 text-center">
                                                 <LinkIcon size={24} className="text-blue-500 mb-1" />
-                                                <span className="text-[10px] text-blue-600 line-clamp-2 break-all">{link}</span>
+                                                <span className="text-[10px] text-blue-600 dark:text-blue-400 line-clamp-2 break-all">{link}</span>
                                                 <button
                                                     type="button"
                                                     onClick={() => setLinks(links.filter((_, i) => i !== idx))}
@@ -371,8 +375,8 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
 
                         <div className="grid grid-cols-2 gap-5">
                             <div className="space-y-1">
-                                <label className="text-sm font-medium text-gray-700">Task Type</label>
-                                <select {...register('type')} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-purple-200 outline-none">
+                                <label className="text-sm font-medium text-foreground">Task Type</label>
+                                <select {...register('type')} className="w-full px-4 py-2.5 border border-input rounded-lg bg-background text-foreground focus:ring-2 focus:ring-purple-200 outline-none">
                                     <option value="GENERIC">Generic</option>
                                     <option value="GRAPHIC">Graphic Design</option>
                                     <option value="VIDEO">Video Editing</option>
@@ -383,8 +387,8 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                                 </select>
                             </div>
                             <div className="space-y-1">
-                                <label className="text-sm font-medium text-gray-700">Priority</label>
-                                <select {...register('priority')} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-purple-200 outline-none">
+                                <label className="text-sm font-medium text-foreground">Priority</label>
+                                <select {...register('priority')} className="w-full px-4 py-2.5 border border-input rounded-lg bg-background text-foreground focus:ring-2 focus:ring-purple-200 outline-none">
                                     <option value="MEDIUM">Medium</option>
                                     <option value="HIGH">High</option>
                                     <option value="URGENT">Urgent</option>
@@ -394,24 +398,24 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                         </div>
 
                         {/* Client & Campaign Section */}
-                        <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-4">
+                        <div className="p-4 bg-muted/30 rounded-xl border border-border space-y-4">
                             {/* Client (Mandatory for ALL) */}
                             <div className="space-y-1">
-                                <label className="text-sm font-medium text-gray-700 flex justify-between">
+                                <label className="text-sm font-medium text-foreground flex justify-between">
                                     <span>Select Client <span className="text-red-500">*</span></span>
                                     <button
                                         type="button"
                                         onClick={() => setIsClientModalOpen(true)}
-                                        className="text-xs text-purple-600 font-semibold hover:underline flex items-center gap-1"
+                                        className="text-xs text-purple-600 dark:text-purple-400 font-semibold hover:underline flex items-center gap-1"
                                     >
                                         <Plus size={12} /> Add New Client
                                     </button>
                                 </label>
                                 <div className="relative">
-                                    <Briefcase className="absolute left-3 top-3 text-gray-400" size={18} />
+                                    <Briefcase className="absolute left-3 top-3 text-muted-foreground" size={18} />
                                     <select
                                         {...register('client_id')}
-                                        className={`w-full pl-10 pr-4 py-2.5 border rounded-lg appearance-none bg-white focus:ring-2 focus:ring-purple-200 outline-none ${errors.client_id ? 'border-red-300' : 'border-gray-300'}`}
+                                        className={`w-full pl-10 pr-4 py-2.5 border rounded-lg appearance-none bg-background text-foreground focus:ring-2 focus:ring-purple-200 outline-none ${errors.client_id ? 'border-red-300' : 'border-input'}`}
                                         onChange={(e) => {
                                             setValue('client_id', e.target.value);
                                             setValue('campaign_id', ''); // Reset campaign on client change
@@ -432,12 +436,12 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                             {/* Content Strategy (Visual Selection of Pending Commitments) */}
                             {selectedClientId && (
                                 <div className="space-y-1 animate-in fade-in slide-in-from-top-1">
-                                    <label className="text-sm font-medium text-gray-700">Content Type (Strategy) <span className="text-red-500">*</span></label>
+                                    <label className="text-sm font-medium text-foreground">Content Type (Strategy) <span className="text-red-500">*</span></label>
                                     <div className="relative">
-                                        <Layers className="absolute left-3 top-3 text-gray-400" size={18} />
+                                        <Layers className="absolute left-3 top-3 text-muted-foreground" size={18} />
                                         <select
                                             {...register('content_type')}
-                                            className={`w-full pl-10 pr-4 py-2.5 border rounded-lg appearance-none bg-white focus:ring-2 focus:ring-purple-200 outline-none border-gray-300`}
+                                            className={`w-full pl-10 pr-4 py-2.5 border rounded-lg appearance-none bg-background text-foreground focus:ring-2 focus:ring-purple-200 outline-none border-input`}
                                         >
                                             <option value="">-- Select Content Type --</option>
                                             {clients?.find((c: any) => c.id === selectedClientId)?.content_strategies?.map((strategy: any) => (
@@ -456,12 +460,12 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                         {/* Assigned To (Mandatory) & Due Date */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                             <div className="space-y-1">
-                                <label className="text-sm font-medium text-gray-700">Assigned To <span className="text-red-500">*</span></label>
+                                <label className="text-sm font-medium text-foreground">Assigned To <span className="text-red-500">*</span></label>
                                 <div className="relative">
-                                    <User className="absolute left-3 top-3 text-gray-400" size={18} />
+                                    <User className="absolute left-3 top-3 text-muted-foreground" size={18} />
                                     <select
                                         {...register('assignee_id')}
-                                        className={`w-full pl-10 pr-4 py-2.5 border rounded-lg appearance-none bg-white focus:ring-2 focus:ring-purple-200 outline-none ${errors.assignee_id ? 'border-red-300' : 'border-gray-300'}`}
+                                        className={`w-full pl-10 pr-4 py-2.5 border rounded-lg appearance-none bg-background text-foreground focus:ring-2 focus:ring-purple-200 outline-none ${errors.assignee_id ? 'border-red-300' : 'border-input'}`}
                                     >
                                         <option value="">-- Select Staff --</option>
                                         {staff?.filter((u: any) => u.role !== 'CLIENT' && !['9c2c3b09-1a4d-4e9f-a00a-fdcae89806a1', '0f602110-d76e-4f21-8bcf-c71959dd4015'].includes(u.id)).map((u: any) => (
@@ -473,20 +477,20 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                             </div>
 
                             <div className="space-y-1">
-                                <label className="text-sm font-medium text-gray-700">Due Date</label>
+                                <label className="text-sm font-medium text-foreground">Due Date</label>
                                 <div className="relative">
-                                    <CalendarIcon className="absolute left-3 top-3 text-gray-400" size={18} />
+                                    <CalendarIcon className="absolute left-3 top-3 text-muted-foreground" size={18} />
                                     <input
                                         type="date"
                                         {...register('due_date')}
-                                        className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-200 outline-none"
+                                        className="w-full pl-10 pr-4 py-2.5 border border-input bg-background text-foreground rounded-lg focus:ring-2 focus:ring-purple-200 outline-none"
                                     />
                                 </div>
                             </div>
                         </div>
 
-                        <div className="flex justify-end gap-3 pt-6 border-t mt-4 sticky bottom-0 bg-white z-10">
-                            <button type="button" onClick={onClose} className="px-5 py-2.5 text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition-colors">
+                        <div className="flex justify-end gap-3 pt-6 border-t border-border mt-4 sticky bottom-0 bg-background z-10 pb-4">
+                            <button type="button" onClick={onClose} className="px-5 py-2.5 text-muted-foreground font-medium hover:bg-muted rounded-lg transition-colors">
                                 Cancel
                             </button>
                             <button

@@ -62,13 +62,28 @@ const TaskDetail = () => {
         mutationFn: async (data: any) => {
             return await api.put(`/tasks/${id}`, data);
         },
-        onSuccess: () => {
+        onSuccess: (data, variables) => {
             queryClient.invalidateQueries({ queryKey: ['task', id] });
             setIsEditingDescription(false);
+
+            // Auto-Timer Logic based on Status Change
+            if (variables.status) {
+                const newStatus = variables.status;
+                // Start Timer if moving to working status and not already running
+                if (newStatus !== 'PLANNED' && newStatus !== 'COMPLETED' && !activeLog) {
+                    timerMutation.mutate('start');
+                }
+                // Stop Timer if moving to COMPLETED and currently running
+                else if (newStatus === 'COMPLETED' && activeLog) {
+                    timerMutation.mutate('stop');
+                }
+            }
+
             // Show toast
             Swal.fire({
                 icon: 'success',
                 title: 'Task saved Successfully',
+                text: variables.status ? `Status updated to ${variables.status.replace('_', ' ')}` : undefined,
                 toast: true,
                 position: 'top-end',
                 showConfirmButton: false,

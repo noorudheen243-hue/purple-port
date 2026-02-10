@@ -163,17 +163,18 @@ export const getClients = async () => {
             entity_type: 'CLIENT',
             entity_id: { in: clientIds }
         },
-        select: { entity_id: true }
+        select: { entity_id: true, head_id: true }
     });
 
-    const ledgerSet = new Set(ledgers.map(l => l.entity_id));
+    const ledgerMap = new Map(ledgers.map(l => [l.entity_id, l.head_id]));
 
     // 3. Attach flag and parse JSONs
     return clients.map(client => ({
         ...client,
         service_engagement: client.service_engagement ? JSON.parse(client.service_engagement as string) : [],
         ledger_options: {
-            create: ledgerSet.has(client.id)
+            create: ledgerMap.has(client.id),
+            head_id: ledgerMap.get(client.id) || ''
         }
     }));
 };

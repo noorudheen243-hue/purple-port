@@ -51,24 +51,24 @@ const MyProfileTab = ({ user, onClose }: { user: any, onClose: () => void }) => 
     return (
         <form onSubmit={handleSubmit((d) => updateMutation.mutate(d))} className="space-y-4 pt-4">
             <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">Full Name</label>
+                <label className="text-sm font-medium text-foreground">Full Name</label>
                 <div className="relative">
-                    <User className="absolute left-3 top-3 text-gray-400" size={18} />
-                    <input {...register('full_name')} className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-200 outline-none" />
+                    <User className="absolute left-3 top-3 text-muted-foreground" size={18} />
+                    <input {...register('full_name')} className="w-full pl-10 pr-4 py-2 border border-input rounded-lg bg-background text-foreground focus:ring-2 focus:ring-purple-200 outline-none" />
                 </div>
             </div>
             <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">Email Address</label>
+                <label className="text-sm font-medium text-foreground">Email Address</label>
                 <div className="relative">
-                    <Mail className="absolute left-3 top-3 text-gray-400" size={18} />
-                    <input {...register('email')} className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-200 outline-none" />
+                    <Mail className="absolute left-3 top-3 text-muted-foreground" size={18} />
+                    <input {...register('email')} className="w-full pl-10 pr-4 py-2 border border-input rounded-lg bg-background text-foreground focus:ring-2 focus:ring-purple-200 outline-none" />
                 </div>
             </div>
             <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">New Password (Optional)</label>
+                <label className="text-sm font-medium text-foreground">New Password (Optional)</label>
                 <div className="relative">
-                    <Lock className="absolute left-3 top-3 text-gray-400" size={18} />
-                    <input type="password" {...register('password')} placeholder="Leave blank to keep current" className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-200 outline-none" />
+                    <Lock className="absolute left-3 top-3 text-muted-foreground" size={18} />
+                    <input type="password" {...register('password')} placeholder="Leave blank to keep current" className="w-full pl-10 pr-4 py-2 border border-input rounded-lg bg-background text-foreground focus:ring-2 focus:ring-purple-200 outline-none" />
                 </div>
             </div>
             <div className="flex justify-end pt-4">
@@ -109,24 +109,24 @@ const TeamCredentialsTab = () => {
     return (
         <div className="space-y-4 pt-2">
             {!editingUser ? (
-                <div className="max-h-[400px] overflow-y-auto border rounded-lg">
+                <div className="max-h-[400px] overflow-y-auto border border-border rounded-lg">
                     <table className="w-full text-sm text-left">
-                        <thead className="bg-gray-50 sticky top-0">
+                        <thead className="bg-muted sticky top-0">
                             <tr>
-                                <th className="p-3 font-medium">Name</th>
-                                <th className="p-3 font-medium">Email</th>
-                                <th className="p-3 font-medium">Role</th>
-                                <th className="p-3 font-medium text-right">Action</th>
+                                <th className="p-3 font-medium text-foreground">Name</th>
+                                <th className="p-3 font-medium text-foreground">Email</th>
+                                <th className="p-3 font-medium text-foreground">Role</th>
+                                <th className="p-3 font-medium text-right text-foreground">Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             {users?.map((u: any) => (
-                                <tr key={u.id} className="border-t hover:bg-gray-50/50">
-                                    <td className="p-3 font-medium">{u.full_name}</td>
-                                    <td className="p-3 text-gray-500">{u.email}</td>
-                                    <td className="p-3"><span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs font-semibold">{u.role}</span></td>
+                                <tr key={u.id} className="border-t border-border hover:bg-muted/30 transition-colors">
+                                    <td className="p-3 font-medium text-foreground">{u.full_name}</td>
+                                    <td className="p-3 text-muted-foreground">{u.email}</td>
+                                    <td className="p-3"><span className="px-2 py-0.5 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300 rounded text-xs font-semibold">{u.role}</span></td>
                                     <td className="p-3 text-right">
-                                        <button onClick={() => setEditingUser(u)} className="text-purple-600 hover:text-purple-800 font-medium text-xs border border-purple-200 px-3 py-1 rounded">
+                                        <button onClick={() => setEditingUser(u)} className="text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300 font-medium text-xs border border-purple-200 dark:border-purple-800 px-3 py-1 rounded">
                                             Reset Password
                                         </button>
                                     </td>
@@ -136,16 +136,16 @@ const TeamCredentialsTab = () => {
                     </table>
                 </div>
             ) : (
-                <div className="bg-orange-50 p-6 rounded-lg border border-orange-100 animate-in fade-in">
-                    <h3 className="font-bold text-orange-900 mb-2">Reset Password for {editingUser.full_name}</h3>
-                    <p className="text-sm text-orange-800 mb-4">Enter a new secure password. This action cannot be undone.</p>
+                <div className="bg-orange-50 dark:bg-orange-950/20 p-6 rounded-lg border border-orange-100 dark:border-orange-900 animate-in fade-in">
+                    <h3 className="font-bold text-orange-900 dark:text-orange-200 mb-2">Reset Password for {editingUser.full_name}</h3>
+                    <p className="text-sm text-orange-800 dark:text-orange-300 mb-4">Enter a new secure password. This action cannot be undone.</p>
 
                     <div className="relative mb-4">
                         <input
                             type={showPass ? "text" : "password"}
                             value={newPass}
                             onChange={e => setNewPass(e.target.value)}
-                            className="w-full p-2 border border-orange-200 rounded focus:ring-2 focus:ring-orange-500 outline-none"
+                            className="w-full p-2 border border-orange-200 dark:border-orange-800 bg-white dark:bg-black/20 rounded focus:ring-2 focus:ring-orange-500 outline-none text-foreground"
                             placeholder="New Password"
                         />
                         <button onClick={() => setShowPass(!showPass)} type="button" className="absolute right-2 top-2.5 text-orange-400 hover:text-orange-600">
@@ -154,7 +154,7 @@ const TeamCredentialsTab = () => {
                     </div>
 
                     <div className="flex gap-3">
-                        <button onClick={() => setEditingUser(null)} className="px-4 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50 text-sm">Cancel</button>
+                        <button onClick={() => setEditingUser(null)} className="px-4 py-2 bg-background border border-border rounded hover:bg-muted text-sm text-foreground">Cancel</button>
                         <button onClick={() => resetMutation.mutate()} className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 text-sm font-medium">
                             Set New Password
                         </button>
@@ -214,31 +214,31 @@ const DataSyncTab = () => {
         <div className="space-y-6 pt-2">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Export */}
-                <div className="border border-gray-200 rounded-xl p-6 bg-gray-50 hover:bg-white hover:shadow-md transition-all text-center">
-                    <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="border border-border rounded-xl p-6 bg-muted/30 hover:bg-card hover:shadow-md transition-all text-center">
+                    <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center mx-auto mb-4">
                         <Download size={24} />
                     </div>
-                    <h3 className="font-bold text-gray-900">Export Local Data</h3>
-                    <p className="text-xs text-gray-500 mt-2 mb-4">Download complete JSON dump (Users, Clients, Campaigns, Settings) + Uploads as ZIP.</p>
-                    <button onClick={handleDownload} className="w-full py-2 bg-white border border-gray-300 font-medium text-gray-700 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-2">
+                    <h3 className="font-bold text-foreground">Export Local Data</h3>
+                    <p className="text-xs text-muted-foreground mt-2 mb-4">Download complete JSON dump (Users, Clients, Campaigns, Settings) + Uploads as ZIP.</p>
+                    <button onClick={handleDownload} className="w-full py-2 bg-background border border-border font-medium text-foreground rounded-lg hover:bg-muted flex items-center justify-center gap-2">
                         <Download size={16} /> Download Backup
                     </button>
                 </div>
 
                 {/* Import */}
-                <div className="border border-red-200 rounded-xl p-6 bg-red-50/50 hover:bg-red-50 hover:shadow-md transition-all text-center">
-                    <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="border border-red-200 dark:border-red-900 rounded-xl p-6 bg-red-50/50 dark:bg-red-950/10 hover:bg-red-50 dark:hover:bg-red-950/20 hover:shadow-md transition-all text-center">
+                    <div className="w-12 h-12 bg-red-100 dark:bg-red-900/20 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
                         <Upload size={24} />
                     </div>
-                    <h3 className="font-bold text-red-900">Import to VPS</h3>
-                    <p className="text-xs text-red-600/80 mt-2 mb-4">Overwrite current environment with uploaded ZIP. <b>Irreversible!</b></p>
+                    <h3 className="font-bold text-red-900 dark:text-red-200">Import to VPS</h3>
+                    <p className="text-xs text-red-600/80 dark:text-red-400/80 mt-2 mb-4">Overwrite current environment with uploaded ZIP. <b>Irreversible!</b></p>
 
                     <div className="space-y-3">
                         <input
                             type="file"
                             accept=".zip"
                             onChange={(e) => setFile(e.target.files?.[0] || null)}
-                            className="block w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-red-100 file:text-red-700 hover:file:bg-red-200"
+                            className="block w-full text-xs text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-red-100 dark:file:bg-red-900/30 file:text-red-700 dark:file:text-red-300 hover:file:bg-red-200"
                         />
                         <button
                             onClick={() => {
@@ -256,7 +256,7 @@ const DataSyncTab = () => {
                 </div>
             </div>
 
-            <div className="flex items-start gap-3 bg-yellow-50 p-4 rounded-lg border border-yellow-200 text-xs text-yellow-800">
+            <div className="flex items-start gap-3 bg-yellow-50 dark:bg-yellow-950/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-900 text-xs text-yellow-800 dark:text-yellow-200">
                 <AlertTriangle size={16} className="shrink-0 mt-0.5" />
                 <p>
                     <b>Warning:</b> Importing data will completely replace the current database.
@@ -265,14 +265,14 @@ const DataSyncTab = () => {
                 </p>
             </div>
 
-            <div className="border-t pt-6 mt-6">
-                <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <RefreshCw size={18} className="text-gray-500" /> Maintenance & Migration
+            <div className="border-t border-border pt-6 mt-6">
+                <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
+                    <RefreshCw size={18} className="text-muted-foreground" /> Maintenance & Migration
                 </h3>
-                <div className="border border-gray-200 rounded-xl p-6 bg-gray-50 flex items-center justify-between">
+                <div className="border border-border rounded-xl p-6 bg-muted/30 flex items-center justify-between">
                     <div>
-                        <h4 className="font-bold text-gray-900">Sync Ledger Accounts</h4>
-                        <p className="text-xs text-gray-500 mt-1 max-w-sm">
+                        <h4 className="font-bold text-foreground">Sync Ledger Accounts</h4>
+                        <p className="text-xs text-muted-foreground mt-1 max-w-sm">
                             Auto-generates missing ledgers for existing Clients and Staff. Safe to run at any time (Idempotent).
                         </p>
                     </div>
@@ -294,7 +294,7 @@ const SyncLedgersButton = () => {
         <button
             onClick={() => mutation.mutate()}
             disabled={mutation.isPending}
-            className="px-4 py-2 bg-white border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 text-sm flex items-center gap-2"
+            className="px-4 py-2 bg-background border border-border text-foreground font-medium rounded-lg hover:bg-muted text-sm flex items-center gap-2"
         >
             {mutation.isPending ? <RefreshCw className="animate-spin" size={16} /> : <RefreshCw size={16} />}
             {mutation.isPending ? 'Syncing...' : 'Run Sync'}
@@ -312,14 +312,14 @@ const AdminToolsTab = () => {
 
     return (
         <div className="space-y-6 pt-2">
-            <div className="bg-red-50 border border-red-200 rounded-xl p-6">
+            <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-xl p-6">
                 <div className="flex items-start gap-4">
-                    <div className="p-3 bg-red-100 text-red-600 rounded-full">
+                    <div className="p-3 bg-red-100 dark:bg-red-900/30 text-red-600 rounded-full">
                         <Trash2 size={24} />
                     </div>
                     <div className="flex-1">
-                        <h3 className="font-bold text-red-900">Clear Attachments & Temp Files</h3>
-                        <p className="text-sm text-red-700 mt-1">
+                        <h3 className="font-bold text-red-900 dark:text-red-200">Clear Attachments & Temp Files</h3>
+                        <p className="text-sm text-red-700 dark:text-red-300 mt-1">
                             Permanently deletes all uploaded assets (images, videos) from the server and clears the database asset records.
                             <br /><b>This action cannot be undone.</b>
                         </p>
@@ -354,16 +354,16 @@ const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOpen, onC
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-4xl bg-white p-0 overflow-hidden h-[600px] flex flex-col md:flex-row">
+            <DialogContent className="max-w-4xl bg-background p-0 overflow-hidden h-[600px] flex flex-col md:flex-row text-foreground">
 
                 {/* Sidebar Navigation */}
-                <div className="w-full md:w-64 bg-gray-50 border-r border-gray-200 p-4 flex flex-col gap-1">
-                    <h2 className="text-lg font-bold text-gray-800 px-3 mb-4">Settings</h2>
+                <div className="w-full md:w-64 bg-muted/30 border-r border-border p-4 flex flex-col gap-1">
+                    <h2 className="text-lg font-bold text-foreground px-3 mb-4">Settings</h2>
 
                     <button
                         onClick={() => setActiveTab('profile')}
                         className={clsx("flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                            activeTab === 'profile' ? "bg-white text-purple-700 shadow-sm ring-1 ring-gray-200" : "text-gray-600 hover:bg-gray-100"
+                            activeTab === 'profile' ? "bg-background text-purple-700 dark:text-purple-400 shadow-sm ring-1 ring-border" : "text-muted-foreground hover:bg-muted"
                         )}
                     >
                         <User size={18} /> My Profile
@@ -371,13 +371,13 @@ const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOpen, onC
 
                     {isAdmin && (
                         <>
-                            <div className="my-2 border-t border-gray-200 mx-2" />
-                            <h3 className="text-xs font-bold text-gray-400 uppercase px-3 mb-1">Admin Zone</h3>
+                            <div className="my-2 border-t border-border mx-2" />
+                            <h3 className="text-xs font-bold text-muted-foreground uppercase px-3 mb-1">Admin Zone</h3>
 
                             <button
                                 onClick={() => setActiveTab('team')}
                                 className={clsx("flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                                    activeTab === 'team' ? "bg-white text-purple-700 shadow-sm ring-1 ring-gray-200" : "text-gray-600 hover:bg-gray-100"
+                                    activeTab === 'team' ? "bg-background text-purple-700 dark:text-purple-400 shadow-sm ring-1 ring-border" : "text-muted-foreground hover:bg-muted"
                                 )}
                             >
                                 <Shield size={18} /> Team Credentials
@@ -386,7 +386,7 @@ const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOpen, onC
                             <button
                                 onClick={() => setActiveTab('sync')}
                                 className={clsx("flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                                    activeTab === 'sync' ? "bg-white text-purple-700 shadow-sm ring-1 ring-gray-200" : "text-gray-600 hover:bg-gray-100"
+                                    activeTab === 'sync' ? "bg-background text-purple-700 dark:text-purple-400 shadow-sm ring-1 ring-border" : "text-muted-foreground hover:bg-muted"
                                 )}
                             >
                                 <Database size={18} /> Data Sync
@@ -395,7 +395,7 @@ const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOpen, onC
                             <button
                                 onClick={() => setActiveTab('tools')}
                                 className={clsx("flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                                    activeTab === 'tools' ? "bg-white text-purple-700 shadow-sm ring-1 ring-gray-200" : "text-gray-600 hover:bg-gray-100"
+                                    activeTab === 'tools' ? "bg-background text-purple-700 dark:text-purple-400 shadow-sm ring-1 ring-border" : "text-muted-foreground hover:bg-muted"
                                 )}
                             >
                                 <Wrench size={18} /> System Tools
@@ -406,10 +406,11 @@ const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOpen, onC
 
                 {/* Content Area */}
                 <div className="flex-1 p-8 overflow-y-auto">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-6">
+                    <h2 className="text-2xl font-bold text-foreground mb-6">
                         {activeTab === 'profile' && "My Profile"}
                         {activeTab === 'team' && "Team Credentials"}
                         {activeTab === 'sync' && "Environment Data Sync"}
+                        {activeTab === 'tools' && "System Tools"}
                     </h2>
 
                     {activeTab === 'profile' && <MyProfileTab user={user} onClose={onClose} />}

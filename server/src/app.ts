@@ -78,7 +78,8 @@ import path from 'path';
 // Serve Uploads
 app.use('/api/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
-import systemRouter from './modules/system/routes'; // Deployment Routes
+import systemRouter from './modules/system/routes'; // Legacy System Routes
+import deploymentRoutes from './modules/deployment/routes'; // New Auto-Update Routes
 
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
@@ -96,6 +97,8 @@ app.use('/api/upload', uploadRoutes);
 
 // System / Deployment Access
 app.use('/api/system', systemRouter);
+app.use('/api/deployment', deploymentRoutes); // Registered here
+
 
 app.use('/api/client-portal', clientPortalRoutes);
 

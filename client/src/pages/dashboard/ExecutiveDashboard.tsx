@@ -1,11 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../lib/api';
 import { PieChart, Pie, Cell, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer } from 'recharts';
+import { useAuthStore } from '../../store/authStore';
+import UpdateSystemModal from '../../components/modals/UpdateSystemModal';
+import { Server } from 'lucide-react';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
 const ExecutiveDashboard = () => {
+    const { user } = useAuthStore();
+    const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+
     const { data, isLoading } = useQuery({
         queryKey: ['dashboard-stats-v2'],
         queryFn: async () => {
@@ -23,12 +29,30 @@ const ExecutiveDashboard = () => {
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
-            <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                    Marketing & SEO Overview
-                </h1>
-                <p className="text-muted-foreground mt-1">Real-time insights into team performance and task distribution.</p>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                        Marketing & SEO Overview
+                    </h1>
+                    <p className="text-muted-foreground mt-1">Real-time insights into team performance and task distribution.</p>
+                </div>
+
+                {/* Developer Admin Only: Update System Button */}
+                {user?.role === 'DEVELOPER_ADMIN' && (
+                    <button
+                        onClick={() => setIsUpdateModalOpen(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors shadow-sm text-sm font-medium"
+                    >
+                        <Server size={16} />
+                        Update Online System
+                    </button>
+                )}
             </div>
+
+            <UpdateSystemModal
+                isOpen={isUpdateModalOpen}
+                onClose={() => setIsUpdateModalOpen(false)}
+            />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* 1. Task Status Distribution */}

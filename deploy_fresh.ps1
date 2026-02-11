@@ -73,7 +73,7 @@ $RemoteCommands = @'
     npx prisma generate
     npm run build
     
-    echo "--- [Remote] Pushing DB Schema (Resetting Remote DB) ---"
+    echo "--- [Remote] Pushing DB Schema - Resetting Remote DB ---"
     # This creates a fresh SQLite DB if using SQLite, or resets Postgres/MySQL
     npx prisma db push --accept-data-loss 
     

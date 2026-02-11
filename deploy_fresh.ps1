@@ -67,7 +67,12 @@ $RemoteCommands = @'
         touch "$APP_DIR/server/.env"
     fi
     
-    echo "--- [Remote] Installing and Building ---"
+    echo "--- [Remote] Installing and Building Client ---"
+    cd "$APP_DIR/client"
+    npm install
+    npm run build
+
+    echo "--- [Remote] Installing and Building Server ---"
     cd "$APP_DIR/server"
     npm install
     npx prisma generate

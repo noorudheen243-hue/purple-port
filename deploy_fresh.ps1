@@ -82,6 +82,8 @@ $RemoteCommands = @'
     pm2 save
 '@
 
+$RemoteCommands = $RemoteCommands -replace "`r", "" 
+
 # 3. Execute SSH
 Write-Host "`n[2/3] Connecting to VPS... (Please enter SSH password when prompted)" -ForegroundColor Cyan
 # Pass the commands directly to SSH with legacy key support

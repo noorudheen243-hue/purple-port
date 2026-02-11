@@ -84,7 +84,7 @@ $RemoteCommands = @'
 
 # 3. Execute SSH
 Write-Host "`n[2/3] Connecting to VPS... (Please enter SSH password when prompted)" -ForegroundColor Cyan
-# Pass the commands directly to SSH
-ssh $VPS_USER@$VPS_IP "$RemoteCommands"
+# Pass the commands directly to SSH with legacy key support
+ssh -o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedKeyTypes=+ssh-rsa $VPS_USER@$VPS_IP "$RemoteCommands"
 
 Write-Host "`n[3/3] Deployment script finished." -ForegroundColor Green

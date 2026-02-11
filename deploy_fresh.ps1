@@ -72,6 +72,10 @@ $RemoteCommands = @'
     npm install
     npm run build
 
+    echo "--- [Remote] Copying Client Build to Server Public ---"
+    mkdir -p "$APP_DIR/server/public"
+    cp -r "$APP_DIR/client/dist/"* "$APP_DIR/server/public/"
+
     echo "--- [Remote] Installing and Building Server ---"
     cd "$APP_DIR/server"
     npm install

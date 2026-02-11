@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import api from '@/lib/api';
-import { Shield, Lock, CheckCircle2, AlertCircle, Users, Banknote, Database, LayoutDashboard } from 'lucide-react';
+import { Shield, Lock, CheckCircle2, AlertCircle, Users, Banknote, Database, LayoutDashboard, Wrench } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Swal from 'sweetalert2';
 import SystemRoleManagement from '../team/SystemRoleManagement';
 import PayrollSettings from '../payroll/PayrollSettings';
 import DataSync from '../admin/DataSync';
@@ -71,6 +72,11 @@ const SettingsPage = () => {
                     {isDevAdmin && (
                         <TabsTrigger value="system" className="flex items-center gap-2">
                             <Shield size={16} /> System Control
+                        </TabsTrigger>
+                    )}
+                    {(isDevAdmin || user?.role === ROLES.ADMIN) && (
+                        <TabsTrigger value="maintenance" className="flex items-center gap-2">
+                            <Wrench size={16} /> Maintenance
                         </TabsTrigger>
                     )}
                 </TabsList>
@@ -149,7 +155,83 @@ const SettingsPage = () => {
                     </div>
                 </TabsContent>
 
-                {/* TAB 2: SYSTEM CONTROL (DEV ADMIN ONLY) */}
+                {/* TAB 2: SYSTEM MAINTENANCE (ADMIN & DEV) */}
+                {(isDevAdmin || user?.role === ROLES.ADMIN) && (
+                    <TabsContent value="maintenance">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2 text-orange-700">
+                                    <AlertCircle className="h-5 w-5" />
+                                    System Maintenance
+                                </CardTitle>
+                                <CardDescription>
+                                    Perform critical system operations to ensure application health.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                <div className="p-4 border border-orange-200 bg-orange-50 rounded-lg">
+                                    <h3 className="font-semibold text-orange-800 mb-2 flex items-center gap-2">
+                                        <Database size={18} />
+                                        Clear Application Cache
+                                    </h3>
+                                    <p className="text-sm text-orange-700 mb-4">
+                                        Use this if you are experiencing synchronization issues, missing features after an update, or display errors.
+                                        This will force a reload of the application and clear local data.
+                                    </p>
+                                    <Button
+                                        variant="destructive"
+                                        onClick={() => {
+                                            Swal.fire({
+                                                title: 'Clear System Cache?',
+                                                text: "This will clear local storage, session data, and force a hard reload. You may be logged out.",
+                                                icon: 'warning',
+                                                showCancelButton: true,
+                                                confirmButtonColor: '#d33',
+                                                cancelButtonColor: '#3085d6',
+                                                confirmButtonText: 'Yes, Clear & Reload'
+                                            }).then((result) => {
+                                                if (result.isConfirmed) {
+                                                    // Clear Local Storage (Except maybe theme?)
+                                                    const theme = localStorage.getItem('theme');
+                                                    localStorage.clear();
+                                                    if (theme) localStorage.setItem('theme', theme);
+
+                                                    // Session Storage
+                                                    sessionStorage.clear();
+
+                                                    // Force Reload
+                                                    let timerInterval: any;
+                                                    Swal.fire({
+                                                        title: 'Clearing Cache...',
+                                                        html: 'Reloading system in <b></b> milliseconds.',
+                                                        timer: 1500,
+                                                        timerProgressBar: true,
+                                                        didOpen: () => {
+                                                            Swal.showLoading();
+                                                            const b = Swal.getHtmlContainer()?.querySelector('b');
+                                                            timerInterval = setInterval(() => {
+                                                                if (b) b.textContent = String(Swal.getTimerLeft());
+                                                            }, 100);
+                                                        },
+                                                        willClose: () => {
+                                                            clearInterval(timerInterval);
+                                                        }
+                                                    }).then(() => {
+                                                        window.location.reload();
+                                                    });
+                                                }
+                                            })
+                                        }}
+                                    >
+                                        Clear Cache & Reload
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                )}
+
+                {/* TAB 3: SYSTEM CONTROL (DEV ADMIN ONLY) */}
                 {isDevAdmin && (
                     <TabsContent value="system" className="space-y-6">
                         <div className="bg-yellow-50/50 border border-yellow-100 rounded-lg p-4 mb-6 flex gap-3 text-yellow-800 text-sm">

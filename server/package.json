@@ -9,7 +9,8 @@
     "build": "tsc",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "db:hard-reset": "ts-node scripts/wipe_data.ts"
   },
   "keywords": [],
   "author": "",

@@ -5,15 +5,17 @@ import axios from 'axios';
 // --- CONFIGURATION ---
 const DEVICE_IP = '192.168.1.201'; // Local Device IP
 const DEVICE_PORT = 4370;
-const SERVER_URL = 'http://66.116.224.221/api'; // Live VPS Backend URL
+const SERVER_URL = 'http://66.116.224.221/api'; // Live VPS Backend URL (using IP until DNS propagates)
 const BRIDGE_API_KEY = 'ag_bio_sync_v1_secret_key'; // Matches server default
+
+
 // ---------------------
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 async function sync() {
     // 1. Connect to Device
-    const zk = new ZKLib(DEVICE_IP, DEVICE_PORT, 5000, 4000);
+    const zk = new ZKLib(DEVICE_IP, DEVICE_PORT, 10000, 4000); // Increased timeout to 10s
     try {
         // Robust TCP Connection (matching service.ts)
         await (zk as any).ztcp.createSocket();
@@ -55,23 +57,23 @@ async function sync() {
         }
 
     } catch (error: any) {
-        console.error(`[${new Date().toLocaleTimeString()}] ⚠️ Device Connection Error:`, error.message || "Unknown error");
+        console.error(`[${new Date().toLocaleTimeString()}] ⚠️ Device Error:`, error.message || "Unknown");
     } finally {
         try { await zk.disconnect(); } catch (e) { }
     }
 }
 
 async function main() {
-    console.log("--- Biometric Bridge Agent (Auto-Sync Mode) ---");
-    console.log(`Target: ${DEVICE_IP} -> ${SERVER_URL}`);
-    console.log("Sync Interval: Every 60 Seconds");
+    console.log("--- Biometric Bridge Agent (Fast-Sync Mode) ---");
+    console.log(`Device: ${DEVICE_IP} -> Server: ${SERVER_URL}`);
+    console.log("Sync Interval: Every 5 Seconds (Local Network Mode)");
     console.log("-----------------------------------------------");
 
     while (true) {
         await sync();
-        console.log("Waiting 60s...");
-        await sleep(60000);
+        await sleep(5000); // 5 seconds for near-instant sync
     }
 }
 
 main();
+

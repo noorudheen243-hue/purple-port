@@ -41,8 +41,12 @@ app.use(cors({
         'http://localhost:5173',
         'http://localhost:5174',
         'http://localhost:4001', // Allow backend-to-backend calls
-        'http://72.61.246.22', // VPS IP
+        'http://72.61.246.22', // Old VPS IP
         'http://72.61.246.22:4001',
+        'http://66.116.224.221', // New VPS IP
+        'http://66.116.224.221:4001',
+        'https://port.qixads.com', // Custom Domain
+        'https://www.port.qixads.com',
         process.env.CLIENT_URL || ''
     ].filter(Boolean),
     credentials: true
@@ -118,17 +122,19 @@ app.use('/api/leave', leaveRoutes);
 
 import chatRoutes from './modules/chat/routes';
 import launcherRoutes from './modules/launcher/routes';
+import adminRoutes from './modules/admin/routes';
+
 app.use('/api/chat', chatRoutes);
 app.use('/api/launcher', launcherRoutes);
+app.use('/api/admin', adminRoutes);
+
 
 // --- Production: Serve Frontend ---
 // In production, we assume the React build is copied to a 'public' folder in the root
 if (process.env.NODE_ENV === 'production') {
     // Serve static files from the React app
-    // Serve static files from the React app
-    // Correct Path: One level up from server root -> client -> dist
-    // process.cwd() is /var/www/purple-port/server
-    const publicPath = path.join(process.cwd(), '../client/dist');
+    // Correct Path: 'public' folder in the root of the deployment
+    const publicPath = path.join(process.cwd(), 'public');
 
     app.use(express.static(publicPath, {
         setHeaders: (res, filePath) => {

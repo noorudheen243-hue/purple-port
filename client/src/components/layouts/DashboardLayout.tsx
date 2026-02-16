@@ -17,20 +17,10 @@ import {
     TrendingUp,
     Home
 } from 'lucide-react';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "../../components/ui/dropdown-menu";
 import api from '../../lib/api';
 import Swal from 'sweetalert2';
 import { getAssetUrl } from '../../lib/utils';
 import { ROLES } from '../../utils/roles';
-// ... existing imports ...
-
-// ... inside component ...
 import NotificationBell from '../notifications/NotificationBell';
 import ProfileSettingsModal from '../users/ProfileSettingsModal';
 import { ADMIN_MANAGER_MENU, STAFF_MENU, CLIENT_MENU, MenuItem } from '../../config/menuConfig';
@@ -52,13 +42,13 @@ const DigitalClock = () => {
     }, []);
 
     return (
-        <div className="text-center hidden md:block mt-1">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground leading-tight">
-                {time.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
-            </p>
-            <h2 className="text-[10px] font-mono tracking-widest text-primary/80 leading-tight">
+        <div className="hidden md:block ml-6">
+            <h2 className="text-3xl font-mono font-bold tracking-widest text-primary leading-none">
                 {time.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}
             </h2>
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mt-1">
+                {time.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+            </p>
         </div>
     );
 };
@@ -69,34 +59,12 @@ const SidebarItem = ({ item, isActive, depth = 0, closeSidebar, index }: { item:
     const active = item.path ? isActive(item.path) : false;
     const isMain = depth === 0;
 
-    // Master UI Color System
-    // Main: Dark Purple. Sub: Yellow/Amber.
-    // Using distinct classes for Main vs Sub items.
-
-    // Base colors
-    // Base colors - Alternate based on index
-    // Even (0, 2...): Purple (Primary) -> White Text
-    // Odd (1, 3...): Yellow (Secondary) -> Black Text
-
     const isPurple = index % 2 === 0;
 
-    // active class uses solid background
-    // hover class uses lighter background? Or solid on hover? 
-    // "change the colour as, yellow and purple... change text colour aswel" - implies solid buttons potentially, or at least colored text/bg.
-    // Let's try Solid Background for high contrast as "buttons".
-
-    // BUT sidebar items are usually transparent/subtle until active.
-    // "colour of side bar buttons" implies they look like buttons.
-
-    // Simplified logic: Even = Purple, Odd = Yellow
-    // User requested "buttons", implying solid blocks.
-
-    // Inactive state:
     const inactiveClass = isPurple
         ? "bg-primary/10 text-purple-900 dark:text-purple-200 hover:bg-primary hover:text-white"
         : "bg-secondary/10 text-yellow-900 dark:text-yellow-200 hover:bg-secondary hover:text-black";
 
-    // Active state:
     const activeClass = isPurple
         ? "bg-primary text-white"
         : "bg-secondary text-black";
@@ -168,9 +136,7 @@ const SidebarItem = ({ item, isActive, depth = 0, closeSidebar, index }: { item:
                             isActive={isActive}
                             depth={depth + 1}
                             closeSidebar={closeSidebar}
-                            index={index} // Children also alternate? Or keep parent color? 
-                        // Let's alternate children too for fun, or keep same index to group?
-                        // Logic: "yellow and purple sequal". Let's alternate children based on THEIR index.
+                            index={index}
                         />
                     ))}
                 </div>
@@ -183,8 +149,6 @@ const Sidebar = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) 
     const { user } = useAuthStore();
     const location = useLocation();
 
-
-
     const isActive = (path: string) => path === location.pathname || (path !== '/dashboard' && location.pathname.startsWith(path));
 
     const filterMenuByRole = (items: MenuItem[], role: string): MenuItem[] => {
@@ -195,9 +159,6 @@ const Sidebar = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) 
                 children: item.children ? filterMenuByRole(item.children, role) : undefined
             }));
     };
-
-
-    // ...
 
     let rawMenuItems = STAFF_MENU;
     if (user?.role === ROLES.CLIENT) {
@@ -245,17 +206,11 @@ const Sidebar = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) 
                             index={index}
                         />
                     ))}
-
-
                 </nav>
-
-
             </aside>
         </>
     );
 };
-
-
 
 const DashboardLayout = ({ children }: { children: ReactNode }) => {
     // ... hooks
@@ -290,13 +245,13 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
 
     // Initialize Socket
     React.useEffect(() => {
-        const token = localStorage.getItem('token'); // Simplest way, assuming authStore syncs with localStorage or we can ignore if token missing
+        const token = localStorage.getItem('token');
         if (token) {
             import('../../services/socketService').then(({ default: socketService }) => {
                 socketService.connect(token);
             });
         }
-    }, [user]); // Re-connect if user changes (re-login)
+    }, [user]);
 
     const handleLogout = async () => {
         await logout();
@@ -389,17 +344,20 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                                 <Home size={28} strokeWidth={2.5} />
                             </Link>
 
+                            {/* Clock Moved Here */}
+                            <DigitalClock />
+
                             {(location.pathname === '/dashboard' || location.pathname === '/dashboard/' || location.pathname === '/dashboard/client-portal') && (
-                                <div>
-                                    <h2 className="text-xl md:text-2xl font-semibold">Welcome back, {user?.full_name.split(' ')[0]}</h2>
-                                    <p className="text-sm md:text-base text-muted-foreground hidden md:block">Here's what's happening today.</p>
+                                <div className="ml-4 pl-4 border-l border-border hidden lg:block">
+                                    <h2 className="text-xl font-semibold">Welcome back, {user?.full_name.split(' ')[0]}</h2>
+                                    <p className="text-sm text-muted-foreground">Here's what's happening today.</p>
                                 </div>
                             )}
                         </div>
                     </div>
                     <div>
                         <div className="flex items-center gap-4">
-                            {/* Theme Toggle Button - Moved to Header as requested */}
+                            {/* Theme Toggle Button */}
 
                             <button
                                 onClick={toggleTheme}
@@ -430,32 +388,15 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                             )}
 
                             <NotificationBell />
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <button
-                                        className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-md transition-colors"
-                                        title="Settings"
-                                    >
-                                        <Settings size={18} />
-                                        <span className="hidden md:inline">Settings</span>
-                                    </button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-56">
-                                    <DropdownMenuItem onClick={() => setIsSettingsOpen(true)} className="cursor-pointer">
-                                        <Settings className="mr-2 h-4 w-4" />
-                                        <span>Profile</span>
-                                    </DropdownMenuItem>
-                                    {(user?.role === ROLES.ADMIN || user?.role === ROLES.DEVELOPER_ADMIN) && (
-                                        <>
-                                            <DropdownMenuSeparator />
-                                            <DropdownMenuItem onClick={() => navigate('/dashboard/admin/sync')} className="cursor-pointer">
-                                                <TrendingUp className="mr-2 h-4 w-4" />
-                                                <span>Data Sync</span>
-                                            </DropdownMenuItem>
-                                        </>
-                                    )}
-                                </DropdownMenuContent>
-                            </DropdownMenu>
+
+                            <button
+                                onClick={() => setIsSettingsOpen(true)}
+                                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-md transition-colors"
+                                title="Settings"
+                            >
+                                <Settings size={18} />
+                                <span className="hidden md:inline">Settings</span>
+                            </button>
 
                             <button
                                 onClick={handleLogout}
@@ -478,8 +419,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                                         <span className="text-xl">{user?.full_name.charAt(0)}</span>
                                     )}
                                 </div>
-                                {/* Clock Moved Here - Below Profile */}
-                                <DigitalClock />
+                                {/* Clock Removed from here */}
                             </div>
                         </div>
                     </div>
@@ -488,7 +428,6 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
             </main>
 
             <ProfileSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
-            {/* WhatsApp Floating Icon - Only for certain roles ideally, but global for now as user requested */}
 
         </div >
     );

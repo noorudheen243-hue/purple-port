@@ -20,6 +20,7 @@ SocketService.initialize(server, [
     'http://localhost:5174',
     'http://localhost:4001',
     'http://72.61.246.22',
+    'http://66.116.224.221',
     process.env.CLIENT_URL || ''
 ].filter(Boolean));
 

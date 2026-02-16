@@ -10,7 +10,8 @@
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "prisma:studio": "prisma studio",
-    "db:hard-reset": "ts-node scripts/wipe_data.ts"
+    "db:hard-reset": "ts-node scripts/wipe_data.ts",
+    "bridge": "ts-node src/scripts/biometric_bridge.ts"
   },
   "keywords": [],
   "author": "",

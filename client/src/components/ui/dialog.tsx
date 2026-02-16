@@ -24,13 +24,14 @@ const DialogOverlay = React.forwardRef<
     <DialogPrimitive.Overlay
         ref={ref}
         className={cn(
-            "fixed inset-0 z-50 bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+            "fixed inset-0 z-[900] bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
             className
         )}
         {...props}
     />
-))
-DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
+));
+
+// ...
 
 const DialogContent = React.forwardRef<
     React.ElementRef<typeof DialogPrimitive.Content>,
@@ -90,7 +91,7 @@ const DialogContent = React.forwardRef<
             <DialogPrimitive.Content
                 ref={ref}
                 className={cn(
-                    "fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 bg-transparent border-0 shadow-none p-0",
+                    "fixed left-1/2 top-1/2 z-[900] -translate-x-1/2 -translate-y-1/2 bg-transparent border-0 shadow-none p-0",
                     className
                 )}
                 {...props}
@@ -102,7 +103,7 @@ const DialogContent = React.forwardRef<
                 >
                     <div
                         ref={dialogRef}
-                        className="bg-background border shadow-lg rounded-lg flex flex-col overflow-hidden"
+                        className="bg-background border shadow-lg rounded-lg flex flex-col overflow-hidden pointer-events-auto"
                         style={{
                             width: hideDraggableBar ? 'auto' : size.width,
                             height: isMinimized ? 'auto' : (hideDraggableBar ? 'auto' : (size.height === 'auto' ? 'auto' : size.height)),

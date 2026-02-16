@@ -25,6 +25,8 @@ export const getUserById = async (req: Request, res: Response) => {
 };
 // ... (getUserById above)
 
+// ... (previous code)
+
 export const updateUser = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
@@ -39,6 +41,34 @@ export const updateUser = async (req: Request, res: Response) => {
         const user = await userService.updateUser(id, updateData);
         res.json(user);
     } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const deleteUser = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+
+        // 1. Fetch user to check Role
+        const userToDelete = await userService.findUserById(id);
+        if (!userToDelete) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // 2. Prevent deleting Developer Admin
+        if (userToDelete.role === 'DEVELOPER_ADMIN') {
+            return res.status(403).json({ message: 'Cannot delete a Developer Admin user.' });
+        }
+
+        // 3. Perform Delete
+        await userService.deleteUser(id);
+        res.json({ message: 'User deleted successfully' });
+
+    } catch (error: any) {
+        // Handle FK Constraint errors gracefully if possible
+        if (error.code === 'P2003') { // Prisma FK violation
+            return res.status(400).json({ message: 'Cannot delete user: They have associated records (Tasks, Clients, etc.).' });
+        }
         res.status(500).json({ message: error.message });
     }
 };

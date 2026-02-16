@@ -98,6 +98,11 @@
 }
 
 /* Unified Ultra-Compact Payslip Styles */
+/* Force SweetAlert2 to be on top of Radix Dialog (z-900) */
+.swal2-container {
+  z-index: 10000 !important;
+}
+
 .payslip-compact {
   /* Container adjustments */
   width: 100% !important;

@@ -1,4 +1,6 @@
 import { Request, Response } from 'express';
+import bcrypt from 'bcryptjs';
+import * as userService from '../users/service';
 import { exec } from 'child_process';
 import util from 'util';
 
@@ -89,20 +91,17 @@ export const syncToCloud = async (req: Request, res: Response) => {
     }
 };
 
-export const cleanupAssets = async (req: Request, res: Response) => {
+export const cleanupFilesOnly = async (req: Request, res: Response) => {
     try {
-        // Security Check
+        // Security Check: Role
         if (req.user?.role !== 'DEVELOPER_ADMIN' && req.user?.role !== 'ADMIN') {
             return res.status(403).json({ message: 'Forbidden. Only Admins can perform cleanup.' });
         }
 
-        console.log('Starting Asset Cleanup...');
+        console.log(`[SYSTEM CLEANUP] Authorized by ${req.user.role}`);
+        console.log('Starting File Cleanup (Database records preserved)...');
 
-        // 1. Delete all Asset records from DB
-        const result = await prisma.asset.deleteMany({});
-        console.log(`Deleted ${result.count} asset records from DB.`);
-
-        // 2. Clear Uploads Directory
+        // Clear Uploads Directory (Keep database records intact)
         const uploadDir = path.join(process.cwd(), 'uploads');
         let deletedFiles = 0;
 
@@ -110,20 +109,65 @@ export const cleanupAssets = async (req: Request, res: Response) => {
             const files = fs.readdirSync(uploadDir);
             for (const file of files) {
                 const filePath = path.join(uploadDir, file);
-                if (fs.statSync(filePath).isFile()) {
-                    fs.unlinkSync(filePath);
-                    deletedFiles++;
+                try {
+                    if (fs.statSync(filePath).isFile()) {
+                        fs.unlinkSync(filePath);
+                        deletedFiles++;
+                    }
+                } catch (err: any) {
+                    console.error(`Failed to delete file ${file}:`, err.message);
+                    // Continue to next file
                 }
             }
         }
 
         res.json({
             message: 'Cleanup Successful',
-            details: `Removed ${result.count} database records and ${deletedFiles} physical files.`
+            details: `Deleted ${deletedFiles} physical files. Database records preserved.`
         });
 
     } catch (error: any) {
         console.error('Cleanup Error:', error);
         res.status(500).json({ message: 'Cleanup Failed', error: error.message });
+    }
+};
+
+export const optimizeSystem = async (req: Request, res: Response) => {
+    try {
+        console.log('Starting System Optimization...');
+
+        const tempDir = path.join(process.cwd(), 'uploads/temp');
+        let deletedFiles = 0;
+        let freedSpace = 0;
+
+        if (fs.existsSync(tempDir)) {
+            const files = fs.readdirSync(tempDir);
+            for (const file of files) {
+                const filePath = path.join(tempDir, file);
+                if (fs.statSync(filePath).isFile()) {
+                    const stats = fs.statSync(filePath);
+                    freedSpace += stats.size;
+                    fs.unlinkSync(filePath);
+                    deletedFiles++;
+                }
+            }
+        }
+
+        // Optional: Trigger Garbage Collection if available
+        if (global.gc) {
+            global.gc();
+            console.log('Garbage collection triggered.');
+        }
+
+        const freedSpaceMB = (freedSpace / (1024 * 1024)).toFixed(2);
+
+        res.json({
+            message: 'Optimization Successful',
+            details: `Cleared ${deletedFiles} temporary files. Freed ${freedSpaceMB} MB.`
+        });
+
+    } catch (error: any) {
+        console.error('Optimization Error:', error);
+        res.status(500).json({ message: 'Optimization Failed', error: error.message });
     }
 };

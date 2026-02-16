@@ -25,7 +25,7 @@ export const StickyNoteContainer = () => {
     return (
         <>
             {/* Active Floating Notes Layer */}
-            <div className="fixed inset-0 pointer-events-none z-[50] overflow-hidden">
+            <div className="fixed inset-0 pointer-events-none z-[40] overflow-hidden">
                 <div className="relative w-full h-full pointer-events-none">
                     {activeNotes.map((note) => (
                         <StickyNoteComponent

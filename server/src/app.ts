@@ -109,6 +109,7 @@ app.use('/api/client-portal', clientPortalRoutes);
 app.use('/api/payroll', payrollRoutes);
 app.use('/api/backup', backupRoutes);
 import stickyNoteRoutes from './modules/sticky_notes/routes';
+import resignationRoutes from './modules/team/resignation/routes';
 import attendanceRoutes from './modules/attendance/routes';
 import biometricControlRoutes from './modules/attendance/biometric_control.routes';
 import billingRoutes from './modules/billing/routes';
@@ -116,7 +117,9 @@ import leaveRoutes from './modules/leave/routes';
 
 app.use('/api/billing', billingRoutes);
 app.use('/api/sticky-notes', stickyNoteRoutes);
+app.use('/api/team/resignation', resignationRoutes); // New Module
 app.use('/api/attendance/biometric', biometricControlRoutes); // Specific route first
+
 app.use('/api/attendance', attendanceRoutes); // Generic route second
 app.use('/api/leave', leaveRoutes);
 

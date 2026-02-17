@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Shield, Calendar, Banknote, ClipboardList } from 'lucide-react';
+import { Users, Shield, Calendar, Banknote, ClipboardList, LogOut } from 'lucide-react';
 
 // Components
 import TeamList from './TeamList';
@@ -10,6 +10,7 @@ import BiometricManagerPage from '../attendance/BiometricManagerPage';
 import LeaveManagementPage from '../attendance/LeaveManagementPage';
 import PayrollManager from '../payroll/PayrollManager';
 import ApprovalsPage from './ApprovalsPage';
+import ResignationPage from './resignation/ResignationPage';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../lib/api';
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +40,7 @@ const TeamManagerPage = () => {
         { id: 'biometric', label: 'Biometric Manager', icon: Shield, theme: 'purple' },
         { id: 'leave', label: 'Leave', icon: Calendar, theme: 'yellow' },
         { id: 'payroll', label: 'Payroll', icon: Banknote, theme: 'purple' },
+        { id: 'resignation', label: 'Relieve / Resignation', icon: LogOut, theme: 'yellow' },
     ];
 
     return (
@@ -104,6 +106,9 @@ const TeamManagerPage = () => {
                     </TabsContent>
                     <TabsContent value="approvals" className="mt-0">
                         <ApprovalsPage />
+                    </TabsContent>
+                    <TabsContent value="resignation" className="mt-0">
+                        <ResignationPage />
                     </TabsContent>
                 </div>
             </Tabs>

@@ -19,7 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Check, X, Edit2, Trash2, Calendar, Clock, AlertCircle, History, RotateCcw } from 'lucide-react';
+import { Check, X, Edit2, Trash2, Calendar, Clock, AlertCircle, History, RotateCcw, LogOut } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 const ApprovalsPage = () => {
@@ -53,6 +53,11 @@ const ApprovalsPage = () => {
         queryFn: async () => (await api.get(`/attendance/regularisation/history`, { params: { month: historyMonth, year: historyYear, status: historyStatus } })).data,
     });
 
+    const { data: resignation = [], isLoading: resLoading } = useQuery({
+        queryKey: ['resignation-requests'],
+        queryFn: async () => (await api.get('/team/resignation')).data,
+    });
+
 
     // --- MUTATIONS ---
 
@@ -70,6 +75,7 @@ const ApprovalsPage = () => {
             queryClient.invalidateQueries({ queryKey: ['regularisation-requests'] });
             queryClient.invalidateQueries({ queryKey: ['leave-history'] });
             queryClient.invalidateQueries({ queryKey: ['regularisation-history'] });
+            queryClient.invalidateQueries({ queryKey: ['resignation-requests'] });
             Swal.fire({ title: 'Success', text: 'Request updated successfully', icon: 'success', timer: 1500 });
         },
         onError: (error: any) => {
@@ -95,6 +101,25 @@ const ApprovalsPage = () => {
         onError: (error: any) => {
             Swal.fire('Error', error.response?.data?.message || 'Delete failed', 'error');
         }
+    });
+
+    // Resignation Mutations
+    const approveResignationMutation = useMutation({
+        mutationFn: async (id: string) => await api.patch(`/team/resignation/${id}/approve`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['resignation-requests'] });
+            Swal.fire({ title: 'Approved', text: 'Resignation approved & notice started.', icon: 'success', timer: 1500 });
+        },
+        onError: (err: any) => Swal.fire('Error', err.response?.data?.message || 'Approval failed', 'error')
+    });
+
+    const rejectResignationMutation = useMutation({
+        mutationFn: async ({ id, reason }: { id: string, reason: string }) => await api.patch(`/team/resignation/${id}/reject`, { reason }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['resignation-requests'] });
+            Swal.fire({ title: 'Rejected', text: 'Resignation request rejected.', icon: 'success', timer: 1500 });
+        },
+        onError: (err: any) => Swal.fire('Error', err.response?.data?.message || 'Rejection failed', 'error')
     });
 
     // Edit Mutation
@@ -172,6 +197,33 @@ const ApprovalsPage = () => {
                 updateStatusMutation.mutate({ id: req.id, type, status: 'REJECTED', reason: result.value });
             }
         });
+    };
+
+    const handleResignationAction = (req: any, action: 'APPROVE' | 'REJECT') => {
+        if (action === 'APPROVE') {
+            Swal.fire({
+                title: 'Approve Resignation?',
+                text: `This will start the notice period for ${req.employee.full_name}.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#10b981',
+                confirmButtonText: 'Yes, Approve'
+            }).then((result) => {
+                if (result.isConfirmed) approveResignationMutation.mutate(req.id);
+            });
+        } else {
+            Swal.fire({
+                title: 'Reject Resignation',
+                input: 'text',
+                inputLabel: 'Reason',
+                inputPlaceholder: 'Reason for rejection...',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                confirmButtonText: 'Reject'
+            }).then((result) => {
+                if (result.isConfirmed) rejectResignationMutation.mutate({ id: req.id, reason: result.value });
+            });
+        }
     };
 
     const handleDelete = (id: string, type: 'LEAVE' | 'REGULARISATION') => {
@@ -314,7 +366,7 @@ const ApprovalsPage = () => {
     );
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
+        <div className="space-y-6 animate-in fade-in duration-500" >
             <Card>
                 <CardHeader className="pb-3">
                     <div className="flex justify-between items-center">
@@ -350,6 +402,54 @@ const ApprovalsPage = () => {
                                         )}
                                     </h3>
                                     <RequestTable requests={regularisation} type="REGULARISATION" />
+                                </div>
+
+                                {/* Resignation Section */}
+                                <div className="space-y-2 col-span-1 lg:col-span-2">
+                                    <h3 className="font-semibold flex items-center gap-2">
+                                        <LogOut className="h-4 w-4 text-red-600" /> Resignation Requests
+                                        {resignation.filter((r: any) => r.status === 'APPLIED').length > 0 && (
+                                            <Badge variant="destructive" className="ml-1 rounded-full px-1.5 py-0.5 text-[10px] h-auto min-w-[20px] justify-center">{resignation.filter((r: any) => r.status === 'APPLIED').length}</Badge>
+                                        )}
+                                    </h3>
+                                    <div className="rounded-md border">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>Employee</TableHead>
+                                                    <TableHead>Applied Date</TableHead>
+                                                    <TableHead>Reason</TableHead>
+                                                    <TableHead>Status</TableHead>
+                                                    <TableHead className="text-right">Actions</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {resignation.filter((r: any) => r.status === 'APPLIED').length === 0 ? (
+                                                    <TableRow>
+                                                        <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">No pending resignations.</TableCell>
+                                                    </TableRow>
+                                                ) : (
+                                                    resignation.filter((r: any) => r.status === 'APPLIED').map((req: any) => (
+                                                        <TableRow key={req.id}>
+                                                            <TableCell>
+                                                                <div className="font-medium">{req.employee.full_name}</div>
+                                                                <div className="text-xs text-muted-foreground">{req.employee.role}</div>
+                                                            </TableCell>
+                                                            <TableCell>{format(new Date(req.applied_date), 'dd MMM yyyy')}</TableCell>
+                                                            <TableCell className="max-w-[300px] truncate" title={req.reason}>{req.reason}</TableCell>
+                                                            <TableCell><Badge variant="outline">{req.status}</Badge></TableCell>
+                                                            <TableCell className="text-right">
+                                                                <div className="flex justify-end gap-2">
+                                                                    <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => handleResignationAction(req, 'REJECT')}>Reject</Button>
+                                                                    <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => handleResignationAction(req, 'APPROVE')}>Approve</Button>
+                                                                </div>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))
+                                                )}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
                                 </div>
                             </div>
                         </TabsContent>
@@ -410,7 +510,7 @@ const ApprovalsPage = () => {
             </Card>
 
             {/* Edit Modal */}
-            <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+            <Dialog open={editModalOpen} onOpenChange={setEditModalOpen} >
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Edit Request</DialogTitle>
@@ -479,8 +579,8 @@ const ApprovalsPage = () => {
                         </form>
                     )}
                 </DialogContent>
-            </Dialog>
-        </div>
+            </Dialog >
+        </div >
     );
 };
 

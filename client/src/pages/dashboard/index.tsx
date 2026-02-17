@@ -40,6 +40,7 @@ const TeamList = lazy(() => import('../team/TeamList'));
 const TeamProfile = lazy(() => import('../team/TeamProfile'));
 const SystemRoleManagement = lazy(() => import('../team/SystemRoleManagement'));
 const OnboardingPage = lazy(() => import('../team/OnboardingPage'));
+const ResignationPage = lazy(() => import('../team/resignation/ResignationPage'));
 const DataSync = lazy(() => import('../admin/DataSync')); // [New Route]
 const SettingsPage = lazy(() => import('../settings/index'));
 
@@ -140,7 +141,9 @@ const Dashboard = () => {
                     <Route path="team/onboard" element={<OnboardingPage />} />
                     <Route path="team/edit/:id" element={<OnboardingPage />} />
                     <Route path="team/roles" element={<SystemRoleManagement />} />
+                    <Route path="team/roles" element={<SystemRoleManagement />} />
                     <Route path="team/:id" element={<TeamProfile />} />
+                    <Route path="team/resignation" element={<ResignationPage />} />
 
                     {/* Module 6: Payroll Management (Legacy routes kept for direct link safety if needed, but menu points to Team Manager) */}
                     <Route path="payroll/manager" element={<PayrollManager />} />

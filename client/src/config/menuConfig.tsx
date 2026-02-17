@@ -20,7 +20,8 @@ import {
     Calculator,
     MessageSquare,
     UserCheck,
-    ScrollText
+    ScrollText,
+    LogOut
 } from 'lucide-react';
 import { ROLES } from '../utils/roles';
 
@@ -50,7 +51,7 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
         label: "Team Management",
         path: "/dashboard/team-management",
         icon: Users,
-        // Remove children, it's now a single view
+        // Reverted to single view as per request
     },
     {
         label: "Task Management",
@@ -87,7 +88,11 @@ export const STAFF_MENU: MenuItem[] = [
         icon: Banknote,
         path: '/dashboard/payroll/manager'
     },
-
+    {
+        label: "Relieve / Resignation",
+        path: "/dashboard/team/resignation",
+        icon: LogOut
+    }
 ];
 
 export const CLIENT_MENU: MenuItem[] = [

@@ -76,6 +76,10 @@ model User {
 
   advance_balance Float    @default(0.0)
 
+  // Resignation Relations
+  resignations         ResignationRequest[] @relation("ResignationEmployee")
+  resignationApprovals ResignationRequest[] @relation("ResignationApprover")
+
   @@index([role])
   @@index([department])
 }
@@ -1250,4 +1254,46 @@ model TransactionSequence {
   last_seq  Int    @default(0)
 
   @@unique([year, month])
+}
+// --- MODULE 6: RESIGNATION / OFFBOARDING ---
+
+model ResignationRequest {
+  id String @id @default(uuid())
+
+  // Employee Relation
+  employee_id String
+  employee    User   @relation("ResignationEmployee", fields: [employee_id], references: [id])
+
+  // Dates
+  applied_date            DateTime  @default(now())
+  requested_relieving_date DateTime
+  approved_relieving_date  DateTime? // Set upon approval or override
+
+  // Notice Period Logic
+  default_notice_period_days Int @default(30)
+  revised_notice_period_days Int? // If admin overrides
+  final_notice_period_days   Int? // Snapshot of actual days after approval
+
+  // Status & Workflow
+  status String @default("APPLIED") // APPLIED, UNDER_NOTICE, COMPLETED, REJECTED, CANCELLED
+
+  // Approval Info
+  approval_date DateTime?
+  approval_by   String?
+  approver      User?     @relation("ResignationApprover", fields: [approval_by], references: [id])
+
+  // Reasons & Logs
+  reason           String? // Employee reason
+  rejection_reason String?
+  revision_reason  String? // Why notice period was changed
+  
+  // Handover Check (Optional for now)
+  handover_completed Boolean @default(false)
+  exit_interview_done Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([employee_id])
 }

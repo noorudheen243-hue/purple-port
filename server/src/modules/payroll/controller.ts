@@ -63,7 +63,7 @@ export const savePayrollSlip = async (req: Request, res: Response) => {
             return res.status(400).json({ message: "Missing required fields." });
         }
 
-        const slip = await payrollService.savePayrollSlip(month, year, { ...data, user_id: userId });
+        const slip = await payrollService.savePayrollSlip(month, year, userId, data);
         res.json(slip);
     } catch (error: any) {
         res.status(500).json({ message: error.message });

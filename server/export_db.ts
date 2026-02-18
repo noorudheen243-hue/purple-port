@@ -42,7 +42,7 @@ async function exportData() {
     data.regularisationRequests = await prisma.regularisationRequest.findMany();
     data.leaveAllocations = await prisma.leaveAllocation.findMany();
     data.holidays = await prisma.holiday.findMany();
-    data.shiftPresets = await prisma.shiftPreset.findMany();
+    data.shifts = await prisma.shift.findMany();
     data.payrollRuns = await prisma.payrollRun.findMany();
     data.payrollSlips = await prisma.payrollSlip.findMany();
     data.biometricCredentials = await prisma.biometricCredential.findMany();

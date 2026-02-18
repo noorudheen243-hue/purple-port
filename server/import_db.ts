@@ -73,7 +73,10 @@ async function importData() {
         for (const i of data.regularisationRequests) await prisma.regularisationRequest.create({ data: i }).catch(e => { });
         for (const i of data.leaveAllocations) await prisma.leaveAllocation.create({ data: i }).catch(e => { });
         for (const i of data.holidays) await prisma.holiday.create({ data: i }).catch(e => { });
-        for (const i of data.shiftPresets) await prisma.shiftPreset.create({ data: i }).catch(e => { });
+        if (data.shifts) for (const i of data.shifts) await prisma.shift.create({ data: i }).catch(e => { });
+        // Legacy support if backup has shiftPresets
+        if (data.shiftPresets) for (const i of data.shiftPresets) await prisma.shift.create({ data: i }).catch(e => { });
+
         for (const i of data.payrollRuns) await prisma.payrollRun.create({ data: i }).catch(e => { });
         for (const i of data.payrollSlips) await prisma.payrollSlip.create({ data: i }).catch(e => { });
         for (const i of data.biometricCredentials) await prisma.biometricCredential.create({ data: i }).catch(e => { });

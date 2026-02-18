@@ -1,20 +1,20 @@
 import { Request, Response } from 'express';
-import prisma from '../../utils/prisma';
+import { ShiftService } from './shift.service';
 
-export const getShiftPresets = async (req: Request, res: Response) => {
+// --- Attributes ---
+
+export const getShifts = async (req: Request, res: Response) => {
     try {
-        const presets = await prisma.shiftPreset.findMany({
-            orderBy: { name: 'asc' }
-        });
-        res.json(presets);
+        const shifts = await ShiftService.listShifts();
+        res.json(shifts);
     } catch (error: any) {
         res.status(500).json({ error: error.message });
     }
 };
 
-export const createShiftPreset = async (req: Request, res: Response) => {
+export const createShift = async (req: Request, res: Response) => {
     try {
-        const { name, start_time, end_time } = req.body;
+        const { name, start_time, end_time, default_grace_time } = req.body;
 
         // Simple Validation
         if (!name || !start_time || !end_time) {
@@ -27,20 +27,96 @@ export const createShiftPreset = async (req: Request, res: Response) => {
             return res.status(400).json({ error: "Invalid time format. Use HH:mm (24-hour)." });
         }
 
-        const preset = await prisma.shiftPreset.create({
-            data: { name, start_time, end_time }
+        const shift = await ShiftService.createShift({
+            name,
+            start_time,
+            end_time,
+            default_grace_time: default_grace_time ? parseInt(default_grace_time) : 15
         });
-        res.json(preset);
+        res.json(shift);
     } catch (error: any) {
         res.status(500).json({ error: error.message });
     }
 };
 
-export const deleteShiftPreset = async (req: Request, res: Response) => {
+export const updateShift = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        await prisma.shiftPreset.delete({ where: { id } });
-        res.json({ message: "Shift Preset deleted successfully." });
+        const data = req.body;
+        const shift = await ShiftService.updateShift(id, data);
+        res.json(shift);
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export const deleteShift = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        await ShiftService.deleteShift(id);
+        res.json({ message: "Shift deleted successfully." });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// --- Assignments ---
+
+export const assignShift = async (req: Request, res: Response) => {
+    try {
+        const { staff_id, shift_id, from_date, to_date } = req.body;
+
+        if (!staff_id || !shift_id || !from_date) {
+            return res.status(400).json({ error: "Staff ID, Shift ID, and From Date are required." });
+        }
+
+        const assignment = await ShiftService.assignShift({
+            staff_id,
+            shift_id,
+            from_date: new Date(from_date),
+            to_date: to_date ? new Date(to_date) : null
+        });
+
+        res.json(assignment);
+    } catch (error: any) {
+        res.status(400).json({ error: error.message });
+    }
+};
+
+export const getStaffAssignments = async (req: Request, res: Response) => {
+    try {
+        const { staffId } = req.params;
+        const assignments = await ShiftService.getStaffAssignments(staffId);
+        res.json(assignments);
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export const deleteAssignment = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        await ShiftService.deleteAssignment(id);
+        res.json({ message: "Assignment removed." });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export const getShiftForDate = async (req: Request, res: Response) => {
+    try {
+        let { staffId, date } = req.query;
+
+        if (!staffId) {
+            staffId = req.user?.id;
+        }
+
+        if (!staffId || !date) {
+            return res.status(400).json({ error: "Staff ID (or Auth) and Date are required." });
+        }
+
+        const shift = await ShiftService.getShiftForDate(staffId as string, new Date(date as string));
+        res.json(shift);
     } catch (error: any) {
         res.status(500).json({ error: error.message });
     }

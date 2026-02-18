@@ -8,8 +8,28 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import api from '../../lib/api';
 
 const RegularisationPage = () => {
-    const { register, handleSubmit, setValue } = useForm();
+    const { register, handleSubmit, setValue, watch } = useForm();
     const [isLoading, setIsLoading] = useState(false);
+    const [shiftDetails, setShiftDetails] = useState<any>(null);
+
+    const selectedDate = watch("date");
+
+    React.useEffect(() => {
+        const fetchShift = async () => {
+            if (selectedDate) {
+                try {
+                    const { data } = await api.get(`/attendance/shifts/active?date=${selectedDate}`);
+                    setShiftDetails(data);
+                } catch (error) {
+                    console.error("Failed to fetch shift", error);
+                    setShiftDetails(null);
+                }
+            } else {
+                setShiftDetails(null);
+            }
+        };
+        fetchShift();
+    }, [selectedDate]);
 
     const onSubmit = async (data: any) => {
         setIsLoading(true);
@@ -23,6 +43,7 @@ const RegularisationPage = () => {
             setValue("reason", "");
             setValue("date", "");
             setValue("type", "");
+            setShiftDetails(null);
         } catch (error) {
             console.error(error);
             alert("Failed to submit request.");
@@ -44,6 +65,19 @@ const RegularisationPage = () => {
                             <Label>Date of Discrepancy</Label>
                             <Input type="date" {...register("date", { required: true })} />
                         </div>
+
+                        {shiftDetails && (
+                            <div className="bg-blue-50 p-3 rounded-md border border-blue-200">
+                                <p className="text-sm text-blue-900 font-semibold mb-1">Expected Shift</p>
+                                <div className="flex items-center gap-4 text-xs text-blue-700">
+                                    <span>{shiftDetails.name}</span>
+                                    <span className="font-mono bg-blue-100 px-1 rounded">{shiftDetails.start_time} - {shiftDetails.end_time}</span>
+                                    {shiftDetails.default_grace_time > 0 && (
+                                        <span>Grace: {shiftDetails.default_grace_time} mins</span>
+                                    )}
+                                </div>
+                            </div>
+                        )}
 
                         <div className="space-y-2">
                             <Label>Issue Type</Label>

@@ -54,8 +54,15 @@ router.get('/planner/allocations', authenticate, LeavePlannerController.getAlloc
 router.post('/planner/allocations', authenticate, LeavePlannerController.updateAllocation);
 
 // Shift Configuration
-router.get('/shifts', authenticate, ShiftController.getShiftPresets);
-router.post('/shifts', authenticate, ShiftController.createShiftPreset);
-router.delete('/shifts/:id', authenticate, ShiftController.deleteShiftPreset);
+router.get('/shifts', authenticate, ShiftController.getShifts);
+router.post('/shifts', authenticate, ShiftController.createShift);
+router.put('/shifts/:id', authenticate, ShiftController.updateShift);
+router.delete('/shifts/:id', authenticate, ShiftController.deleteShift);
+
+// Shift Assignments
+router.get('/shifts/assignments/:staffId', authenticate, ShiftController.getStaffAssignments);
+router.post('/shifts/assign', authenticate, ShiftController.assignShift);
+router.delete('/shifts/assignments/:id', authenticate, ShiftController.deleteAssignment);
+router.get('/shifts/active', authenticate, ShiftController.getShiftForDate);
 
 export default router;

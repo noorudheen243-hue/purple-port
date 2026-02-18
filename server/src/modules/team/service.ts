@@ -107,20 +107,38 @@ export const getStaffByUserId = async (userId: string) => {
 };
 
 export const listStaff = async () => {
-    const profiles = await prisma.staffProfile.findMany({
-        orderBy: { designation: 'asc' },
-        where: {
-            staff_number: { notIn: ['QIX0001', 'QIX0002'] } // Exclude Co-founders from Directory & Registry
-        },
-        include: {
-            user: { select: { id: true, full_name: true, email: true, role: true, avatar_url: true } },
-            shift_assignments: {
-                where: { is_active: true },
-                include: { shift: true },
-                orderBy: { from_date: 'asc' }
+    let profiles: any[] = [];
+
+    try {
+        profiles = await prisma.staffProfile.findMany({
+            orderBy: { designation: 'asc' },
+            where: {
+                staff_number: { notIn: ['QIX0001', 'QIX0002'] }
+            },
+            include: {
+                user: { select: { id: true, full_name: true, email: true, role: true, avatar_url: true } },
+                shift_assignments: {
+                    where: { is_active: true },
+                    include: { shift: true },
+                    orderBy: { from_date: 'asc' }
+                }
             }
-        }
-    });
+        });
+    } catch (err: any) {
+        // Fallback: shift_assignments table may not exist yet on VPS (migration pending)
+        console.warn('[ListStaff] Falling back to query without shift_assignments:', err.message);
+        profiles = await prisma.staffProfile.findMany({
+            orderBy: { designation: 'asc' },
+            where: {
+                staff_number: { notIn: ['QIX0001', 'QIX0002'] }
+            },
+            include: {
+                user: { select: { id: true, full_name: true, email: true, role: true, avatar_url: true } }
+            }
+        });
+        // Attach empty shift_assignments so downstream code doesn't break
+        profiles = profiles.map(p => ({ ...p, shift_assignments: [] }));
+    }
 
     // Filter out orphaned profiles (where user is null due to bad data)
     const validProfiles = profiles.filter(p => p.user);

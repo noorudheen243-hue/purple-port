@@ -980,43 +980,56 @@ export class AttendanceService {
             const dateStr = currentDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 
             for (const staff of allStaff) {
-                // Skip if staff is inactive? Usually we want to see them if they were active in that period. 
-                // For simplicity, showing all currently retrieved staff.
-
-                // Find record
                 // Find record
                 const record = actualRecords.find(r => {
                     if (r.user_id !== staff.id) return false;
-
                     const recordDateIST = r.date.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
-
-                    // DEBUG LOG (Only print for matches or specific user to avoid spam)
-                    if (staff.full_name.includes('Noorudheen')) {
-                        console.log(`Debug Check: User ${staff.full_name} | Target ${dateStr} | RecordUTC ${r.date.toISOString()} | RecordIST ${recordDateIST} | Match? ${recordDateIST === dateStr}`);
-                    }
-
                     return recordDateIST === dateStr;
                 });
 
-                if (record) {
-                    let shiftDisplay = staff.staffProfile?.shift_timing || '09:00 AM - 06:00 PM';
-                    if (record.shift_snapshot) {
-                        const parts = record.shift_snapshot.split('-');
-                        if (parts.length === 2) {
+                let shiftDisplay = '09:00 AM - 06:00 PM';
+                let shiftObj = null;
+
+                // Priority 1: Shift Snapshot from Record (Immutable History)
+                if (record && record.shift_snapshot) {
+                    const parts = record.shift_snapshot.split('-');
+                    if (parts.length === 2) {
+                        const formatTime = (t: string) => {
+                            const [h, m] = t.split(':');
+                            const d = new Date();
+                            d.setHours(parseInt(h), parseInt(m));
+                            return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+                        };
+                        try {
+                            shiftDisplay = `${formatTime(parts[0])} - ${formatTime(parts[1])}`;
+                        } catch (e) {
+                            shiftDisplay = record.shift_snapshot;
+                        }
+                    }
+                }
+                // Priority 2: Retroactive Lookup (Assignment or Profile Fallback)
+                else {
+                    const { ShiftService } = require('./shift.service');
+                    // Note: We use staff.id for user_id lookup as staff object is just user with profile included
+                    // Wait, staff is from `db.user.findMany`. So staff.id is userId.
+                    try {
+                        shiftObj = await ShiftService.getShiftForDate(staff.id, currentDate);
+                        if (shiftObj) {
                             const formatTime = (t: string) => {
                                 const [h, m] = t.split(':');
                                 const d = new Date();
                                 d.setHours(parseInt(h), parseInt(m));
                                 return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
                             };
-                            try {
-                                shiftDisplay = `${formatTime(parts[0])} - ${formatTime(parts[1])}`;
-                            } catch (e) {
-                                shiftDisplay = record.shift_snapshot;
-                            }
+                            shiftDisplay = `${formatTime(shiftObj.start_time)} - ${formatTime(shiftObj.end_time)}`;
                         }
+                    } catch (e) {
+                        // Fallback to static profile if lookup fails
+                        shiftDisplay = staff.staffProfile?.shift_timing || '09:00 AM - 06:00 PM';
                     }
+                }
 
+                if (record) {
                     fullLogs.push({
                         id: record.id,
                         date: record.date,
@@ -1026,21 +1039,20 @@ export class AttendanceService {
                         check_in: record.check_in,
                         check_out: record.check_out,
                         work_hours: record.work_hours || 0,
-                        status: record.status, // PRESENT, LEAVE, etc.
+                        status: record.status,
                         method: record.method
                     });
                 } else {
-                    // Absent / No Punch
                     fullLogs.push({
                         id: `missing-${staff.id}-${dateStr}`,
-                        date: currentDate,
+                        date: new Date(currentDate), // Clone date
                         user_name: staff.full_name,
                         staff_number: staff.staffProfile?.staff_number || 'N/A',
-                        shift_timing: staff.staffProfile?.shift_timing || '09:00 AM - 06:00 PM',
+                        shift_timing: shiftDisplay,
                         check_in: null,
                         check_out: null,
                         work_hours: 0,
-                        status: 'ABSENT', // Default to ABSENT if no record
+                        status: 'ABSENT',
                         method: 'SYSTEM_GENERATED'
                     });
                 }

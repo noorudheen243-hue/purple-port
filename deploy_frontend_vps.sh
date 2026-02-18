@@ -3,6 +3,9 @@
 # Deployment Script for AntiGravity Frontend Update
 # Usage: ./deploy_frontend_vps.sh
 
+# Exit on any error
+set -e
+
 # 0. Safety Check
 if [ ! -d "client" ] || [ ! -d "server" ]; then
     echo "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
@@ -19,7 +22,9 @@ echo ">>> Starting Frontend Update Deployment..."
 
 # 1. Pull Latest Code
 echo ">>> Pulling latest changes from git..."
-git pull origin main
+git fetch origin main
+git reset --hard origin/main
+echo ">>> Git updated to commit: $(git rev-parse HEAD)"
 
 # 2. Build Frontend
 echo ">>> Building React Frontend..."

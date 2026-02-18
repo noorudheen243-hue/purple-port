@@ -246,7 +246,13 @@ export default function BiometricDetailsPage() {
                                                 <TableCell>{format(new Date(log.date), 'MMM dd, yyyy')}</TableCell>
                                                 <TableCell className="font-medium">{log.user_name}</TableCell>
                                                 <TableCell>{log.staff_number}</TableCell>
-                                                <TableCell className="text-muted-foreground text-sm">{log.shift_timing}</TableCell>
+                                                <TableCell>
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <span className="text-xs font-semibold text-foreground">{log.shift_name || 'Default'}</span>
+                                                        <span className="text-xs text-muted-foreground font-mono">{log.shift_timing}</span>
+                                                        <span className="text-[10px] text-blue-500">Grace: {log.grace_time ?? 15} min</span>
+                                                    </div>
+                                                </TableCell>
                                                 <TableCell>
                                                     {log.check_in ? (
                                                         <span className="text-green-600 font-mono">

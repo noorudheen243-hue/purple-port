@@ -1030,43 +1030,50 @@ export class AttendanceService {
                 });
 
                 let shiftDisplay = '09:00 AM - 06:00 PM';
-                let shiftObj = null;
+                let shiftName = 'Default';
+                let graceTime: number = 15;
+                let shiftObj: any = null;
+
+                const formatTime = (t: string) => {
+                    const [h, m] = t.split(':');
+                    const d = new Date();
+                    d.setHours(parseInt(h), parseInt(m));
+                    return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+                };
 
                 // Priority 1: Shift Snapshot from Record (Immutable History)
                 if (record && record.shift_snapshot) {
                     const parts = record.shift_snapshot.split('-');
                     if (parts.length === 2) {
-                        const formatTime = (t: string) => {
-                            const [h, m] = t.split(':');
-                            const d = new Date();
-                            d.setHours(parseInt(h), parseInt(m));
-                            return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-                        };
                         try {
                             shiftDisplay = `${formatTime(parts[0])} - ${formatTime(parts[1])}`;
                         } catch (e) {
                             shiftDisplay = record.shift_snapshot;
                         }
                     }
+                    // Grace time from record snapshot
+                    if (record.grace_time_applied != null) {
+                        graceTime = record.grace_time_applied;
+                    }
+                    // Shift name: look up from shift_id if available
+                    if (record.shift_id) {
+                        try {
+                            const shiftMeta = await db.shift.findUnique({ where: { id: record.shift_id }, select: { name: true } });
+                            if (shiftMeta) shiftName = shiftMeta.name;
+                        } catch (_) { /* ignore */ }
+                    }
                 }
                 // Priority 2: Retroactive Lookup (Assignment or Profile Fallback)
                 else {
                     const { ShiftService } = require('./shift.service');
-                    // Note: We use staff.id for user_id lookup as staff object is just user with profile included
-                    // Wait, staff is from `db.user.findMany`. So staff.id is userId.
                     try {
                         shiftObj = await ShiftService.getShiftForDate(staff.id, currentDate);
                         if (shiftObj) {
-                            const formatTime = (t: string) => {
-                                const [h, m] = t.split(':');
-                                const d = new Date();
-                                d.setHours(parseInt(h), parseInt(m));
-                                return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-                            };
                             shiftDisplay = `${formatTime(shiftObj.start_time)} - ${formatTime(shiftObj.end_time)}`;
+                            shiftName = shiftObj.name || 'Default';
+                            graceTime = shiftObj.default_grace_time ?? 15;
                         }
                     } catch (e) {
-                        // Fallback to static profile if lookup fails
                         shiftDisplay = staff.staffProfile?.shift_timing || '09:00 AM - 06:00 PM';
                     }
                 }
@@ -1078,6 +1085,8 @@ export class AttendanceService {
                         user_name: staff.full_name,
                         staff_number: staff.staffProfile?.staff_number || 'N/A',
                         shift_timing: shiftDisplay,
+                        shift_name: shiftName,
+                        grace_time: graceTime,
                         check_in: record.check_in,
                         check_out: record.check_out,
                         work_hours: record.work_hours || 0,
@@ -1087,10 +1096,12 @@ export class AttendanceService {
                 } else {
                     fullLogs.push({
                         id: `missing-${staff.id}-${dateStr}`,
-                        date: new Date(currentDate), // Clone date
+                        date: new Date(currentDate),
                         user_name: staff.full_name,
                         staff_number: staff.staffProfile?.staff_number || 'N/A',
                         shift_timing: shiftDisplay,
+                        shift_name: shiftName,
+                        grace_time: graceTime,
                         check_in: null,
                         check_out: null,
                         work_hours: 0,

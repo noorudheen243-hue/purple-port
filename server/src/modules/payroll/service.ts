@@ -224,7 +224,7 @@ export const getSalaryDraft = async (userId: string, month: number, year: number
         // Strategy B: Till Date
         dailyWage = monthlyGrossComponents / 30; // Strict Actual Days
 
-        const daysTillDate = calculationDate.getDate(); // 1-indexed day of month
+        const daysTillDate = calculationDate.getDate(); // 1-indexed day of month (calendar days)
 
         const monthlyFixed = basic + hra + conveyance + accommodation + allowances;
         const perDayFixed = monthlyFixed / 30;
@@ -233,7 +233,8 @@ export const getSalaryDraft = async (userId: string, month: number, year: number
 
         grossTotal = Math.round(baseSalaryTillDate + incentives);
 
-        totalWorkingDays = periodWorkingDays;
+        // Show calendar days (e.g. 18 for Feb 18), not working days
+        totalWorkingDays = daysTillDate;
     }
 
     // 7. Calculate Deductions

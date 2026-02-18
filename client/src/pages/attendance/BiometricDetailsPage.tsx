@@ -269,13 +269,20 @@ export default function BiometricDetailsPage() {
                                                 </TableCell>
                                                 <TableCell>{log.work_hours ? log.work_hours.toFixed(2) + ' hrs' : '-'}</TableCell>
                                                 <TableCell>
-                                                    <Badge variant={
-                                                        status === 'PRESENT' ? 'default' :
-                                                            (status === 'ABSENT' || status === 'MISSING_PUNCH') ? 'destructive' :
-                                                                status === 'HALF_DAY' ? 'warning' : 'secondary'
-                                                    }>
-                                                        {status.replace('_', ' ')}
-                                                    </Badge>
+                                                    <div className="flex flex-col gap-1">
+                                                        <Badge variant={
+                                                            status === 'PRESENT' ? 'default' :
+                                                                (status === 'ABSENT' || status === 'MISSING_PUNCH') ? 'destructive' :
+                                                                    status === 'HALF_DAY' ? 'warning' : 'secondary'
+                                                        }>
+                                                            {status.replace('_', ' ')}
+                                                        </Badge>
+                                                        {log.is_late && (
+                                                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-orange-600 bg-orange-50 border border-orange-200 rounded px-1.5 py-0.5 w-fit">
+                                                                ⏰ Late Punch
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     {/* Only show Regularize if Absent, Half-Day, or Missing Punches */}

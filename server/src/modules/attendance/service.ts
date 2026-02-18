@@ -1079,6 +1079,16 @@ export class AttendanceService {
                 }
 
                 if (record) {
+                    // Compute is_late from actual punch-in vs shift start + grace
+                    let is_late = false;
+                    if (record.check_in && shiftObj?.start_time) {
+                        is_late = AttendanceService.isLate(shiftObj.start_time, record.check_in, graceTime);
+                    } else if (record.check_in && record.shift_snapshot) {
+                        // Parse start from snapshot "HH:mm-HH:mm"
+                        const snapStart = record.shift_snapshot.split('-')[0]?.trim();
+                        if (snapStart) is_late = AttendanceService.isLate(snapStart, record.check_in, graceTime);
+                    }
+
                     fullLogs.push({
                         id: record.id,
                         date: record.date,
@@ -1087,6 +1097,7 @@ export class AttendanceService {
                         shift_timing: shiftDisplay,
                         shift_name: shiftName,
                         grace_time: graceTime,
+                        is_late,
                         check_in: record.check_in,
                         check_out: record.check_out,
                         work_hours: record.work_hours || 0,
@@ -1102,6 +1113,7 @@ export class AttendanceService {
                         shift_timing: shiftDisplay,
                         shift_name: shiftName,
                         grace_time: graceTime,
+                        is_late: false,
                         check_in: null,
                         check_out: null,
                         work_hours: 0,

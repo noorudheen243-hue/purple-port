@@ -100,39 +100,26 @@ export default function BiometricDetailsPage() {
     }, [logs, search]);
 
     // --- Status Calculation Logic (Consistent with Summary) ---
-    const calculateDailyStatus = (log: any, userShift: string = '') => {
-        if (!log) return { status: 'ABSENT' };
+    const calculateDailyStatus = (log: any) => {
+        if (!log) return { status: 'ABSENT', isLate: false };
 
         // Respect explicit backend statuses for Leave/Holiday/Regularized
-        if (log.status === 'HOLIDAY') return { status: 'HOLIDAY' };
-        if (log.status === 'LEAVE') return { status: 'LEAVE' };
-        if (log.status === 'REGULARIZED') return { status: 'REGULARIZED' };
+        if (log.status === 'HOLIDAY') return { status: 'HOLIDAY', isLate: false };
+        if (log.status === 'LEAVE') return { status: 'LEAVE', isLate: false };
+        if (log.status === 'REGULARIZED') return { status: 'REGULARIZED', isLate: false };
 
-        // 1. Missing One Punch Logic
-        if ((log.status === 'PRESENT' || log.status === 'LATE') && (!log.check_in || !log.check_out)) {
-            return { status: 'HALF_DAY' };
+        // KEY RULE: If backend says is_late → always Half Day, regardless of stored status
+        if (log.is_late && (log.status === 'PRESENT' || log.status === 'HALF_DAY' || log.status === 'LATE')) {
+            return { status: 'HALF_DAY', isLate: true };
         }
 
-        // 2. Duration Check based on Shift
-        if (log.check_in && log.check_out) {
-            const start = new Date(log.check_in);
-            const end = new Date(log.check_out);
-            const durationHrs = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-
-            // Shift Logic
-            const isNoBreakShift = userShift && userShift.toUpperCase().includes('NO BREAK');
-
-            // Thresholds
-            const halfDayMin = 4;
-            const fullDayMin = isNoBreakShift ? 7.25 : 7.75;
-
-            if (durationHrs >= halfDayMin && durationHrs < fullDayMin) {
-                return { status: 'HALF_DAY' };
-            }
+        // Missing punch → Half Day
+        if (log.check_in && !log.check_out) {
+            return { status: 'HALF_DAY', isLate: false };
         }
 
-        if (log.status === 'PRESENT' || log.status === 'LATE') return { status: 'PRESENT' };
-        return { status: log.status || 'ABSENT' };
+        // Trust backend status directly
+        return { status: log.status || 'ABSENT', isLate: false };
     };
 
     return (
@@ -238,7 +225,7 @@ export default function BiometricDetailsPage() {
                                     </TableRow>
                                 ) : (
                                     filteredLogs.map((log: any) => {
-                                        const computed = calculateDailyStatus(log, log.shift_timing);
+                                        const computed = calculateDailyStatus(log);
                                         const status = computed.status;
 
                                         return (

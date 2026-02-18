@@ -385,6 +385,48 @@ export class AttendanceService {
         return results;
     }
 
+    // Recalculate Attendance (Retroactive Sync)
+    static async recalculateAttendance(userId: string, startDate: Date, endDate: Date) {
+        console.log(`[Recalc] Recalculating attendance for ${userId} from ${startDate.toISOString()} to ${endDate.toISOString()}`);
+
+        const records = await db.attendanceRecord.findMany({
+            where: {
+                user_id: userId,
+                date: { gte: startDate, lte: endDate }
+            }
+        });
+
+        let updatedCount = 0;
+        const staff = await db.staffProfile.findUnique({ where: { user_id: userId } });
+        if (!staff) return { message: "Staff not found", count: 0 };
+
+        for (const record of records) {
+            // Re-run status logic with new global state (Shift Assignments)
+            const statusResult = await this.computeStatus(
+                staff,
+                record.check_in || new Date(record.date),
+                record.check_out,
+                true // Always treat as past day analysis
+            );
+
+            // Update DB if different (or just force update to be safe)
+            await db.attendanceRecord.update({
+                where: { id: record.id },
+                data: {
+                    status: statusResult.status,
+                    shift_snapshot: `${statusResult.shift.start_time}-${statusResult.shift.end_time}`,
+                    shift_id: statusResult.shift.id === 'LEGACY' || statusResult.shift.id === 'DEFAULT' ? null : statusResult.shift.id,
+                    criteria_mode: statusResult.criteria,
+                    grace_time_applied: statusResult.shift.default_grace_time
+                }
+            });
+            updatedCount++;
+        }
+
+        console.log(`[Recalc] Updated ${updatedCount} records.`);
+        return { updatedCount };
+    }
+
     // Admin: Get Team Attendance Summary
     static async getTeamAttendance(startDate: Date, endDate: Date, requestor?: any) {
         // Fetch all active staff

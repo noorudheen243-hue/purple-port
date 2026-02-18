@@ -78,7 +78,7 @@ export class ShiftService {
             throw new Error(`Shift assignment overlaps with existing assignment (Start: ${overlaps.from_date.toISOString().split('T')[0]})`);
         }
 
-        return await prisma.staffShiftAssignment.create({
+        const assignment = await prisma.staffShiftAssignment.create({
             data: {
                 staff_id,
                 shift_id,
@@ -87,6 +87,26 @@ export class ShiftService {
                 grace_time
             }
         });
+
+        // Retroactive/Sync: Recalculate attendance for the affected period
+        try {
+            const { AttendanceService } = require('./service');
+            const staffMeta = await prisma.staffProfile.findUnique({ where: { id: staff_id }, select: { user_id: true } });
+            if (staffMeta) {
+                // Determine range: From start date to end date (or today if infinite)
+                // We only need to recalc up to "Today" because future records don't exist.
+                const recalcEnd = endDate && endDate < new Date() ? endDate : new Date();
+
+                // Only run if start date is in the past or today
+                if (startDate <= recalcEnd) {
+                    await AttendanceService.recalculateAttendance(staffMeta.user_id, startDate, recalcEnd);
+                }
+            }
+        } catch (e) {
+            console.error("Failed to trigger retroactive sync:", e);
+        }
+
+        return assignment;
     }
 
     static async getStaffAssignments(staffId: string) {
@@ -98,7 +118,29 @@ export class ShiftService {
     }
 
     static async deleteAssignment(id: string) {
-        return await prisma.staffShiftAssignment.delete({ where: { id } });
+        const assignment = await prisma.staffShiftAssignment.findUnique({
+            where: { id },
+            include: { staff: { select: { user_id: true } } }
+        });
+
+        if (!assignment) throw new Error("Assignment not found");
+
+        await prisma.staffShiftAssignment.delete({ where: { id } });
+
+        // Retroactive Sync: Revert to Default/Legacy rules
+        try {
+            const { AttendanceService } = require('./service');
+            const startDate = assignment.from_date;
+            const endDate = assignment.to_date && assignment.to_date < new Date() ? assignment.to_date : new Date();
+
+            if (startDate <= endDate) {
+                await AttendanceService.recalculateAttendance(assignment.staff.user_id, startDate, endDate);
+            }
+        } catch (e) {
+            console.error("Failed to trigger retroactive sync on delete:", e);
+        }
+
+        return { message: "Assignment deleted and attendance synchronized." };
     }
 
     // --- Core Lookup for Attendance ---

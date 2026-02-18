@@ -56,6 +56,8 @@ echo ">>> Files copied successfully."
 echo ">>> Restarting Backend Server..."
 cd ../server
 npm install
+echo ">>> Compiling Backend TypeScript..."
+npm run build
 npx prisma generate
 echo ">>> Pushing DB Schema changes..."
 npx prisma db push

@@ -13,6 +13,7 @@ import { useAuthStore } from '../../store/authStore';
 
 const SalaryCalculator = () => {
     const { user } = useAuthStore();
+    console.log("SalaryCalculator v2.2 Loaded"); // Verify Update
     const isAdmin = user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'DEVELOPER_ADMIN';
     const [viewMode, setViewMode] = useState<'CALCULATOR' | 'SETTINGS'>('CALCULATOR');
 

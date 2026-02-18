@@ -72,7 +72,7 @@ function App() {
                         </Suspense>
                         {/* VERSION INDICATOR */}
                         <div className="fixed bottom-1 right-1 opacity-50 text-[10px] bg-black/80 text-white px-2 py-0.5 rounded pointer-events-none z-[9999]">
-                            v2.1 - Auto-Reload Enabled
+                            v2.2 - Auto-Reload Enabled
                         </div>
                     </div>
                 </BrowserRouter>

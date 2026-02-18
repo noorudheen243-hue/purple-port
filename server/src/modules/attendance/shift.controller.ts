@@ -42,8 +42,15 @@ export const createShift = async (req: Request, res: Response) => {
 export const updateShift = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const data = req.body;
-        const shift = await ShiftService.updateShift(id, data);
+        const { name, start_time, end_time, default_grace_time } = req.body;
+
+        const updateData: any = {};
+        if (name) updateData.name = name;
+        if (start_time) updateData.start_time = start_time;
+        if (end_time) updateData.end_time = end_time;
+        if (default_grace_time !== undefined) updateData.default_grace_time = parseInt(default_grace_time);
+
+        const shift = await ShiftService.updateShift(id, updateData);
         res.json(shift);
     } catch (error: any) {
         res.status(500).json({ error: error.message });

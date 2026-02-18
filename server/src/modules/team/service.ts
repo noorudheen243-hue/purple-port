@@ -122,19 +122,31 @@ export const listStaff = async () => {
         }
     });
 
+    // Filter out orphaned profiles (where user is null due to bad data)
+    const validProfiles = profiles.filter(p => p.user);
+
+    if (profiles.length !== validProfiles.length) {
+        console.warn(`[ListStaff] Found ${profiles.length - validProfiles.length} orphaned profiles. Ignoring.`);
+    }
+
     // Attach Ledger Info manually
-    const userIds = profiles.map(p => p.user_id);
-    const ledgers = await prisma.ledger.findMany({
-        where: {
-            entity_type: 'USER',
-            entity_id: { in: userIds }
-        },
-        select: { entity_id: true, head_id: true }
-    });
+    const userIds = validProfiles.map(p => p.user_id);
+    let ledgerMap = new Map();
 
-    const ledgerMap = new Map(ledgers.map(l => [l.entity_id, l]));
+    try {
+        const ledgers = await prisma.ledger.findMany({
+            where: {
+                entity_type: 'USER',
+                entity_id: { in: userIds }
+            },
+            select: { entity_id: true, head_id: true }
+        });
+        ledgerMap = new Map(ledgers.map(l => [l.entity_id, l]));
+    } catch (err) {
+        console.error("[ListStaff] Failed to fetch ledgers. Returning profiles without ledger info.", err);
+    }
 
-    return profiles.map(p => ({
+    return validProfiles.map(p => ({
         ...p,
         ledger_options: {
             create: ledgerMap.has(p.user_id),

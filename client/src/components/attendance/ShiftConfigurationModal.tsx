@@ -177,7 +177,9 @@ export const ShiftConfigurationModal: React.FC<ShiftConfigurationModalProps> = (
                                 <div key={preset.id} className={`flex justify-between items-center p-2 border rounded hover:bg-gray-50 ${editingId === preset.id ? 'border-blue-300 bg-blue-50' : ''}`}>
                                     <div className="cursor-pointer flex-1" onClick={() => handleEdit(preset)}>
                                         <p className="font-medium text-sm text-gray-800">{preset.name}</p>
-                                        <p className="text-xs text-gray-500">{formatTime12(preset.start_time)} - {formatTime12(preset.end_time)}</p>
+                                        <p className="text-xs text-gray-500">
+                                            {formatTime12(preset.start_time)} - {formatTime12(preset.end_time)} • Grace: {preset.default_grace_time}m
+                                        </p>
                                     </div>
                                     <div className="flex items-center gap-1">
                                         <button onClick={() => handleDelete(preset.id)} className="text-red-400 hover:text-red-600 p-1">

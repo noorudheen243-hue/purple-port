@@ -165,7 +165,12 @@ export const getSalaryDraft = async (userId: string, month: number, year: number
     if (calculationDate < monthStart) calculationDate = monthStart;
 
     // 3. Calculate LOP (Always needed for deduction)
-    const lopDays = await calculateAutoLOP(userId, month, year, calculationDate);
+    let lopDays = 0;
+    try {
+        lopDays = await calculateAutoLOP(userId, month, year, calculationDate);
+    } catch (error) {
+        console.error("Failed to calculate Auto-LOP:", error);
+    }
 
     // 4. Calculate Working Days in the ACTUAL period
     const startDate = new Date(year, month - 1, 1);
@@ -244,25 +249,29 @@ export const getSalaryDraft = async (userId: string, month: number, year: number
 
     // 9. Check Ledgers for Advance
     let salaryAdvanceBalance = 0;
-    const advanceLedger = await prisma.ledger.findFirst({
-        where: { entity_id: userId, entity_type: 'USER', head: { code: '1000' } }
-    });
-    if (advanceLedger && advanceLedger.balance > 0) salaryAdvanceBalance += advanceLedger.balance;
-
-    let staffLedger = await prisma.ledger.findFirst({
-        where: { entity_id: userId, entity_type: 'USER', head: { code: '2000' } }
-    });
-    if (!staffLedger) {
-        staffLedger = await prisma.ledger.findFirst({
-            where: { name: profile.user.full_name, head: { code: '2000' } }
+    try {
+        const advanceLedger = await prisma.ledger.findFirst({
+            where: { entity_id: userId, entity_type: 'USER', head: { code: '1000' } }
         });
-    }
-    if (staffLedger && staffLedger.balance > 0) salaryAdvanceBalance += staffLedger.balance;
+        if (advanceLedger && advanceLedger.balance > 0) salaryAdvanceBalance += advanceLedger.balance;
 
-    const expenseLedger = await prisma.ledger.findFirst({
-        where: { entity_id: userId, head: { code: '6000' } }
-    });
-    if (expenseLedger && expenseLedger.balance > 0) salaryAdvanceBalance += expenseLedger.balance;
+        let staffLedger = await prisma.ledger.findFirst({
+            where: { entity_id: userId, entity_type: 'USER', head: { code: '2000' } }
+        });
+        if (!staffLedger) {
+            staffLedger = await prisma.ledger.findFirst({
+                where: { name: profile.user.full_name, head: { code: '2000' } }
+            });
+        }
+        if (staffLedger && staffLedger.balance > 0) salaryAdvanceBalance += staffLedger.balance;
+
+        const expenseLedger = await prisma.ledger.findFirst({
+            where: { entity_id: userId, head: { code: '6000' } }
+        });
+        if (expenseLedger && expenseLedger.balance > 0) salaryAdvanceBalance += expenseLedger.balance;
+    } catch (error) {
+        console.error("Failed to fetch ledger balances:", error);
+    }
 
 
     if (existingSlip) {

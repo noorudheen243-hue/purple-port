@@ -52,7 +52,7 @@ export const getSalaryDraft = async (req: Request, res: Response) => {
         );
         res.json(draft);
     } catch (error: any) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: error.message, stack: error.stack });
     }
 };
 

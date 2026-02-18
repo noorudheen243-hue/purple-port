@@ -7,6 +7,7 @@ datasource db {
   url      = "file:./dev.db"
 }
 
+
 model User {
   id            String     @id @default(uuid())
   email         String     @unique
@@ -144,6 +145,7 @@ model StaffProfile {
   aadhar_number       String?  // NEW
   shift_timing        String?  // NEW
   grace_time          Int      @default(15) // Minutes (New)
+  punch_in_criteria   String @default("GRACE_TIME") // NEW: Criteria Policy
   payment_method      String?  // NEW
 
   // UPI Details
@@ -279,6 +281,7 @@ model PayrollRun {
   month       Int
   year        Int
   status      String   @default("DRAFT") // DRAFT, LOCKED, PAID
+  type        String   @default("MONTHLY") // MONTHLY, TILL_DATE
   total_payout Float   @default(0.0)
   processed_at DateTime?
   createdAt   DateTime @default(now())
@@ -300,6 +303,7 @@ model PayrollSlip {
   net_pay         Float
   payment_date    DateTime?
   status          String   @default("PENDING") // PENDING, PAID
+  payroll_type    String   @default("MONTHLY") // MONTHLY, TILL_DATE
   createdAt       DateTime @default(now())
   
   payroll_run_id  String
@@ -1296,4 +1300,5 @@ model ResignationRequest {
 
   @@index([status])
   @@index([employee_id])
+  @@index([createdAt])
 }

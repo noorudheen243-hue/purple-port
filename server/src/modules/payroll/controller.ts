@@ -38,7 +38,7 @@ export const deleteHoliday = async (req: Request, res: Response) => {
 
 export const getSalaryDraft = async (req: Request, res: Response) => {
     try {
-        const { userId, month, year, asOfDate } = req.query; // Add asOfDate
+        const { userId, month, year, asOfDate, payrollType } = req.query; // Add asOfDate
         if (!userId || !month || !year) {
             return res.status(400).json({ message: "UserId, Month, and Year are required." });
         }
@@ -47,7 +47,8 @@ export const getSalaryDraft = async (req: Request, res: Response) => {
             userId as string,
             parseInt(month as string),
             parseInt(year as string),
-            asOfDate as string | undefined // Pass asOfDate
+            asOfDate as string | undefined, // Pass asOfDate
+            (payrollType as 'MONTHLY' | 'TILL_DATE') || 'MONTHLY'
         );
         res.json(draft);
     } catch (error: any) {

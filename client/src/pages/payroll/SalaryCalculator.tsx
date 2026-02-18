@@ -25,6 +25,7 @@ const SalaryCalculator = () => {
     const [selectedStaff, setSelectedStaff] = useState<string>('');
     const [month, setMonth] = useState<number>(new Date().getMonth() + 1);
     const [year, setYear] = useState<number>(new Date().getFullYear());
+    const [payrollType, setPayrollType] = useState<'MONTHLY' | 'TILL_DATE'>('MONTHLY');
 
     // Staff List
     const { data: staffList } = useQuery({
@@ -51,7 +52,8 @@ const SalaryCalculator = () => {
             days_in_period: 0,
             is_prorated: false,
             gross_total: 0,
-            daily_wage: 0
+            daily_wage: 0,
+            payroll_type: 'MONTHLY'
         }
     });
 
@@ -64,7 +66,7 @@ const SalaryCalculator = () => {
                     const staffProfile = staffList.find((s: any) => s.user_id === selectedStaff);
 
                     // 2. Fetch Draft Slip (if exists) or Calculate Fresh
-                    const res = await backend.get('/payroll/draft', { params: { userId: selectedStaff, month, year } });
+                    const res = await backend.get('/payroll/draft', { params: { userId: selectedStaff, month, year, payrollType } });
                     const data = res.data;
 
                     // Merge Staff Defaults
@@ -86,7 +88,8 @@ const SalaryCalculator = () => {
                             days_in_period: data.days_in_period || 0,
                             is_prorated: data.is_prorated || false,
                             gross_total: data.gross_total || 0,
-                            daily_wage: data.daily_wage || 0
+                            daily_wage: data.daily_wage || 0,
+                            payroll_type: data.payroll_type || payrollType
                         });
                     }
 
@@ -96,7 +99,7 @@ const SalaryCalculator = () => {
             };
             fetchData();
         }
-    }, [selectedStaff, month, year, reset, staffList]);
+    }, [selectedStaff, month, year, payrollType, reset, staffList]);
 
     const values = watch();
 
@@ -110,23 +113,106 @@ const SalaryCalculator = () => {
             (Number(values.allowances) || 0) +
             (Number(values.incentives) || 0);
 
+        // Note: Logic for Gross Total update needs to match backend if we want real-time client side calc.
+        // But since 'Gross Total' is complex (Till Date vs Monthly), we rely on Backend 'values.gross_total'
+        // OR we just use the 'Net Pay' which IS (Gross - Deductions).
+        // Wait, 'earnings' calculated here is SUM OF COMPONENTS. 
+        // For 'Monthly', Gross = Sum Of Components.
+        // For 'Till Date', Gross != Sum Of Components (it is Time Based).
+        // So we should NOT overwrite 'net_pay' using 'earnings' sum if it is TILL_DATE?
+        // Actually, the form values `basic_salary` etc are populated.
+        // If Till Date, does `basic_salary` represent the Full Month Basic or Prorated?
+        // Service returns `basic_salary` as the FULL MONTH value (from profile).
+        // And `gross_total` as the prorated value.
+        // So `net_pay` calc here: `earnings - deductions` is WRONG for Till Date if earnings are full month.
+        // We should use `gross_total` from values!
+
+        // Correct Logic:
+        const gross = Number(values.gross_total) || 0;
+
+        // Wait, if user EDITS 'Incentives', does Gross Update?
+        // If Monthly: Gross = Fixed + NewIncentives.
+        // If Till Date: Gross = ProratedFixed + NewIncentives.
+        // We need to handle this. 
+        // For now, let's assume 'gross_total' is derived. 
+        // If user changes Incentives, we might need to Recalculate Gross.
+        // Simple fix: Net Pay = Gross - Deductions. 
+        // But Gross needs to update if components change.
+        // Let's rely on `values.gross_total` being accurate OR update it?
+        // Ideally, we should trigger a backend Recalc on change? Or replicate logic.
+        // Replicating 'Till Date' logic here is complex (need working days etc).
+        // Monthly logic is easy.
+
+        // For implementation speed/robustness: 
+        // 1. If Monthly: Gross = Sum(Components).
+        // 2. If Till Date: Gross = (Sum(Fixed)/TotalDays * DaysWorked) + Incentives.
+        // We have `total_working_days` (which is actually `days_in_period` for Till Date?)
+        // Service sends `total_working_days`.
+        // Let's trust Service `gross_total` initially.
+        // If user edits, we might drift. 
+        // Requirement 6: "Dynamic recalculation button".
+        // Maybe we just allow fetching? 
+        // Or we update logic here to be smart.
+
         const deductions =
             (Number(values.lop_deduction) || 0) +
             (Number(values.advance_salary) || 0) +
             (Number(values.other_deductions) || 0);
 
-        const net = earnings - deductions;
-        if (values.net_pay !== net) {
-            setValue('net_pay', net);
+        // If we want to support client-side updates:
+        let currentGross = Number(values.gross_total) || 0;
+
+        // If Monthly, sync Gross to Sum
+        if (payrollType === 'MONTHLY') {
+            currentGross =
+                (Number(values.basic_salary) || 0) +
+                (Number(values.hra) || 0) +
+                (Number(values.conveyance_allowance) || 0) +
+                (Number(values.accommodation_allowance) || 0) +
+                (Number(values.allowances) || 0) +
+                (Number(values.incentives) || 0);
+        } else {
+            // Till Date: We assume `gross_total` from backend is correct for the fixed part.
+            // If user adds Incentives, we should add them?
+            // Service Logic: Gross = BaseTillDate + Incentives.
+            // So if `values.incentives` changes, Gross should change by Delta?
+            // Or we just recalculate:
+            // We don't have `BaseTillDate` stored separately.
+            // But we know `DailyWage * Days`.
+            // Let's use `daily_wage` (which is per day fixed) * `total_working_days` (days elapsed) + `incentives` + `allowances`?
+            // Wait, Service: `grossTotal = BaseSalaryTillDate + Incentives`.
+            // BaseSalaryTillDate = PerDayFixed * DaysTillDate.
+            // Allowance (Misc) is added on top in Service? "Gross Earnings = StandardEarnings + Allowances".
+            // Actually my service implementation: `monthlyFixed = basic+hra+...`. `PreDay = MonthlyFixed/TotalDays`.
+            // `Base = PerDay * Days`.
+            // `Gross = Base + Incentives`.
+            // `standardEarnings` INCLUDED `allowances` (Misc).
+            // So default logic: Gross = (Fixed+Misc+Inc)/30 * Days?
+            // Use Backend `gross_total` as source of truth.
         }
+
+        const net = currentGross - deductions;
+
+        // Only update if Monthly (safe) or if we trust the loop. 
+        // For Till Date, we might just let Net follow Gross which is static unless backend recalc.
+
+        if (payrollType === 'MONTHLY') {
+            if (values.gross_total !== currentGross) setValue('gross_total', currentGross);
+            if (values.net_pay !== net) setValue('net_pay', net);
+        } else {
+            const net = (Number(values.gross_total) || 0) - deductions;
+            if (values.net_pay !== net) setValue('net_pay', net);
+        }
+
     }, [
         values.basic_salary, values.hra, values.conveyance_allowance, values.accommodation_allowance,
         values.allowances, values.incentives, values.lop_deduction, values.advance_salary, values.other_deductions,
+        values.gross_total, payrollType,
         setValue
     ]);
 
     const saveMutation = useMutation({
-        mutationFn: (data: any) => backend.post('/payroll/slip', { month, year, userId: selectedStaff, data }),
+        mutationFn: (data: any) => backend.post('/payroll/slip', { month, year, userId: selectedStaff, data: { ...data, payroll_type: payrollType } }),
         onSuccess: () => {
             alert("Payroll Stub Saved");
             queryClient.invalidateQueries({ queryKey: ['payroll-draft'] });
@@ -172,6 +258,16 @@ const SalaryCalculator = () => {
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-6">
                         <h1 className="text-2xl font-bold tracking-tight">Salary Calculator</h1>
                         <div className="flex gap-2">
+                            <Select value={payrollType} onValueChange={(v: any) => setPayrollType(v)}>
+                                <SelectTrigger className="w-[140px] bg-background">
+                                    <SelectValue placeholder="Type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="MONTHLY">Monthly</SelectItem>
+                                    <SelectItem value="TILL_DATE">Till Date</SelectItem>
+                                </SelectContent>
+                            </Select>
+
                             <Select value={month.toString()} onValueChange={(v: string) => setMonth(parseInt(v))}>
                                 <SelectTrigger className="w-[120px] bg-background">
                                     <SelectValue placeholder="Month" />

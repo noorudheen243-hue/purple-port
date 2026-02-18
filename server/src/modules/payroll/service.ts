@@ -299,6 +299,14 @@ export const getSalaryDraft = async (userId: string, month: number, year: number
             gross_total: grossTotal,
             daily_wage: Math.round(dailyWage),
 
+            // Sync Fresh Components from Profile (Fix for Settings Sync)
+            basic_salary: basic,
+            hra: hra,
+            conveyance_allowance: conveyance,
+            accommodation_allowance: accommodation,
+            allowances: allowances,
+            incentives: incentives,
+
             // Metadata
             calculation_date: calculationDate,
             days_in_period: daysInPeriod,

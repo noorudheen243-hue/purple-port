@@ -57,6 +57,8 @@ echo ">>> Restarting Backend Server..."
 cd ../server
 npm install
 npx prisma generate
+echo ">>> Pushing DB Schema changes..."
+npx prisma db push
 pm2 restart all
 
 echo ">>> Deployment Complete! Please hard refresh your browser."

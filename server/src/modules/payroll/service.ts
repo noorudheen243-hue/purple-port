@@ -217,12 +217,12 @@ export const getSalaryDraft = async (userId: string, month: number, year: number
         totalWorkingDays = 30;
     } else {
         // Strategy B: Till Date
-        dailyWage = monthlyGrossComponents / totalDaysInMonth; // Strict Actual Days
+        dailyWage = monthlyGrossComponents / 30; // Strict Actual Days
 
         const daysTillDate = calculationDate.getDate(); // 1-indexed day of month
 
         const monthlyFixed = basic + hra + conveyance + accommodation + allowances;
-        const perDayFixed = monthlyFixed / totalDaysInMonth;
+        const perDayFixed = monthlyFixed / 30;
 
         const baseSalaryTillDate = perDayFixed * daysTillDate;
 

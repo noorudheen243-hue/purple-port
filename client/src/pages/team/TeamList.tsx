@@ -107,10 +107,6 @@ const TeamList = () => {
         queryFn: async () => (await api.get('/team/staff')).data
     });
 
-    if (error) {
-        return <div className="p-8 text-center text-red-500">Failed to load team data.</div>;
-    }
-
     const filteredStaff = useMemo(() => {
         if (!Array.isArray(staffList)) return [];
         return staffList.filter((staff: any) => {
@@ -147,6 +143,10 @@ const TeamList = () => {
 
         return groups;
     }, [filteredStaff, filterDept]);
+
+    if (error) {
+        return <div className="p-8 text-center text-red-500">Failed to load team data.</div>;
+    }
 
     return (
         <div className="space-y-6">

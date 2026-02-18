@@ -14,7 +14,7 @@ export const ResignationManagerView = () => {
     const [selectedRequest, setSelectedRequest] = useState<any>(null);
     const [actionType, setActionType] = useState<'REVISE' | 'REJECT' | null>(null);
 
-    const { data: requests, isLoading } = useQuery({
+    const { data: requests, isLoading, isError } = useQuery({
         queryKey: ['all-resignations'],
         queryFn: async () => (await api.get('/team/resignation')).data
     });
@@ -124,6 +124,8 @@ export const ResignationManagerView = () => {
     };
 
     if (isLoading) return <div className="p-8 text-center text-muted-foreground"><Loader2 className="animate-spin inline mr-2" /> Loading Requests...</div>;
+    if (isError) return <div className="p-8 text-center text-red-500">Failed to load resignation requests. Please try again.</div>;
+
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">

@@ -113,7 +113,12 @@ export const listStaff = async () => {
             staff_number: { notIn: ['QIX0001', 'QIX0002'] } // Exclude Co-founders from Directory & Registry
         },
         include: {
-            user: { select: { id: true, full_name: true, email: true, role: true, avatar_url: true } }
+            user: { select: { id: true, full_name: true, email: true, role: true, avatar_url: true } },
+            shift_assignments: {
+                where: { is_active: true },
+                include: { shift: true },
+                orderBy: { from_date: 'asc' }
+            }
         }
     });
 

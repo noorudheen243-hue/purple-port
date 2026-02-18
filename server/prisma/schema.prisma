@@ -163,6 +163,9 @@ model StaffProfile {
 
   // Biometric Data
   biometricCredentials BiometricCredential[]
+
+  // Shift Assignments
+  shift_assignments StaffShiftAssignment[]
 }
 
 model BiometricCredential {
@@ -188,6 +191,8 @@ model AttendanceRecord {
   check_out   DateTime?
   work_hours  Float?
   shift_snapshot String? // JSON or String "09:00-18:00" for audit
+  shift_id       String? // New: ID of the shift used
+  criteria_mode  String? // New: GRACE_TIME or HOURS_8
   grace_time_applied Int? // Audit: What grace time was used
   method      String   @default("WEB") // WEB, BIOMETRIC_SYNC
   createdAt   DateTime @default(now())
@@ -267,13 +272,34 @@ model Holiday {
   updatedAt   DateTime @updatedAt
 }
 
-model ShiftPreset {
+model Shift {
+  id               String   @id @default(uuid())
+  name             String   // e.g., "General Shift", "Morning Shift"
+  start_time       String   // "09:00"
+  end_time         String   // "18:00"
+  default_grace_time Int    @default(15)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  assignments      StaffShiftAssignment[]
+}
+
+model StaffShiftAssignment {
   id        String   @id @default(uuid())
-  name      String   // e.g., "General Shift", "Morning Shift"
-  start_time String  // "09:00"
-  end_time   String  // "18:00"
+  staff_id  String
+  shift_id  String
+  from_date DateTime
+  to_date   DateTime? // Null = Indefinite (until changed)
+  
+  grace_time Int?     // Optional Override
+  
+  is_active Boolean @default(true)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  staff     StaffProfile @relation(fields: [staff_id], references: [id])
+  shift     Shift        @relation(fields: [shift_id], references: [id])
 }
 
 model PayrollRun {

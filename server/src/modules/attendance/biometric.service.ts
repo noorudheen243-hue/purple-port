@@ -1,6 +1,7 @@
 // @ts-ignore
 import ZKLib from 'zkteco-js';
 import prisma from '../../utils/prisma';
+import { AttendanceService } from './service';
 
 
 const getErrMsg = (e: any) => e.message || JSON.stringify(e) || 'Unknown Error';
@@ -454,125 +455,21 @@ export const biometricControl = new BiometricControlService();
 // --- Sync Logic ---
 
 export const processBiometricLogs = async (logs: any[]) => {
-    console.log(`Processing ${logs.length} logs...`);
+    console.log(`Processing ${logs.length} logs via AttendanceService...`);
 
-    // 1. Get All Staff Map
-    const staffList = await prisma.staffProfile.findMany({
-        select: { staff_number: true, user_id: true }
-    });
-    // Create map that handles string comparison
-    const staffMap = new Map(staffList.map(s => [String(s.staff_number), s.user_id]));
+    // Adapt logs for AttendanceService
+    const adaptedLogs = logs.map(log => ({
+        staff_number: String(log.user_id || log.deviceUserId || ''),
+        timestamp: log.record_time || log.recordTime || new Date()
+    })).filter(l => l.staff_number && l.timestamp);
 
-    let processed = 0;
-    let skipped = 0;
+    const result = await AttendanceService.processBiometricLogs(adaptedLogs);
 
-    // 2. Iterate Logs
-    if (logs.length > 0) {
-        console.log("First Log Sample Keys:", Object.keys(logs[0]));
-    }
-
-    for (const log of logs) {
-        // log structure: { userSn, deviceUserId, recordTime, ip } OR { user_id, record_time }
-        // Ensure deviceUserId is treated as string for lookup
-        // Support both formats: Bridge (user_id) AND Direct ZK (deviceUserId)
-        const staffNumber = String(log.user_id || log.deviceUserId);
-        const userId = staffMap.get(staffNumber);
-
-        if (!userId) {
-            console.warn(`[Sync skipped] Unknown Staff Number on Device: ${staffNumber} (Type: ${typeof (log.user_id || log.deviceUserId)}) - Log: ${JSON.stringify(log)}`);
-            skipped++;
-            continue;
-        }
-
-        const logTime = new Date(log.record_time || log.recordTime);
-        if (isNaN(logTime.getTime())) {
-            console.warn(`[Sync skipped] Invalid Time: ${log.record_time || log.recordTime}`);
-            skipped++;
-            continue;
-        }
-
-        // Date Only for identifying the record day (Use local date logic to avoid UTC shifts)
-        const dateKey = new Date(logTime);
-        dateKey.setHours(0, 0, 0, 0);
-
-        // 3. Find/Create Record
-        const existing = await prisma.attendanceRecord.findUnique({
-            where: {
-                user_id_date: {
-                    user_id: userId,
-                    date: dateKey
-                }
-            }
-        });
-
-        if (!existing) {
-            // New Record -> Check In
-            await prisma.attendanceRecord.create({
-                data: {
-                    user_id: userId,
-                    date: dateKey,
-                    check_in: logTime,
-                    status: 'PRESENT',
-                    method: 'BIOMETRIC'
-                }
-            });
-        } else {
-            // Existing Record -> Update Logic
-            let updateData: any = {};
-            let shouldUpdate = false;
-
-            // Update Check-In if earlier
-            if (existing.check_in && logTime < existing.check_in) {
-                updateData.check_in = logTime;
-                shouldUpdate = true;
-            } else if (!existing.check_in) {
-                updateData.check_in = logTime;
-                shouldUpdate = true;
-            }
-
-            // Update Check-Out if later (always take latest punch)
-            const isAfterCheckIn = existing.check_in ? logTime.getTime() > existing.check_in.getTime() : true;
-
-            if (isAfterCheckIn && (!existing.check_out || logTime > existing.check_out)) {
-                updateData.check_out = logTime;
-                shouldUpdate = true;
-            }
-
-            // Recalculate Work Hours
-            const finalCheckIn = updateData.check_in || existing.check_in;
-            const finalCheckOut = updateData.check_out || existing.check_out;
-
-            if (finalCheckIn && finalCheckOut) {
-                const durationMs = finalCheckOut.getTime() - finalCheckIn.getTime();
-                const hours = durationMs / (1000 * 60 * 60);
-                updateData.work_hours = hours;
-                updateData.status = hours < 4 ? 'HALF_DAY' : 'PRESENT';
-                shouldUpdate = true;
-            }
-
-            // Ensure we claim this record as BIOMETRIC so the Status Check finds it
-            updateData.method = 'BIOMETRIC';
-
-            if (shouldUpdate) {
-                await prisma.attendanceRecord.update({
-                    where: { id: existing.id },
-                    data: updateData
-                });
-            } else {
-                // FORCE HEARTBEAT: Update updatedAt AND method
-                await prisma.attendanceRecord.update({
-                    where: { id: existing.id },
-                    data: {
-                        updatedAt: new Date(),
-                        method: 'BIOMETRIC'
-                    }
-                });
-            }
-        }
-        processed++;
-    }
-    console.log(`Sync Complete: ${processed} processed, ${skipped} skipped.`);
-    return { message: `Processed ${processed} logs. Skipped ${skipped} unknown/invalid.` };
+    console.log(`Sync Complete via Service: Success=${result.success}, Failed=${result.failed}`);
+    return {
+        message: `Processed ${result.success} logs. Failed: ${result.failed}`,
+        details: result
+    };
 };
 
 export const syncBiometrics = async () => {

@@ -6,17 +6,18 @@ const prisma = new PrismaClient();
 
 async function restoreAdmin() {
     const email = 'noorudheen243@gmail.com';
-    const password = 'password123'; // Default temporary password
+    const password = 'password123';
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    console.log(`Restoring admin: ${email}...`);
+    console.log(`Restoring admin user: ${email}...`);
 
+    // 1. Upsert User
     const user = await prisma.user.upsert({
         where: { email },
         update: {
             password_hash: hashedPassword,
             role: 'ADMIN',
-            account_status: 'ACTIVE'
+            department: 'MANAGEMENT'
         },
         create: {
             email,
@@ -24,15 +25,38 @@ async function restoreAdmin() {
             password_hash: hashedPassword,
             role: 'ADMIN',
             department: 'MANAGEMENT',
-            designation: 'Director',
-            account_status: 'ACTIVE',
-            employee_id: 'ADMIN001',
-            joining_date: new Date()
         }
     });
 
-    console.log(`SUCCESS: User ${user.email} restored.`);
-    console.log(`Password set to: ${password}`);
+    console.log(`User restored. ID: ${user.id}`);
+
+    // 2. Upsert Staff Profile
+    console.log(`Restoring staff profile...`);
+
+    // Check if profile exists to decide update vs create logic safely
+    // (Upsert is cleaner but let's be explicit to avoid unique constraint issues on staff_number if feasible)
+
+    await prisma.staffProfile.upsert({
+        where: { user_id: user.id },
+        update: {
+            designation: 'Director',
+            department: 'MANAGEMENT'
+            // We don't update staff_number to avoid unique conflicts if it's already set
+        },
+        create: {
+            user: { connect: { id: user.id } },
+            staff_number: 'ADMIN001',
+            designation: 'Director',
+            department: 'MANAGEMENT',
+            date_of_joining: new Date(),
+            payroll_status: 'ACTIVE'
+        }
+    });
+
+    console.log(`Staff Profile linked.`);
+    console.log(`--- CREDENTIALS ---`);
+    console.log(`Email: ${email}`);
+    console.log(`Password: ${password}`);
 }
 
 restoreAdmin()

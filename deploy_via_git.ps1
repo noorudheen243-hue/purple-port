@@ -35,6 +35,12 @@ $Commands = @(
     "cp -r dist/* ../server/public/",
     "echo '--- [Remote] Restarting Nginx ---'",
     "systemctl restart nginx",
+    "echo '--- [Remote] Building & Restarting Server ---'",
+    "cd ../server",
+    "npm install",
+    "npm run build",
+    "npx prisma generate",
+    "pm2 restart all",
     "echo '--- [Remote] Verification: File Timestamp ---'",
     "ls -la ../server/public/index.html",
     "echo '✅ SUCCESS: Deployment Complete!'"

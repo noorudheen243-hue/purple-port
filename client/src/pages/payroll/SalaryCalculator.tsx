@@ -72,10 +72,10 @@ const SalaryCalculator = () => {
                     // Merge Staff Defaults
                     if (staffProfile) {
                         reset({
-                            basic_salary: staffProfile.base_salary || 0,
-                            hra: staffProfile.hra || 0,
-                            conveyance_allowance: staffProfile.conveyance_allowance || 0,
-                            accommodation_allowance: staffProfile.accommodation_allowance || 0,
+                            basic_salary: data.basic_salary || staffProfile.base_salary || 0,
+                            hra: data.hra || staffProfile.hra || 0,
+                            conveyance_allowance: data.conveyance_allowance || staffProfile.conveyance_allowance || 0,
+                            accommodation_allowance: data.accommodation_allowance || staffProfile.accommodation_allowance || 0,
                             allowances: data.allowances || 0,
                             incentives: data.incentives || 0,
                             advance_salary: data.advance_salary || 0,

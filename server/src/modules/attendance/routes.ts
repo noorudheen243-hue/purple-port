@@ -13,6 +13,7 @@ router.post('/regularisation/request', authenticate, AttendanceController.reques
 router.get('/team-summary', authenticate, AttendanceController.getTeamSummary);
 router.get('/calendar', authenticate, AttendanceController.getMonthlyCalendar);
 router.post('/admin/update', authenticate, AttendanceController.adminUpdateAttendance);
+router.post('/admin/recalculate-all', authenticate, AttendanceController.bulkRecalculateAll);
 
 router.get('/regularisation/requests', authenticate, AttendanceController.getRegularisationRequests);
 router.patch('/regularisation/:id/status', authenticate, AttendanceController.updateRegularisationStatus);

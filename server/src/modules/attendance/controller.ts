@@ -498,4 +498,42 @@ export class AttendanceController {
             res.status(500).json({ message: error.message });
         }
     }
+
+    // Bulk recalculate ALL attendance records (fixes historical PRESENT → HALF_DAY for late punchers)
+    static async bulkRecalculateAll(req: Request, res: Response) {
+        try {
+            const db = (await import('../../utils/prisma')).default;
+
+            // Get all staff
+            const allStaff = await db.staffProfile.findMany({
+                select: { user_id: true, staff_number: true }
+            });
+
+            let totalUpdated = 0;
+            const errors: string[] = [];
+
+            for (const staff of allStaff) {
+                try {
+                    // Recalculate last 6 months by default (or use query params)
+                    const endDate = new Date();
+                    const startDate = new Date();
+                    startDate.setMonth(startDate.getMonth() - 6);
+
+                    const result = await AttendanceService.recalculateAttendance(staff.user_id, startDate, endDate);
+                    totalUpdated += result.updatedCount || 0;
+                } catch (e: any) {
+                    errors.push(`${staff.staff_number}: ${e.message}`);
+                }
+            }
+
+            res.json({
+                message: `Bulk recalculation complete. Updated ${totalUpdated} records.`,
+                totalUpdated,
+                staffProcessed: allStaff.length,
+                errors: errors.length > 0 ? errors : undefined
+            });
+        } catch (error: any) {
+            res.status(500).json({ message: error.message });
+        }
+    }
 }

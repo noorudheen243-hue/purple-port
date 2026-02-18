@@ -61,6 +61,9 @@ export const calculateAutoLOP = async (userId: string, month: number, year: numb
             }
         } else if (record.status === 'HALF_DAY') {
             lopDays += 0.5;
+        } else if ((record.status === 'PRESENT' || record.status === 'LATE') && (!record.check_in || !record.check_out)) {
+            // PRESENT with missing punch = Half Day (matches Attendance Summary logic)
+            lopDays += 0.5;
         }
     }
 

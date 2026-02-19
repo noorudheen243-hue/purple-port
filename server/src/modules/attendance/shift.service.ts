@@ -170,18 +170,36 @@ export class ShiftService {
         }
 
         // 2. Check Assignments using StaffProfile.id
-        const assignment = await prisma.staffShiftAssignment.findFirst({
-            where: {
-                staff_id: profile.id,
-                is_active: true,
-                from_date: { lte: queryDate },
-                OR: [
-                    { to_date: null },
-                    { to_date: { gte: queryDate } }
-                ]
-            },
-            include: { shift: true }
-        });
+        // Guard against orphaned assignments (shift deleted but assignment still references it)
+        let assignment: any = null;
+        try {
+            const found = await prisma.staffShiftAssignment.findFirst({
+                where: {
+                    staff_id: profile.id,
+                    is_active: true,
+                    from_date: { lte: queryDate },
+                    OR: [
+                        { to_date: null },
+                        { to_date: { gte: queryDate } }
+                    ]
+                },
+                include: { shift: true }
+            });
+            // Only use if shift relation is not null (orphan guard)
+            if (found && found.shift) {
+                assignment = found;
+            } else if (found && !found.shift) {
+                // Orphaned assignment: auto-deactivate to prevent repeated failures
+                console.warn(`[ShiftService] Orphaned StaffShiftAssignment id=${found.id} — shift no longer exists. Deactivating.`);
+                await prisma.staffShiftAssignment.update({
+                    where: { id: found.id },
+                    data: { is_active: false }
+                }).catch(() => { });
+            }
+        } catch (e: any) {
+            // Prisma throws if required relation returns null (FK broken in DB)
+            console.warn(`[ShiftService] getShiftForDate DB error (userId=${userId}): ${e.message}. Falling back to default shift.`);
+        }
 
         if (assignment) {
             return {
@@ -189,7 +207,7 @@ export class ShiftService {
                 name: assignment.shift.name,
                 start_time: assignment.shift.start_time,
                 end_time: assignment.shift.end_time,
-                default_grace_time: assignment.grace_time ?? assignment.shift.default_grace_time, // Override > Default
+                default_grace_time: assignment.grace_time ?? assignment.shift.default_grace_time,
                 is_legacy: false
             };
         }

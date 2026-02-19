@@ -458,14 +458,31 @@ export const processBiometricLogs = async (logs: any[]) => {
     console.log(`Processing ${logs.length} logs via AttendanceService...`);
 
     // Adapt logs for AttendanceService
+    // Handle ALL known field name variants from different zkteco-js versions:
+    //   user_id (node-zklib), userId / deviceUserId (zkteco-js), uid (fallback)
     const adaptedLogs = logs.map(log => ({
-        staff_number: String(log.user_id || log.deviceUserId || ''),
-        timestamp: log.record_time || log.recordTime || new Date()
-    })).filter(l => l.staff_number && l.timestamp);
+        staff_number: String(
+            log.user_id ??
+            log.userId ??
+            log.deviceUserId ??
+            log.uid ??
+            ''
+        ),
+        timestamp: log.record_time || log.recordTime || log.time || new Date()
+    })).filter(l => l.staff_number && l.staff_number !== '' && l.timestamp);
+
+    const skipped = logs.length - adaptedLogs.length;
+    if (skipped > 0) {
+        console.warn(`[BiometricSync] ⚠️  ${skipped} logs skipped (missing user identifier). Check field names in raw log.`);
+        if (logs.length > 0) console.warn('[BiometricSync] Raw sample:', JSON.stringify(logs[0]));
+    }
 
     const result = await AttendanceService.processBiometricLogs(adaptedLogs);
 
     console.log(`Sync Complete via Service: Success=${result.success}, Failed=${result.failed}`);
+    if (result.errors.length > 0) {
+        console.warn('[BiometricSync] Errors:', result.errors.slice(0, 10)); // Show max 10
+    }
     return {
         message: `Processed ${result.success} logs. Failed: ${result.failed}`,
         details: result

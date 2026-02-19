@@ -118,9 +118,9 @@ export const listStaff = async () => {
             include: {
                 user: { select: { id: true, full_name: true, email: true, role: true, avatar_url: true } },
                 shift_assignments: {
-                    where: { is_active: true },
+                    // Return all history, not just active
                     include: { shift: true },
-                    orderBy: { from_date: 'asc' }
+                    orderBy: { from_date: 'desc' }
                 }
             }
         });

@@ -8,7 +8,7 @@ echo ===================================================
 echo.
 echo  Device  : 192.168.1.201:4370
 echo  Server  : http://66.116.224.221/api
-echo  Interval: Every 5 seconds
+echo  Interval: Every 30 seconds
 echo.
 echo  KEEP THIS WINDOW OPEN all day for live punch sync.
 echo  Closing this window will STOP biometric sync.

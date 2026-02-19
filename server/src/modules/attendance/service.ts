@@ -284,8 +284,21 @@ export class AttendanceService {
         for (const log of logs) {
             try {
                 const timestamp = new Date(log.timestamp);
-                const dateKey = new Date(timestamp);
-                dateKey.setHours(0, 0, 0, 0);
+
+                // FIX: Calculate Date Key based on IST (UTC+5:30)
+                // The DB stores dates as "00:00 IST" which is "18:30 UTC Previous Day"
+                // Example: Feb 19 09:00 IST -> Feb 19 03:30 UTC
+                // Target Key: Feb 19 00:00 IST -> Feb 18 18:30 UTC
+
+                const IST_OFFSET = 330 * 60 * 1000; // 5 hours 30 minutes in ms
+                const istDate = new Date(timestamp.getTime() + IST_OFFSET);
+                istDate.setUTCHours(0, 0, 0, 0); // Sets to Midnight in IST terms
+                const dateKeyIST = new Date(istDate.getTime() - IST_OFFSET); // Back to UTC timestamp representing IST midnight
+
+                // FALLBACK KEY: The old logic (UTC Midnight)
+                // Existing records for "Today" might have been created with this key before the fix.
+                const dateKeyUTC = new Date(timestamp);
+                dateKeyUTC.setHours(0, 0, 0, 0);
 
                 // 1. Find User by Staff Number
                 const staff = await db.staffProfile.findUnique({
@@ -299,13 +312,16 @@ export class AttendanceService {
                     continue;
                 }
 
-                // 2. Determine Shift & Rules - REMOVED (Handled in computeStatus)
-                // const shift = ...
-
-                // 3. Find existing record for this day
-                const existing = await db.attendanceRecord.findUnique({
-                    where: { user_id_date: { user_id: staff.user_id, date: dateKey } }
+                // 3. Find existing record for this day (Check BOTH keys)
+                const existing = await db.attendanceRecord.findFirst({
+                    where: {
+                        user_id: staff.user_id,
+                        date: { in: [dateKeyIST, dateKeyUTC] } // Check both new and old key formats
+                    }
                 });
+
+                // Use the Found Key (or default to IST for new records)
+                const dateKey = existing ? existing.date : dateKeyIST;
 
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
@@ -317,7 +333,7 @@ export class AttendanceService {
                     await db.attendanceRecord.create({
                         data: {
                             user_id: staff.user_id,
-                            date: dateKey,
+                            date: dateKeyIST, // Always use Correct IST Key for NEW records
                             check_in: timestamp,
                             status: statusResult.status,
                             shift_snapshot: `${statusResult.shift.start_time}-${statusResult.shift.end_time}`,
@@ -328,25 +344,27 @@ export class AttendanceService {
                         }
                     });
                 } else {
-                    const data: any = { method: 'BIOMETRIC' };
+                    const data: any = {};
                     let shouldUpdate = false;
 
                     // Update check_in if this punch is earlier
-                    // PROTECT MANUAL UPDATES: Do not overwrite if method is MANUAL_ADMIN
-                    if (existing.method === 'MANUAL_ADMIN') {
-                        results.success++;
-                        continue;
-                    }
-
-                    if (!existing.check_in || timestamp < existing.check_in) {
-                        data.check_in = timestamp;
-                        shouldUpdate = true;
+                    // PROTECT MANUAL UPDATES: Only update check-in if NOT manual
+                    if (existing.method !== 'MANUAL_ADMIN') {
+                        if (!existing.check_in || timestamp < existing.check_in) {
+                            data.check_in = timestamp;
+                            data.method = 'BIOMETRIC';
+                            shouldUpdate = true;
+                        }
                     }
 
                     // Update check_out if this punch is later than current check_in
                     const currentCheckIn = data.check_in || existing.check_in || timestamp;
                     if (timestamp > currentCheckIn && (!existing.check_out || timestamp > existing.check_out)) {
                         data.check_out = timestamp;
+                        // Only update method to BIOMETRIC if not already MANUAL_ADMIN (to preserve protection)
+                        if (existing.method !== 'MANUAL_ADMIN') {
+                            data.method = 'BIOMETRIC';
+                        }
                         shouldUpdate = true;
                     }
 

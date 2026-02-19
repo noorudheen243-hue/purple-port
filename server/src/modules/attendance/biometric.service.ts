@@ -95,6 +95,7 @@ export class BiometricControlService {
                         firmware: 'N/A',
                         platform: 'Bridge',
                         deviceTime: new Date(),
+                        lastSyncTime: recentLog.updatedAt,
                         userCount: dbUserCount,
                         logCount: dbLogCount
                     };

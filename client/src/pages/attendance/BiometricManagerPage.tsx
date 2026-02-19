@@ -181,6 +181,12 @@ const BiometricManagerPage = () => {
                         ))}
                     </div>
 
+                    {deviceInfo?.lastSyncTime && (
+                        <span className="text-xs text-gray-500 mr-2 font-mono">
+                            Last Data: {format(new Date(deviceInfo.lastSyncTime), 'h:mm a')}
+                        </span>
+                    )}
+
                     <span className={`px-3 py-1 rounded-full text-xs font-bold ${isOnline ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                         {isOnline ? 'ONLINE' : 'OFFLINE'}
                     </span>
@@ -412,11 +418,7 @@ const BiometricManagerPage = () => {
                                             const grace = isEditing ? editPolicy[staff.id].grace : (staff.grace_time || 15);
                                             const criteria = isEditing ? editPolicy[staff.id].criteria : (staff.punch_in_criteria || 'GRACE_TIME');
 
-                                            // Determine Active Shift
-                                            const activeAssignment = staff.shift_assignments?.[0]; // Assuming ordered or just pick first active
-                                            const shiftDisplay = activeAssignment
-                                                ? `${activeAssignment.shift.name} (${format(new Date(activeAssignment.from_date), 'MMM d')} - ${activeAssignment.to_date ? format(new Date(activeAssignment.to_date), 'MMM d') : 'Indefinite'})`
-                                                : (staff.shift_timing ? `Legacy: ${staff.shift_timing}` : 'No Active Shift');
+
 
                                             return (
                                                 <tr key={staff.id} className="hover:bg-gray-50">
@@ -425,13 +427,39 @@ const BiometricManagerPage = () => {
                                                         <div className="text-xs text-gray-500">{staff.staff_number}</div>
                                                     </td>
                                                     <td className="px-4 py-3">
-                                                        <div className="flex items-center justify-between">
-                                                            <span className={`text-xs px-2 py-1 rounded ${activeAssignment ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
-                                                                {shiftDisplay}
-                                                            </span>
-                                                            <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setAssignmentModal({ isOpen: true, staffId: staff.id, staffName: staff.user.full_name })}>
-                                                                <Calendar className="w-4 h-4 text-blue-600" />
-                                                            </Button>
+                                                        <div className="flex flex-col gap-1">
+                                                            {(staff.shift_assignments && staff.shift_assignments.length > 0) ? (
+                                                                staff.shift_assignments.filter((a: any) => {
+                                                                    // Filter for Current Month Overlap
+                                                                    // Simple check: Start <= EndOfMonth AND (End >= StartOfMonth OR End is null)
+                                                                    const now = new Date();
+                                                                    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                                                                    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+                                                                    const from = new Date(a.from_date);
+                                                                    const to = a.to_date ? new Date(a.to_date) : null;
+
+                                                                    return from <= endOfMonth && (!to || to >= startOfMonth);
+                                                                }).map((assignment: any, idx: number) => (
+                                                                    <div key={idx} className="flex items-center justify-between text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded">
+                                                                        <span>
+                                                                            {assignment.shift.name}
+                                                                            <span className="text-blue-400 ml-1">
+                                                                                ({format(new Date(assignment.from_date), 'd MMM')} - {assignment.to_date ? format(new Date(assignment.to_date), 'd MMM') : 'Now'})
+                                                                            </span>
+                                                                        </span>
+                                                                    </div>
+                                                                ))
+                                                            ) : (
+                                                                <span className="text-xs text-gray-400">
+                                                                    {staff.shift_timing ? `Legacy: ${staff.shift_timing}` : 'No Active Shift'}
+                                                                </span>
+                                                            )}
+                                                            <div className="flex justify-end mt-1">
+                                                                <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setAssignmentModal({ isOpen: true, staffId: staff.id, staffName: staff.user.full_name })}>
+                                                                    <Calendar className="w-4 h-4 text-gray-500 hover:text-blue-600" />
+                                                                </Button>
+                                                            </div>
                                                         </div>
                                                     </td>
                                                     <td className="px-4 py-3">

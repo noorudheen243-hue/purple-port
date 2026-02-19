@@ -110,7 +110,8 @@ async function main() {
 
     while (true) {
         await sync();
-        await sleep(5000); // 5 seconds for near-instant sync
+        // Wait 30 seconds before next cycle to reduce device load
+        await sleep(30000);
     }
 }
 

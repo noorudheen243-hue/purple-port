@@ -38,4 +38,30 @@ const requireApiKey = (req: any, res: any, next: any) => {
 // Bridge Agent Routes (API Key Protected)
 router.post('/bridge/upload', requireApiKey, BiometricController.uploadLogs);
 
+// One-time cleanup: deactivate orphaned StaffShiftAssignments (shift was deleted but assignment still exists)
+router.post('/bridge/clean-orphans', requireApiKey, async (req: any, res: any) => {
+    try {
+        const prisma = require('../../utils/prisma').default;
+        // Find all active assignments and check if their shift still exists
+        const all = await prisma.staffShiftAssignment.findMany({
+            where: { is_active: true },
+            select: { id: true, shift_id: true }
+        });
+        const orphaned: string[] = [];
+        for (const a of all) {
+            const shift = await prisma.shift.findUnique({ where: { id: a.shift_id }, select: { id: true } });
+            if (!shift) orphaned.push(a.id);
+        }
+        if (orphaned.length > 0) {
+            await prisma.staffShiftAssignment.updateMany({
+                where: { id: { in: orphaned } },
+                data: { is_active: false }
+            });
+        }
+        res.json({ message: `Cleaned ${orphaned.length} orphaned shift assignment(s).`, cleaned: orphaned.length });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 export default router;

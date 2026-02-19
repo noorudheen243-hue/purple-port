@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 // === CONFIGURATION ===
 // Add the Staff ID and the CORRECT Punch-Out Time (IST) here
 // Format: 'YYYY-MM-DD HH:mm:ss' (in IST)
-const CORRECTIONS: Record<string, string> = {
+const MANUAL_FIX_LIST: Record<string, string> = {
     // Example: 'QIX0006': '2026-02-19 18:30:00',
     'QIX0006': '2026-02-19 18:00:00', // Salih
     'QIX0009': '2026-02-19 18:00:00', // Fida
@@ -29,7 +29,7 @@ async function updateIndividualTimes() {
     const dateKeyIST = new Date('2026-02-18T18:30:00.000Z');
     const dateKeyUTC = new Date('2026-02-19T00:00:00.000Z');
 
-    for (const [staffId, timeStr] of Object.entries(CORRECTIONS)) {
+    for (const [staffId, timeStr] of Object.entries(MANUAL_FIX_LIST)) {
         // Parse IST Input: "2026-02-19 18:00:00"
         // We act as if this string is UTC first, then subtract 5.5 hours to get real UTC
         // Setup: '2026-02-19T18:00:00.000Z' minus 5.5 hours

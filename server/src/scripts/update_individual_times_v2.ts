@@ -20,7 +20,7 @@ const MANUAL_FIX_LIST: Record<string, string> = {
 // =====================
 
 async function updateIndividualTimes() {
-    console.log("Applying Individual Corrections for Feb 19...");
+    console.log("Applying Individual Corrections for Feb 19 (v2)...");
 
     // IST Offset = 5:30 = 330 mins
     // To store in DB (UTC), we need to SUBTRACT 5:30 from the input IST string

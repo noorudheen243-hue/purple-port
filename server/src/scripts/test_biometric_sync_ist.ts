@@ -26,7 +26,7 @@ async function testBiometricSyncIST() {
                         designation: 'Tester',
                         department: 'MARKETING',
                         date_of_joining: new Date(),
-                        shift_timing: '09:00 AM - 06:00 PM'
+
                     }
                 }
             }

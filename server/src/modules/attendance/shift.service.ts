@@ -154,7 +154,7 @@ export class ShiftService {
         // 1. Get Staff Profile (Central Lookup)
         const profile = await prisma.staffProfile.findUnique({
             where: { user_id: userId },
-            select: { id: true, shift_timing: true, grace_time: true }
+            select: { id: true }
         });
 
         if (!profile) {
@@ -212,18 +212,7 @@ export class ShiftService {
             };
         }
 
-        // 3. Fallback: Legacy String
-        if (profile.shift_timing) {
-            const { start, end } = this.parseLegacyTiming(profile.shift_timing);
-            return {
-                id: 'LEGACY',
-                name: 'Legacy Shift',
-                start_time: start,
-                end_time: end,
-                default_grace_time: profile.grace_time || 15,
-                is_legacy: true
-            };
-        }
+
 
         // 4. Default
         return {
@@ -236,25 +225,5 @@ export class ShiftService {
         };
     }
 
-    // Helper from AttendanceService (moved/duplicated here for separation)
-    private static parseLegacyTiming(timingStr: string) {
-        const defaultShift = { start: '09:00', end: '18:00' };
-        if (!timingStr) return defaultShift;
 
-        const parts = timingStr.split('-').map(s => s.trim());
-        if (parts.length !== 2) return defaultShift;
-
-        const to24h = (time12h: string) => {
-            const [time, modifier] = time12h.split(' ');
-            let [hours, minutes] = time.split(':');
-            if (hours === '12') {
-                hours = modifier === 'PM' ? '12' : '00';
-            } else if (modifier === 'PM') {
-                hours = String(parseInt(hours, 10) + 12);
-            }
-            return `${hours}:${minutes}`;
-        };
-
-        return { start: to24h(parts[0]), end: to24h(parts[1]) };
-    }
 }

@@ -83,10 +83,11 @@ export class AttendanceService {
         const shift = await ShiftService.getShiftForDate(staff.user_id, checkIn);
 
         const graceTime = shift.default_grace_time;
-        const criteria = (staff as any).punch_in_criteria || 'GRACE_TIME';
+        // Default to GRACE_TIME if not specified. Shift model doesn't store this, so we default.
+        // Future: If Shifts need criteria, add `criteria_mode` to Shift model.
+        const criteria = 'GRACE_TIME';
 
-        // Legacy "No Break" check (Can we move this to Shift Type? For now, keep as string check on deprecated or name)
-        // If legacy string exists, check that. If Shift name contains "No Break"? 
+        // Legacy "No Break" check
         const isNoBreak = (shift.name || '').toUpperCase().includes('NO BREAK');
 
         const fullDayThreshold = isNoBreak ? 7.0 : 7.75;
@@ -98,24 +99,20 @@ export class AttendanceService {
 
         if (!checkOut || checkIn.getTime() === checkOut.getTime()) {
             if (!isPastDay) {
-                status = (criteria !== 'HOURS_8' && isLate) ? 'HALF_DAY' : 'PRESENT';
+                // Since criteria is always GRACE_TIME, only check isLate
+                status = isLate ? 'HALF_DAY' : 'PRESENT';
             } else {
-                if (criteria === 'HOURS_8') status = 'ABSENT';
-                else status = 'HALF_DAY';
+                // Past Day + No CheckOut = HALF_DAY (for Grace Time mode)
+                status = 'HALF_DAY';
             }
         } else {
             const workHours = (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60);
 
-            if (criteria === 'HOURS_8') {
-                if (workHours >= 8.0) status = 'PRESENT';
-                else if (workHours >= halfDayThreshold) status = 'HALF_DAY';
-                else status = 'ABSENT';
-            } else {
-                if (isLate) status = 'HALF_DAY';
-                else if (workHours < halfDayThreshold) status = 'ABSENT';
-                else if (workHours < fullDayThreshold) status = 'HALF_DAY';
-                else status = 'PRESENT';
-            }
+            // GRACE_TIME Logic
+            if (isLate) status = 'HALF_DAY';
+            else if (workHours < halfDayThreshold) status = 'ABSENT';
+            else if (workHours < fullDayThreshold) status = 'HALF_DAY';
+            else status = 'PRESENT';
         }
 
         return { status, shift, criteria };
@@ -170,26 +167,7 @@ export class AttendanceService {
 
     // --- HELPERS ---
 
-    static parseShiftTiming(timingStr: string | null) {
-        // Default Shift if null
-        const defaultShift = { start: '09:00', end: '18:00' };
-        if (!timingStr) return defaultShift;
 
-        // format: "09:00 AM - 06:00 PM"
-        const parts = timingStr.split('-').map(s => s.trim());
-        if (parts.length !== 2) return defaultShift;
-
-        // Convert 12h to 24h string for easy Date constr
-        const to24h = (time12h: string) => {
-            const [time, modifier] = time12h.split(' ');
-            let [hours, minutes] = time.split(':');
-            if (hours === '12') hours = '00';
-            if (modifier === 'PM') hours = String(parseInt(hours, 10) + 12);
-            return `${hours}:${minutes}`;
-        };
-
-        return { start: to24h(parts[0]), end: to24h(parts[1]) };
-    }
 
     static isLate(shiftStart24h: string, checkIn: Date, graceMinutes: number = 15): boolean {
         // Convert CheckIn (UTC Date) to IST Minutes for comparison
@@ -469,7 +447,6 @@ export class AttendanceService {
                 department: true,
                 staffProfile: {
                     select: {
-                        shift_timing: true,
                         designation: true
                     }
                 }
@@ -531,11 +508,9 @@ export class AttendanceService {
                             em = parseInt(endParts[1]);
                         }
                     } else {
-                        // Fallback to legacy profile
-                        const shift = AttendanceService.parseShiftTiming(user.staffProfile?.shift_timing || null);
-                        const parts = shift.end.split(':');
-                        eh = parseInt(parts[0]);
-                        em = parseInt(parts[1]);
+                        // Fallback: If no snapshot, default to 09:00-18:00
+                        eh = 18;
+                        em = 0;
                     }
 
                     // Simple Shift End Calculation (UTC based on IST Offset)
@@ -593,7 +568,7 @@ export class AttendanceService {
                     name: user.full_name,
                     department: user.department,
                     designation: user.staffProfile?.designation || '',
-                    shift: user.staffProfile?.shift_timing || '09:00 AM - 05:00 PM'
+                    shift: 'Check Assignments'
                 },
                 attendance: attendanceMap
             };
@@ -999,7 +974,6 @@ export class AttendanceService {
                 staffProfile: {
                     select: {
                         staff_number: true,
-                        shift_timing: true,
                         designation: true,
                         payroll_status: true
                     }
@@ -1092,7 +1066,7 @@ export class AttendanceService {
                             graceTime = shiftObj.default_grace_time ?? 15;
                         }
                     } catch (e) {
-                        shiftDisplay = staff.staffProfile?.shift_timing || '09:00 AM - 06:00 PM';
+                        shiftDisplay = '09:00 AM - 06:00 PM';
                     }
                 }
 

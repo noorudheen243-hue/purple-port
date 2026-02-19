@@ -51,8 +51,7 @@ const BiometricManagerPage = () => {
         isOpen: false, staffId: '', staffName: ''
     });
 
-    // Policy Edit State (Grace Time / Criteria only)
-    const [editPolicy, setEditPolicy] = useState<{ [key: string]: { grace: number, criteria: string } }>({});
+
 
 
     // 1. Fetch Device Info (Robust)
@@ -407,16 +406,11 @@ const BiometricManagerPage = () => {
                                         <tr>
                                             <th className="px-4 py-2">Staff</th>
                                             <th className="px-4 py-2">Current Shift (Date Range)</th>
-                                            <th className="px-4 py-2">Grace (Min)</th>
-                                            <th className="px-4 py-2">Criteria</th>
                                             <th className="px-4 py-2 text-right">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
                                         {staffList?.map((staff: any) => {
-                                            const isEditing = editPolicy[staff.id] !== undefined;
-                                            const grace = isEditing ? editPolicy[staff.id].grace : (staff.grace_time || 15);
-                                            const criteria = isEditing ? editPolicy[staff.id].criteria : (staff.punch_in_criteria || 'GRACE_TIME');
 
 
 
@@ -452,7 +446,7 @@ const BiometricManagerPage = () => {
                                                                 ))
                                                             ) : (
                                                                 <span className="text-xs text-gray-400">
-                                                                    {staff.shift_timing ? `Legacy: ${staff.shift_timing}` : 'No Active Shift'}
+                                                                    {staff.shift_timing ? 'No Active Shift (Legacy Timing Removed)' : 'No Active Shift'}
                                                                 </span>
                                                             )}
                                                             <div className="flex justify-end mt-1">
@@ -462,79 +456,10 @@ const BiometricManagerPage = () => {
                                                             </div>
                                                         </div>
                                                     </td>
-                                                    <td className="px-4 py-3">
-                                                        {isEditing ? (
-                                                            <input
-                                                                type="number"
-                                                                className="border rounded p-1 text-xs w-16"
-                                                                value={grace}
-                                                                onChange={e => setEditPolicy(prev => ({
-                                                                    ...prev,
-                                                                    [staff.id]: { ...prev[staff.id], grace: parseInt(e.target.value) || 0 }
-                                                                }))}
-                                                            />
-                                                        ) : (
-                                                            <span className="text-gray-700">{staff.grace_time} min</span>
-                                                        )}
-                                                    </td>
-                                                    <td className="px-4 py-3">
-                                                        {isEditing ? (
-                                                            <select
-                                                                className="border rounded p-1 text-xs w-32"
-                                                                value={criteria}
-                                                                onChange={e => setEditPolicy(prev => ({
-                                                                    ...prev,
-                                                                    [staff.id]: { ...prev[staff.id], criteria: e.target.value }
-                                                                }))}
-                                                            >
-                                                                <option value="GRACE_TIME">Grace Time</option>
-                                                                <option value="HOURS_8">8 Hours</option>
-                                                            </select>
-                                                        ) : (
-                                                            <span className={`px-2 py-0.5 rounded text-xs ${criteria === 'HOURS_8' ? 'bg-indigo-100 text-indigo-800' : 'bg-gray-100 text-gray-800'}`}>
-                                                                {criteria === 'HOURS_8' ? '8 Hours' : 'Grace Time'}
-                                                            </span>
-                                                        )}
-                                                    </td>
                                                     <td className="px-4 py-3 text-right">
-                                                        {isEditing ? (
-                                                            <div className="flex justify-end gap-2">
-                                                                <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => {
-                                                                    const newPolicy = { ...editPolicy };
-                                                                    delete newPolicy[staff.id];
-                                                                    setEditPolicy(newPolicy);
-                                                                }}>Cancel</Button>
-                                                                <Button size="sm" className="h-7 px-2 bg-green-600 hover:bg-green-700 text-white" onClick={() => {
-                                                                    api.patch(`/team/staff/${staff.id}`, {
-                                                                        grace_time: editPolicy[staff.id].grace,
-                                                                        punch_in_criteria: editPolicy[staff.id].criteria
-                                                                    }).then(() => {
-                                                                        const newPolicy = { ...editPolicy };
-                                                                        delete newPolicy[staff.id];
-                                                                        setEditPolicy(newPolicy);
-                                                                        refetchStaff();
-                                                                        Swal.fire({
-                                                                            icon: 'success',
-                                                                            title: 'Updated!',
-                                                                            timer: 1000,
-                                                                            showConfirmButton: false
-                                                                        });
-                                                                    });
-                                                                }}>
-                                                                    <Save className="w-3 h-3" />
-                                                                </Button>
-                                                            </div>
-                                                        ) : (
-                                                            <Button size="sm" variant="ghost" className="h-7 px-2 text-blue-600" onClick={() => setEditPolicy(prev => ({
-                                                                ...prev,
-                                                                [staff.id]: {
-                                                                    grace: staff.grace_time || 15,
-                                                                    criteria: staff.punch_in_criteria || 'GRACE_TIME'
-                                                                }
-                                                            }))}>
-                                                                Edit Policy
-                                                            </Button>
-                                                        )}
+                                                        <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => setAssignmentModal({ isOpen: true, staffId: staff.id, staffName: staff.user.full_name })}>
+                                                            <Calendar className="w-3 h-3 mr-2" /> Manage Shift
+                                                        </Button>
                                                     </td>
                                                 </tr>
                                             );

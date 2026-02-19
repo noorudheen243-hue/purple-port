@@ -88,9 +88,6 @@ const onboardSchema = z.object({
     // OPTIONAL FIELDS - EXTENDED
     blood_group: z.any().optional(),
     work_shift: z.any().optional(),
-    shift_timing: z.any().optional(),
-    grace_time: z.any().optional(),
-
     // Address Split - FULLY RELAXED
     current_address: z.any().optional(),
     permanent_address: z.any().optional(),
@@ -167,7 +164,6 @@ export const onboardStaff = async (req: Request, res: Response) => {
 
                 blood_group: data.blood_group || undefined,
                 work_shift: data.work_shift || undefined,
-                shift_timing: data.shift_timing || undefined,
 
                 current_address: data.current_address || undefined,
                 permanent_address: data.permanent_address || undefined,
@@ -300,8 +296,6 @@ export const updateStaffFull = async (req: Request, res: Response) => {
 
             // Extended Profile
             blood_group: data.blood_group, // NEW
-            shift_timing: data.shift_timing, // NEW
-            grace_time: data.grace_time !== undefined ? parseInt(data.grace_time) : undefined, // NEW
             work_shift: data.work_shift, // Legacy
             current_address: data.current_address, // NEW
             permanent_address: data.permanent_address, // NEW

@@ -143,9 +143,6 @@ model StaffProfile {
   account_type        String? // SAVINGS, CURRENT
   pan_number          String?
   aadhar_number       String?  // NEW
-  shift_timing        String?  // NEW
-  grace_time          Int      @default(15) // Minutes (New)
-  punch_in_criteria   String @default("GRACE_TIME") // NEW: Criteria Policy
   payment_method      String?  // NEW
 
   // UPI Details

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { biometricControl } from './biometric.service';
+import prisma from '../../utils/prisma';
 
 export class BiometricController {
 
@@ -53,12 +54,46 @@ export class BiometricController {
         }
     }
 
-    // Sync Logs (Pull from Device -> DB)
-    static async syncLogs(req: Request, res: Response) {
+    // Unified Sync All Logs (Replaces syncLogs)
+    static async syncAllLogs(req: Request, res: Response) {
         try {
-            // Dynamically import to resolve circular dependency if any, or just use exported function
             const { syncBiometrics } = require('./biometric.service');
-            const result = await syncBiometrics();
+            const result = await syncBiometrics('MANUAL');
+            res.json(result);
+        } catch (error: any) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+
+    // Get Device Status from Persistent DB Table (Heartbeat Results)
+    static async getDeviceStatus(req: Request, res: Response) {
+        try {
+            const status = await prisma.biometricDeviceStatus.findUnique({
+                where: { id: 'CURRENT' }
+            });
+            res.json(status);
+        } catch (error: any) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+
+    // Get Sync History
+    static async getSyncHistory(req: Request, res: Response) {
+        try {
+            const history = await prisma.biometricSyncLog.findMany({
+                orderBy: { sync_time: 'desc' },
+                take: 50
+            });
+            res.json(history);
+        } catch (error: any) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+
+    // Audit User Sync
+    static async auditUserSync(req: Request, res: Response) {
+        try {
+            const result = await biometricControl.auditUserSync();
             res.json(result);
         } catch (error: any) {
             res.status(500).json({ error: error.message });

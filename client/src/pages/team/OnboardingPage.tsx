@@ -56,7 +56,7 @@ const onboardingSchema = z.object({
     department: z.string().optional(),
     date_of_joining: z.string().optional(),
     reporting_manager_id: z.string().optional(),
-    shift_timing: z.string().optional(),
+
 
     // Step 3: Payroll
     base_salary: z.any().optional(),
@@ -104,14 +104,7 @@ const OnboardingPage = () => {
     const queryClient = useQueryClient();
     const [currentStep, setCurrentStep] = useState(1);
 
-    // Shifts Logic
-    const [shifts, setShifts] = useState<ShiftPreset[]>([]);
 
-    useEffect(() => {
-        api.get('/attendance/shifts')
-            .then(res => setShifts(res.data))
-            .catch(err => console.error("Failed to fetch shifts:", err));
-    }, []);
 
     const formatTime12 = (time: string) => {
         if (!time) return '';
@@ -324,9 +317,7 @@ const OnboardingPage = () => {
                     // Care with Dates, might need formatting yyyy-MM-dd
                     if (key === 'date_of_birth' || key === 'date_of_joining') {
                         if (data[key]) setValue(key as any, new Date(data[key]).toISOString().split('T')[0]);
-                    } else if (key === 'shift_timing') {
-                        // Ensure we set the shift timing if present
-                        setValue('shift_timing', data[key]);
+
                     } else {
                         setValue(key as any, data[key]);
                     }
@@ -555,17 +546,7 @@ const OnboardingPage = () => {
                                         <input type="date" {...register('date_of_joining')} className="input-field" />
                                         {errors.date_of_joining && <span className="error">{errors.date_of_joining.message}</span>}
                                     </div>
-                                    <div>
-                                        <label className="label">Shift Timing</label>
-                                        <select {...register('shift_timing')} className="input-field">
-                                            <option value="">Select Shift...</option>
-                                            {shifts.map(shift => (
-                                                <option key={shift.id} value={shift.name}>
-                                                    {shift.name} ({formatTime12(shift.start_time)} - {formatTime12(shift.end_time)})
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
+
                                 </div>
                             )}
 

@@ -340,10 +340,10 @@ const TeamList = () => {
                                                                 {member.date_of_joining ? new Date(member.date_of_joining).toLocaleDateString() : '-'}
                                                             </td>
                                                             <td className="px-4 py-3 text-right pr-6">
-                                                                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                <div className="flex items-center justify-end gap-2">
                                                                     <Link
                                                                         to={`/dashboard/team/edit/${member.id}`}
-                                                                        className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                                                                        className="p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded transition-colors"
                                                                         title="Edit Member"
                                                                     >
                                                                         <Edit size={16} />
@@ -356,14 +356,14 @@ const TeamList = () => {
                                                                                         handleDelete(member.id);
                                                                                     }
                                                                                 }}
-                                                                                className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
+                                                                                className="p-1.5 text-red-600 bg-red-50 hover:bg-red-100 rounded transition-colors"
                                                                                 title="Delete Member"
                                                                             >
                                                                                 <Trash2 size={16} />
                                                                             </button>
                                                                             <button
                                                                                 onClick={() => handleInitiateExit(member)}
-                                                                                className="p-1 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded"
+                                                                                className="p-1.5 text-orange-600 bg-orange-50 hover:bg-orange-100 rounded transition-colors"
                                                                                 title="Initiate Exit"
                                                                             >
                                                                                 <LogOut size={16} />

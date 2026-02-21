@@ -21,11 +21,12 @@ export class BiometricControlService {
     private zk: any;
     private connected: boolean = false;
     private mutex = new AsyncMutex(); // Concurrency Control
+    private heartbeatInterval: NodeJS.Timeout | null = null;
 
     // Using standard ZK default credentials/ports
     private readonly ip: string = '192.168.1.201';
     private readonly port: number = 4370;
-    private readonly timeout: number = 5000;
+    private readonly timeout: number = 20000;
     private readonly inport: number = 4000;
 
     constructor() {
@@ -70,100 +71,154 @@ export class BiometricControlService {
 
     // --- Device Info & Status ---
 
+    async probeDevice(timeout = 200): Promise<boolean> {
+        return new Promise(resolve => {
+            const { Socket } = require('net');
+            const socket = new Socket();
+            socket.setTimeout(timeout);
+            socket.on('connect', () => {
+                socket.destroy();
+                resolve(true);
+            });
+            socket.on('timeout', () => {
+                socket.destroy();
+                resolve(false);
+            });
+            socket.on('error', (e: any) => {
+                socket.destroy();
+                resolve(false);
+            });
+            socket.connect(this.port, this.ip);
+        });
+    }
+
+    // --- Device Info & Status ---
+
     async getDeviceInfo() {
         return this.mutex.run(async () => {
             try {
-                // 1. SMART CHECK: Check for recent Bridge stats first (Instant)
-                // If the bridge pushed data in the last 24 hours, assume ONLINE.
-                const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
-                const recentLog = await prisma.attendanceRecord.findFirst({
-                    where: {
-                        method: 'BIOMETRIC',
-                        updatedAt: { gte: yesterday }
-                    },
-                    orderBy: { updatedAt: 'desc' }
-                });
+                // AUTO-DETECT: Try to reach device physically first (Fast Probe)
+                const isReachable = await this.probeDevice(500);
 
-                if (recentLog) {
-                    const dbUserCount = await prisma.staffProfile.count();
-                    const dbLogCount = await prisma.attendanceRecord.count({ where: { method: 'BIOMETRIC' } });
+                let info: any;
 
-                    return {
-                        status: 'ONLINE',
-                        deviceName: 'Bridge Device (VPS Mode)',
-                        serialNumber: 'SYNCED-VIA-BRIDGE',
-                        firmware: 'N/A',
-                        platform: 'Bridge',
-                        deviceTime: new Date(),
-                        lastSyncTime: recentLog.updatedAt,
-                        userCount: dbUserCount,
-                        logCount: dbLogCount
-                    };
-                }
+                if (isReachable) {
+                    // We are likely Local / Offline Hosting
+                    if (!await this.connect()) throw new Error('Device reachable but refused connection');
+                    info = await this.fetchStartDeviceInfo();
+                } else {
+                    // 1. FALLBACK TO SMART CHECK (Bridge Mode / VPS)
+                    // If the bridge pushed data in the last 24 hours, assume ONLINE.
+                    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+                    const recentLog = await prisma.attendanceRecord.findFirst({
+                        where: {
+                            method: 'BIOMETRIC',
+                            updatedAt: { gte: yesterday }
+                        },
+                        orderBy: { updatedAt: 'desc' }
+                    });
 
-                // 2. PHYSICAL CHECK: Only try connecting if no recent data (Slow)
-                if (!await this.connect()) throw new Error('Could not connect to device');
+                    if (recentLog) {
+                        const dbUserCount = await prisma.staffProfile.count();
+                        const dbLogCount = await prisma.attendanceRecord.count({ where: { method: 'BIOMETRIC' } });
 
-                // Fail-Fast Helper
-                const cmd = async (p: Promise<any>) => {
-                    try { return await p; }
-                    catch (e: any) {
-                        const msg = e?.message || e?.toString() || '';
-                        if (msg.includes('TIMEOUT')) throw e;
-                        return 'Unknown';
+                        info = {
+                            status: 'ONLINE',
+                            deviceName: 'Bridge Device (VPS Mode)',
+                            serialNumber: 'SYNCED-VIA-BRIDGE',
+                            firmware: 'N/A',
+                            platform: 'Bridge',
+                            deviceTime: new Date(),
+                            lastSyncTime: recentLog.updatedAt,
+                            userCount: dbUserCount,
+                            logCount: dbLogCount
+                        };
+                    } else {
+                        info = {
+                            status: 'OFFLINE',
+                            error: 'Device unreachable and no recent bridge data.'
+                        };
                     }
-                };
-
-                const deviceName = await cmd(this.zk.getDeviceName());
-                const serialNumber = await cmd(this.zk.getSerialNumber());
-                const firmware = await cmd(this.zk.getFirmware());
-                const platform = await cmd(this.zk.getPlatform());
-
-                let time = new Date();
-                try { time = await this.zk.getTime(); }
-                catch (e: any) { if (e?.message?.includes('TIMEOUT')) throw e; }
-
-                // Get counts
-                let userCount = 0;
-                try {
-                    const users = await this.zk.getUsers();
-                    userCount = users?.data?.length || 0;
-                } catch (e: any) { if (e?.message?.includes('TIMEOUT')) throw e; }
-
-                let logCount = 0;
-                try {
-                    const logsResp = await this.zk.getAttendances();
-                    const logs = logsResp?.data || [];
-                    const now = new Date();
-
-                    logCount = logs.filter((l: any) => {
-                        const logDate = new Date(l.recordTime || l.record_time);
-                        return logDate.getDate() === now.getDate() &&
-                            logDate.getMonth() === now.getMonth() &&
-                            logDate.getFullYear() === now.getFullYear();
-                    }).length;
                 }
-                catch (e: any) { if (e?.message?.includes('TIMEOUT')) throw e; }
 
-                return {
-                    status: 'ONLINE',
-                    deviceName,
-                    serialNumber,
-                    firmware,
-                    platform,
-                    deviceTime: time,
-                    userCount,
-                    logCount
-                };
+                // Update Status Table
+                await prisma.biometricDeviceStatus.upsert({
+                    where: { id: 'CURRENT' },
+                    create: { id: 'CURRENT', status: info.status, last_heartbeat: new Date(), device_info: JSON.stringify(info) },
+                    update: { status: info.status, last_heartbeat: new Date(), device_info: JSON.stringify(info) }
+                }).catch(() => { });
+
+                return info;
+
             } catch (error: any) {
-                return {
+                const errInfo = {
                     status: 'OFFLINE',
                     error: getErrMsg(error)
                 };
+                await prisma.biometricDeviceStatus.upsert({
+                    where: { id: 'CURRENT' },
+                    create: { id: 'CURRENT', status: 'OFFLINE', last_heartbeat: new Date(), device_info: JSON.stringify(errInfo) },
+                    update: { status: 'OFFLINE', last_heartbeat: new Date(), device_info: JSON.stringify(errInfo) }
+                }).catch(() => { });
+                return errInfo;
             } finally {
                 await this.disconnect();
             }
         });
+    }
+
+    private async fetchStartDeviceInfo() {
+        // Fail-Fast Helper
+        const cmd = async (p: Promise<any>) => {
+            try { return await p; }
+            catch (e: any) {
+                const msg = e?.message || e?.toString() || '';
+                if (msg.includes('TIMEOUT')) throw e;
+                return 'Unknown';
+            }
+        };
+
+        const deviceName = await cmd(this.zk.getDeviceName());
+        const serialNumber = await cmd(this.zk.getSerialNumber());
+        const firmware = await cmd(this.zk.getFirmware());
+        const platform = await cmd(this.zk.getPlatform());
+
+        let time = new Date();
+        try { time = await this.zk.getTime(); }
+        catch (e: any) { if (e?.message?.includes('TIMEOUT')) throw e; }
+
+        // Get counts
+        let userCount = 0;
+        try {
+            const users = await this.zk.getUsers();
+            userCount = users?.data?.length || 0;
+        } catch (e: any) { if (e?.message?.includes('TIMEOUT')) throw e; }
+
+        let logCount = 0;
+        try {
+            const logsResp = await this.zk.getAttendances();
+            const logs = logsResp?.data || [];
+            const now = new Date();
+
+            logCount = logs.filter((l: any) => {
+                const logDate = new Date(l.recordTime || l.record_time);
+                return logDate.getDate() === now.getDate() &&
+                    logDate.getMonth() === now.getMonth() &&
+                    logDate.getFullYear() === now.getFullYear();
+            }).length;
+        }
+        catch (e: any) { if (e?.message?.includes('TIMEOUT')) throw e; }
+
+        return {
+            status: 'ONLINE',
+            deviceName,
+            serialNumber,
+            firmware,
+            platform,
+            deviceTime: time,
+            userCount,
+            logCount
+        };
     }
 
     async getDeviceUsers() {
@@ -432,22 +487,62 @@ export class BiometricControlService {
                 if (!await this.connect()) throw new Error('Device offline');
 
                 console.log("Fetching logs from device...");
-                // Race condition: If device hangs during data transfer, abort after 20s
-                const logsPromise = this.zk.getAttendances();
-                const timeoutPromise = new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error('Device Timeout during log fetch')), 20000)
-                );
 
-                const logs: any = await Promise.race([logsPromise, timeoutPromise]);
-                console.log(`Fetched ${logs?.data?.length} raw logs.`);
-                return logs?.data || [];
+                // Allow device to stabilize after connection
+                await new Promise(r => setTimeout(r, 2000));
+
+                const logsResp = await this.zk.getAttendances();
+                const logs = logsResp?.data || [];
+
+                console.log(`Fetched ${logs.length} raw logs.`);
+                return logs;
             } catch (error: any) {
-                console.error("getAttendanceLogs Error:", error);
-                throw new Error(`Fetch logs failed: ${error.message}`);
+                console.error("getAttendanceLogs Error:", JSON.stringify(error));
+                throw new Error(`Fetch logs failed: ${error?.message || 'Unknown Error'}`);
             } finally {
                 await this.disconnect();
             }
         });
+    }
+
+    // --- HEARTBEAT & DAEMON LOGIC ---
+    startHeartbeat(intervalMs = 60000) {
+        if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
+
+        console.log(`[BiometricDaemon] Starting heartbeat every ${intervalMs / 1000}s`);
+
+        this.heartbeatInterval = setInterval(async () => {
+            try {
+                // Background Status Check
+                await this.getDeviceInfo();
+            } catch (e) {
+                console.error("[BiometricDaemon] Heartbeat error:", e);
+            }
+        }, intervalMs);
+    }
+}
+
+export class BiometricDaemon {
+    private static isRunning = false;
+
+    static start() {
+        if (this.isRunning) return;
+        this.isRunning = true;
+
+        console.log("[BiometricDaemon] Initializing background service...");
+
+        // 1. Start Heartbeat
+        biometricControl.startHeartbeat(60000); // 1 min status updates
+
+        // 2. Set up Auto-Sync (Every 15 mins)
+        setInterval(async () => {
+            try {
+                console.log("[BiometricDaemon] Running Auto-Sync...");
+                await syncBiometrics('AUTO');
+            } catch (e) {
+                console.error("[BiometricDaemon] Auto-Sync failed:", e);
+            }
+        }, 15 * 60 * 1000);
     }
 }
 
@@ -455,46 +550,76 @@ export const biometricControl = new BiometricControlService();
 
 // --- Sync Logic ---
 
-export const processBiometricLogs = async (logs: any[]) => {
+export const processBiometricLogs = async (logs: any[], method: 'MANUAL' | 'AUTO' = 'MANUAL') => {
     console.log(`Processing ${logs.length} logs via AttendanceService...`);
 
-    // Adapt logs for AttendanceService
-    // Handle ALL known field name variants from different zkteco-js versions:
-    //   user_id (node-zklib), userId / deviceUserId (zkteco-js), uid (fallback)
-    const adaptedLogs = logs.map(log => ({
-        staff_number: String(
-            log.user_id ??
-            log.userId ??
-            log.deviceUserId ??
-            log.uid ??
-            ''
-        ),
-        timestamp: log.record_time || log.recordTime || log.time || new Date()
-    })).filter(l => l.staff_number && l.staff_number !== '' && l.timestamp);
+    // Create Sync Log Entry (Initially PENDING/RUNNING)
+    const syncLog = await prisma.biometricSyncLog.create({
+        data: {
+            method,
+            status: 'RUNNING',
+            logs_fetched: logs.length
+        }
+    });
 
-    const skipped = logs.length - adaptedLogs.length;
-    if (skipped > 0) {
-        console.warn(`[BiometricSync] ⚠️  ${skipped} logs skipped (missing user identifier). Check field names in raw log.`);
-        if (logs.length > 0) console.warn('[BiometricSync] Raw sample:', JSON.stringify(logs[0]));
+    try {
+        // Adapt logs for AttendanceService
+        const adaptedLogs = logs.map(log => ({
+            staff_number: String(log.user_id ?? log.userId ?? log.deviceUserId ?? log.uid ?? ''),
+            timestamp: log.record_time || log.recordTime || log.time || new Date()
+        })).filter(l => l.staff_number && l.staff_number !== '' && l.timestamp);
+
+        const result = await AttendanceService.processBiometricLogs(adaptedLogs);
+
+        // Update Sync Log Success
+        await prisma.biometricSyncLog.update({
+            where: { id: syncLog.id },
+            data: {
+                status: 'SUCCESS',
+                logs_saved: result.success,
+                logs_fetched: logs.length
+            }
+        });
+
+        console.log(`Sync Complete: Success=${result.success}, Failed=${result.failed}`);
+        return {
+            message: `Processed ${result.success} logs. Failed: ${result.failed}`,
+            details: result
+        };
+    } catch (e: any) {
+        await prisma.biometricSyncLog.update({
+            where: { id: syncLog.id },
+            data: {
+                status: 'FAILED',
+                error_msg: getErrMsg(e)
+            }
+        });
+        throw e;
     }
-
-    const result = await AttendanceService.processBiometricLogs(adaptedLogs);
-
-    console.log(`Sync Complete via Service: Success=${result.success}, Failed=${result.failed}`);
-    if (result.errors.length > 0) {
-        console.warn('[BiometricSync] Errors:', result.errors.slice(0, 10)); // Show max 10
-    }
-    return {
-        message: `Processed ${result.success} logs. Failed: ${result.failed}`,
-        details: result
-    };
 };
 
-export const syncBiometrics = async () => {
+export const syncBiometrics = async (method: 'MANUAL' | 'AUTO' = 'MANUAL') => {
     try {
-        console.log('Starting Biometric Sync...');
+        console.log(`Starting Biometric Sync (${method})...`);
 
-        // 1. SMART CHECK: Am I in Bridge Mode?
+        // AUTO-DETECT: Try to reach device physically first (Fast Probe)
+        const isReachable = await biometricControl.probeDevice(500);
+
+        if (isReachable) {
+            console.log("Device reachable. Using DIRECT connection.");
+            const logs = await biometricControl.getAttendanceLogs();
+            if (logs.length === 0) {
+                // Log empty sync too for history
+                await prisma.biometricSyncLog.create({ data: { method, status: 'SUCCESS', logs_fetched: 0, logs_saved: 0 } });
+                return { message: 'No logs found on device.' };
+            }
+
+            const result = await processBiometricLogs(logs, method);
+            console.log('Biometric Sync Complete (Direct):', result);
+            return result;
+        }
+
+        // 1. FALLBACK TO SMART CHECK (Bridge Mode)
         const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
         const recentLog = await prisma.attendanceRecord.findFirst({
             where: {
@@ -504,19 +629,11 @@ export const syncBiometrics = async () => {
         });
 
         if (recentLog) {
-            // In Bridge Mode, we don't need to manually pull. 
-            // The bridge pushes automatically. 
-            // Just return success to stop the UI from spinning.
             return { message: 'Sync managed by Bridge Agent. Status: ACTIVE.' };
         }
 
-        // 2. Physical Pull (Only for Local Server)
-        const logs = await biometricControl.getAttendanceLogs();
-        if (logs.length === 0) return { message: 'No logs found on device.' };
+        return { message: 'Device unreachable and no Bridge active.' };
 
-        const result = await processBiometricLogs(logs);
-        console.log('Biometric Sync Complete:', result);
-        return result;
     } catch (error: any) {
         console.error('Biometric Sync Failed:', error);
         throw error; // Propagate to controller

@@ -35,12 +35,12 @@ export default function BiometricDetailsPage() {
     const [selectedDateForRegularization, setSelectedDateForRegularization] = useState<Date | string | null>(null);
     const [isSyncing, setIsSyncing] = useState(false);
 
-    // Sync Function
+    // Sync Function (Robust)
     const handleSyncLogs = async () => {
         if (isSyncing) return;
         setIsSyncing(true);
         try {
-            const res = await api.post('/attendance/sync-device', {}, { timeout: 60000 });
+            const res = await api.post('/attendance/biometric/sync-all', {}, { timeout: 120000 });
             queryClient.invalidateQueries({ queryKey: ['biometric-logs'] });
             return res.data;
         } catch (e: any) {
@@ -57,7 +57,6 @@ export default function BiometricDetailsPage() {
             const autoSync = async () => {
                 try {
                     console.log("Auto-Syncing Biometric Logs...");
-                    // We don't want to block UI or show alert on auto-sync, just do it.
                     await handleSyncLogs();
                 } catch (e) {
                     console.warn("Auto-Sync Failed (Silently)", e);
@@ -65,14 +64,13 @@ export default function BiometricDetailsPage() {
             };
             autoSync();
         }
-    }, [isAdminOrManager]); // Dependencies: run when role checks out.
+    }, [isAdminOrManager]);
 
-    // Fetch Staff List for Dropdown (Admin Only)
+    // Fetch Staff List
     const { data: staffList } = useQuery({
         queryKey: ['staff-list'],
         queryFn: async () => {
             const res = await api.get('/team/staff');
-            // Filter out system users
             return res.data?.filter((s: any) => s.user?.full_name !== 'Biometric Bridge Agent');
         },
         enabled: isAdminOrManager
@@ -99,27 +97,26 @@ export default function BiometricDetailsPage() {
         );
     }, [logs, search]);
 
-    // --- Status Calculation Logic (Consistent with Summary) ---
-    const calculateDailyStatus = (log: any) => {
-        if (!log) return { status: 'ABSENT', isLate: false };
+    // --- Status Display Logic (TRUST BACKEND) ---
+    const getStatusContent = (log: any) => {
+        const status = log.status || 'ABSENT';
 
-        // Respect explicit backend statuses for Leave/Holiday/Regularized
-        if (log.status === 'HOLIDAY') return { status: 'HOLIDAY', isLate: false };
-        if (log.status === 'LEAVE') return { status: 'LEAVE', isLate: false };
-        if (log.status === 'REGULARIZED') return { status: 'REGULARIZED', isLate: false };
-
-        // KEY RULE: If backend says is_late → always Half Day, regardless of stored status
-        if (log.is_late && (log.status === 'PRESENT' || log.status === 'HALF_DAY' || log.status === 'LATE')) {
-            return { status: 'HALF_DAY', isLate: true };
-        }
-
-        // Missing punch → Half Day
-        if (log.check_in && !log.check_out) {
-            return { status: 'HALF_DAY', isLate: false };
-        }
-
-        // Trust backend status directly
-        return { status: log.status || 'ABSENT', isLate: false };
+        return (
+            <div className="flex flex-col gap-1">
+                <Badge variant={
+                    status === 'PRESENT' ? 'default' :
+                        (status === 'ABSENT' || status === 'MISSING_PUNCH') ? 'destructive' :
+                            status === 'HALF_DAY' ? 'warning' : 'secondary'
+                }>
+                    {status.replace('_', ' ')}
+                </Badge>
+                {log.is_late && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-orange-600 bg-orange-50 border border-orange-200 rounded px-1.5 py-0.5 w-fit">
+                        ⏰ Late Punch
+                    </span>
+                )}
+            </div>
+        );
     };
 
     return (
@@ -224,69 +221,50 @@ export default function BiometricDetailsPage() {
                                         <TableCell colSpan={9} className="text-center h-24">No logs found for selected range.</TableCell>
                                     </TableRow>
                                 ) : (
-                                    filteredLogs.map((log: any) => {
-                                        const computed = calculateDailyStatus(log);
-                                        const status = computed.status;
-
-                                        return (
-                                            <TableRow key={log.id}>
-                                                <TableCell>{format(new Date(log.date), 'MMM dd, yyyy')}</TableCell>
-                                                <TableCell className="font-medium">{log.user_name}</TableCell>
-                                                <TableCell>{log.staff_number}</TableCell>
-                                                <TableCell>
-                                                    <div className="flex flex-col gap-0.5">
-                                                        <span className="text-xs font-semibold text-foreground">{log.shift_name || 'Default'}</span>
-                                                        <span className="text-xs text-muted-foreground font-mono">{log.shift_timing}</span>
-                                                        <span className="text-[10px] text-blue-500">Grace: {log.grace_time ?? 15} min</span>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    {log.check_in ? (
-                                                        <span className="text-green-600 font-mono">
-                                                            {format(new Date(log.check_in), 'hh:mm aa')}
-                                                        </span>
-                                                    ) : '-'}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {log.check_out ? (
-                                                        <span className="text-red-600 font-mono">
-                                                            {format(new Date(log.check_out), 'hh:mm aa')}
-                                                        </span>
-                                                    ) : '-'}
-                                                </TableCell>
-                                                <TableCell>{log.work_hours ? log.work_hours.toFixed(2) + ' hrs' : '-'}</TableCell>
-                                                <TableCell>
-                                                    <div className="flex flex-col gap-1">
-                                                        <Badge variant={
-                                                            status === 'PRESENT' ? 'default' :
-                                                                (status === 'ABSENT' || status === 'MISSING_PUNCH') ? 'destructive' :
-                                                                    status === 'HALF_DAY' ? 'warning' : 'secondary'
-                                                        }>
-                                                            {status.replace('_', ' ')}
-                                                        </Badge>
-                                                        {log.is_late && (
-                                                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-orange-600 bg-orange-50 border border-orange-200 rounded px-1.5 py-0.5 w-fit">
-                                                                ⏰ Late Punch
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    {/* Only show Regularize if Absent, Half-Day, or Missing Punches */}
-                                                    {(status === 'ABSENT' || status === 'HALF_DAY' || status === 'MISSING_PUNCH' || !log.check_in || !log.check_out) && (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="text-blue-600 hover:text-blue-800"
-                                                            onClick={() => setSelectedDateForRegularization(log.date)}
-                                                        >
-                                                            Regularize
-                                                        </Button>
-                                                    )}
-                                                </TableCell>
-                                            </TableRow>
-                                        )
-                                    })
+                                    filteredLogs.map((log: any) => (
+                                        <TableRow key={log.id}>
+                                            <TableCell>{format(new Date(log.date), 'MMM dd, yyyy')}</TableCell>
+                                            <TableCell className="font-medium">{log.user_name}</TableCell>
+                                            <TableCell>{log.staff_number}</TableCell>
+                                            <TableCell>
+                                                <div className="flex flex-col gap-0.5">
+                                                    <span className="text-xs font-semibold text-foreground">{log.shift_name || 'Default'}</span>
+                                                    <span className="text-xs text-muted-foreground font-mono">{log.shift_schedule}</span>
+                                                    <span className="text-[10px] text-blue-500">Grace: {log.grace_time ?? 15} min</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                {log.check_in ? (
+                                                    <span className="text-green-600 font-mono">
+                                                        {format(new Date(log.check_in), 'hh:mm aa')}
+                                                    </span>
+                                                ) : '-'}
+                                            </TableCell>
+                                            <TableCell>
+                                                {log.check_out ? (
+                                                    <span className="text-red-600 font-mono">
+                                                        {format(new Date(log.check_out), 'hh:mm aa')}
+                                                    </span>
+                                                ) : '-'}
+                                            </TableCell>
+                                            <TableCell>{log.work_hours ? log.work_hours.toFixed(2) + ' hrs' : '-'}</TableCell>
+                                            <TableCell>
+                                                {getStatusContent(log)}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                {(log.status === 'ABSENT' || log.status === 'HALF_DAY' || !log.check_in || !log.check_out) && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="text-blue-600 hover:text-blue-800"
+                                                        onClick={() => setSelectedDateForRegularization(log.date)}
+                                                    >
+                                                        Regularize
+                                                    </Button>
+                                                )}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
                                 )}
                             </TableBody>
                         </Table>

@@ -25,10 +25,12 @@ import { Card } from '../../components/ui/card';
 import { format } from 'date-fns';
 
 // API Functions
-const getDeviceInfo = async () => (await api.get('/attendance/biometric/info')).data;
+const getDeviceInfo = async () => (await api.get('/attendance/biometric/status')).data;
 const getDeviceUsers = async () => (await api.get('/attendance/biometric/users')).data;
-const restartDevice = async () => (await api.post('/attendance/biometric/restart')).data;
+const syncAllLogs = async () => (await api.post('/attendance/biometric/sync-all')).data;
 const syncTime = async () => (await api.post('/attendance/biometric/sync-time')).data;
+const getSyncHistory = async () => (await api.get('/attendance/biometric/sync-history')).data;
+const restartDevice = async () => (await api.post('/attendance/biometric/restart')).data;
 const clearLogs = async () => (await api.post('/attendance/biometric/clear-logs')).data;
 const addUser = async (data: any) => (await api.post('/attendance/biometric/users/add', data)).data;
 const deleteUser = async (uid: any) => (await api.post('/attendance/biometric/users/delete', { uid })).data;
@@ -61,7 +63,17 @@ const BiometricManagerPage = () => {
         refetchInterval: 30000
     });
 
-    const isOnline = deviceInfo?.status === 'ONLINE' || (deviceInfo?.userCount !== undefined && deviceInfo?.userCount > 0);
+    const parsedDeviceInfo = React.useMemo(() => {
+        if (!deviceInfo?.device_info) return {};
+        try {
+            return JSON.parse(deviceInfo.device_info);
+        } catch (e) {
+            console.error("Failed to parse device info", e);
+            return {};
+        }
+    }, [deviceInfo?.device_info]);
+
+    const isOnline = deviceInfo?.status === 'ONLINE';
 
     // 2. Fetch Users
     const { data: deviceUsers, isLoading: usersLoading, refetch: refetchUsers } = useQuery({
@@ -169,22 +181,21 @@ const BiometricManagerPage = () => {
 
                 <div className="flex items-center gap-3">
                     <div className="flex bg-gray-100 rounded-lg p-1 mr-4">
-                        {['console', 'audit', 'shifts', 'policies'].map((tab) => (
+                        {[
+                            { id: 'console', label: 'CONSOLE' },
+                            { id: 'audit', label: 'Audit' },
+                            { id: 'shifts', label: 'Create Shift' },
+                            { id: 'policies', label: 'Shift Management' }
+                        ].map((tab) => (
                             <button
-                                key={tab}
-                                onClick={() => setActiveTab(tab as any)}
-                                className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors capitalize ${activeTab === tab ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id as any)}
+                                className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${activeTab === tab.id ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
                             >
-                                {tab === 'shifts' ? 'Shift Management' : tab === 'policies' ? 'Staff Policies' : tab}
+                                {tab.label}
                             </button>
                         ))}
                     </div>
-
-                    {deviceInfo?.lastSyncTime && (
-                        <span className="text-xs text-gray-500 mr-2 font-mono">
-                            Last Data: {format(new Date(deviceInfo.lastSyncTime), 'h:mm a')}
-                        </span>
-                    )}
 
                     <span className={`px-3 py-1 rounded-full text-xs font-bold ${isOnline ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                         {isOnline ? 'ONLINE' : 'OFFLINE'}
@@ -206,15 +217,21 @@ const BiometricManagerPage = () => {
                             <div className="space-y-2 text-sm text-gray-600">
                                 <div className="flex justify-between">
                                     <span>Name:</span>
-                                    <span className="font-medium text-gray-900">{deviceInfo?.deviceName || '-'}</span>
+                                    <span className="font-medium text-gray-900">
+                                        {parsedDeviceInfo.deviceName || '-'}
+                                    </span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span>Serial:</span>
-                                    <span className="font-medium text-gray-900">{deviceInfo?.serialNumber || '-'}</span>
+                                    <span className="font-medium text-gray-900">
+                                        {parsedDeviceInfo.serialNumber || '-'}
+                                    </span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span>Platform:</span>
-                                    <span className="font-medium text-gray-900">{deviceInfo?.platform || '-'}</span>
+                                    <span className="font-medium text-gray-900">
+                                        {parsedDeviceInfo.platform || '-'}
+                                    </span>
                                 </div>
                             </div>
                         </Card>
@@ -226,11 +243,15 @@ const BiometricManagerPage = () => {
                             </div>
                             <div className="grid grid-cols-2 gap-4 text-center">
                                 <div className="bg-purple-50 p-3 rounded-lg">
-                                    <div className="text-2xl font-bold text-purple-600">{deviceInfo?.userCount ?? '-'}</div>
+                                    <div className="text-2xl font-bold text-purple-600">
+                                        {parsedDeviceInfo.userCount || '-'}
+                                    </div>
                                     <div className="text-xs text-purple-400">Users Enrolled</div>
                                 </div>
                                 <div className="bg-blue-50 p-3 rounded-lg">
-                                    <div className="text-2xl font-bold text-blue-600">{deviceInfo?.logCount ?? '-'}</div>
+                                    <div className="text-2xl font-bold text-blue-600">
+                                        {parsedDeviceInfo.logCount || '-'}
+                                    </div>
                                     <div className="text-xs text-blue-400">Attendance Logs</div>
                                 </div>
                             </div>
@@ -239,27 +260,35 @@ const BiometricManagerPage = () => {
                         <Card className="p-4">
                             <div className="flex items-center gap-3 mb-4">
                                 <Shield className="w-5 h-5 text-orange-500" />
-                                <h3 className="font-semibold text-gray-700">Admin Actions</h3>
+                                <h3 className="font-semibold text-gray-700">Device Control</h3>
                             </div>
-                            <div className="grid grid-cols-2 gap-2">
-                                <Button variant="outline" className="w-full justify-start text-xs" onClick={() => syncTimeMutation.mutate()} disabled={syncTimeMutation.isPending}>
-                                    <Clock className="w-3 h-3 mr-2" /> Sync Time
-                                </Button>
-                                <Button variant="outline" className="w-full justify-start text-xs text-red-600 hover:bg-red-50" onClick={() => { if (window.confirm('Restart Device?')) restartMutation.mutate(); }} disabled={restartMutation.isPending}>
-                                    <Power className="w-3 h-3 mr-2" /> Restart
+                            <div className="flex flex-col gap-3">
+                                <Button
+                                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-6 group"
+                                    onClick={async () => {
+                                        try {
+                                            addToLog("Initiating Import All Logs...");
+                                            await api.post('/attendance/biometric/sync-all');
+                                            addToLog("Import completed successfully.");
+                                            Swal.fire('Success', 'Import All Logs Complete', 'success');
+                                        } catch (e: any) {
+                                            addToLog(`Import Failed: ${e.message}`);
+                                            Swal.fire('Error', 'Import failed', 'error');
+                                        }
+                                    }}
+                                >
+                                    <RefreshCw className="w-5 h-5 mr-2 group-hover:animate-spin" />
+                                    IMPORT ALL LOGS (Direct)
                                 </Button>
 
-                                <div className="col-span-2 pt-2 border-t border-gray-100 grid grid-cols-2 gap-2">
-                                    <Button className="w-full justify-center text-xs bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => { if (window.confirm('Import User Data From Device?')) importUsersMutation.mutate(); }} disabled={importUsersMutation.isPending}>
-                                        <Server className="w-3 h-3 mr-2" /> Import Users
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Button variant="outline" className="text-xs" onClick={() => syncTimeMutation.mutate()} disabled={syncTimeMutation.isPending}>
+                                        <Clock className="w-3 h-3 mr-2" /> Sync Time
                                     </Button>
-                                    <Button className="w-full justify-center text-xs bg-blue-600 hover:bg-blue-700 text-white" onClick={() => { if (window.confirm('Upload User Data To Device?')) uploadUsersMutation.mutate(); }} disabled={uploadUsersMutation.isPending}>
-                                        <Users className="w-3 h-3 mr-2" /> Upload Users
+                                    <Button variant="outline" className="text-xs text-red-600 px-0" onClick={() => { if (window.confirm('Restart Device?')) restartMutation.mutate(); }} disabled={restartMutation.isPending}>
+                                        <Power className="w-3 h-3 mr-2" /> Restart
                                     </Button>
-                                </div>
-
-                                <div className="col-span-2 pt-2 border-t border-gray-100 flex gap-2">
-                                    <Button variant="outline" className="w-full justify-center text-xs text-red-600 hover:bg-red-50" onClick={() => { if (window.confirm('DANGER: Clear ALL logs?')) clearLogsMutation.mutate(); }} disabled={clearLogsMutation.isPending}>
+                                    <Button variant="outline" className="text-xs col-span-2 text-red-700" onClick={() => { if (window.confirm('DANGER: Clear ALL logs?')) clearLogsMutation.mutate(); }} disabled={clearLogsMutation.isPending}>
                                         <Trash2 className="w-3 h-3 mr-2" /> Clear Logs
                                     </Button>
                                 </div>
@@ -406,13 +435,26 @@ const BiometricManagerPage = () => {
                                         <tr>
                                             <th className="px-4 py-2">Staff</th>
                                             <th className="px-4 py-2">Current Shift (Date Range)</th>
+                                            <th className="px-4 py-2">Grace Time</th>
+                                            <th className="px-4 py-2">Manage Shift</th>
                                             <th className="px-4 py-2 text-right">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
                                         {staffList?.map((staff: any) => {
 
+                                            // Determine Active Assignment for Grace Time Display
+                                            // We take the first active one that overlaps "now" or the most recent one
+                                            const activeAssignment = staff.shift_assignments?.find((a: any) => {
+                                                const now = new Date();
+                                                const from = new Date(a.from_date);
+                                                const to = a.to_date ? new Date(a.to_date) : null;
+                                                return from <= now && (!to || to >= now);
+                                            });
 
+                                            const graceDisplay = activeAssignment
+                                                ? (activeAssignment.grace_time ?? activeAssignment.shift.default_grace_time) + ' min'
+                                                : '-';
 
                                             return (
                                                 <tr key={staff.id} className="hover:bg-gray-50">
@@ -446,19 +488,39 @@ const BiometricManagerPage = () => {
                                                                 ))
                                                             ) : (
                                                                 <span className="text-xs text-gray-400">
-                                                                    {staff.shift_timing ? 'No Active Shift (Legacy Timing Removed)' : 'No Active Shift'}
+                                                                    No Active Shift
                                                                 </span>
                                                             )}
-                                                            <div className="flex justify-end mt-1">
-                                                                <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setAssignmentModal({ isOpen: true, staffId: staff.id, staffName: staff.user.full_name })}>
-                                                                    <Calendar className="w-4 h-4 text-gray-500 hover:text-blue-600" />
-                                                                </Button>
-                                                            </div>
                                                         </div>
                                                     </td>
+                                                    <td className="px-4 py-3 text-gray-600">
+                                                        {graceDisplay}
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <Button size="sm" variant="outline" className="h-8 gap-2" onClick={() => setAssignmentModal({ isOpen: true, staffId: staff.id, staffName: staff.user.full_name })}>
+                                                            <Settings className="w-3 h-3" /> Assign/Edit
+                                                        </Button>
+                                                    </td>
                                                     <td className="px-4 py-3 text-right">
-                                                        <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => setAssignmentModal({ isOpen: true, staffId: staff.id, staffName: staff.user.full_name })}>
-                                                            <Calendar className="w-3 h-3 mr-2" /> Manage Shift
+                                                        <Button
+                                                            size="sm"
+                                                            className="h-8 bg-green-600 hover:bg-green-700 text-white gap-2"
+                                                            onClick={async () => {
+                                                                try {
+                                                                    await api.post('/attendance/shifts/sync-logs', { staffId: staff.user.id });
+                                                                    Swal.fire({
+                                                                        icon: 'success',
+                                                                        title: 'Synced!',
+                                                                        text: 'Attendance logs updated with current shift rules.',
+                                                                        timer: 2000,
+                                                                        showConfirmButton: false
+                                                                    });
+                                                                } catch (e: any) {
+                                                                    Swal.fire('Error', e.response?.data?.error || 'Sync failed', 'error');
+                                                                }
+                                                            }}
+                                                        >
+                                                            <Save className="w-4 h-4" /> Save
                                                         </Button>
                                                     </td>
                                                 </tr>

@@ -65,5 +65,6 @@ router.get('/shifts/assignments/:staffId', authenticate, ShiftController.getStaf
 router.post('/shifts/assign', authenticate, ShiftController.assignShift);
 router.delete('/shifts/assignments/:id', authenticate, ShiftController.deleteAssignment);
 router.get('/shifts/active', authenticate, ShiftController.getShiftForDate);
+router.post('/shifts/sync-logs', authenticate, ShiftController.syncShiftLogs);
 
 export default router;

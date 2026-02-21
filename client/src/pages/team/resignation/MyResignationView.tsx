@@ -4,7 +4,8 @@ import api from '../../../lib/api';
 import { StatusCard } from './components/StatusCard';
 import { ResignationFormModal } from './components/ResignationFormModal';
 import { Loader2, LogOut, FileText } from 'lucide-react';
-import { Button } from '../../../components/ui/button'; // Assuming standard Shadcn button
+import { format } from 'date-fns';
+import { Button } from '../../../components/ui/button';
 
 export const MyResignationView = () => {
     const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
@@ -32,36 +33,45 @@ export const MyResignationView = () => {
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
-            {activeRequest ? (
-                <StatusCard data={activeRequest} />
-            ) : (
+            {latestRequest && (
+                <div className="space-y-6">
+                    <StatusCard data={latestRequest} />
+
+                    {(latestRequest.status === 'REJECTED' || latestRequest.status === 'COMPLETED') && (
+                        <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-border rounded-xl bg-card/50 text-center max-w-2xl mx-auto">
+                            <p className="text-muted-foreground mb-4 font-medium">
+                                {latestRequest.status === 'REJECTED'
+                                    ? "Your previous request was rejected. You may submit a new application if needed."
+                                    : "Your resignation process is complete. If you need to submit a new request, click below."}
+                            </p>
+                            <Button
+                                variant="destructive"
+                                onClick={() => setIsApplyModalOpen(true)}
+                                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
+                            >
+                                <LogOut size={18} /> Re-Apply for Resignation
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {!latestRequest && (
                 <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed border-border rounded-xl bg-card/50 text-center max-w-2xl mx-auto mt-10">
                     <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4 text-primary">
                         <FileText size={32} />
                     </div>
-                    <h3 className="text-xl font-bold mb-2">
-                        {latestRequest?.status === 'REJECTED' ? 'Resignation Request Rejected' : 'No Active Resignation Request'}
-                    </h3>
+                    <h3 className="text-xl font-bold mb-2">No Active Resignation Request</h3>
                     <p className="text-muted-foreground mb-8 max-w-sm">
-                        {latestRequest?.status === 'REJECTED'
-                            ? "Your previous request was rejected. You may submit a new application."
-                            : "You have not submitted any resignation request. If you wish to initiate the separation process, please click relevant button below."
-                        }
+                        You have not submitted any resignation request. If you wish to initiate the separation process, please click the button below.
                     </p>
-
                     <Button
                         variant="destructive"
                         onClick={() => setIsApplyModalOpen(true)}
                         className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
                     >
-                        <LogOut size={18} /> {latestRequest?.status === 'REJECTED' ? 'Re-Apply for Resignation' : 'Apply for Resignation'}
+                        <LogOut size={18} /> Apply for Resignation
                     </Button>
-
-                    {latestRequest?.status === 'REJECTED' && (
-                        <div className="mt-4 p-3 bg-red-50 border border-red-100 rounded text-sm text-red-600">
-                            <strong>Rejection Reason:</strong> {latestRequest.rejection_reason || 'No reason provided.'}
-                        </div>
-                    )}
                 </div>
             )}
 
@@ -74,25 +84,42 @@ export const MyResignationView = () => {
                             <tr>
                                 <th className="p-3 font-medium">Applied On</th>
                                 <th className="p-3 font-medium">Relieving Date</th>
-                                <th className="p-3 font-medium">Reason</th>
-                                <th className="p-3 font-medium">Remaining Days</th>
+                                <th className="p-3 font-medium">Notice Period</th>
+                                <th className="p-3 font-medium">Days Left</th>
                                 <th className="p-3 font-medium text-right">Status</th>
                             </tr>
                         </thead>
                         <tbody>
                             {myRequests.map((req: any) => (
                                 <tr key={req.id} className="border-b last:border-0 hover:bg-muted/20">
-                                    <td className="p-3">{new Date(req.applied_date).toLocaleDateString()}</td>
                                     <td className="p-3">
-                                        {req.approved_relieving_date
-                                            ? new Date(req.approved_relieving_date).toLocaleDateString()
-                                            : new Date(req.requested_relieving_date).toLocaleDateString() + ' (Req)'}
+                                        {format(new Date(req.applied_date), 'dd MMM yyyy')}
                                     </td>
-                                    <td className="p-3 max-w-[200px] truncate" title={req.reason}>{req.reason}</td>
                                     <td className="p-3">
-                                        {req.status === 'UNDER_NOTICE' ? (
-                                            <span className="font-bold text-orange-600">{req.remaining_days} Days</span>
-                                        ) : '-'}
+                                        {format(new Date(req.approved_relieving_date || req.requested_relieving_date), 'dd MMM yyyy')}
+                                        {req.status === 'APPLIED' && <span className="text-xs text-muted-foreground ml-1">(Req)</span>}
+                                    </td>
+                                    <td className="p-3">
+                                        {(() => {
+                                            const relDate = new Date(req.approved_relieving_date || req.requested_relieving_date);
+                                            const appDate = new Date(req.applied_date);
+                                            const diff = relDate.getTime() - appDate.getTime();
+                                            return `${Math.ceil(diff / (1000 * 60 * 60 * 24))} Days`;
+                                        })()}
+                                    </td>
+                                    <td className="p-3">
+                                        {(() => {
+                                            const relDate = new Date(req.approved_relieving_date || req.requested_relieving_date);
+                                            const today = new Date();
+                                            today.setHours(0, 0, 0, 0);
+                                            const diff = relDate.getTime() - today.getTime();
+                                            const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+                                            return days > 0 ? (
+                                                <span className="font-bold text-primary">{days} Days</span>
+                                            ) : (
+                                                <span className="text-muted-foreground italic">Passed</span>
+                                            );
+                                        })()}
                                     </td>
                                     <td className="p-3 text-right">
                                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium 

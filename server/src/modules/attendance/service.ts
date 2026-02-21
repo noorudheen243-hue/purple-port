@@ -72,47 +72,71 @@ export class AttendanceService {
         });
     }
 
-    // Unified Status Engine (Refactored)
+    // Unified Status Engine (Refactored - Deterministic Rebuild)
     static async computeStatus(staff: any, checkIn: Date, checkOut: Date | null, isPastDay: boolean): Promise<{ status: string; shift: any; criteria: string }> {
         if (!staff) return { status: 'PRESENT', shift: {}, criteria: 'GRACE_TIME' };
 
         // 1. Get Shift for this Date (Using ShiftService)
-        // staff is StaffProfile. We need to pass staff.id.
-        // checkIn is the date of attendance.
         const { ShiftService } = require('./shift.service');
         const shift = await ShiftService.getShiftForDate(staff.user_id, checkIn);
 
         const graceTime = shift.default_grace_time;
-        // Default to GRACE_TIME if not specified. Shift model doesn't store this, so we default.
-        // Future: If Shifts need criteria, add `criteria_mode` to Shift model.
         const criteria = 'GRACE_TIME';
 
-        // Legacy "No Break" check
         const isNoBreak = (shift.name || '').toUpperCase().includes('NO BREAK');
 
-        const fullDayThreshold = isNoBreak ? 7.0 : 7.75;
+        // Calculate Shift duration for dynamic thresholds
+        let shiftDuration = 9; // Default 9h (09-18)
+        if (shift.start_time && shift.end_time) {
+            const [sh, sm] = shift.start_time.split(':').map(Number);
+            const [eh, em] = shift.end_time.split(':').map(Number);
+            let start = sh + sm / 60;
+            let end = eh + em / 60;
+            if (end < start) end += 24; // Handle overnight
+            shiftDuration = end - start;
+        }
+
+        // Thresholds
+        let fullDayThreshold = isNoBreak ? 7.0 : 7.75;
+        if (shiftDuration < fullDayThreshold) {
+            fullDayThreshold = Math.max(4.0, shiftDuration - 0.25); // 15 min buffer
+        }
         const halfDayThreshold = 4.0;
 
         const isLate = this.isLate(shift.start_time, checkIn, graceTime);
+        const isEarlyExit = checkOut ? this.isEarlyDeparture(shift.end_time, checkOut, shift.start_time) : false;
 
         let status = 'PRESENT';
 
-        if (!checkOut || checkIn.getTime() === checkOut.getTime()) {
-            if (!isPastDay) {
-                // Since criteria is always GRACE_TIME, only check isLate
-                status = isLate ? 'HALF_DAY' : 'PRESENT';
+        // --- DETERMINISTIC DECISION TREE ---
+
+        if (isLate) {
+            // Rule 1: Late Punch -> HALF_DAY
+            status = 'HALF_DAY';
+        }
+        else if (isEarlyExit) {
+            // Rule 2: Early Departure -> HALF_DAY
+            status = 'HALF_DAY';
+        }
+        else if (!checkOut || checkIn.getTime() === checkOut.getTime()) {
+            // Rule 3: Single Punch
+            if (isPastDay) {
+                status = 'HALF_DAY'; // Past day without checkout = HALF_DAY
             } else {
-                // Past Day + No CheckOut = HALF_DAY (for Grace Time mode)
-                status = 'HALF_DAY';
+                status = 'PRESENT'; // Current day, might still checkout
             }
-        } else {
+        }
+        else {
+            // Rule 4: Full Day check based on work hours
             const workHours = (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60);
 
-            // GRACE_TIME Logic
-            if (isLate) status = 'HALF_DAY';
-            else if (workHours < halfDayThreshold) status = 'ABSENT';
-            else if (workHours < fullDayThreshold) status = 'HALF_DAY';
-            else status = 'PRESENT';
+            if (workHours < halfDayThreshold) {
+                status = 'ABSENT';
+            } else if (workHours < fullDayThreshold) {
+                status = 'HALF_DAY';
+            } else {
+                status = 'PRESENT';
+            }
         }
 
         return { status, shift, criteria };
@@ -139,8 +163,13 @@ export class AttendanceService {
             }
         });
 
-        // Convert records to a map for easy lookup
-        const recordMap = new Map(records.map(r => [r.date.toISOString().split('T')[0], r]));
+        // Convert records to a map for easy lookup, adjusting for IST
+        const recordMap = new Map();
+        records.forEach(r => {
+            const istOffset = 330 * 60 * 1000;
+            const istDate = new Date(r.date.getTime() + istOffset);
+            recordMap.set(istDate.toISOString().split('T')[0], r);
+        });
 
         // Merge Holidays
         const merged = [...records];
@@ -181,7 +210,7 @@ export class AttendanceService {
         return checkInMins > (shiftMins + graceMinutes);
     }
 
-    static isEarlyDeparture(shiftEnd24h: string, checkOut: Date): boolean {
+    static isEarlyDeparture(shiftEnd24h: string, checkOut: Date, shiftStart24h: string = '09:00'): boolean {
         // Convert CheckOut (UTC Date) to IST Minutes
         const istDate = new Date(checkOut.getTime() + (330 * 60000));
         const checkOutMins = istDate.getUTCHours() * 60 + istDate.getUTCMinutes();
@@ -189,7 +218,18 @@ export class AttendanceService {
         const [eh, em] = shiftEnd24h.split(':').map(Number);
         const shiftMins = eh * 60 + em;
 
-        // Note: This logic assumes day shifts (Start < End). Overnight shifts require date handling.
+        const [sh, sm] = shiftStart24h.split(':').map(Number);
+        const startMins = sh * 60 + sm;
+
+        // Overnight Shift Handling (e.g., End 07:00 < Start 22:00)
+        if (shiftMins < startMins) {
+            // If checkout is after shift start but before midnight
+            if (checkOutMins >= startMins) {
+                return true; // Very early departure
+            }
+            // If checkout is after midnight, simple comparison works
+        }
+
         return checkOutMins < shiftMins;
     }
 
@@ -255,30 +295,22 @@ export class AttendanceService {
         return request;
     }
 
-    // Biometric Sync
+    // Biometric Sync (Sanitized & Idempotent)
     static async processBiometricLogs(logs: { staff_number: string; timestamp: string | Date; type?: string }[]) {
         const results = { success: 0, failed: 0, errors: [] as string[] };
 
         for (const log of logs) {
             try {
                 const timestamp = new Date(log.timestamp);
-
-                // FIX: Calculate Date Key based on IST (UTC+5:30)
-                // The DB stores dates as "00:00 IST" which is "18:30 UTC Previous Day"
-                // Example: Feb 19 09:00 IST -> Feb 19 03:30 UTC
-                // Target Key: Feb 19 00:00 IST -> Feb 18 18:30 UTC
-
-                const IST_OFFSET = 330 * 60 * 1000; // 5 hours 30 minutes in ms
+                const IST_OFFSET = 330 * 60 * 1000;
                 const istDate = new Date(timestamp.getTime() + IST_OFFSET);
-                istDate.setUTCHours(0, 0, 0, 0); // Sets to Midnight in IST terms
-                const dateKeyIST = new Date(istDate.getTime() - IST_OFFSET); // Back to UTC timestamp representing IST midnight
+                istDate.setUTCHours(0, 0, 0, 0);
+                const dateKeyIST = new Date(istDate.getTime() - IST_OFFSET); // IST Midnight key
 
-                // FALLBACK KEY: The old logic (UTC Midnight)
-                // Existing records for "Today" might have been created with this key before the fix.
+                // Fallback check for old UTC keys
                 const dateKeyUTC = new Date(timestamp);
                 dateKeyUTC.setHours(0, 0, 0, 0);
 
-                // 1. Find User by Staff Number
                 const staff = await db.staffProfile.findUnique({
                     where: { staff_number: log.staff_number },
                     include: { user: true }
@@ -290,92 +322,102 @@ export class AttendanceService {
                     continue;
                 }
 
-                // 3. Find existing record for this day (Check BOTH keys)
-                const existing = await db.attendanceRecord.findFirst({
+                // 2. Find existing record (Check BOTH key formats)
+                let existing = await db.attendanceRecord.findFirst({
                     where: {
                         user_id: staff.user_id,
-                        date: { in: [dateKeyIST, dateKeyUTC] } // Check both new and old key formats
+                        date: { in: [dateKeyIST, dateKeyUTC] }
                     }
                 });
 
-                // Use the Found Key (or default to IST for new records)
-                const dateKey = existing ? existing.date : dateKeyIST;
+                // --- OVERNIGHT LOOKBACK ---
+                // If punch is between 12 AM and 7 AM IST, and today has no record, 
+                // check if yesterday has an incomplete record (to assign check-out)
+                const istHours = istDate.getUTCHours();
+                if (!existing && istHours < 7) {
+                    const yesterdayKey = new Date(dateKeyIST.getTime() - (24 * 60 * 60 * 1000));
+                    const yesterdayRecord = await db.attendanceRecord.findFirst({
+                        where: {
+                            user_id: staff.user_id,
+                            date: yesterdayKey,
+                            check_out: null
+                        }
+                    });
+                    if (yesterdayRecord) {
+                        existing = yesterdayRecord;
+                    }
+                }
+
+                // --- LOCK ENFORCEMENT ---
+                if (existing && (existing.status === 'REGULARIZED' || existing.method === 'MANUAL_ADMIN')) {
+                    results.success++;
+                    continue;
+                }
 
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
-                const isPastDay = dateKey.getTime() < today.getTime();
+                const isPastDay = (existing ? existing.date : dateKeyIST).getTime() < today.getTime();
 
                 if (!existing) {
-                    // First punch of the day → provisional check-in
+                    // CREATE NEW RECORD
                     const statusResult = await this.computeStatus(staff, timestamp, null, isPastDay);
                     await db.attendanceRecord.create({
                         data: {
                             user_id: staff.user_id,
-                            date: dateKeyIST, // Always use Correct IST Key for NEW records
+                            date: dateKeyIST,
                             check_in: timestamp,
                             status: statusResult.status,
                             shift_snapshot: `${statusResult.shift.start_time}-${statusResult.shift.end_time}`,
-                            shift_id: statusResult.shift.id === 'LEGACY' || statusResult.shift.id === 'DEFAULT' ? null : statusResult.shift.id,
+                            shift_id: (statusResult.shift.id === 'LEGACY' || statusResult.shift.id === 'DEFAULT') ? null : statusResult.shift.id,
                             criteria_mode: statusResult.criteria,
                             grace_time_applied: statusResult.shift.default_grace_time,
                             method: 'BIOMETRIC'
                         }
                     });
+                    results.success++;
                 } else {
-                    const data: any = {};
+                    // UPDATE EXISTING RECORD
                     let shouldUpdate = false;
+                    const data: any = {};
 
-                    // Update check_in if this punch is earlier
-                    // PROTECT MANUAL UPDATES: Only update check-in if NOT manual
-                    if (existing.method !== 'MANUAL_ADMIN') {
-                        if (!existing.check_in || timestamp < existing.check_in) {
-                            data.check_in = timestamp;
-                            data.method = 'BIOMETRIC';
-                            shouldUpdate = true;
-                        }
-                    }
-
-                    // Update check_out if this punch is later than current check_in
-                    const currentCheckIn = data.check_in || existing.check_in || timestamp;
-                    if (timestamp > currentCheckIn && (!existing.check_out || timestamp > existing.check_out)) {
-                        data.check_out = timestamp;
-                        // Only update method to BIOMETRIC if not already MANUAL_ADMIN (to preserve protection)
-                        if (existing.method !== 'MANUAL_ADMIN') {
-                            data.method = 'BIOMETRIC';
-                        }
+                    // Update check_in if earlier
+                    if (!existing.check_in || timestamp < existing.check_in) {
+                        data.check_in = timestamp;
                         shouldUpdate = true;
                     }
 
-                    // Force re-evaluation for past-day provisional records
-                    if (isPastDay && (existing.status === 'PRESENT')) {
+                    // Update check_out if later
+                    const currentCheckIn = data.check_in || existing.check_in;
+                    if (timestamp > currentCheckIn && (!existing.check_out || timestamp > existing.check_out)) {
+                        data.check_out = timestamp;
+                        shouldUpdate = true;
+                    }
+
+                    // Force re-evaluation if status is PRESENT on past days (provisional check)
+                    if (isPastDay && existing.status === 'PRESENT' && !existing.check_out) {
                         shouldUpdate = true;
                     }
 
                     if (shouldUpdate) {
-                        const finalCheckIn = data.check_in || existing.check_in || timestamp;
+                        const finalCheckIn = data.check_in || existing.check_in;
                         const finalCheckOut = data.check_out || existing.check_out || null;
 
                         const statusResult = await this.computeStatus(staff, finalCheckIn, finalCheckOut, isPastDay);
-                        data.status = statusResult.status;
-                        data.shift_snapshot = `${statusResult.shift.start_time}-${statusResult.shift.end_time}`;
-                        data.shift_id = statusResult.shift.id === 'LEGACY' || statusResult.shift.id === 'DEFAULT' ? null : statusResult.shift.id;
-                        data.criteria_mode = statusResult.criteria;
-                        data.grace_time_applied = statusResult.shift.default_grace_time;
-
-                        if (finalCheckIn && finalCheckOut && finalCheckIn.getTime() !== finalCheckOut.getTime()) {
-                            data.work_hours = (finalCheckOut.getTime() - finalCheckIn.getTime()) / (1000 * 60 * 60);
-                        }
 
                         await db.attendanceRecord.update({
                             where: { id: existing.id },
-                            data
+                            data: {
+                                ...data,
+                                status: statusResult.status,
+                                method: 'BIOMETRIC'
+                            }
                         });
                     }
+                    results.success++;
                 }
-                results.success++;
-            } catch (e: any) {
+            } catch (error: any) {
+                results.errors.push(`Error processing log for ${log.staff_number}: ${error.message}`);
                 results.failed++;
-                results.errors.push(`Error processing ${log.staff_number}: ${e.message}`);
             }
         }
         return results;
@@ -397,6 +439,11 @@ export class AttendanceService {
         if (!staff) return { message: "Staff not found", count: 0 };
 
         for (const record of records) {
+            // Respect Regularized/Manual Lock
+            if (record.status === 'REGULARIZED' || record.method === 'MANUAL_ADMIN') {
+                continue;
+            }
+
             // Re-run status logic with new global state (Shift Assignments)
             const statusResult = await this.computeStatus(
                 staff,
@@ -424,6 +471,7 @@ export class AttendanceService {
     }
 
     // Admin: Get Team Attendance Summary
+    // Admin: Get Team Attendance Summary
     static async getTeamAttendance(startDate: Date, endDate: Date, requestor?: any) {
         // Fetch all active staff
         const whereClause: any = {
@@ -440,14 +488,14 @@ export class AttendanceService {
 
         const staff = await db.user.findMany({
             where: whereClause,
-
             select: {
                 id: true,
                 full_name: true,
                 department: true,
                 staffProfile: {
                     select: {
-                        designation: true
+                        designation: true,
+                        staff_number: true
                     }
                 }
             },
@@ -490,53 +538,16 @@ export class AttendanceService {
             const userRecords = records.filter(r => r.user_id === user.id);
             const attendanceMap: any = {};
 
-            // Populate existing records first
+            // Populate existing records first (TRUST DB STATUS - NO FLY-BY UPDATES)
             userRecords.forEach(r => {
-                const dateKey = r.date.toISOString().split('T')[0];
-                let record = r;
+                const istOffset = 330 * 60 * 1000;
+                const istDate = new Date(r.date.getTime() + istOffset);
+                const dateKey = istDate.toISOString().split('T')[0];
 
-                // AUTO-ABSENT POLICY: If Present/HalfDay, No CheckOut, and Shift Over -> Mark ABSENT
-                if ((r.status === 'PRESENT' || r.status === 'HALF_DAY') && !r.check_out) {
-                    let eh = 18, em = 0; // Default 18:00
+                attendanceMap[dateKey] = r;
 
-                    if (r.shift_snapshot) {
-                        // Snapshot format: "HH:mm-HH:mm" e.g. "09:00-18:00"
-                        const parts = r.shift_snapshot.split('-');
-                        if (parts.length === 2) {
-                            const endParts = parts[1].split(':');
-                            eh = parseInt(endParts[0]);
-                            em = parseInt(endParts[1]);
-                        }
-                    } else {
-                        // Fallback: If no snapshot, default to 09:00-18:00
-                        eh = 18;
-                        em = 0;
-                    }
-
-                    // Simple Shift End Calculation (UTC based on IST Offset)
-                    // r.date is UTC 00:00. 18:00 IST = 12:30 UTC.
-                    // General Formula: ShiftEndUTC = DateUTC + ShiftTimeMs - OffsetMs
-                    const offset = 330 * 60 * 1000; // 5.5h in ms
-                    const shiftEndMs = (eh * 60 + em) * 60 * 1000;
-                    const shiftEndUTC = new Date(r.date.getTime() + shiftEndMs - offset);
-
-                    // If NOW > ShiftEnd + 30m Buffer (Safe Margin)
-                    const now = new Date();
-                    // Optional: Buffer of 0 mins as requested "immediately"
-                    if (now > shiftEndUTC) {
-                        record.status = 'ABSENT';
-                        // Fire-and-forget DB update
-                        db.attendanceRecord.update({
-                            where: { id: r.id },
-                            data: { status: 'ABSENT' }
-                        }).catch(e => console.error("Auto-Absent Update Failed", e));
-                    }
-                }
-
-                attendanceMap[dateKey] = record;
-
-                // If status is LEAVE, try to find the specific type
-                if (record.status === 'LEAVE') {
+                // Handle Leave Type overlay
+                if (r.status === 'LEAVE') {
                     const leave = approvedLeaves.find(l =>
                         l.user_id === user.id &&
                         new Date(dateKey) >= new Date(l.start_date.toISOString().split('T')[0]) &&
@@ -557,8 +568,33 @@ export class AttendanceService {
                         status: 'HOLIDAY',
                         date: h.date,
                         check_in: null,
-                        check_out: null
+                        check_out: null,
+                        method: 'SYSTEM'
                     };
+                }
+            });
+
+            // Merge Leaves if no record exists
+            approvedLeaves.filter(l => l.user_id === user.id).forEach(l => {
+                let current = new Date(Math.max(l.start_date.getTime(), startDate.getTime()));
+                const last = new Date(Math.min(l.end_date.getTime(), endDate.getTime()));
+
+                while (current <= last) {
+                    const istDate = new Date(current.getTime() + (330 * 60 * 1000));
+                    const dateKey = istDate.toISOString().split('T')[0];
+
+                    if (!attendanceMap[dateKey]) {
+                        attendanceMap[dateKey] = {
+                            id: l.id,
+                            status: 'LEAVE',
+                            leave_type: l.type,
+                            date: new Date(current),
+                            check_in: null,
+                            check_out: null,
+                            method: 'SYSTEM'
+                        };
+                    }
+                    current.setDate(current.getDate() + 1);
                 }
             });
 
@@ -566,13 +602,27 @@ export class AttendanceService {
                 user: {
                     id: user.id,
                     name: user.full_name,
+                    designation: user.staffProfile?.designation || 'Staff',
                     department: user.department,
-                    designation: user.staffProfile?.designation || '',
-                    shift: 'Check Assignments'
+                    staff_number: user.staffProfile?.staff_number,
+                    shift: 'Pending'
                 },
                 attendance: attendanceMap
             };
         });
+
+        // Resolve shifts concurrently
+        const { ShiftService } = require('./shift.service');
+        await Promise.all(result.map(async (res) => {
+            try {
+                // For report/display purposes, we use "Today's" shift or the shift as of the report date
+                // Ideally, this would be a per-day shift, but for the summary string, we use active shift.
+                const shift = await ShiftService.getShiftForDate(res.user.id, new Date());
+                res.user.shift = shift ? `${shift.name} (${shift.start_time}-${shift.end_time})` : 'No Shift Assigned';
+            } catch (e) {
+                res.user.shift = 'Error Fetching Shift';
+            }
+        }));
 
         return result;
     }
@@ -596,6 +646,58 @@ export class AttendanceService {
             },
             orderBy: { createdAt: 'desc' }
         });
+    }
+
+    // Explicitly Sync Logs to Current Shift Assignment
+    static async syncShiftsToLogs(staffId: string, fromDate?: Date, toDate?: Date) {
+        // Default range: Start of Month to Today
+        const now = new Date();
+        const start = fromDate || new Date(now.getFullYear(), now.getMonth(), 1);
+        const end = toDate || now;
+
+        console.log(`[SyncShifts] Syncing logs for ${staffId} from ${start.toISOString()} to ${end.toISOString()}`);
+
+        const staff = await db.staffProfile.findUnique({
+            where: { user_id: staffId }
+        });
+
+        if (!staff) throw new Error("Staff profile not found");
+
+        const records = await db.attendanceRecord.findMany({
+            where: {
+                user_id: staffId,
+                date: {
+                    gte: start,
+                    lte: end
+                }
+            }
+        });
+
+        let updatedCount = 0;
+
+        for (const record of records) {
+            // Force recalculate status which will pick up the *current* assignment for that date
+            const statusResult = await this.computeStatus(
+                staff,
+                record.check_in || new Date(record.date),
+                record.check_out,
+                true // Is Past Day
+            );
+
+            await db.attendanceRecord.update({
+                where: { id: record.id },
+                data: {
+                    status: statusResult.status,
+                    shift_snapshot: `${statusResult.shift.start_time}-${statusResult.shift.end_time}`,
+                    shift_id: statusResult.shift.id === 'LEGACY' || statusResult.shift.id === 'DEFAULT' ? null : statusResult.shift.id,
+                    criteria_mode: statusResult.criteria,
+                    grace_time_applied: statusResult.shift.default_grace_time
+                }
+            });
+            updatedCount++;
+        }
+
+        return { updatedCount, message: `Synced ${updatedCount} logs with new shift rules.` };
     }
 
     // Delete Regularisation Request
@@ -677,11 +779,11 @@ export class AttendanceService {
                     }
                 },
                 update: {
-                    status: 'PRESENT',
+                    status: 'REGULARIZED',
                     method: 'REGULARISATION',
                     check_in: checkInTime,
                     check_out: checkOutTime,
-                    work_hours: 8, // Explicitly set to 8 as per requirement
+                    work_hours: shift.id === 'RAMZAN' ? 7 : 8.5,
                     shift_snapshot: `${shift.start_time}-${shift.end_time}`,
                     shift_id: shift.id === 'LEGACY' || shift.id === 'DEFAULT' ? null : shift.id,
                     criteria_mode: 'REGULARIZATION',
@@ -690,10 +792,10 @@ export class AttendanceService {
                 create: {
                     user_id: request.user_id,
                     date: request.date,
-                    status: 'PRESENT', // Explicitly set to PRESENT
+                    status: 'REGULARIZED',
                     check_in: checkInTime,
                     check_out: checkOutTime,
-                    work_hours: 8,
+                    work_hours: shift.id === 'RAMZAN' ? 7 : 8.5,
                     method: 'REGULARISATION',
                     shift_snapshot: `${shift.start_time}-${shift.end_time}`,
                     shift_id: shift.id === 'LEGACY' || shift.id === 'DEFAULT' ? null : shift.id,
@@ -1086,7 +1188,7 @@ export class AttendanceService {
                         date: record.date,
                         user_name: staff.full_name,
                         staff_number: staff.staffProfile?.staff_number || 'N/A',
-                        shift_timing: shiftDisplay,
+                        shift_schedule: shiftDisplay,
                         shift_name: shiftName,
                         grace_time: graceTime,
                         is_late,
@@ -1102,7 +1204,7 @@ export class AttendanceService {
                         date: new Date(currentDate),
                         user_name: staff.full_name,
                         staff_number: staff.staffProfile?.staff_number || 'N/A',
-                        shift_timing: shiftDisplay,
+                        shift_schedule: shiftDisplay,
                         shift_name: shiftName,
                         grace_time: graceTime,
                         is_late: false,

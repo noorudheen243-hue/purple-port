@@ -8,6 +8,9 @@ const router = Router();
 
 // Info
 router.get('/info', authenticate, authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'), BiometricController.getDeviceInfo);
+router.get('/status', authenticate, authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'), BiometricController.getDeviceStatus);
+router.get('/audit', authenticate, authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'), BiometricController.auditUserSync);
+router.get('/sync-history', authenticate, authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'), BiometricController.getSyncHistory);
 
 // Users
 router.get('/users', authenticate, authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'), BiometricController.getDeviceUsers);
@@ -15,7 +18,7 @@ router.get('/users', authenticate, authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMI
 // Actions
 router.post('/restart', authenticate, authorize('ADMIN', 'DEVELOPER_ADMIN'), BiometricController.restartDevice);
 router.post('/sync-time', authenticate, authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'), BiometricController.syncTime);
-router.post('/sync-logs', authenticate, authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'), BiometricController.syncLogs);
+router.post('/sync-all', authenticate, authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'), BiometricController.syncAllLogs);
 router.post('/upload-logs', authenticate, authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'), BiometricController.uploadLogs);
 router.post('/clear-logs', authenticate, authorize('ADMIN', 'DEVELOPER_ADMIN'), BiometricController.clearLogs);
 

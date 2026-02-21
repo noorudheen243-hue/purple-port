@@ -59,7 +59,13 @@ export const listResignations = async (req: Request, res: Response) => {
 export const approveResignation = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const result = await resignationService.approveResignation(id, req.user!.id);
+        const { approved_relieving_date } = req.body;
+
+        const result = await resignationService.approveResignation(
+            id,
+            req.user!.id,
+            approved_relieving_date ? new Date(approved_relieving_date) : undefined
+        );
         res.json(result);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
@@ -92,6 +98,26 @@ export const completeResignation = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const result = await resignationService.completeResignation(id);
+        res.json(result);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const deleteResignation = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const result = await resignationService.deleteResignationRequest(id);
+        res.json(result);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const updateResignation = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const result = await resignationService.updateResignationRequest(id, req.body);
         res.json(result);
     } catch (error: any) {
         res.status(500).json({ message: error.message });

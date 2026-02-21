@@ -106,22 +106,14 @@ export const getAllResignationRequests = async () => {
 /**
  * 4. Approve Request (Start Notice Period)
  */
-export const approveResignation = async (requestId: string, approverId: string, approvedDate?: Date) => {
+export const approveResignation = async (requestId: string, approverId: string, customRelievingDate?: Date) => {
     const request = await prisma.resignationRequest.findUnique({ where: { id: requestId } });
     if (!request) throw new Error("Request not found");
 
-    // If approvedDate is not provided, calculate based on default notice period from TODAY (Approval Date)
-    // Policy: Notice period starts from *Approval*, or *Application*?
-    // User Requirement: "remaining_days = approved_notice_period - (today - approval_date)"
-    // implying start is approval_date.
-
-    let finalRelievingDate = approvedDate;
+    let finalRelievingDate = customRelievingDate;
     if (!finalRelievingDate) {
         finalRelievingDate = calculateRelievingDate(new Date(), request.default_notice_period_days);
     }
-
-    // Logic: If admin didn't change days, use default.
-    // We assume approvedDate passed here implies "final agreed date".
 
     // Calculate final notice days based on this date vs today
     const msDiff = finalRelievingDate.getTime() - new Date().getTime();
@@ -135,7 +127,6 @@ export const approveResignation = async (requestId: string, approverId: string, 
             approval_by: approverId,
             approved_relieving_date: finalRelievingDate,
             final_notice_period_days: daysDiff > 0 ? daysDiff : 0
-            // If we wanted to store "revised" vs "default", we'd do that in revise function.
         }
     });
 };
@@ -191,5 +182,31 @@ export const completeResignation = async (requestId: string) => {
             status: 'COMPLETED',
             handover_completed: true // Simplified
         }
+    });
+};
+
+/**
+ * 8. Delete Resignation Request (Admin/Manager)
+ */
+export const deleteResignationRequest = async (requestId: string) => {
+    return await prisma.resignationRequest.delete({
+        where: { id: requestId }
+    });
+};
+
+/**
+ * 9. Generic Update (Admin/Manager)
+ */
+export const updateResignationRequest = async (
+    requestId: string,
+    data: {
+        status?: string,
+        approved_relieving_date?: Date,
+        final_notice_period_days?: number
+    }
+) => {
+    return await prisma.resignationRequest.update({
+        where: { id: requestId },
+        data
     });
 };

@@ -5,7 +5,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Button } from '../../../components/ui/button';
 import { Badge } from '../../../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog';
-import { Loader2, Check, X, Calendar, Edit2, User } from 'lucide-react';
+import { Input } from '../../../components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
+import { Loader2, Check, X, Calendar, Edit2, User, Save, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { getAssetUrl } from '../../../lib/utils';
 
@@ -13,6 +15,9 @@ export const ResignationManagerView = () => {
     const queryClient = useQueryClient();
     const [selectedRequest, setSelectedRequest] = useState<any>(null);
     const [actionType, setActionType] = useState<'REVISE' | 'REJECT' | null>(null);
+    const [editableDates, setEditableDates] = useState<{ [key: string]: string }>({});
+    const [editableStatuses, setEditableStatuses] = useState<{ [key: string]: string }>({});
+    const [isEditingDate, setIsEditingDate] = useState<{ [key: string]: boolean }>({});
 
     const { data: requests, isLoading, isError } = useQuery({
         queryKey: ['all-resignations'],
@@ -20,12 +25,28 @@ export const ResignationManagerView = () => {
     });
 
     const approveMutation = useMutation({
-        mutationFn: async (id: string) => await api.patch(`/team/resignation/${id}/approve`),
+        mutationFn: async ({ id, date }: { id: string, date?: string }) =>
+            await api.patch(`/team/resignation/${id}/approve`, { approved_relieving_date: date }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['all-resignations'] });
             alert("Resignation Approved & Notice Period Started.");
+            setEditableDates({});
+            setIsEditingDate({});
         },
         onError: (err: any) => alert(err.response?.data?.message || "Failed to approve")
+    });
+
+    const patchMutation = useMutation({
+        mutationFn: async ({ id, data }: { id: string, data: any }) =>
+            await api.patch(`/team/resignation/${id}`, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['all-resignations'] });
+            alert("Record Updated Successfully.");
+            setIsEditingDate({});
+            setEditableDates({});
+            setEditableStatuses({});
+        },
+        onError: (err: any) => alert(err.response?.data?.message || "Failed to update record")
     });
 
     const completeMutation = useMutation({
@@ -56,6 +77,15 @@ export const ResignationManagerView = () => {
             setSelectedRequest(null);
         },
         onError: (err: any) => alert(err.response?.data?.message || "Failed to revise")
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: async (id: string) => await api.delete(`/team/resignation/${id}`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['all-resignations'] });
+            alert("Record Deleted.");
+        },
+        onError: (err: any) => alert(err.response?.data?.message || "Failed to delete")
     });
 
     // Sub-components for Modals
@@ -141,6 +171,8 @@ export const ResignationManagerView = () => {
                             <TableHead>Employee</TableHead>
                             <TableHead>Applied On</TableHead>
                             <TableHead>Dates</TableHead>
+                            <TableHead>Notice Period</TableHead>
+                            <TableHead>Days Left</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
@@ -173,53 +205,148 @@ export const ResignationManagerView = () => {
                                 </TableCell>
                                 <TableCell>
                                     <div className="space-y-1 text-sm">
-                                        <div className="flex items-center gap-1" title="Requested Relieving Date">
-                                            <span className="text-muted-foreground w-8">Req:</span>
-                                            {format(new Date(req.requested_relieving_date), 'dd MMM yy')}
-                                        </div>
-                                        {req.approved_relieving_date && (
-                                            <div className="flex items-center gap-1 font-bold text-primary" title="Approved Relieving Date">
-                                                <span className="text-muted-foreground w-8 font-normal">Final:</span>
-                                                {format(new Date(req.approved_relieving_date), 'dd MMM yy')}
+                                        {isEditingDate[req.id] ? (
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-muted-foreground w-8 text-xs">Final:</span>
+                                                <Input
+                                                    type="date"
+                                                    className="h-8 w-32 p-1 text-xs"
+                                                    value={editableDates[req.id] || (req.approved_relieving_date ? new Date(req.approved_relieving_date).toISOString().split('T')[0] : new Date(req.requested_relieving_date).toISOString().split('T')[0])}
+                                                    onChange={(e) => setEditableDates({ ...editableDates, [req.id]: e.target.value })}
+                                                />
                                             </div>
+                                        ) : (
+                                            <>
+                                                <div className="flex items-center gap-1" title="Requested Relieving Date">
+                                                    <span className="text-muted-foreground w-8">Req:</span>
+                                                    {format(new Date(req.requested_relieving_date), 'dd MMM yy')}
+                                                </div>
+                                                {req.approved_relieving_date && (
+                                                    <div className="flex items-center gap-1 font-bold text-primary" title="Approved Relieving Date">
+                                                        <span className="text-muted-foreground w-8 font-normal">Final:</span>
+                                                        {format(new Date(req.approved_relieving_date), 'dd MMM yy')}
+                                                    </div>
+                                                )}
+                                            </>
                                         )}
                                     </div>
                                 </TableCell>
                                 <TableCell>
-                                    <Badge variant={req.status === 'APPLIED' ? 'outline' : req.status === 'UNDER_NOTICE' ? 'default' : 'secondary'} className="capitalize">
-                                        {req.status === 'UNDER_NOTICE' ? 'In Notice' : req.status.toLowerCase().replace('_', ' ')}
-                                    </Badge>
-                                    {req.status === 'UNDER_NOTICE' && (
-                                        <div className="mt-2 flex items-center gap-1 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-2 py-1 rounded border border-orange-200 dark:border-orange-800 w-fit">
-                                            <span className="text-xs font-semibold">Remaining:</span>
-                                            <span className="text-sm font-bold">{req.remaining_days} Days</span>
+                                    <div className="text-sm">
+                                        {(() => {
+                                            const relievingDate = new Date(editableDates[req.id] || req.approved_relieving_date || req.requested_relieving_date);
+                                            const appliedDate = new Date(req.applied_date);
+                                            const diff = relievingDate.getTime() - appliedDate.getTime();
+                                            const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+                                            return `${days} Days`;
+                                        })()}
+                                    </div>
+                                </TableCell>
+                                <TableCell>
+                                    <div className="text-sm font-semibold">
+                                        {(() => {
+                                            const relievingDate = new Date(editableDates[req.id] || req.approved_relieving_date || req.requested_relieving_date);
+                                            const today = new Date();
+                                            today.setHours(0, 0, 0, 0);
+                                            const diff = relievingDate.getTime() - today.getTime();
+                                            const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+                                            return days > 0 ? `${days} Left` : "Today/Passed";
+                                        })()}
+                                    </div>
+                                </TableCell>
+                                <TableCell>
+                                    {isEditingDate[req.id] ? (
+                                        <div className="w-32">
+                                            <Select
+                                                value={editableStatuses[req.id] || req.status}
+                                                onValueChange={(val) => setEditableStatuses({ ...editableStatuses, [req.id]: val })}
+                                            >
+                                                <SelectTrigger className="h-8 text-xs">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="APPLIED">Applied</SelectItem>
+                                                    <SelectItem value="UNDER_NOTICE">In Notice</SelectItem>
+                                                    <SelectItem value="REJECTED">Rejected</SelectItem>
+                                                    <SelectItem value="COMPLETED">Completed</SelectItem>
+                                                </SelectContent>
+                                            </Select>
                                         </div>
+                                    ) : (
+                                        <>
+                                            <Badge variant={req.status === 'APPLIED' ? 'outline' : req.status === 'UNDER_NOTICE' ? 'default' : 'secondary'} className="capitalize">
+                                                {req.status === 'UNDER_NOTICE' ? 'In Notice' : req.status.toLowerCase().replace('_', ' ')}
+                                            </Badge>
+                                            {req.status === 'UNDER_NOTICE' && (
+                                                <div className="mt-2 flex items-center gap-1 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-2 py-1 rounded border border-orange-200 dark:border-orange-800 w-fit">
+                                                    <span className="text-xs font-semibold">Remaining:</span>
+                                                    <span className="text-sm font-bold">{req.remaining_days} Days</span>
+                                                </div>
+                                            )}
+                                        </>
                                     )}
                                 </TableCell>
                                 <TableCell className="text-right">
                                     <div className="flex justify-end gap-2">
-                                        {req.status === 'APPLIED' && (
+                                        {isEditingDate[req.id] ? (
                                             <>
-                                                <Button size="sm" variant="default" className="bg-green-600 hover:bg-green-700 h-8 text-xs" onClick={() => approveMutation.mutate(req.id)}>
-                                                    <Check size={14} className="mr-1" /> Approve
+                                                <Button
+                                                    size="sm"
+                                                    variant="default"
+                                                    className="bg-green-600 hover:bg-green-700 h-8 text-xs gap-1"
+                                                    onClick={() => patchMutation.mutate({
+                                                        id: req.id,
+                                                        data: {
+                                                            status: editableStatuses[req.id] || req.status,
+                                                            approved_relieving_date: editableDates[req.id] ? new Date(editableDates[req.id]) : req.approved_relieving_date
+                                                        }
+                                                    })}
+                                                    disabled={patchMutation.isPending}
+                                                >
+                                                    <Save size={14} /> Save
                                                 </Button>
-                                                <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50 h-8" onClick={() => { setSelectedRequest(req); setActionType('REJECT'); }}>
-                                                    <X size={14} />
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="h-8 text-xs"
+                                                    onClick={() => {
+                                                        setIsEditingDate({ ...isEditingDate, [req.id]: false });
+                                                        setEditableDates({ ...editableDates, [req.id]: "" });
+                                                        setEditableStatuses({ ...editableStatuses, [req.id]: "" });
+                                                    }}
+                                                >
+                                                    Cancel
                                                 </Button>
                                             </>
-                                        )}
-                                        {req.status === 'UNDER_NOTICE' && (
+                                        ) : (
                                             <>
-                                                <Button size="sm" variant="outline" className="h-8 text-xs bg-muted/50 hover:bg-muted" onClick={() => { setSelectedRequest(req); setActionType('REVISE'); }}>
-                                                    <Edit2 size={14} className="mr-1" /> Edit Days
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="text-primary border-primary/20 hover:bg-primary/5 h-8 text-xs gap-1"
+                                                    onClick={() => setIsEditingDate({ ...isEditingDate, [req.id]: true })}
+                                                >
+                                                    <Edit2 size={14} /> Edit
                                                 </Button>
-                                                <Button size="sm" variant="default" className="h-8 text-xs bg-purple-600 hover:bg-purple-700" onClick={() => completeMutation.mutate(req.id)}>
-                                                    Complete
+                                                {req.status === 'APPLIED' && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="text-red-500 border-red-100 hover:bg-red-50 h-8 text-xs"
+                                                        onClick={() => { setSelectedRequest(req); setActionType('REJECT'); }}
+                                                    >
+                                                        <X size={14} /> Reject
+                                                    </Button>
+                                                )}
+                                                <Button
+                                                    size="sm"
+                                                    variant="secondary"
+                                                    className="h-8 text-xs text-red-600 bg-red-50 hover:bg-red-100 border-red-100 gap-1"
+                                                    onClick={() => { if (confirm("Delete this record permanently?")) deleteMutation.mutate(req.id); }}
+                                                >
+                                                    <Trash2 size={14} /> Delete
                                                 </Button>
                                             </>
-                                        )}
-                                        {(req.status === 'COMPLETED' || req.status === 'REJECTED') && (
-                                            <span className="text-xs text-muted-foreground italic px-2">Archived</span>
                                         )}
                                     </div>
                                 </TableCell>

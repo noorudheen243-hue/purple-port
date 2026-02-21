@@ -1,10 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { Check, X, Calendar, ClipboardList, CheckSquare, ScrollText } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Check, X, Calendar, ClipboardList, CheckSquare, ScrollText, Download, FileSpreadsheet, FileJson } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
 import { Badge } from '../../components/ui/badge';
+import { Input } from '../../components/ui/input';
 import api from '../../lib/api';
 import RegularisationPage from './RegularisationPage';
 import BiometricDetailsPage from './BiometricDetailsPage';
@@ -19,6 +23,10 @@ const AttendanceSummaryPage = () => {
     const [attendanceData, setAttendanceData] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [viewMode, setViewMode] = useState<'REGISTER' | 'SUMMARY' | 'REGULARIZATION' | 'LOGS'>('REGISTER');
+    const [nameFilter, setNameFilter] = useState('');
+    const [deptFilter, setDeptFilter] = useState('ALL');
+    const [isRecalculating, setIsRecalculating] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
 
     useEffect(() => {
         const days = new Date(parseInt(year), parseInt(month), 0).getDate();
@@ -35,6 +43,158 @@ const AttendanceSummaryPage = () => {
             console.error("Failed to fetch attendance summary", error);
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleRecalculateAll = async () => {
+        if (!window.confirm("This will recalculate attendance status for ALL staff based on current shift assignments. Continue?")) return;
+        setIsRecalculating(true);
+        try {
+            const { data } = await api.post('/attendance/recalculate-all');
+            alert(data.message || "Recalculation complete");
+            fetchAttendance();
+        } catch (error: any) {
+            alert("Recalculation failed: " + (error.response?.data?.message || error.message));
+        } finally {
+            setIsRecalculating(false);
+        }
+    };
+
+    // Derived Data with Filtering
+    const filteredAttendance = attendanceData.filter(item => {
+        const matchesName = item.user.name.toLowerCase().includes(nameFilter.toLowerCase());
+        const matchesDept = deptFilter === 'ALL' || item.user.department === deptFilter;
+        return matchesName && matchesDept;
+    });
+
+    const departments = useMemo(() => {
+        const depts = new Set<string>();
+        attendanceData.forEach(item => {
+            if (item.user.department) depts.add(item.user.department);
+        });
+        return Array.from(depts).sort();
+    }, [attendanceData]);
+
+    // --- EXPORT LOGIC ---
+
+    const exportToExcel = () => {
+        setIsExporting(true);
+        try {
+            const fileName = `Attendance_${viewMode}_${month}_${year}.xlsx`;
+            let dataToExport: any[] = [];
+
+            if (viewMode === 'SUMMARY') {
+                dataToExport = filteredAttendance.map(item => {
+                    const s = calculateSummary(item);
+                    return {
+                        'Staff Name': item.user.name,
+                        'Designation': item.user.designation,
+                        'Department': item.user.department,
+                        'Total Days': s.totalDays,
+                        'Holidays': s.totalHolidays,
+                        'Present (Effective)': s.totalPresentValue,
+                        'Half Days': s.totalHalfDaysCount,
+                        'Leaves': s.totalLeaves,
+                        'LOP Days': s.totalLOP
+                    };
+                });
+            } else {
+                // Register Export
+                dataToExport = filteredAttendance.map(item => {
+                    const row: any = {
+                        'Staff Name': item.user.name,
+                        'Department': item.user.department
+                    };
+                    daysInMonth.forEach(d => {
+                        const dateKey = `${year}-${month.padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                        const record = item.attendance[dateKey];
+                        row[d] = record ? record.status : (new Date(parseInt(year), parseInt(month) - 1, d) < new Date() ? 'ABSENT' : '-');
+                    });
+                    return row;
+                });
+            }
+
+            const ws = XLSX.utils.json_to_sheet(dataToExport);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Attendance");
+            XLSX.writeFile(wb, fileName);
+        } catch (e) {
+            console.error("Export Failed", e);
+            alert("Export Failed");
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    const exportToPDF = () => {
+        setIsExporting(true);
+        try {
+            const doc = new jsPDF('l', 'mm', 'a4') as any;
+            const monthName = new Date(0, parseInt(month) - 1).toLocaleString('default', { month: 'long' });
+
+            doc.setFontSize(18);
+            doc.text(`Attendance ${viewMode === 'SUMMARY' ? 'Summary' : 'Register'} - ${monthName} ${year}`, 14, 20);
+            doc.setFontSize(10);
+            doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 28);
+
+            if (viewMode === 'SUMMARY') {
+                const tableData = filteredAttendance.map(item => {
+                    const s = calculateSummary(item);
+                    return [
+                        item.user.name,
+                        item.user.department,
+                        s.totalDays,
+                        s.totalHolidays,
+                        s.totalPresentValue,
+                        s.totalHalfDaysCount,
+                        s.totalLeaves,
+                        s.totalLOP
+                    ];
+                });
+
+                (doc as any).autoTable({
+                    startY: 35,
+                    head: [['Name', 'Dept', 'Days', 'Hol', 'Pres', 'HD', 'Leave', 'LOP']],
+                    body: tableData,
+                    theme: 'grid',
+                    headStyles: { fillColor: [128, 0, 128] }
+                });
+            } else {
+                // Register PDF (Compact)
+                const headers = ['Name', ...daysInMonth.map(String)];
+                const tableData = filteredAttendance.map(item => {
+                    return [
+                        item.user.name,
+                        ...daysInMonth.map(d => {
+                            const dateKey = `${year}-${month.padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                            const record = item.attendance[dateKey];
+                            if (!record) return '-';
+                            if (record.status === 'PRESENT' || record.status === 'REGULARIZED') return 'P';
+                            if (record.status === 'HALF_DAY') return 'HD';
+                            if (record.status === 'ABSENT') return 'AB';
+                            if (record.status === 'LEAVE') return 'L';
+                            if (record.status === 'HOLIDAY') return 'H';
+                            return '?';
+                        })
+                    ];
+                });
+
+                (doc as any).autoTable({
+                    startY: 35,
+                    head: [headers],
+                    body: tableData,
+                    styles: { fontSize: 6, cellPadding: 1 },
+                    headStyles: { fillColor: [128, 0, 128] },
+                    columnStyles: { 0: { cellWidth: 30 } }
+                });
+            }
+
+            doc.save(`Attendance_${viewMode}_${month}_${year}.pdf`);
+        } catch (e) {
+            console.error("PDF Export Failed", e);
+            alert("PDF Export Failed");
+        } finally {
+            setIsExporting(false);
         }
     };
 
@@ -69,29 +229,27 @@ const AttendanceSummaryPage = () => {
                 );
             }
 
-            // 3. Present / Half Day Logic check for UI Display
-            // We use the same Logic as Summary Calculation for consistency
-            const { status } = calculateDailyStatus(record);
+            // 3. Status Display (Trust Backend)
+            const status = record.status;
 
             if (status === 'HALF_DAY') {
                 return (
                     <div className="flex flex-col items-center justify-center h-full">
                         <span className="text-[10px] font-bold text-orange-600">HD</span>
-                        <span className="text-[8px] text-muted-foreground">{record.check_in ? 'In Only' : 'Out Only'}</span>
+                        <span className="text-[8px] text-muted-foreground">{record.check_in ? (record.check_out ? 'Hours' : 'In Only') : 'Out Only'}</span>
                     </div>
                 );
             }
 
-            if ((status === 'PRESENT' || status === 'LATE') && record.check_in) {
+            if (status === 'PRESENT' || status === 'LATE' || status === 'REGULARIZED') {
                 return <div className="flex items-center justify-center h-full"><Check className="h-5 w-5 text-green-600" /></div>;
             }
 
-            // Fallback Absent
-            if (record.status === 'ABSENT' || (record.status === 'PRESENT' && !record.check_in)) {
+            if (status === 'ABSENT') {
                 return <div className="w-full h-full bg-red-100 flex items-center justify-center rounded text-red-600 font-bold text-xs">AB</div>;
             }
 
-            return <span>{record.status}</span>;
+            return <span>{status}</span>;
         }
 
         // Past Dates Empty = Absent
@@ -101,52 +259,22 @@ const AttendanceSummaryPage = () => {
             return <div className="w-full h-full bg-red-100 flex items-center justify-center rounded text-red-600 font-bold text-xs">AB</div>;
         }
 
-        return <span className="text-[9px] text-muted-foreground/50 whitespace-pre-wrap leading-tight block">{userShift.replace(' - ', '\nto\n')}</span>;
+        return (
+            <span className="text-[9px] text-muted-foreground/50 whitespace-pre-wrap leading-tight block text-center">
+                {userShift && userShift !== 'Check Assignments' ? userShift : 'Pending Shift'}
+            </span>
+        );
     };
 
 
-    // --- Summary Logic ---
+    // --- Summary Logic (TRUST BACKEND STATUS) ---
 
-    const calculateDailyStatus = (record: any, userShift: string = '') => {
-        if (!record) return { status: 'ABSENT', value: 0 };
-        if (record.status === 'HOLIDAY') return { status: 'HOLIDAY', value: 1 };
-
-        // Leaves and Regularization treated as Present for value, keeping status for display
-        if (record.status === 'LEAVE') return { status: 'LEAVE', value: 1 };
-        if (record.status === 'REGULARIZED') return { status: 'REGULARIZED', value: 1 };
-
-        // Half Day Checks (Backend explicit status)
-        if (record.status === 'HALF_DAY') return { status: 'HALF_DAY', value: 0.5 };
-
-        // 1. Missing One Punch
-        if ((record.status === 'PRESENT' || record.status === 'LATE') && (!record.check_in || !record.check_out)) {
-            return { status: 'HALF_DAY', value: 0.5 };
-        }
-
-        // 2. Duration Check based on Shift
-        if (record.check_in && record.check_out) {
-            const start = new Date(record.check_in);
-            const end = new Date(record.check_out);
-            const durationHrs = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-
-            // Shift Logic
-            const isNoBreakShift = userShift && userShift.toUpperCase().includes('NO BREAK');
-
-            // Thresholds (User Request: Normal 7.45 aka 7.75h, No Break 7.15 aka 7.25h)
-            const halfDayMin = 4;
-            // 7.45 (7h 45m = 7.75), 7.15 (7h 15m = 7.25)
-            const fullDayMin = isNoBreakShift ? 7.25 : 7.75;
-
-            // Half Day Range: 4 to < fullDayMin
-            if (durationHrs >= halfDayMin && durationHrs < fullDayMin) {
-                return { status: 'HALF_DAY', value: 0.5 };
-            }
-            // If duration >= fullDayMin -> Full Day (stays PRESENT)
-        }
-
-        if (record.status === 'PRESENT' || record.status === 'LATE') return { status: 'PRESENT', value: 1 };
-
-        return { status: 'ABSENT', value: 0 };
+    const getDayValue = (record: any) => {
+        if (!record) return 0;
+        const s = record.status;
+        if (s === 'PRESENT' || s === 'LATE' || s === 'REGULARIZED' || s === 'LEAVE' || s === 'HOLIDAY') return 1;
+        if (s === 'HALF_DAY') return 0.5;
+        return 0; // ABSENT, etc.
     };
 
     const calculateSummary = (user: any) => {
@@ -168,25 +296,22 @@ const AttendanceSummaryPage = () => {
 
             const record = user.attendance[dateKey];
             if (record) {
-                if (record.status === 'HOLIDAY') {
-                    totalHolidays++;
-                } else {
-                    const { status, value } = calculateDailyStatus(record, user.user.shift);
+                const status = record.status;
+                const value = getDayValue(record);
 
-                    if (status === 'LEAVE') {
-                        totalLeaves++;
-                        totalPresentValue += value; // Now adds 1
-                    } else if (status === 'REGULARIZED') {
-                        totalPresentValue += value; // Now adds 1
-                    } else if (status === 'HALF_DAY') {
-                        totalPresentValue += value; // Adds 0.5
-                        totalHalfDaysCount++;
-                    } else if (status === 'PRESENT' || status === 'LATE') {
-                        totalPresentValue += value; // Adds 1
-                    } else {
-                        // Absent
-                        totalLOP++;
-                    }
+                if (status === 'HOLIDAY') {
+                    totalHolidays++;
+                } else if (status === 'LEAVE') {
+                    totalLeaves++;
+                    totalPresentValue += value;
+                } else if (status === 'HALF_DAY') {
+                    totalHalfDaysCount++;
+                    totalPresentValue += value;
+                } else if (status === 'ABSENT') {
+                    totalLOP++;
+                } else {
+                    // PRESENT, LATE, REGULARIZED
+                    totalPresentValue += value;
                 }
             } else {
                 const today = new Date();
@@ -264,9 +389,29 @@ const AttendanceSummaryPage = () => {
                     </div>
 
                     {viewMode !== 'LOGS' && viewMode !== 'REGULARIZATION' && (
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <div className="w-[150px]">
+                                <Input
+                                    placeholder="Filter by name..."
+                                    value={nameFilter}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNameFilter(e.target.value)}
+                                    className="h-9"
+                                />
+                            </div>
+                            <Select value={deptFilter} onValueChange={setDeptFilter}>
+                                <SelectTrigger className="w-[140px] h-9 bg-background">
+                                    <SelectValue placeholder="Department" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="ALL">All Depts</SelectItem>
+                                    {departments.map((d: string) => (
+                                        <SelectItem key={d} value={d}>{d}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <div className="h-6 w-px bg-border mx-1" />
                             <Select value={month} onValueChange={setMonth}>
-                                <SelectTrigger className="w-[120px] bg-background">
+                                <SelectTrigger className="w-[120px] h-9 bg-background">
                                     <SelectValue placeholder="Month" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -278,7 +423,7 @@ const AttendanceSummaryPage = () => {
                                 </SelectContent>
                             </Select>
                             <Select value={year} onValueChange={setYear}>
-                                <SelectTrigger className="w-[100px] bg-background">
+                                <SelectTrigger className="w-[90px] h-9 bg-background">
                                     <SelectValue placeholder="Year" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -287,8 +432,38 @@ const AttendanceSummaryPage = () => {
                                     ))}
                                 </SelectContent>
                             </Select>
-                            <Button variant="outline" onClick={fetchAttendance} disabled={isLoading}>
-                                {isLoading ? 'Loading...' : 'Refresh'}
+                            <Button variant="outline" size="sm" onClick={fetchAttendance} disabled={isLoading} className="h-9">
+                                {isLoading ? '...' : 'Refresh'}
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={handleRecalculateAll}
+                                disabled={isRecalculating}
+                                className="h-9 bg-red-600 hover:bg-red-700"
+                            >
+                                {isRecalculating ? 'Recalculating...' : 'Recalculate All'}
+                            </Button>
+                            <div className="h-6 w-px bg-border mx-1" />
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={exportToExcel}
+                                disabled={isExporting}
+                                className="h-9 gap-1 text-green-700 border-green-200 hover:bg-green-50"
+                            >
+                                <FileSpreadsheet className="w-4 h-4" />
+                                Excel
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={exportToPDF}
+                                disabled={isExporting}
+                                className="h-9 gap-1 text-red-700 border-red-200 hover:bg-red-50"
+                            >
+                                <Download className="w-4 h-4" />
+                                PDF
                             </Button>
                         </div>
                     )}
@@ -321,7 +496,7 @@ const AttendanceSummaryPage = () => {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {attendanceData.map((data, index) => (
+                                    {filteredAttendance.map((data, index) => (
                                         <TableRow key={data.user.id} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
                                             <TableCell className="sticky left-0 bg-inherit z-10 border-r py-3">
                                                 <div className="font-medium text-sm">{data.user.name}</div>
@@ -340,6 +515,43 @@ const AttendanceSummaryPage = () => {
                                         </TableRow>
                                     ))}
                                 </TableBody>
+                                <TableHeader className="sticky bottom-0 bg-muted/80 z-30 font-bold border-t-2">
+                                    <TableRow>
+                                        <TableCell className="sticky left-0 bg-muted/90 z-40 border-r py-3 font-bold text-xs uppercase tracking-wider">
+                                            Daily Totals
+                                        </TableCell>
+                                        {daysInMonth.map(d => {
+                                            const dateKey = `${year}-${month.padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                                            const isSunday = new Date(parseInt(year), parseInt(month) - 1, d).getDay() === 0;
+
+                                            let present = 0;
+                                            let leaves = 0;
+                                            let absent = 0;
+
+                                            filteredAttendance.forEach(data => {
+                                                const record = data.attendance[dateKey];
+                                                if (!record && !isSunday) {
+                                                    const dateObj = new Date(parseInt(year), parseInt(month) - 1, d);
+                                                    if (dateObj < new Date()) absent++;
+                                                } else if (record) {
+                                                    if (record.status === 'LEAVE') leaves++;
+                                                    else if (record.status === 'ABSENT') absent++;
+                                                    else if (['PRESENT', 'LATE', 'REGULARIZED', 'HALF_DAY'].includes(record.status)) present += (record.status === 'HALF_DAY' ? 0.5 : 1);
+                                                }
+                                            });
+
+                                            return (
+                                                <TableCell key={d} className={`p-1 text-center border-l font-bold text-[10px] ${isSunday ? 'bg-blue-100/50' : ''}`}>
+                                                    <div className="flex flex-col gap-0.5">
+                                                        {present > 0 && <span className="text-green-700">P:{present}</span>}
+                                                        {leaves > 0 && <span className="text-red-700">L:{leaves}</span>}
+                                                        {absent > 0 && <span className="text-orange-700">A:{absent}</span>}
+                                                    </div>
+                                                </TableCell>
+                                            );
+                                        })}
+                                    </TableRow>
+                                </TableHeader>
                             </Table>
                         </div>
                     </CardContent>
@@ -365,7 +577,7 @@ const AttendanceSummaryPage = () => {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {attendanceData.map((data) => {
+                                {filteredAttendance.map((data) => {
                                     const summary = calculateSummary(data);
                                     return (
                                         <TableRow key={data.user.id}>

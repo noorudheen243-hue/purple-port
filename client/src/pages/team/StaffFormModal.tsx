@@ -38,14 +38,7 @@ const AGENCY_DESIGNATIONS = [
     "Intern"
 ];
 
-const SHIFT_TIMINGS = [
-    "09:00 AM – 05:00 PM",
-    "09:30 AM – 05:30 PM",
-    "10:00 AM – 06:00 PM",
-    "10:30 AM – 06:30 PM",
-    "11:00 AM – 07:00 PM",
-    "Flexible / On-Demand"
-];
+
 
 // --- Schema ---
 
@@ -64,7 +57,7 @@ const staffSchema = z.object({
     department: z.enum(['CREATIVE', 'MARKETING', 'WEB_SEO', 'WEB', 'MANAGEMENT', 'ADMIN']),
     date_of_joining: z.string().min(1, "Joining Date is required"),
     reporting_manager_id: z.string().optional(),
-    shift_timing: z.string().optional(), // NEW: Shift Timing
+
 
     // Personal & Contact
     personal_email: z.string().email().optional().or(z.literal('')),
@@ -176,7 +169,7 @@ const StaffFormModal = ({ isOpen, onClose, initialData }: StaffFormModalProps) =
                 date_of_joining: initialData.date_of_joining ? new Date(initialData.date_of_joining).toISOString().split('T')[0] : '',
                 date_of_birth: initialData.date_of_birth ? new Date(initialData.date_of_birth).toISOString().split('T')[0] : '',
                 reporting_manager_id: initialData.reporting_manager_id || '',
-                shift_timing: initialData.shift_timing || '',
+
                 password: undefined, // Don't pre-fill password usually
                 ledger_options: initialData.ledger_options || { create: false, head_id: '' },
             });
@@ -452,15 +445,7 @@ const StaffFormModal = ({ isOpen, onClose, initialData }: StaffFormModalProps) =
                                             </select>
                                         </div>
 
-                                        <div>
-                                            <label className="block text-sm font-medium text-foreground mb-1">Shift Timing</label>
-                                            <select {...register('shift_timing')} className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all bg-white">
-                                                <option value="">Select Shift...</option>
-                                                {SHIFT_TIMINGS.map(s => (
-                                                    <option key={s} value={s}>{s}</option>
-                                                ))}
-                                            </select>
-                                        </div>
+
 
                                         <div>
                                             <label className="block text-sm font-medium text-foreground mb-1">Date of Joining <span className="text-red-500">*</span></label>

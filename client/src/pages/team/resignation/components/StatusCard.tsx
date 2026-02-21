@@ -59,15 +59,33 @@ export const StatusCard: React.FC<StatusCardProps> = ({ data }) => {
                         </div>
                     </div>
 
-                    {data.status === 'UNDER_NOTICE' && data.remaining_days !== undefined && (
-                        <div className="space-y-1">
-                            <span className="text-xs text-muted-foreground uppercase font-bold">Remaining Days</span>
-                            <div className="flex items-center gap-2 text-xl font-bold text-primary">
-                                <Clock size={20} />
-                                {data.remaining_days} Days
-                            </div>
+                    <div className="space-y-1">
+                        <span className="text-xs text-muted-foreground uppercase font-bold">Notice Period</span>
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                            <Clock size={16} className="text-muted-foreground" />
+                            {(() => {
+                                const relDate = new Date(data.approved_relieving_date || data.requested_relieving_date);
+                                const appDate = new Date(data.applied_date);
+                                const diff = relDate.getTime() - appDate.getTime();
+                                return `${Math.ceil(diff / (1000 * 60 * 60 * 24))} Days`;
+                            })()}
                         </div>
-                    )}
+                    </div>
+
+                    <div className="space-y-1 col-span-2 md:col-span-1">
+                        <span className="text-xs text-muted-foreground uppercase font-bold">Days Left</span>
+                        <div className="flex items-center gap-2 text-xl font-bold text-primary">
+                            <Clock size={20} />
+                            {(() => {
+                                const relDate = new Date(data.approved_relieving_date || data.requested_relieving_date);
+                                const today = new Date();
+                                today.setHours(0, 0, 0, 0);
+                                const diff = relDate.getTime() - today.getTime();
+                                const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+                                return days > 0 ? `${days} Days` : "Passed";
+                            })()}
+                        </div>
+                    </div>
                 </div>
 
                 {/* Detailed Status Messages */}

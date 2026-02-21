@@ -128,3 +128,16 @@ export const getShiftForDate = async (req: Request, res: Response) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+export const syncShiftLogs = async (req: Request, res: Response) => {
+    try {
+        const { staffId } = req.body;
+        if (!staffId) return res.status(400).json({ error: 'Staff ID required' });
+
+        const { AttendanceService } = require('./service');
+        const result = await AttendanceService.syncShiftsToLogs(staffId);
+        res.json(result);
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+};

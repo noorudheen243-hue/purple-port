@@ -1325,3 +1325,24 @@ model ResignationRequest {
   @@index([employee_id])
   @@index([createdAt])
 }
+
+model BiometricSyncLog {
+  id           String   @id @default(uuid())
+  sync_time    DateTime @default(now())
+  status       String   // SUCCESS, FAILED
+  logs_fetched Int      @default(0)
+  logs_saved   Int      @default(0)
+  error_msg    String?
+  method       String   @default("MANUAL") // MANUAL, AUTO
+  
+  @@index([sync_time])
+}
+
+model BiometricDeviceStatus {
+  id              String   @id @default("CURRENT")
+  status          String   @default("OFFLINE") // ONLINE, OFFLINE
+  last_heartbeat  DateTime @default(now())
+  device_info     String?  // JSON string of info
+  
+  updatedAt       DateTime @updatedAt
+}

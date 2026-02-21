@@ -17,5 +17,7 @@ router.patch('/:id/approve', protect, authorize(ROLES.ADMIN, ROLES.MANAGER, ROLE
 router.patch('/:id/reject', protect, authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN), controller.rejectResignation); // Body: reason
 router.patch('/:id/revise', protect, authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN), controller.reviseNoticePeriod); // Body: days, reason
 router.patch('/:id/complete', protect, authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN), controller.completeResignation);
+router.patch('/:id', protect, authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN), controller.updateResignation);
+router.delete('/:id', protect, authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN), controller.deleteResignation);
 
 export default router;

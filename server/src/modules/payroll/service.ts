@@ -43,10 +43,10 @@ export const calculateAutoLOP = async (userId: string, month: number, year: numb
 
     let lopDays = 0;
 
-    // 4. Count Explicit Statuses
+    // 4. Count LOP based on Attendance Records (Source of Truth)
     for (const record of attendance) {
         if (record.status === 'ABSENT') {
-            // Check covering leave
+            // Check covering leave (redundancy check, usually ABSENT implies LOP unless regularized)
             const coveringLeave = await prisma.leaveRequest.findFirst({
                 where: {
                     user_id: userId,
@@ -61,10 +61,8 @@ export const calculateAutoLOP = async (userId: string, month: number, year: numb
             }
         } else if (record.status === 'HALF_DAY') {
             lopDays += 0.5;
-        } else if ((record.status === 'PRESENT' || record.status === 'LATE') && (!record.check_in || !record.check_out)) {
-            // PRESENT with missing punch = Half Day (matches Attendance Summary logic)
-            lopDays += 0.5;
         }
+        // REGULARIZED, PRESENT, LATE = 0 LOP
     }
 
     // 5. Add Explicit LOP Leaves (Leave Type = UNPAID or LOP)

@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import app from './app';
 // import cors from 'cors'; // cors handled in app.ts
-import { syncBiometrics } from './modules/attendance/biometric.service';
+import { syncBiometrics, BiometricDaemon } from './modules/attendance/biometric.service';
 
 const PORT = process.env.PORT || 4001;
 
@@ -27,8 +27,8 @@ SocketService.initialize(server, [
 const runningServer = server.listen(PORT, async () => {
     console.log(`Server running on port ${PORT}`);
 
-    // Auto-Run Biometric Sync on Startup (Non-blocking)
-    // syncBiometrics().catch(err => console.error('Startup Sync Error:', err));
+    // Start Biometric Management Service (Heartbeat + Auto-Sync)
+    BiometricDaemon.start();
 });
 
 const shutdown = async () => {

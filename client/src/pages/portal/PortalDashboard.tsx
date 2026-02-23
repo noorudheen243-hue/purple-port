@@ -38,7 +38,9 @@ const PortalDashboard = () => {
     const isAdminOrManager = user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'DEVELOPER_ADMIN';
 
     // State for Management
-    const [manageClientId, setManageClientId] = useState<string | null>(null);
+    const [manageClientId, setManageClientId] = useState<string | null>(
+        user?.role === 'CLIENT' ? user?.linked_client_id || null : null
+    );
 
     // Fetch Clients for Selector
     const { data: clients, isLoading: isClientsLoading } = useQuery({
@@ -188,26 +190,35 @@ const PortalDashboard = () => {
             {/* Header Area */}
             <div className="bg-yellow-50 border-b border-yellow-200 py-6 px-8 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                    <h2 className="text-3xl font-extrabold tracking-tight text-yellow-900 drop-shadow-sm">Manage Client Services</h2>
-                    <p className="text-yellow-700/80 mt-1 font-medium">Configure active services and monitor tracking overviews.</p>
+                    <h2 className="text-3xl font-extrabold tracking-tight text-yellow-900 drop-shadow-sm">
+                        {user?.role === 'CLIENT' ? 'My Services & Portal' : 'Manage Client Services'}
+                    </h2>
+                    <p className="text-yellow-700/80 mt-1 font-medium">
+                        {user?.role === 'CLIENT'
+                            ? 'Monitor your active services, analytics and reports.'
+                            : 'Configure active services and monitor tracking overviews.'
+                        }
+                    </p>
                 </div>
 
-                {/* Purple Client Selector */}
-                <div className="relative w-full md:w-96">
-                    <select
-                        className="w-full h-12 pl-5 pr-12 rounded-xl border-2 border-purple-200 bg-purple-50 text-purple-900 font-bold text-lg ring-offset-background focus-visible:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-200 transition-all appearance-none cursor-pointer hover:bg-purple-100"
-                        onChange={(e) => setManageClientId(e.target.value || null)}
-                        value={manageClientId || ''}
-                    >
-                        <option value="">-- Select A Client --</option>
-                        {clients?.sort((a: any, b: any) => a.name.localeCompare(b.name)).map((c: any) => (
-                            <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                    </select>
-                    <div className="absolute right-2 top-2 h-8 w-8 bg-purple-200 rounded-lg flex items-center justify-center pointer-events-none text-purple-700">
-                        <ChevronDown className="h-5 w-5" />
+                {/* Purple Client Selector (Only for Admin/Manager) */}
+                {isAdminOrManager && (
+                    <div className="relative w-full md:w-96">
+                        <select
+                            className="w-full h-12 pl-5 pr-12 rounded-xl border-2 border-purple-200 bg-purple-50 text-purple-900 font-bold text-lg ring-offset-background focus-visible:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-200 transition-all appearance-none cursor-pointer hover:bg-purple-100"
+                            onChange={(e) => setManageClientId(e.target.value || null)}
+                            value={manageClientId || ''}
+                        >
+                            <option value="">-- Select A Client --</option>
+                            {clients?.sort((a: any, b: any) => a.name.localeCompare(b.name)).map((c: any) => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                        </select>
+                        <div className="absolute right-2 top-2 h-8 w-8 bg-purple-200 rounded-lg flex items-center justify-center pointer-events-none text-purple-700">
+                            <ChevronDown className="h-5 w-5" />
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
 
             {/* Content Area */}
@@ -229,6 +240,14 @@ const PortalDashboard = () => {
                                     <span className="text-sm px-2 py-0.5 bg-gray-100 text-gray-600 rounded font-mono">ID: {clientDetails.client_code || 'N/A'}</span>
                                     {clientDetails.industry && <span className="text-sm px-2 py-0.5 bg-blue-50 text-blue-700 rounded">{clientDetails.industry}</span>}
                                 </div>
+                            </div>
+                            <div className="ml-auto flex gap-3">
+                                <Button
+                                    onClick={() => navigate(`/dashboard/client-portal/manage-services${manageClientId ? '?clientId=' + manageClientId : ''}`)}
+                                    className="bg-indigo-600 text-white font-extrabold px-8 h-14 text-lg rounded-xl flex items-center gap-2 border-2 border-yellow-400 border-b-[6px] hover:border-b-2 hover:translate-y-1 shadow-xl transition-all ring-4 ring-yellow-400/30"
+                                >
+                                    <Activity size={24} /> Manage Services
+                                </Button>
                             </div>
                         </div>
 
@@ -263,12 +282,14 @@ const PortalDashboard = () => {
                                                         <h4 className={`font-bold text-base ${isActive ? 'text-gray-900' : 'text-gray-500'}`}>{SERVICE_DEF[serviceKey].title}</h4>
                                                     </div>
                                                 </div>
-                                                <div
-                                                    onClick={() => toggleService(serviceKey)}
-                                                    className={`cursor-pointer w-10 h-6 rounded-full flex items-center transition-colors p-1 ${isActive ? 'bg-green-500 justify-end' : 'bg-gray-300 justify-start'}`}
-                                                >
-                                                    <div className="w-4 h-4 bg-white rounded-full shadow-sm"></div>
-                                                </div>
+                                                {isAdminOrManager && (
+                                                    <div
+                                                        onClick={() => toggleService(serviceKey)}
+                                                        className={`cursor-pointer w-10 h-6 rounded-full flex items-center transition-colors p-1 ${isActive ? 'bg-green-500 justify-end' : 'bg-gray-300 justify-start'}`}
+                                                    >
+                                                        <div className="w-4 h-4 bg-white rounded-full shadow-sm"></div>
+                                                    </div>
+                                                )}
                                             </div>
 
                                             {/* Status Badge */}
@@ -290,18 +311,6 @@ const PortalDashboard = () => {
                                             )}
                                         </div>
 
-                                        {/* Footer Actions */}
-                                        {isActive && (
-                                            <div className="bg-gray-50 p-2 border-t border-gray-100">
-                                                <Button
-                                                    size="sm"
-                                                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm h-8 text-xs font-semibold"
-                                                    onClick={() => navigate(SERVICE_DEF[serviceKey].path + '?mode=manage&clientId=' + clientDetails.id)}
-                                                >
-                                                    Manage Data <ArrowRight size={12} className="ml-1 opacity-80" />
-                                                </Button>
-                                            </div>
-                                        )}
                                     </Card>
                                 );
                             })}
@@ -319,7 +328,7 @@ const PortalDashboard = () => {
                     </div>
                 )}
             </div>
-        </div>
+        </div >
     );
 };
 

@@ -1,67 +1,43 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { TrendingUp, Zap } from 'lucide-react';
 
-// Components
-import PortalDashboard from '../portal/PortalDashboard';
-import CreativeTaskManager from './CreativeTaskManager';
-
 const TaskManagerPage = () => {
-    const [activeTab, setActiveTab] = useState<'dm' | 'creative'>('dm');
+    const navigate = useNavigate();
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col space-y-2 mb-6">
-                <h1 className="text-3xl font-bold tracking-tight">Task Management</h1>
-                <p className="text-muted-foreground">Manage digital marketing campaigns and creative workflows.</p>
+        <div className="flex flex-col items-center justify-center min-h-[70vh] space-y-12">
+            <div className="text-center space-y-3 mb-4">
+                <h1 className="text-4xl font-extrabold tracking-tight text-gray-900">Task Management</h1>
+                <p className="text-lg text-muted-foreground">Select a workspace to manage your workflows.</p>
             </div>
 
-            {/* Big Toggle Buttons */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl px-4">
                 <button
-                    onClick={() => setActiveTab('dm')}
-                    className={`p-6 rounded-xl border-2 transition-all flex items-center gap-4 group ${activeTab === 'dm'
-                        ? 'border-purple-600 bg-purple-50 shadow-md'
-                        : 'border-gray-200 bg-white hover:border-purple-200 hover:bg-purple-50/50'
-                        }`}
+                    onClick={() => navigate('/dashboard/client-portal')}
+                    className="p-10 rounded-3xl border-2 transition-all flex flex-col items-center gap-6 group border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-50 shadow-sm hover:shadow-xl hover:-translate-y-1"
                 >
-                    <div className={`p-4 rounded-full ${activeTab === 'dm' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-400 group-hover:bg-purple-100 group-hover:text-purple-600'}`}>
-                        <TrendingUp size={32} />
+                    <div className="p-6 rounded-full bg-purple-100 text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                        <TrendingUp size={48} />
                     </div>
-                    <div className="text-left">
-                        <h3 className={`text-xl font-bold ${activeTab === 'dm' ? 'text-purple-900' : 'text-gray-700'}`}>Digital Marketing Tasks</h3>
-                        <p className={`text-sm ${activeTab === 'dm' ? 'text-purple-700' : 'text-gray-500'}`}>Manage Ads, SEO, & Content Services</p>
+                    <div className="text-center">
+                        <h3 className="text-2xl font-bold text-gray-900 group-hover:text-purple-900">Digital Marketing Tasks</h3>
+                        <p className="text-base text-gray-500 mt-2">Manage Campaigns, Ads, SEO, & Lead Pipelines</p>
                     </div>
                 </button>
 
                 <button
-                    onClick={() => setActiveTab('creative')}
-                    className={`p-6 rounded-xl border-2 transition-all flex items-center gap-4 group ${activeTab === 'creative'
-                        ? 'border-blue-600 bg-blue-50 shadow-md'
-                        : 'border-gray-200 bg-white hover:border-blue-200 hover:bg-blue-50/50'
-                        }`}
+                    onClick={() => navigate('/dashboard/tasks/creative')}
+                    className="p-10 rounded-3xl border-2 transition-all flex flex-col items-center gap-6 group border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50 shadow-sm hover:shadow-xl hover:-translate-y-1"
                 >
-                    <div className={`p-4 rounded-full ${activeTab === 'creative' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-400 group-hover:bg-blue-100 group-hover:text-blue-600'}`}>
-                        <Zap size={32} />
+                    <div className="p-6 rounded-full bg-blue-100 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                        <Zap size={48} />
                     </div>
-                    <div className="text-left">
-                        <h3 className={`text-xl font-bold ${activeTab === 'creative' ? 'text-blue-900' : 'text-gray-700'}`}>Creative Tasks</h3>
-                        <p className={`text-sm ${activeTab === 'creative' ? 'text-blue-700' : 'text-gray-500'}`}>Manage Design, Video, & Internal Tasks</p>
+                    <div className="text-center">
+                        <h3 className="text-2xl font-bold text-gray-900 group-hover:text-blue-900">Creative Tasks</h3>
+                        <p className="text-base text-gray-500 mt-2">Manage Design, Video, & Internal Workflows</p>
                     </div>
                 </button>
-            </div>
-
-            {/* Content Area */}
-            <div className="mt-8">
-                {activeTab === 'dm' && (
-                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                        <PortalDashboard />
-                    </div>
-                )}
-                {activeTab === 'creative' && (
-                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                        <CreativeTaskManager />
-                    </div>
-                )}
             </div>
         </div>
     );

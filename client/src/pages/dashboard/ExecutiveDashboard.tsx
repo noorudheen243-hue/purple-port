@@ -4,12 +4,14 @@ import api from '../../lib/api';
 import { PieChart, Pie, Cell, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer } from 'recharts';
 import { useAuthStore } from '../../store/authStore';
 import UpdateSystemModal from '../../components/modals/UpdateSystemModal';
-import { Server } from 'lucide-react';
+import { Server, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
 const ExecutiveDashboard = () => {
     const { user } = useAuthStore();
+    const navigate = useNavigate();
     const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
 
     const { data, isLoading } = useQuery({
@@ -119,6 +121,25 @@ const ExecutiveDashboard = () => {
                 <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white shadow-lg">
                     <h3 className="text-white/80 font-medium text-sm">Team Members</h3>
                     <p className="text-4xl font-bold mt-2">{efficiency.length}</p>
+                </div>
+            </div>
+
+            {/* Lead Management Quick Action */}
+            <div
+                onClick={() => navigate('/dashboard/client-portal/manage-services')}
+                className="bg-white p-6 rounded-xl shadow-lg border-2 border-dashed border-indigo-200 hover:border-indigo-400 hover:bg-indigo-50/30 transition-all cursor-pointer flex items-center justify-between group"
+            >
+                <div className="flex items-center gap-4">
+                    <div className="p-4 bg-indigo-100 rounded-2xl text-indigo-600 group-hover:scale-110 transition-transform">
+                        <Users size={32} />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-bold text-gray-900">Lead Management & Campaign History</h3>
+                        <p className="text-gray-500">Track daily leads, follow-ups, and active service performances.</p>
+                    </div>
+                </div>
+                <div className="mr-4 text-indigo-600 font-bold flex items-center gap-2">
+                    Open Manager <Users size={20} />
                 </div>
             </div>
         </div>

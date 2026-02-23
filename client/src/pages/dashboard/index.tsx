@@ -28,6 +28,7 @@ const WebDevView = lazy(() => import('../../pages/portal/services/WebDevView'));
 const ContentBrandingView = lazy(() => import('../../pages/portal/services/ContentBrandingView'));
 const ApprovalsView = lazy(() => import('../../pages/portal/ApprovalsView'));
 const ReportsView = lazy(() => import('../../pages/portal/ReportsView'));
+const ManageServicesView = lazy(() => import('../../pages/portal/ManageServicesView'));
 
 const AccountsDashboard = lazy(() => import('../accounts/AccountsDashboard'));
 const TransactionEntry = lazy(() => import('../accounts/TransactionEntry'));
@@ -47,6 +48,7 @@ const SettingsPage = lazy(() => import('../settings/index'));
 
 // Advanced Task Views
 const TaskManagerPage = lazy(() => import('../tasks/TaskManagerPage'));
+const CreativeTaskManager = lazy(() => import('../tasks/CreativeTaskManager'));
 const TaskDashboard = lazy(() => import('../tasks/TaskDashboard'));
 const MyTasks = lazy(() => import('../tasks/MyTasks'));
 const TaskBoard = lazy(() => import('../tasks/TaskBoard'));
@@ -106,6 +108,7 @@ const Dashboard = () => {
 
                     {/* Advanced Task Module */}
                     <Route path="tasks/manager" element={<TaskManagerPage />} /> {/* New Main View */}
+                    <Route path="tasks/creative" element={<CreativeTaskManager />} /> {/* New Creative Tasks View */}
                     <Route path="tasks" element={<TaskList />} />
                     <Route path="tasks/dashboard" element={<TaskDashboard />} />
                     <Route path="tasks/my-tasks" element={<MyTasks />} />
@@ -187,6 +190,7 @@ const Dashboard = () => {
                         <Route path="branding" element={<ContentBrandingView />} />
                         <Route path="approvals" element={<ApprovalsView />} />
                         <Route path="reports" element={<ReportsView />} />
+                        <Route path="manage-services" element={<ManageServicesView />} />
                     </Route>
 
                     {/* Admin Tools */}

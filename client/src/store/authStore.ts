@@ -8,6 +8,7 @@ interface User {
     role: string; // Simplified to string to avoid mismatch with schema
     department: string;
     avatar_url?: string;
+    linked_client_id?: string;
 }
 
 interface AuthState {

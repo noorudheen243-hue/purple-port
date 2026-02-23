@@ -30,7 +30,7 @@ const ApprovalsView: React.FC<ApprovalsViewProps> = ({ clientIdProp }) => {
     const urlClientId = searchParams.get('clientId');
 
     // Effective Client ID
-    const clientId = clientIdProp || (isAdmin ? (selectedClientId || urlClientId) : (user as any)?.linked_client_id);
+    const clientId = clientIdProp || (isAdmin ? (selectedClientId || urlClientId) : user?.linked_client_id);
 
     // Fetch Clients for Selector (Admin only)
     const { data: clients } = useQuery({

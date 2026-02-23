@@ -3,7 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Moon, Sun, Bell } from 'lucide-react';
+import { Moon, Sun, Bell, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import PendingRequestsModal from '@/components/attendance/PendingRequestsModalv2';
 import { getAssetUrl } from '@/lib/utils';
@@ -33,6 +34,7 @@ import { useSearchParams } from 'react-router-dom';
 
 const ManagerDashboard = () => {
     const { user } = useAuthStore();
+    const navigate = useNavigate();
     const isDarkMode = useTheme();
     const axisColor = isDarkMode ? '#e2e8f0' : '#64748b';
     const [searchParams, setSearchParams] = useSearchParams();

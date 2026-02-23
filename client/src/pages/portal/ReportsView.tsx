@@ -23,7 +23,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ clientIdProp }) => {
 
     // Determines active client ID
     const urlClientId = searchParams.get('clientId');
-    const clientId = clientIdProp || (isAdmin ? (selectedClientId || urlClientId) : (user as any)?.linked_client_id);
+    const clientId = clientIdProp || (isAdmin ? (selectedClientId || urlClientId) : user?.linked_client_id);
 
     // Generation State
     const [isGenerateOpen, setIsGenerateOpen] = useState(false);

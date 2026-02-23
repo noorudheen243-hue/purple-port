@@ -55,10 +55,9 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
     },
     {
         label: "Task Management",
-        path: "/dashboard/tasks/manager",
-        icon: CheckSquare
-    },
-
+        icon: CheckSquare,
+        path: "/dashboard/tasks/manager"
+    }
 ];
 
 export const STAFF_MENU: MenuItem[] = [
@@ -70,8 +69,8 @@ export const STAFF_MENU: MenuItem[] = [
     },
     {
         label: "Task Management",
-        path: "/dashboard/tasks/manager",
-        icon: CheckSquare
+        icon: CheckSquare,
+        path: "/dashboard/tasks/manager"
     },
     {
         label: "Attendance",
@@ -100,6 +99,11 @@ export const CLIENT_MENU: MenuItem[] = [
         label: "Service Portal",
         path: "/dashboard/client-portal",
         icon: TrendingUp
+    },
+    {
+        label: "Lead Management",
+        path: "/dashboard/client-portal/manage-services",
+        icon: UsersIcon
     },
     {
         label: "Accounts",

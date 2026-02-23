@@ -24,8 +24,8 @@ const MetaAdsView = () => {
     const mode = searchParams.get('mode'); // 'manage' or null
 
     // If client is logged in, use their linked_client_id. If admin, use url param.
-    const clientId = (user?.role === 'CLIENT' || user?.role === 'STAFF')
-        ? (user as any)?.linked_client_id
+    const clientId = user?.role === 'CLIENT'
+        ? user?.linked_client_id
         : urlClientId;
 
     const canManage = user?.role === 'ADMIN'

@@ -405,6 +405,7 @@ model Client {
   googleAdsLogs      GoogleAdsLog[]
   contentDeliverables ContentDeliverable[]
   reports            Report[]
+  leads              Lead[]
 
   @@index([status])
   @@index([account_manager_id])
@@ -768,21 +769,40 @@ model SpendSnapshot {
 
 model Lead {
   id              String   @id @default(uuid())
-  email           String?
+  client_id       String
+  client          Client   @relation(fields: [client_id], references: [id], onDelete: Cascade)
+  
+  date            DateTime @default(now())
+  campaign_name   String?
   phone           String?
   name            String?
-  source          String?  // 'Facebook', 'Google', 'Organic'
-  utm_campaign    String?
-  utm_medium      String?
-  utm_source      String?
-  click_id        String?  // gclid / fbclid
-  status          String   @default("NEW") // NEW, CONTACTED, QUALIFIED, CLOSED
-  conversion_value Float?
+  address         String?  // Address/Location
+  quality         String?  // Lead quality (e.g. HIGH, MEDIUM, LOW)
+  status          String   @default("NEW") // Lead status (NEW, CONTACTED, etc.)
+  
+  follow_ups      LeadFollowUp[]
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  @@index([client_id])
+}
+
+model LeadFollowUp {
+  id          String   @id @default(uuid())
+  lead_id     String
+  lead        Lead     @relation(fields: [lead_id], references: [id], onDelete: Cascade)
   
-  client_id       String?
-  // client Client...
+  follow_up_number Int      // 1st, 2nd, 3rd...
+  status           String   // Status for this particular follow up
+  notes            String?
+  channel          String?  @default("Phone Call") // WhatsApp, Phone Call, Email
+  date            DateTime @default(now())
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([lead_id])
 }
 
 // --- MODULE 6: STICKY NOTES SYSTEM ---
@@ -1091,6 +1111,7 @@ model MetaAdsLog {
   objective     String   // e.g. Engagement, Leads, Traffic, Sales
   platform      String   // Facebook, Instagram, Both
   spend         Float    @default(0.0)
+  status        String   @default("ACTIVE")
   
   // Dynamic Results stored as JSON to allow flexibility
   // e.g. { "impressions": 1000, "clicks": 50, "leads": 5, "cpl": 20.5 }
@@ -1110,6 +1131,7 @@ model GoogleAdsLog {
   campaign_name String
   campaign_type String   // Search, Display, Video, PMax
   spend         Float    @default(0.0)
+  status        String   @default("ACTIVE")
   
   clicks        Int      @default(0)
   impressions   Int      @default(0)
@@ -1128,6 +1150,7 @@ model SeoLog {
   
   month         Int
   year          Int
+  status        String   @default("ACTIVE")
   
   // JSON arrays/objects for structured data
   activities_json       String @default("[]") // List of tasks: On-page, Technical, etc.

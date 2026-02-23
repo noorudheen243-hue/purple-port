@@ -20,8 +20,8 @@ const WebDevView = () => {
     const urlClientId = searchParams.get('clientId');
     const mode = searchParams.get('mode');
 
-    const clientId = (user?.role === 'CLIENT' || user?.role === 'STAFF')
-        ? (user as any)?.linked_client_id
+    const clientId = user?.role === 'CLIENT'
+        ? user?.linked_client_id
         : urlClientId;
 
     const canManage = user?.role === 'ADMIN'
@@ -75,9 +75,6 @@ const WebDevView = () => {
                     <div>
                         <div>
                             <h1 className="text-3xl font-bold tracking-tight text-gray-900">Web Development Projects</h1>
-                            <div className="text-[10px] text-red-500 font-mono">
-                                DEBUG: Role=[{user?.role}] Manage=[{canManage ? 'YES' : 'NO'}] Client=[{clientId}]
-                            </div>
                             {clientDetails && <p className="text-muted-foreground">{clientDetails.name}</p>}
                         </div>
                     </div>

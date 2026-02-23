@@ -39,6 +39,7 @@ export const findUserById = async (id: string) => {
             role: true,
             department: true,
             avatar_url: true,
+            linked_client_id: true,
         }
     });
 };

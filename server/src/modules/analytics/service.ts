@@ -334,7 +334,7 @@ export const getCreativeDashboardStats = async () => {
         },
         include: {
             client: { select: { client_name: true } },
-            creator: { select: { full_name: true } }
+            assigned_by: { select: { full_name: true } }
         },
         orderBy: { createdAt: 'desc' }
     });
@@ -345,7 +345,7 @@ export const getCreativeDashboardStats = async () => {
         staff_name: creativeMap.get(t.assignee_id!) || 'Unknown',
         client_name: t.client?.client_name || 'Internal',
         task_type: t.type || 'Generic',
-        assigned_by: t.creator?.full_name || 'System'
+        assigned_by: t.assigned_by?.full_name || 'System'
     }));
 
     // 3. Helper to calculate efficiency

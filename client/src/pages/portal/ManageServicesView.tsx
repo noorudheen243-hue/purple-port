@@ -1198,6 +1198,7 @@ const ManageServicesView = () => {
                                 </Table>
                             </div>
                         </CardContent>
+                    </Card>
                 </TabsContent>
             </Tabs>
         </div>

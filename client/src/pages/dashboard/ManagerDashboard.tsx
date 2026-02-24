@@ -149,18 +149,19 @@ const ManagerDashboard = () => {
 
             {/* --- SECTION 2: CREATIVE TEAM METRICS --- */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                {/* Metric Cards - Taking less space */}
                 <div className="lg:col-span-1 grid grid-cols-1 gap-4">
                     <div className="p-4 rounded-xl bg-purple-50 dark:bg-purple-900/10 border border-purple-100 dark:border-purple-900/20">
-                        <h3 className="text-sm font-semibold text-purple-700 dark:text-purple-300">Total Assigned</h3>
-                        <p className="text-3xl font-bold mt-1 text-purple-900 dark:text-purple-100">{creativeMetrics?.total || 0}</p>
+                        <h3 className="text-xs font-semibold text-purple-700 dark:text-purple-300">Total Assigned</h3>
+                        <p className="text-2xl font-bold mt-1 text-purple-900 dark:text-purple-100">{creativeMetrics?.total || 0}</p>
                     </div>
                     <div className="p-4 rounded-xl bg-green-50 dark:bg-green-900/10 border border-green-100 dark:border-green-900/20">
-                        <h3 className="text-sm font-semibold text-green-700 dark:text-green-300">Completed</h3>
-                        <p className="text-3xl font-bold mt-1 text-green-900 dark:text-green-100">{creativeMetrics?.completed || 0}</p>
+                        <h3 className="text-xs font-semibold text-green-700 dark:text-green-300">Completed</h3>
+                        <p className="text-2xl font-bold mt-1 text-green-900 dark:text-green-100">{creativeMetrics?.completed || 0}</p>
                     </div>
                     <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/20">
-                        <h3 className="text-sm font-semibold text-blue-700 dark:text-blue-300">In Progress</h3>
-                        <p className="text-3xl font-bold mt-1 text-blue-900 dark:text-blue-100">{creativeMetrics?.wip || 0}</p>
+                        <h3 className="text-xs font-semibold text-blue-700 dark:text-blue-300">In Progress</h3>
+                        <p className="text-2xl font-bold mt-1 text-blue-900 dark:text-blue-100">{creativeMetrics?.wip || 0}</p>
                     </div>
                 </div>
 
@@ -178,26 +179,26 @@ const ManagerDashboard = () => {
                                 <Table>
                                     <TableHeader className="bg-gray-50/30">
                                         <TableRow>
-                                            <TableHead className="w-[80px] text-sm font-bold">S.No</TableHead>
-                                            <TableHead className="text-sm font-bold">Staff Name</TableHead>
-                                            <TableHead className="text-sm font-bold">Client</TableHead>
-                                            <TableHead className="text-sm font-bold">Task Type</TableHead>
-                                            <TableHead className="text-sm font-bold">Assigned By</TableHead>
+                                            <TableHead className="w-[80px] text-xs font-bold">S.No</TableHead>
+                                            <TableHead className="text-xs font-bold">Staff Name</TableHead>
+                                            <TableHead className="text-xs font-bold">Client</TableHead>
+                                            <TableHead className="text-xs font-bold">Task Type</TableHead>
+                                            <TableHead className="text-xs font-bold">Assigned By</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {isCreativeLoading ? (
-                                            <TableRow><TableCell colSpan={5} className="h-24 text-center text-sm text-muted-foreground animate-pulse">Loading today's tasks...</TableCell></TableRow>
+                                            <TableRow><TableCell colSpan={5} className="h-24 text-center text-xs text-muted-foreground animate-pulse">Loading today's tasks...</TableCell></TableRow>
                                         ) : creativeDashboard?.dailyTasks?.length === 0 ? (
-                                            <TableRow><TableCell colSpan={5} className="h-24 text-center text-sm text-muted-foreground italic">No tasks assigned yet today.</TableCell></TableRow>
+                                            <TableRow><TableCell colSpan={5} className="h-24 text-center text-xs text-muted-foreground italic">No tasks assigned yet today.</TableCell></TableRow>
                                         ) : (
                                             creativeDashboard?.dailyTasks?.map((task: any) => (
                                                 <TableRow key={task.id} className="hover:bg-gray-50/50 transition-colors">
-                                                    <TableCell className="text-sm font-medium text-gray-500">{task.s_no}</TableCell>
-                                                    <TableCell className="text-sm font-bold text-gray-900">{task.staff_name}</TableCell>
-                                                    <TableCell className="text-sm font-medium text-indigo-600">{task.client_name}</TableCell>
-                                                    <TableCell className="text-sm font-medium"><Badge variant="outline" className="text-xs font-bold py-0">{task.task_type}</Badge></TableCell>
-                                                    <TableCell className="text-sm text-gray-600">{task.assigned_by}</TableCell>
+                                                    <TableCell className="text-xs font-medium text-gray-500">{task.s_no}</TableCell>
+                                                    <TableCell className="text-xs font-bold text-gray-900">{task.staff_name}</TableCell>
+                                                    <TableCell className="text-xs font-medium text-indigo-600">{task.client_name}</TableCell>
+                                                    <TableCell className="text-xs font-medium"><Badge variant="outline" className="text-[10px] font-bold py-0">{task.task_type}</Badge></TableCell>
+                                                    <TableCell className="text-xs text-gray-600">{task.assigned_by}</TableCell>
                                                 </TableRow>
                                             ))
                                         )}
@@ -215,27 +216,23 @@ const ManagerDashboard = () => {
                 {/* B. Task efficiency of the day */}
                 <Card className="border shadow-sm rounded-xl overflow-hidden">
                     <CardHeader className="bg-indigo-600 text-white py-3 px-4">
-                        <CardTitle className="text-base font-bold">Task Efficiency (Daily)</CardTitle>
+                        <CardTitle className="text-sm font-bold">Task Efficiency (Daily)</CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
                         <div className="overflow-x-auto">
                             <Table>
                                 <TableHeader className="bg-gray-50/50">
                                     <TableRow>
-                                        <TableHead className="text-sm font-bold">Staff</TableHead>
-                                        <TableHead className="text-sm font-bold text-center">Assigned</TableHead>
-                                        <TableHead className="text-sm font-bold text-center">Completed</TableHead>
-                                        <TableHead className="text-sm font-bold text-right">Efficiency</TableHead>
+                                        <TableHead className="text-xs font-bold">Staff</TableHead>
+                                        <TableHead className="text-xs font-bold text-right">Performance</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {creativeDashboard?.dailyEfficiency?.map((item: any) => (
                                         <TableRow key={item.id} className="hover:bg-gray-50/50">
-                                            <TableCell className="text-sm font-semibold">{item.staff_name}</TableCell>
-                                            <TableCell className="text-sm font-semibold text-center text-gray-600">{item.assigned}</TableCell>
-                                            <TableCell className="text-sm font-semibold text-center text-green-600">{item.completed}</TableCell>
+                                            <TableCell className="text-xs font-semibold">{item.staff_name}</TableCell>
                                             <TableCell className="text-right">
-                                                <Badge className={`${item.efficiency >= 80 ? 'bg-green-100 text-green-700' : item.efficiency >= 50 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'} text-xs font-bold`}>
+                                                <Badge className={`${item.efficiency >= 80 ? 'bg-green-100 text-green-700' : item.efficiency >= 50 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'} text-[10px] font-bold`}>
                                                     {item.efficiency}%
                                                 </Badge>
                                             </TableCell>
@@ -250,28 +247,24 @@ const ManagerDashboard = () => {
                 {/* C. Weekly Creative Team Performance */}
                 <Card className="border shadow-sm rounded-xl overflow-hidden">
                     <CardHeader className="bg-blue-600 text-white py-3 px-4">
-                        <CardTitle className="text-base font-bold">Weekly Performance</CardTitle>
+                        <CardTitle className="text-sm font-bold">Weekly Performance</CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
                         <div className="overflow-x-auto">
                             <Table>
                                 <TableHeader className="bg-gray-50/50">
                                     <TableRow>
-                                        <TableHead className="text-sm font-bold">Staff</TableHead>
-                                        <TableHead className="text-sm font-bold text-center">Assigned</TableHead>
-                                        <TableHead className="text-sm font-bold text-center">Completed</TableHead>
-                                        <TableHead className="text-sm font-bold text-right">Efficiency</TableHead>
+                                        <TableHead className="text-xs font-bold">Staff</TableHead>
+                                        <TableHead className="text-xs font-bold text-right">Avg Score</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {creativeDashboard?.weeklyEfficiency?.map((item: any) => (
                                         <TableRow key={item.id} className="hover:bg-gray-50/50">
-                                            <TableCell className="text-sm font-semibold">{item.staff_name}</TableCell>
-                                            <TableCell className="text-sm font-semibold text-center text-gray-600">{item.assigned}</TableCell>
-                                            <TableCell className="text-sm font-semibold text-center text-green-600">{item.completed}</TableCell>
+                                            <TableCell className="text-xs font-semibold">{item.staff_name}</TableCell>
                                             <TableCell className="text-right">
-                                                <Badge className={`${item.efficiency >= 80 ? 'bg-green-500 text-white' : item.efficiency >= 50 ? 'bg-blue-500 text-white' : 'bg-gray-400 text-white'} text-xs font-bold`}>
-                                                    {item.efficiency}%
+                                                <Badge className={`${item.efficiency >= 80 ? 'bg-green-500 text-white' : item.efficiency >= 50 ? 'bg-blue-500 text-white' : 'bg-gray-400 text-white'} text-[10px] font-bold`}>
+                                                    {item.efficiency}
                                                 </Badge>
                                             </TableCell>
                                         </TableRow>
@@ -285,28 +278,24 @@ const ManagerDashboard = () => {
                 {/* D. Monthly Creative Team Performance */}
                 <Card className="border shadow-sm rounded-xl overflow-hidden">
                     <CardHeader className="bg-purple-600 text-white py-3 px-4">
-                        <CardTitle className="text-base font-bold">Monthly Performance</CardTitle>
+                        <CardTitle className="text-sm font-bold">Monthly Performance</CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
                         <div className="overflow-x-auto">
                             <Table>
                                 <TableHeader className="bg-gray-50/50">
                                     <TableRow>
-                                        <TableHead className="text-sm font-bold">Staff</TableHead>
-                                        <TableHead className="text-sm font-bold text-center">Assigned</TableHead>
-                                        <TableHead className="text-sm font-bold text-center">Completed</TableHead>
-                                        <TableHead className="text-sm font-bold text-right">Efficiency</TableHead>
+                                        <TableHead className="text-xs font-bold">Staff</TableHead>
+                                        <TableHead className="text-xs font-bold text-right">Efficacy</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {creativeDashboard?.monthlyEfficiency?.map((item: any) => (
                                         <TableRow key={item.id} className="hover:bg-gray-50/50">
-                                            <TableCell className="text-sm font-semibold">{item.staff_name}</TableCell>
-                                            <TableCell className="text-sm font-semibold text-center text-gray-600">{item.assigned}</TableCell>
-                                            <TableCell className="text-sm font-semibold text-center text-green-600">{item.completed}</TableCell>
+                                            <TableCell className="text-xs font-semibold">{item.staff_name}</TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex items-center justify-end gap-2">
-                                                    <span className="text-xs font-bold text-gray-600">{item.efficiency}%</span>
+                                                    <span className="text-[10px] font-bold text-gray-600">{item.efficiency}%</span>
                                                     <div className="w-12 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                                                         <div className="h-full bg-purple-500" style={{ width: `${item.efficiency}%` }} />
                                                     </div>

@@ -355,7 +355,7 @@ export const getCreativeDashboardStats = async () => {
     }));
 
     // 3. Helper to calculate efficiency
-    const calculateEfficiency = async (startDate: Date, sortKey: 'completed' | 'efficiency' = 'efficiency') => {
+    const calculateEfficiency = async (startDate: Date) => {
         const tasksPeriod = await prisma.task.findMany({
             where: {
                 assignee_id: { in: creativeIds },
@@ -395,12 +395,12 @@ export const getCreativeDashboardStats = async () => {
                 completed: completed,
                 efficiency: finalScore
             };
-        }).sort((a, b) => b[sortKey] - a[sortKey]);
+        }).sort((a, b) => b.efficiency - a.efficiency);
     };
 
-    const dailyEfficiency = await calculateEfficiency(today, 'completed');
-    const weeklyEfficiency = await calculateEfficiency(startWeek, 'completed');
-    const monthlyEfficiency = await calculateEfficiency(startMnth, 'efficiency');
+    const dailyEfficiency = await calculateEfficiency(today);
+    const weeklyEfficiency = await calculateEfficiency(startWeek);
+    const monthlyEfficiency = await calculateEfficiency(startMnth);
 
     return {
         dailyTasks: formatTasksResponse,

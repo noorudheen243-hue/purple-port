@@ -607,6 +607,7 @@ model AccountHead {
 
 model Ledger {
   id          String   @id @default(uuid())
+  ledger_code String?  @unique // QIXFMLxxxx
   name        String   // Unique constraint handled in logic or compound unique
   entity_type String?  // Enum: CLIENT, USER, INTERNAL, VENDOR, BANK, CASH, INCOME, EXPENSE, ADJUSTMENT
   entity_id   String?  // Optional link to Client/User ID
@@ -779,6 +780,7 @@ model Lead {
   address         String?  // Address/Location
   quality         String?  // Lead quality (e.g. HIGH, MEDIUM, LOW)
   status          String   @default("NEW") // Lead status (NEW, CONTACTED, etc.)
+  is_positive     Boolean? // Positive/Negative flag
   
   follow_ups      LeadFollowUp[]
 

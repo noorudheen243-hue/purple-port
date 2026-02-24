@@ -1,6 +1,7 @@
 import prisma from '../../utils/prisma';
 import { Prisma } from '@prisma/client';
 import { generateTransactionId } from '../../utils/transactionIdGenerator';
+import { generateLedgerCode } from '../../utils/ledgerIdGenerator';
 
 export type LedgerType = 'CLIENT' | 'VENDOR' | 'BANK' | 'CASH' | 'INCOME' | 'EXPENSE' | 'ADJUSTMENT' | 'INTERNAL';
 
@@ -14,9 +15,12 @@ export const createLedger = async (data: {
     opening_balance_date?: Date;
 }) => {
     return prisma.$transaction(async (tx) => {
+        const ledgerCode = await generateLedgerCode(tx);
+
         // 1. Create Ledger
         const ledger = await tx.ledger.create({
             data: {
+                ledger_code: ledgerCode,
                 name: data.name,
                 head_id: data.head_id,
                 entity_type: data.entity_type,
@@ -518,8 +522,8 @@ export const getTransactions = async (
             amount: tx.amount,
             reference: tx.reference,
             created_by: 'System', // Schema relation missing
-            debit_ledgers: debitLines.map((l: any) => l.ledger.name).join(', '),
-            credit_ledgers: creditLines.map((l: any) => l.ledger.name).join(', ')
+            debit_ledgers: debitLines.map((l: any) => `${l.ledger.name} (${l.ledger.ledger_code || '-'})`).join(', '),
+            credit_ledgers: creditLines.map((l: any) => `${l.ledger.name} (${l.ledger.ledger_code || '-'})`).join(', ')
         };
     });
 };

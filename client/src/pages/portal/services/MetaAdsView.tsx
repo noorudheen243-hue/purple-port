@@ -149,66 +149,68 @@ const MetaAdsView = () => {
                 </CardHeader>
                 <CardContent>
                     {isLoading ? <div className="text-center py-8">Loading data...</div> : (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Date</TableHead>
-                                    <TableHead>Campaign</TableHead>
-                                    <TableHead>Platform</TableHead>
-                                    <TableHead>Objective</TableHead>
-                                    <TableHead className="text-right">Spend</TableHead>
-                                    <TableHead className="text-right">Results</TableHead>
-                                    <TableHead>Notes</TableHead>
-                                    {isManageMode && <TableHead className="text-right">Actions</TableHead>}
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {logs?.length > 0 ? logs.map((log: any) => {
-                                    const results = typeof log.results_json === 'string' ? JSON.parse(log.results_json) : log.results_json;
-                                    return (
-                                        <TableRow key={log.id} className={editingLog?.id === log.id ? "bg-yellow-50" : ""}>
-                                            <TableCell>{new Date(log.date).toLocaleDateString()}</TableCell>
-                                            <TableCell className="font-medium">{log.campaign_name}</TableCell>
-                                            <TableCell>{log.platform}</TableCell>
-                                            <TableCell>{log.objective}</TableCell>
-                                            <TableCell className="text-right font-mono">₹{log.spend?.toLocaleString()}</TableCell>
-                                            <TableCell className="text-right text-xs text-muted-foreground">
-                                                {Object.entries(results || {}).map(([k, v]) => (
-                                                    <div key={k}>{k}: <b>{v as any}</b></div>
-                                                ))}
-                                            </TableCell>
-                                            <TableCell className="max-w-[200px] truncate" title={log.notes}>{log.notes || '-'}</TableCell>
-                                            {isManageMode && (
-                                                <TableCell className="text-right space-x-2">
-                                                    <Button variant="ghost" size="sm" onClick={() => {
-                                                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                                                        setEditingLog(log);
-                                                    }}>
-                                                        Edit
-                                                    </Button>
-                                                    <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => handleDelete(log.id)}>
-                                                        Delete
-                                                    </Button>
-                                                </TableCell>
-                                            )}
-                                        </TableRow>
-                                    )
-                                }) : (
+                        <div className="overflow-x-auto">
+                            <Table>
+                                <TableHeader>
                                     <TableRow>
-                                        <TableCell colSpan={isManageMode ? 8 : 7} className="text-center h-32 text-muted-foreground">
-                                            <div className="flex flex-col items-center justify-center gap-2">
-                                                <p>No records found.</p>
-                                                {canManage && !isManageMode && (
-                                                    <Button variant="outline" size="sm" onClick={() => navigate(`?mode=manage&clientId=${clientId}`)}>
-                                                        Add First Daily Entry
-                                                    </Button>
-                                                )}
-                                            </div>
-                                        </TableCell>
+                                        <TableHead>Date</TableHead>
+                                        <TableHead>Campaign</TableHead>
+                                        <TableHead>Platform</TableHead>
+                                        <TableHead>Objective</TableHead>
+                                        <TableHead className="text-right">Spend</TableHead>
+                                        <TableHead className="text-right">Results</TableHead>
+                                        <TableHead>Notes</TableHead>
+                                        {isManageMode && <TableHead className="text-right">Actions</TableHead>}
                                     </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
+                                </TableHeader>
+                                <TableBody>
+                                    {logs?.length > 0 ? logs.map((log: any) => {
+                                        const results = typeof log.results_json === 'string' ? JSON.parse(log.results_json) : log.results_json;
+                                        return (
+                                            <TableRow key={log.id} className={editingLog?.id === log.id ? "bg-yellow-50" : ""}>
+                                                <TableCell>{new Date(log.date).toLocaleDateString()}</TableCell>
+                                                <TableCell className="font-medium">{log.campaign_name}</TableCell>
+                                                <TableCell>{log.platform}</TableCell>
+                                                <TableCell>{log.objective}</TableCell>
+                                                <TableCell className="text-right font-mono">₹{log.spend?.toLocaleString()}</TableCell>
+                                                <TableCell className="text-right text-xs text-muted-foreground">
+                                                    {Object.entries(results || {}).map(([k, v]) => (
+                                                        <div key={k}>{k}: <b>{v as any}</b></div>
+                                                    ))}
+                                                </TableCell>
+                                                <TableCell className="max-w-[200px] truncate" title={log.notes}>{log.notes || '-'}</TableCell>
+                                                {isManageMode && (
+                                                    <TableCell className="text-right space-x-2">
+                                                        <Button variant="ghost" size="sm" onClick={() => {
+                                                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                            setEditingLog(log);
+                                                        }}>
+                                                            Edit
+                                                        </Button>
+                                                        <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => handleDelete(log.id)}>
+                                                            Delete
+                                                        </Button>
+                                                    </TableCell>
+                                                )}
+                                            </TableRow>
+                                        )
+                                    }) : (
+                                        <TableRow>
+                                            <TableCell colSpan={isManageMode ? 8 : 7} className="text-center h-32 text-muted-foreground">
+                                                <div className="flex flex-col items-center justify-center gap-2">
+                                                    <p>No records found.</p>
+                                                    {canManage && !isManageMode && (
+                                                        <Button variant="outline" size="sm" onClick={() => navigate(`?mode=manage&clientId=${clientId}`)}>
+                                                            Add First Daily Entry
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
                     )}
                 </CardContent>
             </Card>

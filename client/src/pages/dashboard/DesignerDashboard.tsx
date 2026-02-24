@@ -1,11 +1,18 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../lib/api';
+import { useAuthStore } from '../../store/authStore';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+
+import { Layout, TrendingUp, Calendar, BadgeCheck } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 const COLORS = ['#FF8042', '#00C49F', '#FFBB28', '#0088FE', '#8884d8'];
 
 const DesignerDashboard = () => {
+    const { user } = useAuthStore();
     const { data, isLoading } = useQuery({
         queryKey: ['designer-stats'],
         queryFn: async () => {
@@ -19,6 +26,11 @@ const DesignerDashboard = () => {
 
     if (isLoading) return <div className="p-8 text-center text-gray-500 animate-pulse">Loading workspace...</div>;
 
+    const { data: creativeDashboard, isLoading: isCreativeLoading } = useQuery({
+        queryKey: ['creative-dashboard'],
+        queryFn: async () => (await api.get('/analytics/creative-dashboard')).data
+    });
+
     const { distribution } = data || { distribution: [] };
     const myStats = data?.efficiency[0] || { total: 0, completed: 0, efficiency: 0 };
 
@@ -31,75 +43,160 @@ const DesignerDashboard = () => {
                 <p className="text-muted-foreground mt-1">Track your tasks and performance.</p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* 1. My Task Status */}
-                <div className="bg-white p-6 rounded-xl shadow-lg border border-orange-100">
-                    <h2 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2">My Current Month's Tasks</h2>
-                    <div className="h-[300px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={distribution}
-                                    cx="50%"
-                                    cy="50%"
-                                    labelLine={false}
-                                    label={({ name, value }) => value > 0 ? `${name}: ${value}` : ''}
-                                    outerRadius={100}
-                                    fill="#8884d8"
-                                    dataKey="value"
-                                >
-                                    {distribution.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                    ))}
-                                </Pie>
-                                <Tooltip />
-                                <Legend />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
+            {/* --- SECTION 1: TODAY'S CREATIVE TASKS --- */}
+            <div className="grid grid-cols-1 gap-6">
+                <Card className="border shadow-lg rounded-xl overflow-hidden bg-white">
+                    <CardHeader className="bg-gradient-to-r from-orange-500 to-red-500 text-white py-4 px-6">
+                        <CardTitle className="text-lg font-bold flex items-center gap-2">
+                            <Layout size={20} />
+                            My Team's Tasks Assigned Today
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        <div className="overflow-x-auto">
+                            <Table>
+                                <TableHeader className="bg-gray-50">
+                                    <TableRow>
+                                        <TableHead className="w-[80px] font-bold">S.No</TableHead>
+                                        <TableHead className="font-bold">Staff Name</TableHead>
+                                        <TableHead className="font-bold">Client</TableHead>
+                                        <TableHead className="font-bold">Task Type</TableHead>
+                                        <TableHead className="font-bold">Assigned By</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {isCreativeLoading ? (
+                                        <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted-foreground animate-pulse font-medium text-sm">Refreshing creative assignments...</TableCell></TableRow>
+                                    ) : creativeDashboard?.dailyTasks?.length === 0 ? (
+                                        <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic font-medium text-sm">No tasks assigned to your team yet today.</TableCell></TableRow>
+                                    ) : (
+                                        creativeDashboard?.dailyTasks?.map((task: any) => (
+                                            <TableRow key={task.id} className="hover:bg-gray-50 transition-colors">
+                                                <TableCell className="font-semibold text-gray-400">{task.s_no}</TableCell>
+                                                <TableCell className="font-bold text-gray-800">{task.staff_name}</TableCell>
+                                                <TableCell className="font-bold text-orange-600">{task.client_name}</TableCell>
+                                                <TableCell><Badge className="bg-orange-50 text-orange-700 border-orange-100 font-bold" variant="outline">{task.task_type}</Badge></TableCell>
+                                                <TableCell className="text-gray-500 font-medium">{task.assigned_by}</TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
 
-                {/* 2. My Performance Card */}
-                <div className="bg-white p-6 rounded-xl shadow-lg border border-orange-100 flex flex-col justify-center items-center text-center">
-                    <h2 className="text-lg font-bold text-gray-800 mb-6">Efficiency Score</h2>
-                    <div className="relative w-48 h-48 flex items-center justify-center">
-                        <svg className="w-full h-full transform -rotate-90">
-                            <circle
-                                cx="96"
-                                cy="96"
-                                r="88"
-                                className="stroke-current text-gray-200"
-                                strokeWidth="12"
-                                fill="none"
-                            />
-                            <circle
-                                cx="96"
-                                cy="96"
-                                r="88"
-                                className="stroke-current text-green-500 transition-all duration-1000 ease-out"
-                                strokeWidth="12"
-                                fill="none"
-                                strokeDasharray={2 * Math.PI * 88}
-                                strokeDashoffset={2 * Math.PI * 88 * (1 - myStats.efficiency / 100)}
-                                strokeLinecap="round"
-                            />
-                        </svg>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <span className="text-4xl font-bold text-gray-800">{myStats.efficiency}%</span>
-                            <span className="text-xs text-gray-500 uppercase tracking-wider mt-1">Completion Rate</span>
+            {/* --- SECTION 2: PERFORMANCE OVERVIEW --- */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                {/* B. Daily Efficiency */}
+                <Card className="border shadow-md rounded-xl overflow-hidden bg-white">
+                    <CardHeader className="bg-amber-500 text-white py-3 px-4 flex flex-row items-center justify-between">
+                        <CardTitle className="text-sm font-bold">Daily Scorecard</CardTitle>
+                        <TrendingUp size={18} />
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        <div className="overflow-x-auto">
+                            <Table>
+                                <TableHeader className="bg-gray-50">
+                                    <TableRow>
+                                        <TableHead className="text-xs font-bold uppercase">Staff</TableHead>
+                                        <TableHead className="text-xs font-bold text-right uppercase">Efficiency</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {creativeDashboard?.dailyEfficiency?.map((item: any) => (
+                                        <TableRow key={item.id} className="hover:bg-gray-50 transition-colors">
+                                            <TableCell className={`text-sm font-bold ${item.id === user?.id ? 'text-orange-600' : 'text-gray-600'}`}>
+                                                {item.staff_name} {item.id === user?.id && '(Me)'}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <Badge className={`${item.efficiency >= 80 ? 'bg-green-100 text-green-700 border-green-200' : item.efficiency >= 50 ? 'bg-orange-100 text-orange-700 border-orange-200' : 'bg-red-100 text-red-700 border-red-200'} font-black text-xs`}>
+                                                    {item.efficiency}%
+                                                </Badge>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
                         </div>
-                    </div>
-                    <div className="mt-8 grid grid-cols-2 gap-4 w-full">
-                        <div className="bg-orange-50 p-3 rounded-lg">
-                            <span className="block text-2xl font-bold text-orange-600">{myStats.total}</span>
-                            <span className="text-xs text-orange-800">Total Tasks</span>
+                    </CardContent>
+                </Card>
+
+                {/* C. Weekly Performance */}
+                <Card className="border shadow-md rounded-xl overflow-hidden bg-white">
+                    <CardHeader className="bg-blue-500 text-white py-3 px-4 flex flex-row items-center justify-between">
+                        <CardTitle className="text-sm font-bold">Weekly Performance</CardTitle>
+                        <Calendar size={18} />
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        <div className="overflow-x-auto">
+                            <Table>
+                                <TableHeader className="bg-gray-50">
+                                    <TableRow>
+                                        <TableHead className="text-xs font-bold uppercase">Staff</TableHead>
+                                        <TableHead className="text-xs font-bold text-right uppercase">Rank</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {creativeDashboard?.weeklyEfficiency?.map((item: any) => (
+                                        <TableRow key={item.id} className="hover:bg-gray-50 transition-colors">
+                                            <TableCell className={`text-sm font-bold ${item.id === user?.id ? 'text-blue-600' : 'text-gray-600'}`}>
+                                                {item.staff_name}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-black text-xs ${item.efficiency >= 80 ? 'bg-green-500 text-white shadow-sm' : item.efficiency >= 50 ? 'bg-blue-500 text-white shadow-sm' : 'bg-slate-300 text-white shadow-inner'}`}>
+                                                    {item.efficiency}
+                                                </span>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
                         </div>
-                        <div className="bg-green-50 p-3 rounded-lg">
-                            <span className="block text-2xl font-bold text-green-600">{myStats.completed}</span>
-                            <span className="text-xs text-green-800">Completed</span>
+                    </CardContent>
+                </Card>
+
+                {/* D. Monthly Performance */}
+                <Card className="border shadow-md rounded-xl overflow-hidden bg-white">
+                    <CardHeader className="bg-indigo-500 text-white py-3 px-4 flex flex-row items-center justify-between">
+                        <CardTitle className="text-sm font-bold">Monthly Efficacy</CardTitle>
+                        <BadgeCheck size={20} />
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        <div className="overflow-x-auto">
+                            <Table>
+                                <TableHeader className="bg-gray-50">
+                                    <TableRow>
+                                        <TableHead className="text-xs font-bold uppercase">Staff</TableHead>
+                                        <TableHead className="text-xs font-bold text-right uppercase">Track</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {creativeDashboard?.monthlyEfficiency?.map((item: any) => (
+                                        <TableRow key={item.id} className="hover:bg-gray-50 transition-colors">
+                                            <TableCell className={`text-sm font-bold ${item.id === user?.id ? 'text-indigo-600' : 'text-gray-600'}`}>
+                                                {item.staff_name}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <div className="flex flex-col items-end gap-1">
+                                                    <span className="text-[10px] font-black text-indigo-600 leading-none">{item.efficiency}%</span>
+                                                    <div className="w-16 h-2 bg-gray-100 rounded-full overflow-hidden shadow-inner border border-gray-100">
+                                                        <div
+                                                            className={`h-full ${item.id === user?.id ? 'bg-indigo-600 shadow-md' : 'bg-indigo-400 opacity-60'}`}
+                                                            style={{ width: `${item.efficiency}%` }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
                         </div>
-                    </div>
-                </div>
+                    </CardContent>
+                </Card>
             </div>
         </div>
     );

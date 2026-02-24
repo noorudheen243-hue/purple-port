@@ -54,6 +54,7 @@ interface Lead {
     address: string;
     quality: string;
     status: string;
+    is_positive?: boolean | null;
     follow_ups: FollowUp[];
 }
 
@@ -133,6 +134,8 @@ const ManageServicesView = () => {
     const [activeTab, setActiveTab] = useState(isInternal ? 'campaignData' : 'history');
     const [isAddingLead, setIsAddingLead] = useState(false);
     const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
+    const [leadDateFrom, setLeadDateFrom] = useState<string>('');
+    const [leadDateTo, setLeadDateTo] = useState<string>('');
     const [leadForm, setLeadForm] = useState<Partial<Lead>>({
         date: new Date().toISOString(),
         quality: 'MEDIUM',
@@ -279,13 +282,36 @@ const ManageServicesView = () => {
     }, [aggregatedHistory]);
 
     const leadSummary = useMemo(() => {
-        if (!leads) return { total: 0, highQuality: 0, converted: 0 };
+        if (!leads) return { total: 0, highQuality: 0, converted: 0, positive: 0, negative: 0 };
         return {
             total: leads.length,
             highQuality: leads.filter((l: any) => l.quality === 'HIGH').length,
-            converted: leads.filter((l: any) => l.status === 'CONVERTED').length
+            converted: leads.filter((l: any) => l.status === 'CONVERTED').length,
+            positive: leads.filter((l: any) => l.is_positive === true).length,
+            negative: leads.filter((l: any) => l.is_positive === false).length,
         };
     }, [leads]);
+
+    const sortedLeads = useMemo(() => {
+        if (!leads) return [];
+        let filtered = [...leads];
+
+        if (leadDateFrom) {
+            const fromTime = new Date(leadDateFrom).getTime();
+            filtered = filtered.filter((l: any) => new Date(l.date).getTime() >= fromTime);
+        }
+        if (leadDateTo) {
+            const toTime = new Date(leadDateTo).getTime();
+            // Include leads up to the end of the selected toDate
+            filtered = filtered.filter((l: any) => new Date(l.date).getTime() <= toTime + 86400000);
+        }
+
+        return filtered.sort((a: any, b: any) => {
+            const timeA = new Date(a.date).getTime();
+            const timeB = new Date(b.date).getTime();
+            return timeB - timeA; // Default to newest first
+        });
+    }, [leads, leadDateFrom, leadDateTo]);
 
     // --- MUTATIONS ---
 
@@ -433,6 +459,11 @@ const ManageServicesView = () => {
         }).then((result) => {
             if (result.isConfirmed) deleteLeadMutation.mutate(id);
         });
+    };
+
+    const quickToggleLeadFlag = (lead: Lead, flag: boolean) => {
+        // Automatically save the toggle state
+        leadMutation.mutate({ ...lead, is_positive: flag });
     };
 
     const confirmDeleteCampaign = (item: HistoryItem) => {
@@ -832,270 +863,341 @@ const ManageServicesView = () => {
                 {/* --- LEAD MANAGEMENT TAB --- */}
                 <TabsContent value="leads">
                     {/* Summary Metrics */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                        <Card className="bg-blue-50/50 border-blue-100 flex flex-col items-center justify-center p-4 rounded-xl shadow-sm">
-                            <span className="text-sm font-bold text-blue-600 mb-1">Total Leads</span>
-                            <span className="text-3xl font-extrabold text-blue-900">{leadSummary.total}</span>
+                    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+                        <Card className="bg-blue-50/50 border-blue-100 flex flex-col items-center justify-center p-3 rounded-xl shadow-sm">
+                            <span className="text-xs font-bold text-blue-600 mb-1">Total Leads</span>
+                            <span className="text-2xl font-extrabold text-blue-900">{leadSummary.total}</span>
                         </Card>
-                        <Card className="bg-amber-50/50 border-amber-100 flex flex-col items-center justify-center p-4 rounded-xl shadow-sm">
-                            <span className="text-sm font-bold text-amber-600 mb-1">High Quality</span>
-                            <span className="text-3xl font-extrabold text-amber-900">{leadSummary.highQuality}</span>
+                        <Card className="bg-amber-50/50 border-amber-100 flex flex-col items-center justify-center p-3 rounded-xl shadow-sm">
+                            <span className="text-xs font-bold text-amber-600 mb-1">High Quality</span>
+                            <span className="text-2xl font-extrabold text-amber-900">{leadSummary.highQuality}</span>
                         </Card>
-                        <Card className="bg-green-50/50 border-green-100 flex flex-col items-center justify-center p-4 rounded-xl shadow-sm">
-                            <span className="text-sm font-bold text-green-600 mb-1">Converted Leads</span>
-                            <span className="text-3xl font-extrabold text-green-900">{leadSummary.converted}</span>
+                        <Card className="bg-green-50/50 border-green-100 flex flex-col items-center justify-center p-3 rounded-xl shadow-sm">
+                            <span className="text-xs font-bold text-green-600 mb-1">Converted Leads</span>
+                            <span className="text-2xl font-extrabold text-green-900">{leadSummary.converted}</span>
+                        </Card>
+                        <Card className="bg-green-500 border-green-600 flex flex-col items-center justify-center p-3 rounded-xl shadow-sm">
+                            <span className="text-xs font-bold text-white mb-1">Positive Leads</span>
+                            <span className="text-2xl font-extrabold text-white">{leadSummary.positive}</span>
+                        </Card>
+                        <Card className="bg-red-500 border-red-600 flex flex-col items-center justify-center p-3 rounded-xl shadow-sm">
+                            <span className="text-xs font-bold text-white mb-1">Negative Leads</span>
+                            <span className="text-2xl font-extrabold text-white">{leadSummary.negative}</span>
                         </Card>
                     </div>
 
                     <Card className="border-none shadow-sm rounded-2xl overflow-hidden">
-                        <CardHeader className="flex flex-row items-center justify-between border-b bg-gray-50/30 p-6">
+                        <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between border-b bg-gray-50/30 p-6 gap-4">
                             <div>
                                 <CardTitle className="text-xl">Leads Tracker</CardTitle>
                                 <CardDescription>Track daily leads and manage follow-up sequences.</CardDescription>
                             </div>
-                            <Button onClick={() => setIsAddingLead(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 h-10 px-6 rounded-lg font-semibold shadow-sm">
-                                <Plus size={18} /> Add New Lead
-                            </Button>
+                            <div className="flex items-center flex-wrap gap-3">
+                                <div className="flex items-center gap-2 bg-white px-2 py-1.5 rounded-lg border shadow-sm">
+                                    <span className="text-xs font-bold text-gray-500 ml-1">From:</span>
+                                    <Input
+                                        type="date"
+                                        value={leadDateFrom}
+                                        onChange={(e) => setLeadDateFrom(e.target.value)}
+                                        className="h-7 w-[130px] border-none shadow-none bg-transparent focus-visible:ring-0 px-1"
+                                    />
+                                    <span className="text-xs font-bold text-gray-500 border-l pl-2">To:</span>
+                                    <Input
+                                        type="date"
+                                        value={leadDateTo}
+                                        onChange={(e) => setLeadDateTo(e.target.value)}
+                                        className="h-7 w-[130px] border-none shadow-none bg-transparent focus-visible:ring-0 px-1"
+                                    />
+                                    {(leadDateFrom || leadDateTo) && (
+                                        <button onClick={() => { setLeadDateFrom(''); setLeadDateTo(''); }} className="text-gray-400 hover:text-red-500 mr-1 transiton-all">
+                                            <X size={14} />
+                                        </button>
+                                    )}
+                                </div>
+                                <Button onClick={() => setIsAddingLead(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 h-10 px-6 rounded-lg font-semibold shadow-sm">
+                                    <Plus size={18} /> Add New Lead
+                                </Button>
+                            </div>
                         </CardHeader>
-                        <CardContent className="p-0 overflow-x-auto">
-                            <Table>
-                                <TableHeader className="bg-gray-50/50">
-                                    <TableRow>
-                                        <TableHead className="w-[120px] font-bold text-gray-700">Date</TableHead>
-                                        <TableHead className="font-bold text-gray-700">Lead Info</TableHead>
-                                        <TableHead className="font-bold text-gray-700">Campaign</TableHead>
-                                        <TableHead className="font-bold text-gray-700">Location</TableHead>
-                                        <TableHead className="w-[100px] font-bold text-gray-700">Quality</TableHead>
-                                        <TableHead className="w-[120px] font-bold text-gray-700">Status</TableHead>
-                                        <TableHead className="font-bold text-gray-700 min-w-[350px]">Follow Ups</TableHead>
-                                        <TableHead className="w-[100px] text-right font-bold">Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {/* Inline Add Row */}
-                                    {isAddingLead && (
-                                        <TableRow className="bg-indigo-50/30 border-b-2 border-indigo-200">
-                                            <TableCell className="p-2">
-                                                <Input type="date" value={leadForm.date?.split('T')[0]} onChange={(e) => setLeadForm({ ...leadForm, date: new Date(e.target.value).toISOString() })} className="h-9" />
-                                            </TableCell>
-                                            <TableCell className="p-2 space-y-1">
-                                                <Input placeholder="Name" value={leadForm.name} onChange={(e) => setLeadForm({ ...leadForm, name: e.target.value })} className="h-9" />
-                                                <Input placeholder="Phone" value={leadForm.phone} onChange={(e) => setLeadForm({ ...leadForm, phone: e.target.value })} className="h-9" />
-                                            </TableCell>
-                                            <TableCell className="p-2">
-                                                <Input placeholder="Campaign" value={leadForm.campaign_name} onChange={(e) => setLeadForm({ ...leadForm, campaign_name: e.target.value })} className="h-9" />
-                                            </TableCell>
-                                            <TableCell className="p-2">
-                                                <Input placeholder="Location" value={leadForm.address} onChange={(e) => setLeadForm({ ...leadForm, address: e.target.value })} className="h-9" />
-                                            </TableCell>
-                                            <TableCell className="p-2">
-                                                <select
-                                                    className={`flex h-9 w-full rounded-md border text-sm font-bold shadow-sm focus:ring-2 focus:ring-opacity-50 transition-colors ${QUALITY_COLORS[leadForm.quality || 'MEDIUM'] || 'bg-white border-gray-300'} px-3 py-1`}
-                                                    value={leadForm.quality}
-                                                    onChange={(e) => setLeadForm({ ...leadForm, quality: e.target.value })}
-                                                >
-                                                    <option value="HIGH" className="bg-white text-gray-900 font-medium">High</option>
-                                                    <option value="MEDIUM" className="bg-white text-gray-900 font-medium">Medium</option>
-                                                    <option value="LOW" className="bg-white text-gray-900 font-medium">Low</option>
-                                                </select>
-                                            </TableCell>
-                                            <TableCell className="p-2">
-                                                <select
-                                                    className={`flex h-9 w-full rounded-md border text-sm font-bold shadow-sm focus:ring-2 focus:ring-opacity-50 transition-colors ${STATUS_COLORS[leadForm.status || 'NEW'] || 'bg-white border-gray-300'} px-3 py-1`}
-                                                    value={leadForm.status}
-                                                    onChange={(e) => setLeadForm({ ...leadForm, status: e.target.value })}
-                                                >
-                                                    <option value="NEW" className="bg-white text-gray-900 font-medium">New</option>
-                                                    <option value="CONTACTED" className="bg-white text-gray-900 font-medium">Contacted</option>
-                                                    <option value="QUALIFIED" className="bg-white text-gray-900 font-medium">Qualified</option>
-                                                    <option value="CONVERTED" className="bg-white text-gray-900 font-medium">Converted</option>
-                                                    <option value="LOST" className="bg-white text-gray-900 font-medium">Lost</option>
-                                                </select>
-                                            </TableCell>
-                                            <TableCell className="p-2 space-y-2">
-                                                {leadForm.follow_ups?.map((f, i) => (
-                                                    <div key={i} className="flex gap-1 items-center bg-white p-2 rounded-lg border shadow-sm group">
-                                                        <span className="text-[10px] font-bold bg-gray-100 px-1 rounded">{f.follow_up_number}</span>
-                                                        {/* Dynamic colored dropdown for Followup Channel inside ADD Form */}
-                                                        <select
-                                                            value={f.channel || 'Phone Call'}
-                                                            onChange={(e) => handleUpdateFollowUp(i, 'channel', e.target.value)}
-                                                            className={`h-7 text-xs flex-1 rounded font-bold border-none shadow-sm transition-colors ${f.channel === 'Whatsapp' ? 'bg-green-100 text-green-700' : f.channel === 'Email' ? 'bg-purple-100 text-purple-700' : f.channel === 'In-Person' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}
-                                                        >
-                                                            <option value="Phone Call" className="bg-white text-gray-900">Phone Call</option>
-                                                            <option value="Whatsapp" className="bg-white text-gray-900">Whatsapp</option>
-                                                            <option value="Email" className="bg-white text-gray-900">Email</option>
-                                                            <option value="In-Person" className="bg-white text-gray-900">In-Person</option>
-                                                        </select>
-                                                        <Input placeholder="Status" value={f.status} onChange={(e) => handleUpdateFollowUp(i, 'status', e.target.value)} className="h-7 text-xs flex-1" />
-                                                        <Input placeholder="Notes" value={f.notes} onChange={(e) => handleUpdateFollowUp(i, 'notes', e.target.value)} className="h-7 text-xs flex-2" />
-                                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-red-400 opacity-0 group-hover:opacity-100" onClick={() => handleRemoveFollowUp(i)}><X size={12} /></Button>
-                                                    </div>
-                                                ))}
-                                                <Button variant="outline" size="sm" onClick={handleAddFollowUp} className="w-full h-8 border-dashed text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50">
-                                                    <Plus size={14} className="mr-1" /> Add Follow Up
-                                                </Button>
-                                            </TableCell>
-                                            <TableCell className="p-2 text-right">
-                                                <div className="flex justify-end gap-1">
-                                                    <Button size="icon" className="h-10 w-10 bg-green-600 hover:bg-green-700 text-white" onClick={saveLead}><Save size={18} /></Button>
-                                                    <Button size="icon" variant="ghost" className="h-10 w-10 text-gray-400" onClick={() => setIsAddingLead(false)}><X size={18} /></Button>
-                                                </div>
-                                            </TableCell>
+                        <CardContent className="p-0">
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader className="bg-gray-50/50">
+                                        <TableRow>
+                                            <TableHead className="w-[120px] font-bold text-gray-700">Date</TableHead>
+                                            <TableHead className="font-bold text-gray-700">Lead Info</TableHead>
+                                            <TableHead className="font-bold text-gray-700">Campaign</TableHead>
+                                            <TableHead className="font-bold text-gray-700">Location</TableHead>
+                                            <TableHead className="w-[100px] font-bold text-gray-700">Quality</TableHead>
+                                            <TableHead className="w-[120px] font-bold text-gray-700">Status</TableHead>
+                                            <TableHead className="font-bold text-gray-700 min-w-[350px]">Follow Ups</TableHead>
+                                            <TableHead className="w-[120px] font-bold text-gray-700 text-center">Feedback</TableHead>
+                                            <TableHead className="w-[100px] text-right font-bold">Actions</TableHead>
                                         </TableRow>
-                                    )}
+                                    </TableHeader>
+                                    <TableBody>
+                                        {/* Inline Add Row */}
+                                        {isAddingLead && (
+                                            <TableRow className="bg-indigo-50/30 border-b-2 border-indigo-200">
+                                                <TableCell className="p-2">
+                                                    <Input type="date" value={leadForm.date?.split('T')[0]} onChange={(e) => setLeadForm({ ...leadForm, date: new Date(e.target.value).toISOString() })} className="h-9" />
+                                                </TableCell>
+                                                <TableCell className="p-2 space-y-1">
+                                                    <Input placeholder="Name" value={leadForm.name} onChange={(e) => setLeadForm({ ...leadForm, name: e.target.value })} className="h-9" />
+                                                    <Input placeholder="Phone" value={leadForm.phone} onChange={(e) => setLeadForm({ ...leadForm, phone: e.target.value })} className="h-9" />
+                                                </TableCell>
+                                                <TableCell className="p-2">
+                                                    <Input placeholder="Campaign" value={leadForm.campaign_name} onChange={(e) => setLeadForm({ ...leadForm, campaign_name: e.target.value })} className="h-9" />
+                                                </TableCell>
+                                                <TableCell className="p-2">
+                                                    <Input placeholder="Location" value={leadForm.address} onChange={(e) => setLeadForm({ ...leadForm, address: e.target.value })} className="h-9" />
+                                                </TableCell>
+                                                <TableCell className="p-2">
+                                                    <select
+                                                        className={`flex h-9 w-full rounded-md border text-sm font-bold shadow-sm focus:ring-2 focus:ring-opacity-50 transition-colors ${QUALITY_COLORS[leadForm.quality || 'MEDIUM'] || 'bg-white border-gray-300'} px-3 py-1`}
+                                                        value={leadForm.quality}
+                                                        onChange={(e) => setLeadForm({ ...leadForm, quality: e.target.value })}
+                                                    >
+                                                        <option value="HIGH" className="bg-white text-gray-900 font-medium">High</option>
+                                                        <option value="MEDIUM" className="bg-white text-gray-900 font-medium">Medium</option>
+                                                        <option value="LOW" className="bg-white text-gray-900 font-medium">Low</option>
+                                                    </select>
+                                                </TableCell>
+                                                <TableCell className="p-2">
+                                                    <select
+                                                        className={`flex h-9 w-full rounded-md border text-sm font-bold shadow-sm focus:ring-2 focus:ring-opacity-50 transition-colors ${STATUS_COLORS[leadForm.status || 'NEW'] || 'bg-white border-gray-300'} px-3 py-1`}
+                                                        value={leadForm.status}
+                                                        onChange={(e) => setLeadForm({ ...leadForm, status: e.target.value })}
+                                                    >
+                                                        <option value="NEW" className="bg-white text-gray-900 font-medium">New</option>
+                                                        <option value="CONTACTED" className="bg-white text-gray-900 font-medium">Contacted</option>
+                                                        <option value="QUALIFIED" className="bg-white text-gray-900 font-medium">Qualified</option>
+                                                        <option value="CONVERTED" className="bg-white text-gray-900 font-medium">Converted</option>
+                                                        <option value="LOST" className="bg-white text-gray-900 font-medium">Lost</option>
+                                                    </select>
+                                                </TableCell>
+                                                <TableCell className="p-2 space-y-2">
+                                                    {leadForm.follow_ups?.map((f, i) => (
+                                                        <div key={i} className="flex gap-1 items-center bg-white p-2 rounded-lg border shadow-sm group">
+                                                            <span className="text-[10px] font-bold bg-gray-100 px-1 rounded">{f.follow_up_number}</span>
+                                                            {/* Dynamic colored dropdown for Followup Channel inside ADD Form */}
+                                                            <select
+                                                                value={f.channel || 'Phone Call'}
+                                                                onChange={(e) => handleUpdateFollowUp(i, 'channel', e.target.value)}
+                                                                className={`h-7 text-xs flex-1 rounded font-bold border-none shadow-sm transition-colors ${f.channel === 'Whatsapp' ? 'bg-green-100 text-green-700' : f.channel === 'Email' ? 'bg-purple-100 text-purple-700' : f.channel === 'In-Person' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}
+                                                            >
+                                                                <option value="Phone Call" className="bg-white text-gray-900">Phone Call</option>
+                                                                <option value="Whatsapp" className="bg-white text-gray-900">Whatsapp</option>
+                                                                <option value="Email" className="bg-white text-gray-900">Email</option>
+                                                                <option value="In-Person" className="bg-white text-gray-900">In-Person</option>
+                                                            </select>
+                                                            <Input placeholder="Status" value={f.status} onChange={(e) => handleUpdateFollowUp(i, 'status', e.target.value)} className="h-7 text-xs flex-1" />
+                                                            <Input placeholder="Notes" value={f.notes} onChange={(e) => handleUpdateFollowUp(i, 'notes', e.target.value)} className="h-7 text-xs flex-2" />
+                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-red-400 opacity-0 group-hover:opacity-100" onClick={() => handleRemoveFollowUp(i)}><X size={12} /></Button>
+                                                        </div>
+                                                    ))}
+                                                    <Button variant="outline" size="sm" onClick={handleAddFollowUp} className="w-full h-8 border-dashed text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50">
+                                                        <Plus size={14} className="mr-1" /> Add Follow Up
+                                                    </Button>
+                                                </TableCell>
+                                                <TableCell className="p-2 text-center">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <button onClick={() => setLeadForm({ ...leadForm, is_positive: true })} className={`p-1.5 rounded-full border ${leadForm.is_positive === true ? 'bg-green-500 text-white border-green-600 shadow-md' : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-green-50 hover:text-green-500'}`}>
+                                                            <CheckCircle2 size={16} />
+                                                        </button>
+                                                        <button onClick={() => setLeadForm({ ...leadForm, is_positive: false })} className={`p-1.5 rounded-full border ${leadForm.is_positive === false ? 'bg-red-500 text-white border-red-600 shadow-md' : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-red-50 hover:text-red-500'}`}>
+                                                            <X size={16} />
+                                                        </button>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="p-2 text-right">
+                                                    <div className="flex justify-end gap-1">
+                                                        <Button size="icon" className="h-10 w-10 bg-green-600 hover:bg-green-700 text-white" onClick={saveLead}><Save size={18} /></Button>
+                                                        <Button size="icon" variant="ghost" className="h-10 w-10 text-gray-400" onClick={() => setIsAddingLead(false)}><X size={18} /></Button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
 
-                                    {/* Existing Rows */}
-                                    {isLeadsLoading ? (
-                                        <TableRow><TableCell colSpan={8} className="p-10 text-center text-muted-foreground">Loading leads...</TableCell></TableRow>
-                                    ) : leads?.length === 0 && !isAddingLead ? (
-                                        <TableRow><TableCell colSpan={8} className="p-20 text-center text-muted-foreground italic">No leads found for this client.</TableCell></TableRow>
-                                    ) : (
-                                        leads?.map((lead: Lead) => (
-                                            editingLeadId === lead.id ? (
-                                                <TableRow key={lead.id} className="bg-amber-50/30 border-b-2 border-amber-200">
-                                                    {/* Same logic as Add Row above */}
-                                                    <TableCell className="p-2">
-                                                        <Input type="date" value={leadForm.date?.split('T')[0]} onChange={(e) => setLeadForm({ ...leadForm, date: new Date(e.target.value).toISOString() })} className="h-9" />
-                                                    </TableCell>
-                                                    <TableCell className="p-2 space-y-1">
-                                                        <Input placeholder="Name" value={leadForm.name} onChange={(e) => setLeadForm({ ...leadForm, name: e.target.value })} className="h-9 font-bold" />
-                                                        <Input placeholder="Phone" value={leadForm.phone} onChange={(e) => setLeadForm({ ...leadForm, phone: e.target.value })} className="h-9 text-indigo-600" />
-                                                    </TableCell>
-                                                    <TableCell className="p-2">
-                                                        <Input placeholder="Campaign" value={leadForm.campaign_name} onChange={(e) => setLeadForm({ ...leadForm, campaign_name: e.target.value })} className="h-9" />
-                                                    </TableCell>
-                                                    <TableCell className="p-2">
-                                                        <Input placeholder="Location" value={leadForm.address} onChange={(e) => setLeadForm({ ...leadForm, address: e.target.value })} className="h-9" />
-                                                    </TableCell>
-                                                    <TableCell className="p-2">
-                                                        <select
-                                                            className={`flex h-9 w-full rounded-md border text-sm font-bold shadow-sm focus:ring-2 focus:ring-opacity-50 transition-colors ${QUALITY_COLORS[leadForm.quality || 'MEDIUM'] || 'bg-white border-gray-300'} px-3 py-1`}
-                                                            value={leadForm.quality}
-                                                            onChange={(e) => setLeadForm({ ...leadForm, quality: e.target.value })}
-                                                        >
-                                                            <option value="HIGH" className="bg-white text-gray-900 font-medium">High</option>
-                                                            <option value="MEDIUM" className="bg-white text-gray-900 font-medium">Medium</option>
-                                                            <option value="LOW" className="bg-white text-gray-900 font-medium">Low</option>
-                                                        </select>
-                                                    </TableCell>
-                                                    <TableCell className="p-2">
-                                                        <select
-                                                            className={`flex h-9 w-full rounded-md border text-sm font-bold shadow-sm focus:ring-2 focus:ring-opacity-50 transition-colors ${STATUS_COLORS[leadForm.status || 'NEW'] || 'bg-white border-gray-300'} px-3 py-1`}
-                                                            value={leadForm.status}
-                                                            onChange={(e) => setLeadForm({ ...leadForm, status: e.target.value })}
-                                                        >
-                                                            <option value="NEW" className="bg-white text-gray-900 font-medium">New</option>
-                                                            <option value="CONTACTED" className="bg-white text-gray-900 font-medium">Contacted</option>
-                                                            <option value="QUALIFIED" className="bg-white text-gray-900 font-medium">Qualified</option>
-                                                            <option value="CONVERTED" className="bg-white text-gray-900 font-medium">Converted</option>
-                                                            <option value="LOST" className="bg-white text-gray-900 font-medium">Lost</option>
-                                                        </select>
-                                                    </TableCell>
-                                                    <TableCell className="p-2 space-y-2">
-                                                        {leadForm.follow_ups?.map((f, i) => (
-                                                            <div key={i} className="flex gap-1 items-center bg-white p-2 rounded-lg border shadow-sm group">
-                                                                <span className="text-[10px] font-bold bg-gray-100 px-1 rounded">{f.follow_up_number}</span>
-                                                                {/* Dynamic colored dropdown for Followup Channel inside EDIT Form */}
-                                                                <select
-                                                                    value={f.channel || 'Phone Call'}
-                                                                    onChange={(e) => handleUpdateFollowUp(i, 'channel', e.target.value)}
-                                                                    className={`h-7 text-xs flex-1 rounded font-bold border-none shadow-sm transition-colors ${f.channel === 'Whatsapp' ? 'bg-green-100 text-green-700' : f.channel === 'Email' ? 'bg-purple-100 text-purple-700' : f.channel === 'In-Person' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}
-                                                                >
-                                                                    <option value="Phone Call" className="bg-white text-gray-900">Phone Call</option>
-                                                                    <option value="Whatsapp" className="bg-white text-gray-900">Whatsapp</option>
-                                                                    <option value="Email" className="bg-white text-gray-900">Email</option>
-                                                                    <option value="In-Person" className="bg-white text-gray-900">In-Person</option>
-                                                                </select>
-                                                                <Input placeholder="Status" value={f.status} onChange={(e) => handleUpdateFollowUp(i, 'status', e.target.value)} className="h-7 text-xs flex-1" />
-                                                                <Input placeholder="Notes" value={f.notes} onChange={(e) => handleUpdateFollowUp(i, 'notes', e.target.value)} className="h-7 text-xs flex-2" />
-                                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-red-400" onClick={() => handleRemoveFollowUp(i)}><X size={12} /></Button>
+                                        {/* Existing Rows */}
+                                        {isLeadsLoading ? (
+                                            <TableRow><TableCell colSpan={8} className="p-10 text-center text-muted-foreground">Loading leads...</TableCell></TableRow>
+                                        ) : leads?.length === 0 && !isAddingLead ? (
+                                            <TableRow><TableCell colSpan={8} className="p-20 text-center text-muted-foreground italic">No leads found for this client.</TableCell></TableRow>
+                                        ) : (
+                                            sortedLeads?.map((lead: Lead) => (
+                                                editingLeadId === lead.id ? (
+                                                    <TableRow key={lead.id} className="bg-amber-50/30 border-b-2 border-amber-200">
+                                                        {/* Same logic as Add Row above */}
+                                                        <TableCell className="p-2">
+                                                            <Input type="date" value={leadForm.date?.split('T')[0]} onChange={(e) => setLeadForm({ ...leadForm, date: new Date(e.target.value).toISOString() })} className="h-9" />
+                                                        </TableCell>
+                                                        <TableCell className="p-2 space-y-1">
+                                                            <Input placeholder="Name" value={leadForm.name} onChange={(e) => setLeadForm({ ...leadForm, name: e.target.value })} className="h-9 font-bold" />
+                                                            <Input placeholder="Phone" value={leadForm.phone} onChange={(e) => setLeadForm({ ...leadForm, phone: e.target.value })} className="h-9 text-indigo-600" />
+                                                        </TableCell>
+                                                        <TableCell className="p-2">
+                                                            <Input placeholder="Campaign" value={leadForm.campaign_name} onChange={(e) => setLeadForm({ ...leadForm, campaign_name: e.target.value })} className="h-9" />
+                                                        </TableCell>
+                                                        <TableCell className="p-2">
+                                                            <Input placeholder="Location" value={leadForm.address} onChange={(e) => setLeadForm({ ...leadForm, address: e.target.value })} className="h-9" />
+                                                        </TableCell>
+                                                        <TableCell className="p-2">
+                                                            <select
+                                                                className={`flex h-9 w-full rounded-md border text-sm font-bold shadow-sm focus:ring-2 focus:ring-opacity-50 transition-colors ${QUALITY_COLORS[leadForm.quality || 'MEDIUM'] || 'bg-white border-gray-300'} px-3 py-1`}
+                                                                value={leadForm.quality}
+                                                                onChange={(e) => setLeadForm({ ...leadForm, quality: e.target.value })}
+                                                            >
+                                                                <option value="HIGH" className="bg-white text-gray-900 font-medium">High</option>
+                                                                <option value="MEDIUM" className="bg-white text-gray-900 font-medium">Medium</option>
+                                                                <option value="LOW" className="bg-white text-gray-900 font-medium">Low</option>
+                                                            </select>
+                                                        </TableCell>
+                                                        <TableCell className="p-2">
+                                                            <select
+                                                                className={`flex h-9 w-full rounded-md border text-sm font-bold shadow-sm focus:ring-2 focus:ring-opacity-50 transition-colors ${STATUS_COLORS[leadForm.status || 'NEW'] || 'bg-white border-gray-300'} px-3 py-1`}
+                                                                value={leadForm.status}
+                                                                onChange={(e) => setLeadForm({ ...leadForm, status: e.target.value })}
+                                                            >
+                                                                <option value="NEW" className="bg-white text-gray-900 font-medium">New</option>
+                                                                <option value="CONTACTED" className="bg-white text-gray-900 font-medium">Contacted</option>
+                                                                <option value="QUALIFIED" className="bg-white text-gray-900 font-medium">Qualified</option>
+                                                                <option value="CONVERTED" className="bg-white text-gray-900 font-medium">Converted</option>
+                                                                <option value="LOST" className="bg-white text-gray-900 font-medium">Lost</option>
+                                                            </select>
+                                                        </TableCell>
+                                                        <TableCell className="p-2 space-y-2">
+                                                            {leadForm.follow_ups?.map((f, i) => (
+                                                                <div key={i} className="flex gap-1 items-center bg-white p-2 rounded-lg border shadow-sm group">
+                                                                    <span className="text-[10px] font-bold bg-gray-100 px-1 rounded">{f.follow_up_number}</span>
+                                                                    {/* Dynamic colored dropdown for Followup Channel inside EDIT Form */}
+                                                                    <select
+                                                                        value={f.channel || 'Phone Call'}
+                                                                        onChange={(e) => handleUpdateFollowUp(i, 'channel', e.target.value)}
+                                                                        className={`h-7 text-xs flex-1 rounded font-bold border-none shadow-sm transition-colors ${f.channel === 'Whatsapp' ? 'bg-green-100 text-green-700' : f.channel === 'Email' ? 'bg-purple-100 text-purple-700' : f.channel === 'In-Person' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}
+                                                                    >
+                                                                        <option value="Phone Call" className="bg-white text-gray-900">Phone Call</option>
+                                                                        <option value="Whatsapp" className="bg-white text-gray-900">Whatsapp</option>
+                                                                        <option value="Email" className="bg-white text-gray-900">Email</option>
+                                                                        <option value="In-Person" className="bg-white text-gray-900">In-Person</option>
+                                                                    </select>
+                                                                    <Input placeholder="Status" value={f.status} onChange={(e) => handleUpdateFollowUp(i, 'status', e.target.value)} className="h-7 text-xs flex-1" />
+                                                                    <Input placeholder="Notes" value={f.notes} onChange={(e) => handleUpdateFollowUp(i, 'notes', e.target.value)} className="h-7 text-xs flex-2" />
+                                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-red-400" onClick={() => handleRemoveFollowUp(i)}><X size={12} /></Button>
+                                                                </div>
+                                                            ))}
+                                                            <Button variant="outline" size="sm" onClick={handleAddFollowUp} className="w-full h-8 border-dashed text-indigo-600">
+                                                                <Plus size={14} className="mr-1" /> Add Follow Up
+                                                            </Button>
+                                                        </TableCell>
+                                                        <TableCell className="p-2 text-center">
+                                                            <div className="flex items-center justify-center gap-2">
+                                                                <button onClick={() => setLeadForm({ ...leadForm, is_positive: true })} className={`p-1.5 rounded-full border ${leadForm.is_positive === true ? 'bg-green-500 text-white border-green-600 shadow-md' : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-green-50 hover:text-green-500'}`}>
+                                                                    <CheckCircle2 size={16} />
+                                                                </button>
+                                                                <button onClick={() => setLeadForm({ ...leadForm, is_positive: false })} className={`p-1.5 rounded-full border ${leadForm.is_positive === false ? 'bg-red-500 text-white border-red-600 shadow-md' : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-red-50 hover:text-red-500'}`}>
+                                                                    <X size={16} />
+                                                                </button>
                                                             </div>
-                                                        ))}
-                                                        <Button variant="outline" size="sm" onClick={handleAddFollowUp} className="w-full h-8 border-dashed text-indigo-600">
-                                                            <Plus size={14} className="mr-1" /> Add Follow Up
-                                                        </Button>
-                                                    </TableCell>
-                                                    <TableCell className="p-2 text-right">
-                                                        <div className="flex justify-end gap-1">
-                                                            <Button size="icon" className="h-10 w-10 bg-indigo-600 text-white" onClick={saveLead}><Save size={18} /></Button>
-                                                            <Button size="icon" variant="ghost" className="h-10 w-10 text-gray-400" onClick={() => setEditingLeadId(null)}><X size={18} /></Button>
-                                                        </div>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ) : (
-                                                <TableRow key={lead.id} className="hover:bg-gray-50/50 transition-colors">
-                                                    <TableCell className="font-medium text-gray-600">
-                                                        {format(new Date(lead.date), 'dd MMM yyyy')}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <div className="flex flex-col">
-                                                            <span className="font-bold text-gray-900 flex items-center gap-1.5 hover:text-indigo-600 transition-colors cursor-default">
-                                                                <User size={14} className="text-gray-400" /> {lead.name}
+                                                        </TableCell>
+                                                        <TableCell className="p-2 text-right">
+                                                            <div className="flex justify-end gap-1">
+                                                                <Button size="icon" className="h-10 w-10 bg-indigo-600 text-white" onClick={saveLead}><Save size={18} /></Button>
+                                                                <Button size="icon" variant="ghost" className="h-10 w-10 text-gray-400" onClick={() => setEditingLeadId(null)}><X size={18} /></Button>
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ) : (
+                                                    <TableRow key={lead.id} className="hover:bg-gray-50/50 transition-colors">
+                                                        <TableCell className="font-medium text-gray-600">
+                                                            {format(new Date(lead.date), 'dd MMM yyyy')}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <div className="flex flex-col">
+                                                                <span className="font-bold text-gray-900 flex items-center gap-1.5 hover:text-indigo-600 transition-colors cursor-default">
+                                                                    <User size={14} className="text-gray-400" /> {lead.name}
+                                                                </span>
+                                                                <span className="text-xs text-indigo-600 font-medium flex items-center gap-1.5">
+                                                                    <Phone size={12} /> {lead.phone}
+                                                                </span>
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell className="text-gray-600 font-medium italic">
+                                                            {lead.campaign_name || '-'}
+                                                        </TableCell>
+                                                        <TableCell className="text-gray-600 max-w-[150px] truncate">
+                                                            <div className="flex items-center gap-1.5">
+                                                                <MapPin size={14} className="text-gray-400 shrink-0" />
+                                                                <span className="truncate">{lead.address || 'N/A'}</span>
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Badge variant="outline" className={`${QUALITY_COLORS[lead.quality] || ''} text-[10px] font-bold`}>
+                                                                {lead.quality}
+                                                            </Badge>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${STATUS_COLORS[lead.status] || ''}`}>
+                                                                {lead.status}
                                                             </span>
-                                                            <span className="text-xs text-indigo-600 font-medium flex items-center gap-1.5">
-                                                                <Phone size={12} /> {lead.phone}
-                                                            </span>
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell className="text-gray-600 font-medium italic">
-                                                        {lead.campaign_name || '-'}
-                                                    </TableCell>
-                                                    <TableCell className="text-gray-600 max-w-[150px] truncate">
-                                                        <div className="flex items-center gap-1.5">
-                                                            <MapPin size={14} className="text-gray-400 shrink-0" />
-                                                            <span className="truncate">{lead.address || 'N/A'}</span>
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <Badge variant="outline" className={`${QUALITY_COLORS[lead.quality] || ''} text-[10px] font-bold`}>
-                                                            {lead.quality}
-                                                        </Badge>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${STATUS_COLORS[lead.status] || ''}`}>
-                                                            {lead.status}
-                                                        </span>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <div className="space-y-1.5">
-                                                            {lead.follow_ups?.length === 0 ? (
-                                                                <span className="text-xs text-gray-400 italic">No follow ups yet</span>
-                                                            ) : (
-                                                                lead.follow_ups.map((f: FollowUp) => (
-                                                                    <div key={f.id} className="flex flex-col bg-gray-50 p-2 rounded-lg border border-gray-100 relative group">
-                                                                        <div className="flex items-center justify-between mb-0.5">
-                                                                            <span className="text-[10px] font-extrabold text-indigo-500 uppercase">
-                                                                                {f.follow_up_number === 1 ? '1st' : f.follow_up_number === 2 ? '2nd' : f.follow_up_number === 3 ? '3rd' : `${f.follow_up_number}th`} Follow Up • <span className="text-gray-500">{f.channel || 'Phone Call'}</span>
-                                                                            </span>
-                                                                            <span className="text-[9px] text-gray-400">{format(new Date(f.date), 'dd/MM/yy')}</span>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <div className="space-y-1.5">
+                                                                {lead.follow_ups?.length === 0 ? (
+                                                                    <span className="text-xs text-gray-400 italic">No follow ups yet</span>
+                                                                ) : (
+                                                                    lead.follow_ups.map((f: FollowUp) => (
+                                                                        <div key={f.id} className="flex flex-col bg-gray-50 p-2 rounded-lg border border-gray-100 relative group">
+                                                                            <div className="flex items-center justify-between mb-0.5">
+                                                                                <span className="text-[10px] font-extrabold text-indigo-500 uppercase">
+                                                                                    {f.follow_up_number === 1 ? '1st' : f.follow_up_number === 2 ? '2nd' : f.follow_up_number === 3 ? '3rd' : `${f.follow_up_number}th`} Follow Up • <span className="text-gray-500">{f.channel || 'Phone Call'}</span>
+                                                                                </span>
+                                                                                <span className="text-[9px] text-gray-400">{format(new Date(f.date), 'dd/MM/yy')}</span>
+                                                                            </div>
+                                                                            {/* Hide PENDING text conditionally */}
+                                                                            {f.status?.toUpperCase() !== 'PENDING' && (
+                                                                                <div className="text-xs font-bold text-gray-800">{f.status}</div>
+                                                                            )}
+                                                                            {f.notes && <div className="text-[10px] text-gray-500 italic mt-0.5 border-t pt-0.5 border-gray-200">{f.notes}</div>}
                                                                         </div>
-                                                                        {/* Hide PENDING text conditionally */}
-                                                                        {f.status?.toUpperCase() !== 'PENDING' && (
-                                                                            <div className="text-xs font-bold text-gray-800">{f.status}</div>
-                                                                        )}
-                                                                        {f.notes && <div className="text-[10px] text-gray-500 italic mt-0.5 border-t pt-0.5 border-gray-200">{f.notes}</div>}
-                                                                    </div>
-                                                                ))
-                                                            )}
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell className="text-right p-2">
-                                                        <div className="flex justify-end gap-1">
-                                                            <Button size="icon" variant="ghost" className="h-8 w-8 text-indigo-600 hover:bg-indigo-50" onClick={() => startEditLead(lead)}><PenTool size={16} /></Button>
-                                                            {user?.role === 'DEVELOPER_ADMIN' && (
-                                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-red-500 hover:bg-red-50" onClick={() => confirmDeleteLead(lead.id!)}><Trash2 size={16} /></Button>
-                                                            )}
-                                                        </div>
-                                                    </TableCell>
-                                                </TableRow>
-                                            )
-                                        ))
-                                    )}
-                                </TableBody>
-                            </Table>
+                                                                    ))
+                                                                )}
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell className="text-center">
+                                                            <div className="flex items-center justify-center gap-2">
+                                                                <button
+                                                                    onClick={() => quickToggleLeadFlag(lead, true)}
+                                                                    className={`p-1.5 rounded-full border transition-all hover:scale-105 ${lead.is_positive === true ? 'bg-green-500 text-white border-green-600 shadow-md' : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-green-50 hover:text-green-500 hover:border-green-200'}`}
+                                                                    title="Mark as Positive"
+                                                                >
+                                                                    <CheckCircle2 size={16} />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => quickToggleLeadFlag(lead, false)}
+                                                                    className={`p-1.5 rounded-full border transition-all hover:scale-105 ${lead.is_positive === false ? 'bg-red-500 text-white border-red-600 shadow-md' : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-red-50 hover:text-red-500 hover:border-red-200'}`}
+                                                                    title="Mark as Negative"
+                                                                >
+                                                                    <X size={16} />
+                                                                </button>
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell className="text-right p-2">
+                                                            <div className="flex justify-end gap-1">
+                                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-indigo-600 hover:bg-indigo-50" onClick={() => startEditLead(lead)}><PenTool size={16} /></Button>
+                                                                {user?.role === 'DEVELOPER_ADMIN' && (
+                                                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-red-500 hover:bg-red-50" onClick={() => confirmDeleteLead(lead.id!)}><Trash2 size={16} /></Button>
+                                                                )}
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )
+                                            ))
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
                         </CardContent>
-                    </Card>
                 </TabsContent>
             </Tabs>
         </div>

@@ -113,117 +113,119 @@ const ClientCredentialsPage = () => {
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="w-[200px]">Client Name</TableHead>
-                                <TableHead className="w-[300px]">Username (Email)</TableHead>
-                                <TableHead className="w-[300px]">Password</TableHead>
-                                <TableHead className="w-[100px]">Status</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filteredCredentials?.map((cred) => {
-                                const isEditing = editingId === cred.id;
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="w-[200px]">Client Name</TableHead>
+                                    <TableHead className="w-[300px]">Username (Email)</TableHead>
+                                    <TableHead className="w-[300px]">Password</TableHead>
+                                    <TableHead className="w-[100px]">Status</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredCredentials?.map((cred) => {
+                                    const isEditing = editingId === cred.id;
 
-                                return (
-                                    <TableRow key={cred.id} className={isEditing ? "bg-muted/50" : ""}>
-                                        <TableCell className="font-medium align-middle">
-                                            {cred.name}
-                                        </TableCell>
+                                    return (
+                                        <TableRow key={cred.id} className={isEditing ? "bg-muted/50" : ""}>
+                                            <TableCell className="font-medium align-middle">
+                                                {cred.name}
+                                            </TableCell>
 
-                                        {/* Username Cell */}
-                                        <TableCell className="align-middle">
-                                            {isEditing ? (
-                                                <Input
-                                                    value={editForm.username}
-                                                    onChange={(e) => setEditForm(prev => ({ ...prev, username: e.target.value }))}
-                                                    placeholder="company@qix.com"
-                                                />
-                                            ) : (
-                                                <div className="flex items-center gap-2">
-                                                    <span className={!cred.portalUser ? "text-muted-foreground italic" : ""}>
-                                                        {cred.portalUser?.email || "No Account"}
-                                                    </span>
-                                                </div>
-                                            )}
-                                        </TableCell>
-
-                                        {/* Password Cell */}
-                                        <TableCell className="align-middle">
-                                            {isEditing ? (
-                                                <div className="relative">
+                                            {/* Username Cell */}
+                                            <TableCell className="align-middle">
+                                                {isEditing ? (
                                                     <Input
-                                                        type={editForm.showPassword ? "text" : "password"}
-                                                        value={editForm.password}
-                                                        onChange={(e) => setEditForm(prev => ({ ...prev, password: e.target.value }))}
-                                                        placeholder={cred.portalUser ? "Reset Password" : "Set Password"}
-                                                        className="pr-10"
+                                                        value={editForm.username}
+                                                        onChange={(e) => setEditForm(prev => ({ ...prev, username: e.target.value }))}
+                                                        placeholder="company@qix.com"
                                                     />
-                                                    <Button
-                                                        type="button"
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                                                        onClick={() => setEditForm(prev => ({ ...prev, showPassword: !prev.showPassword }))}
-                                                    >
-                                                        {editForm.showPassword ? (
-                                                            <EyeOff className="h-4 w-4 text-muted-foreground" />
-                                                        ) : (
-                                                            <Eye className="h-4 w-4 text-muted-foreground" />
-                                                        )}
-                                                    </Button>
-                                                </div>
-                                            ) : (
-                                                <div className="flex items-center gap-2 group">
-                                                    <span className="text-muted-foreground">••••••••</span>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-                                                        onClick={() => alert("For security reasons, saved passwords cannot be viewed in plain text.\n\nYou can reset the password by clicking 'Modify'.")}
-                                                    >
-                                                        <Eye className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                            )}
-                                        </TableCell>
+                                                ) : (
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={!cred.portalUser ? "text-muted-foreground italic" : ""}>
+                                                            {cred.portalUser?.email || "No Account"}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </TableCell>
 
-                                        {/* Status Cell */}
-                                        <TableCell className="align-middle">
-                                            {cred.portalUser ? (
-                                                <div className="flex items-center gap-1 text-green-600 font-medium text-sm">
-                                                    <UserCheck className="h-4 w-4" />
-                                                    Configured
-                                                </div>
-                                            ) : (
-                                                <div className="text-muted-foreground text-sm">Not Configured</div>
-                                            )}
-                                        </TableCell>
+                                            {/* Password Cell */}
+                                            <TableCell className="align-middle">
+                                                {isEditing ? (
+                                                    <div className="relative">
+                                                        <Input
+                                                            type={editForm.showPassword ? "text" : "password"}
+                                                            value={editForm.password}
+                                                            onChange={(e) => setEditForm(prev => ({ ...prev, password: e.target.value }))}
+                                                            placeholder={cred.portalUser ? "Reset Password" : "Set Password"}
+                                                            className="pr-10"
+                                                        />
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                                                            onClick={() => setEditForm(prev => ({ ...prev, showPassword: !prev.showPassword }))}
+                                                        >
+                                                            {editForm.showPassword ? (
+                                                                <EyeOff className="h-4 w-4 text-muted-foreground" />
+                                                            ) : (
+                                                                <Eye className="h-4 w-4 text-muted-foreground" />
+                                                            )}
+                                                        </Button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center gap-2 group">
+                                                        <span className="text-muted-foreground">••••••••</span>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                                                            onClick={() => alert("For security reasons, saved passwords cannot be viewed in plain text.\n\nYou can reset the password by clicking 'Modify'.")}
+                                                        >
+                                                            <Eye className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </TableCell>
 
-                                        {/* Actions Cell */}
-                                        <TableCell className="text-right align-middle">
-                                            {isEditing ? (
-                                                <div className="flex justify-end gap-2">
-                                                    <Button size="sm" onClick={() => handleSave(cred.id)} className="bg-green-600 hover:bg-green-700 text-white">
-                                                        <Save className="h-4 w-4 mr-1" /> Save
+                                            {/* Status Cell */}
+                                            <TableCell className="align-middle">
+                                                {cred.portalUser ? (
+                                                    <div className="flex items-center gap-1 text-green-600 font-medium text-sm">
+                                                        <UserCheck className="h-4 w-4" />
+                                                        Configured
+                                                    </div>
+                                                ) : (
+                                                    <div className="text-muted-foreground text-sm">Not Configured</div>
+                                                )}
+                                            </TableCell>
+
+                                            {/* Actions Cell */}
+                                            <TableCell className="text-right align-middle">
+                                                {isEditing ? (
+                                                    <div className="flex justify-end gap-2">
+                                                        <Button size="sm" onClick={() => handleSave(cred.id)} className="bg-green-600 hover:bg-green-700 text-white">
+                                                            <Save className="h-4 w-4 mr-1" /> Save
+                                                        </Button>
+                                                        <Button size="sm" variant="ghost" onClick={cancelEdit}>
+                                                            Cancel
+                                                        </Button>
+                                                    </div>
+                                                ) : (
+                                                    <Button size="sm" variant="outline" onClick={() => startEdit(cred)}>
+                                                        Modify
                                                     </Button>
-                                                    <Button size="sm" variant="ghost" onClick={cancelEdit}>
-                                                        Cancel
-                                                    </Button>
-                                                </div>
-                                            ) : (
-                                                <Button size="sm" variant="outline" onClick={() => startEdit(cred)}>
-                                                    Modify
-                                                </Button>
-                                            )}
-                                        </TableCell>
-                                    </TableRow>
-                                );
-                            })}
-                        </TableBody>
-                    </Table>
+                                                )}
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
+                            </TableBody>
+                        </Table>
+                    </div>
                 </CardContent>
             </Card>
         </div>

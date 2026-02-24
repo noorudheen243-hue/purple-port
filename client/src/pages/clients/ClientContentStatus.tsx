@@ -71,60 +71,62 @@ const ClientContentStatus = () => {
                         {tasksLoading && <span className="text-xs text-muted-foreground animate-pulse">Syncing tasks...</span>}
                     </div>
 
-                    <table className="w-full text-sm text-left">
-                        <thead className="bg-gray-50 text-gray-500 font-medium border-b">
-                            <tr>
-                                <th className="px-6 py-4">Content Type</th>
-                                <th className="px-6 py-4 text-center">Committed (Monthly)</th>
-                                <th className="px-6 py-4 text-center">Delivered (Completed Tasks)</th>
-                                <th className="px-6 py-4 text-center">Balance</th>
-                                <th className="px-6 py-4 text-center">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y">
-                            {selectedClient?.content_strategies?.length > 0 ? (
-                                selectedClient.content_strategies.map((strategy: any) => {
-                                    const completed = calculateCompleted(strategy.type);
-                                    const balance = strategy.quantity - completed;
-                                    const isMet = balance <= 0;
-
-                                    return (
-                                        <tr key={strategy.id || strategy.type} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 font-medium text-gray-900 flex items-center gap-2">
-                                                <Target size={16} className="text-gray-400" />
-                                                {strategy.type}
-                                            </td>
-                                            <td className="px-6 py-4 text-center font-bold text-gray-700 text-lg">{strategy.quantity}</td>
-                                            <td className="px-6 py-4 text-center text-green-600 font-bold text-lg">
-                                                {completed}
-                                            </td>
-                                            <td className="px-6 py-4 text-center font-mono font-medium">
-                                                {balance > 0 ? balance : 0}
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                {isMet ? (
-                                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800">
-                                                        <CheckCircle size={12} /> Target Met
-                                                    </span>
-                                                ) : (
-                                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                                        <Clock size={12} /> Pending
-                                                    </span>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    );
-                                })
-                            ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-gray-50 text-gray-500 font-medium border-b">
                                 <tr>
-                                    <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">
-                                        No Content Strategy defined for this client.
-                                        <br />Go to <span className="font-mono text-xs bg-gray-100 px-1">Client List &gt; Edit</span> to add commitments.
-                                    </td>
+                                    <th className="px-6 py-4">Content Type</th>
+                                    <th className="px-6 py-4 text-center">Committed (Monthly)</th>
+                                    <th className="px-6 py-4 text-center">Delivered (Completed Tasks)</th>
+                                    <th className="px-6 py-4 text-center">Balance</th>
+                                    <th className="px-6 py-4 text-center">Status</th>
                                 </tr>
-                            )}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y">
+                                {selectedClient?.content_strategies?.length > 0 ? (
+                                    selectedClient.content_strategies.map((strategy: any) => {
+                                        const completed = calculateCompleted(strategy.type);
+                                        const balance = strategy.quantity - completed;
+                                        const isMet = balance <= 0;
+
+                                        return (
+                                            <tr key={strategy.id || strategy.type} className="hover:bg-gray-50">
+                                                <td className="px-6 py-4 font-medium text-gray-900 flex items-center gap-2">
+                                                    <Target size={16} className="text-gray-400" />
+                                                    {strategy.type}
+                                                </td>
+                                                <td className="px-6 py-4 text-center font-bold text-gray-700 text-lg">{strategy.quantity}</td>
+                                                <td className="px-6 py-4 text-center text-green-600 font-bold text-lg">
+                                                    {completed}
+                                                </td>
+                                                <td className="px-6 py-4 text-center font-mono font-medium">
+                                                    {balance > 0 ? balance : 0}
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    {isMet ? (
+                                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800">
+                                                            <CheckCircle size={12} /> Target Met
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                            <Clock size={12} /> Pending
+                                                        </span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                ) : (
+                                    <tr>
+                                        <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">
+                                            No Content Strategy defined for this client.
+                                            <br />Go to <span className="font-mono text-xs bg-gray-100 px-1">Client List &gt; Edit</span> to add commitments.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             ) : (
                 <div className="flex flex-col items-center justify-center py-20 bg-gray-50/50 border-2 border-dashed rounded-xl text-center">

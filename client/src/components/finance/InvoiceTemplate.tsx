@@ -29,8 +29,13 @@ export const InvoiceTemplate = forwardRef<HTMLDivElement, { data: InvoiceData }>
     return (
         <div
             ref={ref}
-            className="invoice-template bg-white text-black font-sans mx-auto min-h-[297mm] flex flex-col justify-between p-8 print:p-0 relative"
-            style={{ width: '100%', maxWidth: '210mm' }}
+            className="invoice-template bg-white text-black mx-auto relative flex flex-col justify-between"
+            style={{
+                width: '210mm',
+                minHeight: '297mm',
+                padding: '15mm 20mm', // Balanced A4 padding
+                fontFamily: 'Arial, Helvetica, sans-serif' // Safe font for html2canvas
+            }}
         >
             {/* Top Content Group */}
             <div>
@@ -62,19 +67,23 @@ export const InvoiceTemplate = forwardRef<HTMLDivElement, { data: InvoiceData }>
                         {/* Address would go here if available in data */}
                     </div>
 
-                    <div className="w-1/2 text-right space-y-2">
-                        <div className="flex justify-end gap-4">
-                            <span className="text-sm font-bold text-gray-500 uppercase min-w-24">Invoice No:</span>
-                            <span className="font-mono font-bold text-gray-900">{data.invoice_number}</span>
-                        </div>
-                        <div className="flex justify-end gap-4">
-                            <span className="text-sm font-bold text-gray-500 uppercase min-w-24">Date:</span>
-                            <span className="font-mono font-medium">{formatDate(data.invoice_date)}</span>
-                        </div>
-                        <div className="flex justify-end gap-4">
-                            <span className="text-sm font-bold text-gray-500 uppercase min-w-24">Due Date:</span>
-                            <span className="font-mono font-medium">{formatDate(data.due_date)}</span>
-                        </div>
+                    <div className="w-1/2 flex justify-end">
+                        <table className="text-right border-collapse">
+                            <tbody>
+                                <tr>
+                                    <td className="text-sm font-bold text-gray-500 uppercase pr-4 py-1">Invoice No:</td>
+                                    <td className="font-mono font-bold text-gray-900 text-lg py-1">{data.invoice_number}</td>
+                                </tr>
+                                <tr>
+                                    <td className="text-sm font-bold text-gray-500 uppercase pr-4 py-1">Date:</td>
+                                    <td className="font-mono font-medium text-gray-800 py-1">{formatDate(data.invoice_date)}</td>
+                                </tr>
+                                <tr>
+                                    <td className="text-sm font-bold text-gray-500 uppercase pr-4 py-1">Due Date:</td>
+                                    <td className="font-mono font-medium text-gray-800 py-1">{formatDate(data.due_date)}</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 

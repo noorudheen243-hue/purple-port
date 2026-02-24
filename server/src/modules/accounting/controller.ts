@@ -1,5 +1,8 @@
 import { Request, Response } from 'express';
 import * as AccountingService from './service';
+import { generateLedgerCode } from '../../utils/ledgerIdGenerator';
+import prisma from '../../utils/prisma';
+import * as BackupService from './backup.service';
 import { z } from 'zod';
 
 const createLedgerSchema = z.object({
@@ -29,6 +32,15 @@ export const getLedgers = async (req: Request, res: Response) => {
         res.json(ledgers);
     } catch (error) {
         res.status(500).json({ message: "Failed to fetch ledgers" });
+    }
+};
+
+export const getNextLedgerCode = async (req: Request, res: Response) => {
+    try {
+        const nextCode = await generateLedgerCode(prisma);
+        res.json({ nextCode });
+    } catch (error) {
+        res.status(500).json({ message: "Failed to generate next ledger code" });
     }
 };
 
@@ -174,5 +186,58 @@ export const updateTransaction = async (req: Request, res: Response) => {
         res.status(200).json(result);
     } catch (error) {
         res.status(400).json({ message: (error as Error).message });
+    }
+};
+
+// --- BACKUP & RESTORE ---
+
+export const downloadExcelBackup = async (req: Request, res: Response) => {
+    try {
+        // Only allow Admins to download full physical backups
+        if (req.user!.role !== 'ADMIN' && req.user!.role !== 'DEVELOPER_ADMIN') {
+            return res.status(403).json({ message: "Forbidden: Admin access required." });
+        }
+
+        const buffer = await BackupService.generateExcelBackup();
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename=Account_Backup_${new Date().toISOString().split('T')[0]}.xlsx`);
+        res.send(buffer);
+    } catch (error) {
+        res.status(500).json({ message: "Failed to generate Excel backup.", error: (error as Error).message });
+    }
+};
+
+export const downloadJSONBackup = async (req: Request, res: Response) => {
+    try {
+        if (req.user!.role !== 'ADMIN' && req.user!.role !== 'DEVELOPER_ADMIN') {
+            return res.status(403).json({ message: "Forbidden: Admin access required." });
+        }
+
+        const data = await BackupService.generateJSONBackup();
+
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', `attachment; filename=Account_System_Backup_${new Date().toISOString().split('T')[0]}.json`);
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ message: "Failed to generate JSON backup.", error: (error as Error).message });
+    }
+};
+
+export const restoreBackup = async (req: Request, res: Response) => {
+    try {
+        if (req.user!.role !== 'ADMIN' && req.user!.role !== 'DEVELOPER_ADMIN') {
+            return res.status(403).json({ message: "Forbidden: Admin access required." });
+        }
+
+        const backupData = req.body;
+        if (!backupData || !backupData.version) {
+            return res.status(400).json({ message: "Invalid backup file format." });
+        }
+
+        const result = await BackupService.restoreJSONBackup(backupData);
+        res.status(200).json(result);
+    } catch (error) {
+        res.status(500).json({ message: "Failed to restore backup.", error: (error as Error).message });
     }
 };

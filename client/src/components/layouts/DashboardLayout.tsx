@@ -15,7 +15,8 @@ import {
     Upload,
     MoreVertical,
     TrendingUp,
-    Home
+    Home,
+    Smartphone
 } from 'lucide-react';
 import api from '../../lib/api';
 import Swal from 'sweetalert2';
@@ -384,6 +385,23 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                                     <span className="hidden md:inline">
                                         {(import.meta as any).env.DEV ? "Sync to Cloud" : "Update System"}
                                     </span>
+                                </button>
+                            )}
+
+                            {user?.role === ROLES.DEVELOPER_ADMIN && (
+                                <button
+                                    onClick={() => {
+                                        const width = 375;
+                                        const height = 812;
+                                        const left = (window.screen.width / 2) - (width / 2);
+                                        const top = (window.screen.height / 2) - (height / 2);
+                                        window.open(window.location.href, 'MobileViewPopup', `width=${width},height=${height},top=${top},left=${left},resizable=yes,scrollbars=yes`);
+                                    }}
+                                    className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-md transition-colors hidden md:flex border border-indigo-200"
+                                    title="Open Mobile View Simulator"
+                                >
+                                    <Smartphone size={18} />
+                                    <span className="hidden lg:inline">Mobile View</span>
                                 </button>
                             )}
 

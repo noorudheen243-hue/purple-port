@@ -48,3 +48,12 @@ export const getCreativeMetrics = async (req: Request, res: Response) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+export const getCreativeDashboardStats = async (req: Request, res: Response) => {
+    try {
+        const stats = await analyticsService.getCreativeDashboardStats();
+        res.json(stats);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};

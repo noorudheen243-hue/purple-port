@@ -10,6 +10,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 // --- Types ---
 type Ledger = {
     id: string;
+    ledger_code?: string;
     name: string;
     head: { id: string; name: string; type: string };
     entity_type: string;
@@ -127,6 +128,7 @@ const LedgerManagement = () => {
                 <table className="w-full text-sm text-left">
                     <thead className="bg-muted text-muted-foreground font-medium border-b">
                         <tr>
+                            <th className="px-4 py-3">Code</th>
                             <th className="px-4 py-3">Account Name</th>
                             <th className="px-4 py-3">Group (Head)</th>
                             <th className="px-4 py-3">Type</th>
@@ -137,6 +139,7 @@ const LedgerManagement = () => {
                     <tbody className="divide-y">
                         {filteredLedgers?.map((ledger: Ledger) => (
                             <tr key={ledger.id} className="hover:bg-muted/50 transition-colors">
+                                <td className="px-4 py-3 text-xs text-muted-foreground font-mono">{ledger.ledger_code || '-'}</td>
                                 <td className="px-4 py-3 font-medium">{ledger.name}</td>
                                 <td className="px-4 py-3 text-muted-foreground">{ledger.head.name}</td>
                                 <td className="px-4 py-3 text-muted-foreground text-xs uppercase">{ledger.entity_type}</td>
@@ -225,6 +228,13 @@ const LedgerManagement = () => {
 
 // --- Sub-Component: Form Modal ---
 const LedgerFormModal = ({ isOpen, mode, initialData, heads, onClose, onSubmit, isLoading }: any) => {
+    // Fetch Next Code for CREATE mode
+    const { data: codePreview } = useQuery({
+        queryKey: ['nextLedgerCode'],
+        queryFn: async () => (await api.get('/accounting/ledgers/next-code')).data,
+        enabled: mode === 'CREATE' && isOpen
+    });
+
     const { register, handleSubmit, formState: { errors } } = useForm<LedgerFormData>({
         resolver: zodResolver(ledgerSchema),
         defaultValues: {
@@ -247,10 +257,20 @@ const LedgerFormModal = ({ isOpen, mode, initialData, heads, onClose, onSubmit, 
                 </div>
 
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium">Account Name</label>
-                        <input className="w-full bg-background border rounded-md px-3 py-2" {...register('name')} placeholder="e.g. Office Rent" />
-                        {errors.name && <span className="text-destructive text-xs">{errors.name.message}</span>}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Ledger Code</label>
+                            <input
+                                className="w-full bg-muted border rounded-md px-3 py-2 text-muted-foreground font-mono"
+                                value={mode === 'CREATE' ? (codePreview?.nextCode || 'Loading...') : (initialData?.ledger_code || '-')}
+                                disabled
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Account Name</label>
+                            <input className="w-full bg-background border rounded-md px-3 py-2" {...register('name')} placeholder="e.g. Office Rent" />
+                            {errors.name && <span className="text-destructive text-xs">{errors.name.message}</span>}
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">

@@ -42,7 +42,7 @@ export const createLead = async (req: Request, res: Response) => {
         const clientId = getValidatedClientId(req);
         if (!clientId) return res.status(403).json({ message: "Access Denied: Invalid Client Context" });
 
-        const { date, campaign_name, phone, name, address, quality, status, follow_ups } = req.body;
+        const { date, campaign_name, phone, name, address, quality, status, is_positive, follow_ups } = req.body;
 
         const lead = await prisma.lead.create({
             data: {
@@ -54,6 +54,7 @@ export const createLead = async (req: Request, res: Response) => {
                 address,
                 quality,
                 status,
+                is_positive,
                 follow_ups: {
                     create: follow_ups?.map((f: any) => ({
                         follow_up_number: f.follow_up_number,
@@ -78,7 +79,7 @@ export const updateLead = async (req: Request, res: Response) => {
         const clientId = getValidatedClientId(req);
         if (!clientId) return res.status(403).json({ message: "Access Denied: Invalid Client Context" });
 
-        const { date, campaign_name, phone, name, address, quality, status, follow_ups } = req.body;
+        const { date, campaign_name, phone, name, address, quality, status, is_positive, follow_ups } = req.body;
 
         const lead = await prisma.lead.update({
             where: { id },
@@ -89,7 +90,8 @@ export const updateLead = async (req: Request, res: Response) => {
                 name,
                 address,
                 quality,
-                status
+                status,
+                is_positive
             }
         });
 

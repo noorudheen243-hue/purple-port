@@ -189,22 +189,8 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
     });
 
     const handleNext = async () => {
-        const fields = STEP_FIELDS[currentStep];
-        const isValid = await trigger(fields as any);
-
-        if (isValid) {
-            if (currentStepIndex < STEPS.length - 1) {
-                setCurrentStepIndex(prev => prev + 1);
-            }
-        } else {
-            // Show errors for current step if trigger fails
-            const currentErrors = Object.keys(errors);
-            if (currentErrors.length > 0) {
-                // Trigger re-validation to ensure errors object is populated
-                // (trigger returns boolean but also updates state)
-                alert("Please complete all required fields in this step before proceeding.");
-                console.log("Step validation failed", errors);
-            }
+        if (currentStepIndex < STEPS.length - 1) {
+            setCurrentStepIndex(prev => prev + 1);
         }
     };
 
@@ -216,6 +202,7 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
 
     const [isTeamDropdownOpen, setIsTeamDropdownOpen] = useState(false);
     const [isLedgerLocked, setIsLedgerLocked] = useState(false);
+    const [accountTypeFilter, setAccountTypeFilter] = useState('');
 
     useEffect(() => {
         if (clientToEdit) {
@@ -242,6 +229,21 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
         queryFn: async () => (await api.get('/accounting/heads')).data,
         enabled: !!isOpen
     });
+
+    useEffect(() => {
+        if (!isOpen) {
+            setAccountTypeFilter('');
+        }
+    }, [isOpen]);
+
+    useEffect(() => {
+        if (clientToEdit?.ledger_options?.head_id && accountHeads) {
+            const savedHead = accountHeads.find((h: any) => h.id === clientToEdit.ledger_options.head_id);
+            if (savedHead && savedHead.type) {
+                setAccountTypeFilter(savedHead.type);
+            }
+        }
+    }, [clientToEdit, accountHeads]);
 
     // Array fields for Competitors
     const { fields: competitorFields, append: appendCompetitor, remove: removeCompetitor } = useFieldArray({
@@ -372,23 +374,17 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
         if (isOpen) setCurrentStepIndex(0);
     }, [isOpen]);
 
-    // Tab Button now just indicates progress, disable click or make it navigate if viewed
     const TabButton = ({ id, label, icon: Icon, index }: any) => {
         const isActive = index === currentStepIndex;
-        const isCompleted = index < currentStepIndex;
 
         return (
             <button
                 type="button"
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${isActive ? "border-primary text-primary" :
-                    isCompleted ? "border-green-500 text-green-600" :
-                        "border-transparent text-gray-400"
-                    }`}
-                disabled // Disable direct navigation to enforce Flow
+                onClick={() => setCurrentStepIndex(index)}
+                className={`flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors cursor-pointer hover:bg-gray-100 min-w-max ${isActive ? "border-primary text-primary" : "border-transparent text-gray-400"}`}
             >
                 <Icon size={16} />
                 {label}
-                {isCompleted && <div className="w-1.5 h-1.5 rounded-full bg-green-500 ml-1" />}
             </button>
         );
     };
@@ -835,17 +831,17 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
                                                 <label className="label">Account Type</label>
                                                 <select
                                                     className="input"
+                                                    value={accountTypeFilter}
                                                     disabled={isLedgerLocked}
                                                     onChange={(e) => {
-                                                        // Filter heads logic could be here, but simpler to just show all sorted or grouped
-                                                        // For now let's just use the head selector directly as Type is implied by Head
+                                                        setAccountTypeFilter(e.target.value);
+                                                        setValue('ledger_options.head_id', '');
                                                     }}
                                                 >
                                                     <option value="">All Types</option>
                                                     <option value="ASSET">Assets (debtors)</option>
                                                     <option value="LIABILITY">Liabilities</option>
                                                     <option value="INCOME">Income</option>
-                                                    <option value="Income from Client">Income from Client</option>
                                                     <option value="EXPENSE">Expense</option>
                                                 </select>
                                                 <p className="text-xs text-muted-foreground mt-1">Filter the list of Account Heads.</p>
@@ -859,11 +855,13 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
                                                     disabled={isLedgerLocked}
                                                 >
                                                     <option value="">Select Head...</option>
-                                                    {accountHeads?.map((head: any) => (
-                                                        <option key={head.id} value={head.id}>
-                                                            {head.name} ({head.code})
-                                                        </option>
-                                                    ))}
+                                                    {accountHeads
+                                                        ?.filter((head: any) => !accountTypeFilter || head.type === accountTypeFilter)
+                                                        .map((head: any) => (
+                                                            <option key={head.id} value={head.id}>
+                                                                {head.name} ({head.code})
+                                                            </option>
+                                                        ))}
                                                 </select>
                                                 {isLedgerLocked && <p className="text-[10px] text-green-600 mt-1 flex items-center gap-1"><LockIcon size={8} /> Linked to active ledger</p>}
                                                 {errors.ledger_options?.head_id && <p className="error">{errors.ledger_options.head_id.message}</p>}

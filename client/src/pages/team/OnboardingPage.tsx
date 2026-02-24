@@ -165,41 +165,29 @@ const OnboardingPage = () => {
         3: ['base_salary', 'salary_type', 'ledger_options']
     };
 
-    const handleNext = async () => {
-        const fields = STEP_FIELDS[currentStep] || [];
-        const isValid = await trigger(fields);
-        if (isValid) {
-            setDirection(1);
-            setCurrentStep(prev => Math.min(prev + 1, 4));
-        }
+    const handleNext = () => {
+        setDirection(1);
+        setCurrentStep(prev => Math.min(prev + 1, 4));
     };
 
     const handlePartialSave = async () => {
-        const fields = STEP_FIELDS[currentStep] || [];
-        // Trigger validation ONLY for current step fields
-        const isValid = await trigger(fields);
+        // Allow saving what we have without forcing step completion
+        console.log("Partial Save Triggered for Step:", currentStep);
+        isSaveAndKeepOpen.current = true;
 
-        if (isValid) {
-            // Check for Ledger Logic specifically if in Step 3
-            if (currentStep === 3) {
-                const ledger = watch('ledger_options');
-                if (ledger?.create && !ledger.head_id) {
-                    setError('ledger_options.head_id', {
-                        type: 'custom',
-                        message: 'Account Head is required'
-                    });
-                    return; // Stop save
-                }
+        // Basic check for Ledger logic since it's a critical nested relationship
+        if (currentStep === 3) {
+            const ledger = watch('ledger_options');
+            if (ledger?.create && !ledger.head_id) {
+                setError('ledger_options.head_id', {
+                    type: 'custom',
+                    message: 'Account Head is required'
+                });
+                return; // Stop save if this specific logic fails
             }
-
-            console.log("Partial Save Triggered for Step:", currentStep);
-            isSaveAndKeepOpen.current = true;
-            // Send current form values (merged with existing)
-            mutation.mutate(getValues());
-        } else {
-            // Errors will be displayed automatically by RHF
-            console.warn("Validation failed for step", currentStep);
         }
+
+        mutation.mutate(getValues());
     };
 
     const handleBack = () => {
@@ -371,7 +359,15 @@ const OnboardingPage = () => {
                     const isActive = currentStep >= step.id;
                     const isCurrent = currentStep === step.id;
                     return (
-                        <div key={step.id} className="flex flex-col items-center gap-2 bg-white px-2">
+                        <button
+                            key={step.id}
+                            type="button"
+                            onClick={() => {
+                                setDirection(step.id > currentStep ? 1 : -1);
+                                setCurrentStep(step.id);
+                            }}
+                            className="flex flex-col items-center gap-2 bg-white px-2 cursor-pointer hover:opacity-80 transition-opacity"
+                        >
                             <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${isActive ? 'bg-primary border-primary text-primary-foreground' : 'bg-white border-gray-300 text-gray-400'
                                 } ${isCurrent ? 'ring-4 ring-primary/20 scale-110' : ''}`}>
                                 <step.icon size={18} />
@@ -379,7 +375,7 @@ const OnboardingPage = () => {
                             <span className={`text-xs font-semibold whitespace-nowrap ${isActive ? 'text-primary' : 'text-gray-400'}`}>
                                 {step.label}
                             </span>
-                        </div>
+                        </button>
                     );
                 })}
             </div>

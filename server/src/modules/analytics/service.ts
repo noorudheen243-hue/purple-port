@@ -308,3 +308,98 @@ export const getCreativeTeamMetrics = async () => {
         ]
     };
 };
+
+export const getCreativeDashboardStats = async () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const startWeek = new Date(today);
+    startWeek.setDate(today.getDate() - today.getDay()); // Start of week (Sunday)
+
+    const startMnth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    // 1. Creative Staff
+    const creatives = await prisma.user.findMany({
+        where: { department: 'CREATIVE', role: { not: 'ADMIN' } },
+        select: { id: true, full_name: true }
+    });
+    const creativeMap = new Map(creatives.map(c => [c.id, c.full_name]));
+    const creativeIds = creatives.map(c => c.id);
+
+    // 2. Fetch Tasks assigned to creative team (Assigned Today)
+    const dailyAssignedTasks = await prisma.task.findMany({
+        where: {
+            assignee_id: { in: creativeIds },
+            createdAt: { gte: today }
+        },
+        include: {
+            client: { select: { client_name: true } },
+            creator: { select: { full_name: true } }
+        },
+        orderBy: { createdAt: 'desc' }
+    });
+
+    const formatTasksResponse = dailyAssignedTasks.map((t, index) => ({
+        s_no: index + 1,
+        id: t.id,
+        staff_name: creativeMap.get(t.assignee_id!) || 'Unknown',
+        client_name: t.client?.client_name || 'Internal',
+        task_type: t.type || 'Generic',
+        assigned_by: t.creator?.full_name || 'System'
+    }));
+
+    // 3. Helper to calculate efficiency
+    const calculateEfficiency = async (startDate: Date) => {
+        const tasksPeriod = await prisma.task.findMany({
+            where: {
+                assignee_id: { in: creativeIds },
+                createdAt: { gte: startDate } // Basic correlation: tasks assigned in this period
+            },
+            select: { assignee_id: true, status: true, estimated_hours: true, actual_time_minutes: true }
+        });
+
+        return creatives.map(staff => {
+            const userTasks = tasksPeriod.filter(t => t.assignee_id === staff.id);
+            const total = userTasks.length;
+            const completed = userTasks.filter(t => t.status === 'COMPLETED').length;
+
+            // Completion ratio
+            let completionRate = total > 0 ? (completed / total) * 100 : 0;
+
+            // Time efficiency (if logged)
+            let estHours = 0;
+            let actHours = 0;
+            userTasks.forEach(t => {
+                estHours += t.estimated_hours || 0;
+                actHours += (t.actual_time_minutes || 0) / 60;
+            });
+
+            let timeEfficiencyScore = 50;
+            if (actHours > 0) {
+                timeEfficiencyScore = Math.min(100, (estHours / actHours) * 50);
+            }
+
+            // Weighted 70% completion, 30% time
+            const finalScore = total > 0 ? Math.round((completionRate * 0.7) + (timeEfficiencyScore * 0.3)) : 0;
+
+            return {
+                id: staff.id,
+                staff_name: staff.full_name,
+                assigned: total,
+                completed: completed,
+                efficiency: finalScore
+            };
+        }).sort((a, b) => b.efficiency - a.efficiency);
+    };
+
+    const dailyEfficiency = await calculateEfficiency(today);
+    const weeklyEfficiency = await calculateEfficiency(startWeek);
+    const monthlyEfficiency = await calculateEfficiency(startMnth);
+
+    return {
+        dailyTasks: formatTasksResponse,
+        dailyEfficiency,
+        weeklyEfficiency,
+        monthlyEfficiency
+    };
+};

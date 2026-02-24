@@ -85,32 +85,30 @@ const InvoiceManager = () => {
     const handleDownloadPDF = async () => {
         if (printRef.current) {
             document.body.classList.add('pdf-mode');
+
+            // 210mm x 297mm at 96 DPI is approx 794x1123 pixels
+            // This forces the html2canvas engine to pretend the window is exactly A4 size
             const canvas = await html2canvas(printRef.current, {
-                scale: 2,
+                scale: 2, // higher res
                 useCORS: true,
                 logging: false,
-                windowWidth: 794 // A4 96dpi
+                width: 794,
+                height: 1123,
+                windowWidth: 794
             });
             document.body.classList.remove('pdf-mode');
 
             const imgData = canvas.toDataURL('image/png');
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = pdf.internal.pageSize.getHeight();
 
-            const imgProps = pdf.getImageProperties(imgData);
-            const imgWidth = imgProps.width;
-            const imgHeight = imgProps.height;
+            // a4 is 210x297 mm
+            const pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: 'a4'
+            });
 
-            const widthRatio = pdfWidth / imgWidth;
-            const heightRatio = pdfHeight / imgHeight;
-
-            const ratio = Math.min(widthRatio, heightRatio);
-
-            const finalWidth = imgWidth * ratio;
-            const finalHeight = imgHeight * ratio;
-
-            pdf.addImage(imgData, 'PNG', 0, 0, finalWidth, finalHeight);
+            // Since our canvas was captured at exact A4 ratio, it directly fits
+            pdf.addImage(imgData, 'PNG', 0, 0, 210, 297);
             pdf.save(`Invoice_${selectedInvoice.invoice_number}.pdf`);
         }
     };

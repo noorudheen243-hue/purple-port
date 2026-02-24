@@ -197,32 +197,34 @@ const SeoView = () => {
                                         <h3 className="font-semibold mb-3 flex items-center gap-2 text-sm text-gray-700">
                                             <TrendingUp size={14} className="text-indigo-600" /> Keyword Rankings
                                         </h3>
-                                        <div className="border rounded-md overflow-hidden">
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow className="bg-gray-50 hover:bg-gray-50 h-8">
-                                                        <TableHead className="h-8 text-xs">Keyword</TableHead>
-                                                        <TableHead className="h-8 text-xs text-right">Rank</TableHead>
-                                                        <TableHead className="h-8 text-xs text-right">Change</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {rankings?.map((r: any, idx: number) => (
-                                                        <TableRow key={idx} className="h-8 text-xs">
-                                                            <TableCell className="font-medium p-2">{r.keyword}</TableCell>
-                                                            <TableCell className="text-right p-2">{r.rank}</TableCell>
-                                                            <TableCell className={`text-right p-2 font-medium ${r.change?.includes('+') ? 'text-green-600' : (r.change?.includes('-') ? 'text-red-500' : 'text-gray-500')}`}>
-                                                                {r.change}
-                                                            </TableCell>
+                                        <div className="border rounded-md overflow-x-auto">
+                                            <div className="min-w-[400px]">
+                                                <Table>
+                                                    <TableHeader>
+                                                        <TableRow className="bg-gray-50 hover:bg-gray-50 h-8">
+                                                            <TableHead className="h-8 text-xs">Keyword</TableHead>
+                                                            <TableHead className="h-8 text-xs text-right">Rank</TableHead>
+                                                            <TableHead className="h-8 text-xs text-right">Change</TableHead>
                                                         </TableRow>
-                                                    ))}
-                                                    {(!rankings || rankings.length === 0) && (
-                                                        <TableRow>
-                                                            <TableCell colSpan={3} className="text-center text-xs text-muted-foreground p-4">No rankings recorded.</TableCell>
-                                                        </TableRow>
-                                                    )}
-                                                </TableBody>
-                                            </Table>
+                                                    </TableHeader>
+                                                    <TableBody>
+                                                        {rankings?.map((r: any, idx: number) => (
+                                                            <TableRow key={idx} className="h-8 text-xs">
+                                                                <TableCell className="font-medium p-2">{r.keyword}</TableCell>
+                                                                <TableCell className="text-right p-2">{r.rank}</TableCell>
+                                                                <TableCell className={`text-right p-2 font-medium ${r.change?.includes('+') ? 'text-green-600' : (r.change?.includes('-') ? 'text-red-500' : 'text-gray-500')}`}>
+                                                                    {r.change}
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        ))}
+                                                        {(!rankings || rankings.length === 0) && (
+                                                            <TableRow>
+                                                                <TableCell colSpan={3} className="text-center text-xs text-muted-foreground p-4">No rankings recorded.</TableCell>
+                                                            </TableRow>
+                                                        )}
+                                                    </TableBody>
+                                                </Table>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

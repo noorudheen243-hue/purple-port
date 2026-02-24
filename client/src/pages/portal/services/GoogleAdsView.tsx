@@ -123,49 +123,51 @@ const GoogleAdsView = () => {
                 </CardHeader>
                 <CardContent>
                     {isLoading ? <div className="text-center py-8">Loading data...</div> : (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Date</TableHead>
-                                    <TableHead>Campaign</TableHead>
-                                    <TableHead>Type</TableHead>
-                                    <TableHead className="text-right">Spend</TableHead>
-                                    <TableHead className="text-right">Clicks</TableHead>
-                                    <TableHead className="text-right">Impressions</TableHead>
-                                    <TableHead className="text-right">Conversions</TableHead>
-                                    <TableHead className="text-right">CPA</TableHead>
-                                    <TableHead>Notes</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {logs?.length > 0 ? logs.map((log: any) => (
-                                    <TableRow key={log.id}>
-                                        <TableCell>{new Date(log.date).toLocaleDateString()}</TableCell>
-                                        <TableCell className="font-medium">{log.campaign_name}</TableCell>
-                                        <TableCell>{log.campaign_type}</TableCell>
-                                        <TableCell className="text-right font-mono">₹{log.spend?.toLocaleString()}</TableCell>
-                                        <TableCell className="text-right">{log.clicks}</TableCell>
-                                        <TableCell className="text-right">{log.impressions}</TableCell>
-                                        <TableCell className="text-right">{log.conversions}</TableCell>
-                                        <TableCell className="text-right">₹{log.cpa}</TableCell>
-                                        <TableCell className="max-w-[150px] truncate" title={log.notes}>{log.notes || '-'}</TableCell>
-                                    </TableRow>
-                                )) : (
+                        <div className="overflow-x-auto">
+                            <Table>
+                                <TableHeader>
                                     <TableRow>
-                                        <TableCell colSpan={9} className="text-center h-32 text-muted-foreground">
-                                            <div className="flex flex-col items-center justify-center gap-2">
-                                                <p>No records found.</p>
-                                                {canManage && !isManageMode && (
-                                                    <Button variant="outline" size="sm" onClick={() => navigate(`?mode=manage&clientId=${clientId}`)}>
-                                                        Add First Daily Entry
-                                                    </Button>
-                                                )}
-                                            </div>
-                                        </TableCell>
+                                        <TableHead>Date</TableHead>
+                                        <TableHead>Campaign</TableHead>
+                                        <TableHead>Type</TableHead>
+                                        <TableHead className="text-right">Spend</TableHead>
+                                        <TableHead className="text-right">Clicks</TableHead>
+                                        <TableHead className="text-right">Impressions</TableHead>
+                                        <TableHead className="text-right">Conversions</TableHead>
+                                        <TableHead className="text-right">CPA</TableHead>
+                                        <TableHead>Notes</TableHead>
                                     </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
+                                </TableHeader>
+                                <TableBody>
+                                    {logs?.length > 0 ? logs.map((log: any) => (
+                                        <TableRow key={log.id}>
+                                            <TableCell>{new Date(log.date).toLocaleDateString()}</TableCell>
+                                            <TableCell className="font-medium">{log.campaign_name}</TableCell>
+                                            <TableCell>{log.campaign_type}</TableCell>
+                                            <TableCell className="text-right font-mono">₹{log.spend?.toLocaleString()}</TableCell>
+                                            <TableCell className="text-right">{log.clicks}</TableCell>
+                                            <TableCell className="text-right">{log.impressions}</TableCell>
+                                            <TableCell className="text-right">{log.conversions}</TableCell>
+                                            <TableCell className="text-right">₹{log.cpa}</TableCell>
+                                            <TableCell className="max-w-[150px] truncate" title={log.notes}>{log.notes || '-'}</TableCell>
+                                        </TableRow>
+                                    )) : (
+                                        <TableRow>
+                                            <TableCell colSpan={9} className="text-center h-32 text-muted-foreground">
+                                                <div className="flex flex-col items-center justify-center gap-2">
+                                                    <p>No records found.</p>
+                                                    {canManage && !isManageMode && (
+                                                        <Button variant="outline" size="sm" onClick={() => navigate(`?mode=manage&clientId=${clientId}`)}>
+                                                            Add First Daily Entry
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
                     )}
                 </CardContent>
             </Card>

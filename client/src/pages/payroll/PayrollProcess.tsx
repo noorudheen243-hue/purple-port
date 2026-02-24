@@ -95,60 +95,62 @@ const PayrollProcess = () => {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Staff Name</TableHead>
-                                    <TableHead>Designation</TableHead>
-                                    <TableHead>Basic</TableHead>
-                                    <TableHead>Allowances</TableHead>
-                                    <TableHead>Deductions</TableHead>
-                                    <TableHead className="text-right font-bold">Net Pay</TableHead>
-                                    <TableHead className="text-center">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {pendingSlips.length === 0 ? (
+                        <div className="overflow-x-auto">
+                            <Table>
+                                <TableHeader>
                                     <TableRow>
-                                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                                            No pending slips found for this month.
-                                        </TableCell>
+                                        <TableHead>Staff Name</TableHead>
+                                        <TableHead>Designation</TableHead>
+                                        <TableHead>Basic</TableHead>
+                                        <TableHead>Allowances</TableHead>
+                                        <TableHead>Deductions</TableHead>
+                                        <TableHead className="text-right font-bold">Net Pay</TableHead>
+                                        <TableHead className="text-center">Actions</TableHead>
                                     </TableRow>
-                                ) : (
-                                    pendingSlips.map((slip: any) => (
-                                        <TableRow key={slip.id}>
-                                            <TableCell className="font-medium">
-                                                {slip.name}
-                                                <div className="text-xs text-muted-foreground">{slip.user?.staffProfile?.staff_number}</div>
-                                            </TableCell>
-                                            <TableCell>{slip.designation}</TableCell>
-                                            <TableCell>₹{slip.basic_salary.toLocaleString()}</TableCell>
-                                            <TableCell>₹{(slip.allowances + slip.conveyance_allowance + slip.accommodation_allowance + slip.incentives).toLocaleString()}</TableCell>
-                                            <TableCell className="text-red-500">-₹{(slip.lop_deduction + slip.advance_salary + slip.other_deductions).toLocaleString()}</TableCell>
-                                            <TableCell className="text-right font-bold text-green-700">₹{slip.net_pay.toLocaleString()}</TableCell>
-                                            <TableCell className="flex justify-center gap-2">
-                                                <Button
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                                    disabled={rejectMutation.isPending}
-                                                    onClick={() => rejectMutation.mutate(slip.id)}
-                                                >
-                                                    Reject
-                                                </Button>
-                                                <Button
-                                                    size="sm"
-                                                    className="bg-green-600 hover:bg-green-700"
-                                                    onClick={() => handleProcess(slip)}
-                                                >
-                                                    Submit
-                                                </Button>
+                                </TableHeader>
+                                <TableBody>
+                                    {pendingSlips.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                                                No pending slips found for this month.
                                             </TableCell>
                                         </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
+                                    ) : (
+                                        pendingSlips.map((slip: any) => (
+                                            <TableRow key={slip.id}>
+                                                <TableCell className="font-medium">
+                                                    {slip.name}
+                                                    <div className="text-xs text-muted-foreground">{slip.user?.staffProfile?.staff_number}</div>
+                                                </TableCell>
+                                                <TableCell>{slip.designation}</TableCell>
+                                                <TableCell>₹{slip.basic_salary.toLocaleString()}</TableCell>
+                                                <TableCell>₹{(slip.allowances + slip.conveyance_allowance + slip.accommodation_allowance + slip.incentives).toLocaleString()}</TableCell>
+                                                <TableCell className="text-red-500">-₹{(slip.lop_deduction + slip.advance_salary + slip.other_deductions).toLocaleString()}</TableCell>
+                                                <TableCell className="text-right font-bold text-green-700">₹{slip.net_pay.toLocaleString()}</TableCell>
+                                                <TableCell className="flex justify-center gap-2">
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                        disabled={rejectMutation.isPending}
+                                                        onClick={() => rejectMutation.mutate(slip.id)}
+                                                    >
+                                                        Reject
+                                                    </Button>
+                                                    <Button
+                                                        size="sm"
+                                                        className="bg-green-600 hover:bg-green-700"
+                                                        onClick={() => handleProcess(slip)}
+                                                    >
+                                                        Submit
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
                     </CardContent>
                 </Card>
             )}

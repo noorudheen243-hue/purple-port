@@ -333,7 +333,7 @@ export const getCreativeDashboardStats = async () => {
             createdAt: { gte: today }
         },
         include: {
-            client: { select: { client_name: true } },
+            client: { select: { name: true } },
             assigned_by: { select: { full_name: true } }
         },
         orderBy: { createdAt: 'desc' }
@@ -343,7 +343,7 @@ export const getCreativeDashboardStats = async () => {
         s_no: index + 1,
         id: t.id,
         staff_name: creativeMap.get(t.assignee_id!) || 'Unknown',
-        client_name: t.client?.client_name || 'Internal',
+        client_name: t.client?.name || 'Internal',
         task_type: t.type || 'Generic',
         assigned_by: t.assigned_by?.full_name || 'System'
     }));

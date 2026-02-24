@@ -217,8 +217,8 @@ export const SystemToolsTab = () => {
                                     <div className="text-sm text-muted-foreground space-y-2">
                                         <p>This action will clean up the server's file storage:</p>
                                         <ul className="list-disc pl-5 space-y-1">
-                                            <li>Deletes <b>ALL</b> files in the <code>uploads/</code> directory.</li>
-                                            <li>Clears any temporary system files.</li>
+                                            <li>Deletes <b>Task Attachments</b> in the <code>uploads/</code> directory.</li>
+                                            <li><b className="text-green-600 dark:text-green-400">Preserves</b> User profile pictures and Client logos.</li>
                                             <li><b className="text-green-600 dark:text-green-400">Database records remain intact</b> (Clients, Users, Tasks, etc.)</li>
                                         </ul>
                                         <div className="flex items-center gap-2 text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-950/30 p-3 rounded-lg border border-amber-200 dark:border-amber-900 px-4 mt-4">

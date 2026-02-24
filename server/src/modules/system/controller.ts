@@ -99,31 +99,63 @@ export const cleanupFilesOnly = async (req: Request, res: Response) => {
         }
 
         console.log(`[SYSTEM CLEANUP] Authorized by ${req.user.role}`);
-        console.log('Starting File Cleanup (Database records preserved)...');
+        console.log('Starting Bulletproof File Cleanup (Task Assets only, preserving all Profiles/Logos)...');
 
-        // Clear Uploads Directory (Keep database records intact)
+        // 1. Get all file URLs from the Asset table (Task attachments)
+        const assets = await prisma.asset.findMany({ select: { file_url: true } });
+
+        // 2. Get all currently used profile pictures and logos to EXCLUDE
+        const users = await prisma.user.findMany({
+            where: { avatar_url: { not: null } },
+            select: { avatar_url: true }
+        });
+        const clients = await prisma.client.findMany({
+            where: { logo_url: { not: null } },
+            select: { logo_url: true }
+        });
+
+        const preservedFiles = new Set([
+            ...users.map(u => path.basename(u.avatar_url!)),
+            ...clients.map(c => path.basename(c.logo_url!))
+        ]);
+
+        console.log(`[SYSTEM CLEANUP] Found ${preservedFiles.size} unique profile/logo files to preserve.`);
+
+        // 3. Identify files to delete
         const uploadDir = path.join(process.cwd(), 'uploads');
         let deletedFiles = 0;
+        let errors = 0;
+        let skipped = 0;
 
-        if (fs.existsSync(uploadDir)) {
-            const files = fs.readdirSync(uploadDir);
-            for (const file of files) {
-                const filePath = path.join(uploadDir, file);
-                try {
-                    if (fs.statSync(filePath).isFile()) {
-                        fs.unlinkSync(filePath);
-                        deletedFiles++;
-                    }
-                } catch (err: any) {
-                    console.error(`Failed to delete file ${file}:`, err.message);
-                    // Continue to next file
+        for (const asset of assets) {
+            if (!asset.file_url) continue;
+
+            const filename = path.basename(asset.file_url);
+
+            // Safety Skip: If this file is used as a profile/logo elsewhere
+            if (preservedFiles.has(filename)) {
+                skipped++;
+                continue;
+            }
+
+            const filePath = path.join(uploadDir, filename);
+
+            try {
+                if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+                    fs.unlinkSync(filePath);
+                    deletedFiles++;
                 }
+            } catch (err: any) {
+                console.error(`Failed to delete asset file ${filename}:`, err.message);
+                errors++;
             }
         }
 
         res.json({
             message: 'Cleanup Successful',
-            details: `Deleted ${deletedFiles} physical files. Database records preserved.`
+            details: `Deleted ${deletedFiles} task attachments. Preserved ${preservedFiles.size} profile pictures/logos.`,
+            skipped: skipped > 0 ? skipped : undefined,
+            errors: errors > 0 ? errors : undefined
         });
 
     } catch (error: any) {

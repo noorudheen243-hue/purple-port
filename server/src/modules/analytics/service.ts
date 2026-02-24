@@ -183,10 +183,13 @@ export const getTeamPerformanceStats = async (department?: string, startDate?: D
 };
 
 export const getAttendanceStats = async () => {
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const todayEnd = new Date();
-    todayEnd.setHours(23, 59, 59, 999);
+    const now = new Date();
+    const IST_OFFSET = 330 * 60 * 1000;
+    const istNow = new Date(now.getTime() + IST_OFFSET);
+    istNow.setUTCHours(0, 0, 0, 0);
+    const todayStart = new Date(istNow.getTime() - IST_OFFSET); // IST Midnight
+
+    const todayEnd = new Date(todayStart.getTime() + (24 * 60 * 60 * 1000) - 1);
 
     // Get all active employees to calculate total expected vs present
     // Group by department
@@ -310,8 +313,11 @@ export const getCreativeTeamMetrics = async () => {
 };
 
 export const getCreativeDashboardStats = async () => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
+    const IST_OFFSET = 330 * 60 * 1000;
+    const istNow = new Date(now.getTime() + IST_OFFSET);
+    istNow.setUTCHours(0, 0, 0, 0);
+    const today = new Date(istNow.getTime() - IST_OFFSET); // IST Midnight
 
     const startWeek = new Date(today);
     startWeek.setDate(today.getDate() - today.getDay()); // Start of week (Sunday)

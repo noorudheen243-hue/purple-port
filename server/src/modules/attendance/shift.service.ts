@@ -47,12 +47,20 @@ export class ShiftService {
         const { staff_id, shift_id, from_date, to_date, grace_time } = data;
 
         // Normalize Start Date
-        const startDate = new Date(from_date);
-        startDate.setHours(0, 0, 0, 0);
+        const IST_OFFSET = 330 * 60 * 1000;
+        const tempStart = new Date(from_date);
+        const istStart = new Date(tempStart.getTime() + IST_OFFSET);
+        istStart.setUTCHours(0, 0, 0, 0);
+        const startDate = new Date(istStart.getTime() - IST_OFFSET); // IST Midnight
 
         // Normalize End Date (if exists)
-        let endDate: Date | null | undefined = to_date ? new Date(to_date) : null;
-        if (endDate) endDate.setHours(0, 0, 0, 0);
+        let endDate: Date | null = null;
+        if (to_date) {
+            const tempEnd = new Date(to_date);
+            const istEnd = new Date(tempEnd.getTime() + IST_OFFSET);
+            istEnd.setUTCHours(0, 0, 0, 0);
+            endDate = new Date(istEnd.getTime() - IST_OFFSET); // IST Midnight
+        }
 
         const overlaps = await prisma.staffShiftAssignment.findFirst({
             where: {
@@ -148,8 +156,10 @@ export class ShiftService {
     // Returns the Shift active for a specific date, with effective grace time
     static async getShiftForDate(userId: string, date: Date) {
         // Normalize date to midnight
-        const queryDate = new Date(date);
-        queryDate.setHours(0, 0, 0, 0);
+        const IST_OFFSET = 330 * 60 * 1000;
+        const istDate = new Date(date.getTime() + IST_OFFSET);
+        istDate.setUTCHours(0, 0, 0, 0);
+        const queryDate = new Date(istDate.getTime() - IST_OFFSET); // IST Midnight
 
         // 1. Get Staff Profile (Central Lookup)
         const profile = await prisma.staffProfile.findUnique({

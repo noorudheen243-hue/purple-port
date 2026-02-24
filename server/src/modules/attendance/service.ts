@@ -4,8 +4,11 @@ export class AttendanceService {
 
     // Check In
     static async checkIn(userId: string) {
-        const today = new Date();
-        const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+        const now = new Date();
+        const IST_OFFSET = 330 * 60 * 1000;
+        const istNow = new Date(now.getTime() + IST_OFFSET);
+        istNow.setUTCHours(0, 0, 0, 0);
+        const startOfDay = new Date(istNow.getTime() - IST_OFFSET); // IST Midnight
 
         const existing = await db.attendanceRecord.findUnique({
             where: { user_id_date: { user_id: userId, date: startOfDay } }
@@ -38,8 +41,11 @@ export class AttendanceService {
 
     // Check Out
     static async checkOut(userId: string) {
-        const today = new Date();
-        const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+        const now = new Date();
+        const IST_OFFSET = 330 * 60 * 1000;
+        const istNow = new Date(now.getTime() + IST_OFFSET);
+        istNow.setUTCHours(0, 0, 0, 0);
+        const startOfDay = new Date(istNow.getTime() - IST_OFFSET); // IST Midnight
 
         const record = await db.attendanceRecord.findUnique({
             where: { user_id_date: { user_id: userId, date: startOfDay } }
@@ -354,9 +360,12 @@ export class AttendanceService {
                     continue;
                 }
 
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                const isPastDay = (existing ? existing.date : dateKeyIST).getTime() < today.getTime();
+                const now = new Date();
+                const istNow = new Date(now.getTime() + IST_OFFSET);
+                istNow.setUTCHours(0, 0, 0, 0);
+                const todayMidnightIST = new Date(istNow.getTime() - IST_OFFSET);
+
+                const isPastDay = (existing ? existing.date : dateKeyIST).getTime() < todayMidnightIST.getTime();
 
                 if (!existing) {
                     // CREATE NEW RECORD

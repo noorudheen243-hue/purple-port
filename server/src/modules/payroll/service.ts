@@ -85,8 +85,11 @@ export const calculateAutoLOP = async (userId: string, month: number, year: numb
     });
 
     // 6. Count Missing Attendance Records (Days with no record = Absent)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
+    const IST_OFFSET = 330 * 60 * 1000;
+    const istNow = new Date(now.getTime() + IST_OFFSET);
+    istNow.setUTCHours(0, 0, 0, 0);
+    const today = new Date(istNow.getTime() - IST_OFFSET); // IST Midnight
 
     const approvedLeaves = await prisma.leaveRequest.findMany({
         where: {
@@ -136,8 +139,11 @@ export const getSalaryDraft = async (userId: string, month: number, year: number
     }
 
     // 2. Determine Calculation Parameters
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
+    const IST_OFFSET = 330 * 60 * 1000;
+    const istNow = new Date(now.getTime() + IST_OFFSET);
+    istNow.setUTCHours(0, 0, 0, 0);
+    const today = new Date(istNow.getTime() - IST_OFFSET); // IST Midnight
 
     const monthStart = new Date(year, month - 1, 1);
     const monthEnd = new Date(year, month, 0); // Last day of month

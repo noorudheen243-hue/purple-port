@@ -17,13 +17,26 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: 22
           script: |
-            # Target the CORRECT web directory
             cd /var/www/purple-port
-            
-            # Force clean state from remote
             git fetch --all
             git reset --hard origin/main
-            
-            # Run the ROBUST deployment script (handles Nginx/Permissions/Copying)
             chmod +x deploy_update.sh
-            ./deploy_update.sh
+            bash deploy_update.sh
+
+      - name: Verify Deployment on VPS
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          script: |
+            echo "=== Nginx config root ==="
+            grep -r "root " /etc/nginx/sites-enabled/ 2>/dev/null || grep -r "root " /etc/nginx/conf.d/ 2>/dev/null || echo "Could not read nginx config"
+            echo "=== Files in server/public ==="
+            ls -lht /var/www/purple-port/server/public/ | head -20
+            echo "=== index.html modified ==="
+            stat /var/www/purple-port/server/public/index.html 2>/dev/null | grep Modify
+            echo "=== PM2 status ==="
+            pm2 list
+            echo "=== Verification complete ==="

@@ -47,17 +47,16 @@ const staffSchema = z.object({
     full_name: z.string().min(2, "Full Name is required"),
     email: z.string().email("Valid email is required"),
     password: z.string().nullish().or(z.literal('')),
-    role: z.enum(['ADMIN', 'MANAGER', 'DM_EXECUTIVE', 'WEB_SEO_EXECUTIVE', 'CREATIVE_DESIGNER', 'OPERATIONS_EXECUTIVE', 'DEVELOPER_ADMIN']),
+    role: z.string().nullish().or(z.literal('')), // Not mandatory — managed via Settings
     avatar_url: z.string().nullish().or(z.literal('')),
 
     // Professional
-    staff_number: z.string().min(1, "Staff ID is required (e.g., EMP-001)"),
-    designation: z.string().min(1, "Designation is required"),
+    staff_number: z.string().min(1, "Staff ID is required (e.g., QIX001)"),
+    designation: z.string().nullish().or(z.literal('')), // Optional
     custom_designation: z.string().nullish().or(z.literal('')),
     department: z.enum(['CREATIVE', 'MARKETING', 'WEB_SEO', 'WEB', 'MANAGEMENT', 'ADMIN']),
-    date_of_joining: z.string().min(1, "Joining Date is required"),
+    date_of_joining: z.string().nullish().or(z.literal('')), // Optional
     reporting_manager_id: z.string().nullish().or(z.literal('')),
-
 
     // Personal & Contact
     personal_email: z.string().email().nullish().or(z.literal('')),
@@ -94,7 +93,7 @@ const staffSchema = z.object({
     pan_number: z.string().nullish().or(z.literal('')),
     upi_id: z.string().nullish().or(z.literal('')),
     upi_linked_mobile: z.string().nullish().or(z.literal('')),
-    payment_method: z.enum(['BANK_TRANSFER', 'CASH', 'CHEQUE', 'UPI']).nullish().or(z.literal('')), // Added to match screenshot
+    payment_method: z.enum(['BANK_TRANSFER', 'CASH', 'CHEQUE', 'UPI']).nullish().or(z.literal('')),
 }).superRefine((data, ctx) => {
     if (data.ledger_options?.create && !data.ledger_options.head_id) {
         ctx.addIssue({
@@ -152,7 +151,7 @@ const StaffFormModal = ({ isOpen, onClose, initialData }: StaffFormModalProps) =
 
     useEffect(() => {
         if (initialData) {
-            let designation = initialData.designation;
+            let designation = initialData.designation || '';
             let custom_designation = '';
 
             // Logic: If designation value is NOT in the standard list, select "Other" and fill custom input
@@ -169,8 +168,9 @@ const StaffFormModal = ({ isOpen, onClose, initialData }: StaffFormModalProps) =
                 date_of_joining: initialData.date_of_joining ? new Date(initialData.date_of_joining).toISOString().split('T')[0] : '',
                 date_of_birth: initialData.date_of_birth ? new Date(initialData.date_of_birth).toISOString().split('T')[0] : '',
                 reporting_manager_id: initialData.reporting_manager_id || '',
-
-                password: undefined, // Don't pre-fill password usually
+                // Keep current role — don't let it be changed here
+                role: initialData.user?.role || 'DM_EXECUTIVE',
+                password: undefined, // Don't pre-fill password
                 ledger_options: initialData.ledger_options || { create: false, head_id: '' },
             });
         }
@@ -206,20 +206,19 @@ const StaffFormModal = ({ isOpen, onClose, initialData }: StaffFormModalProps) =
         mutationFn: async (data: StaffFormValues) => {
             const finalDesignation = data.designation === 'Other' ? data.custom_designation : data.designation;
 
-            if (!finalDesignation) {
-                throw new Error("Please specify the custom designation.");
-            }
-
-            const payload = {
+            const payload: any = {
                 ...data,
-                designation: finalDesignation,
+                designation: finalDesignation || undefined,
+                // In edit mode, don't send role (managed via Settings)
+                // In create mode, send default role
+                role: isEditMode ? undefined : (data.role || 'DM_EXECUTIVE'),
                 // Sanitize sensitive or empty fields
                 password: (isEditMode && !data.password) ? undefined : data.password,
                 reporting_manager_id: data.reporting_manager_id || undefined,
             };
 
             // Clean up temporary field
-            delete (payload as any).custom_designation;
+            delete payload.custom_designation;
 
             if (isEditMode) {
                 return await api.patch(`/team/staff/${initialData.id}`, payload);
@@ -367,6 +366,12 @@ const StaffFormModal = ({ isOpen, onClose, initialData }: StaffFormModalProps) =
                                         {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
                                     </div>
 
+                                    <div>
+                                        <label className="block text-sm font-medium text-foreground mb-1">Mobile Number <span className="text-red-500">*</span></label>
+                                        <input {...register('personal_contact')} className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="+91 98765 43210" />
+                                        {errors.personal_contact && <p className="text-red-500 text-xs mt-1">{errors.personal_contact.message}</p>}
+                                    </div>
+
                                     {!isEditMode && (
                                         <div>
                                             <label className="block text-sm font-medium text-foreground mb-1">Password <span className="text-red-500">*</span></label>
@@ -374,25 +379,6 @@ const StaffFormModal = ({ isOpen, onClose, initialData }: StaffFormModalProps) =
                                             {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
                                         </div>
                                     )}
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-foreground mb-1">System Role <span className="text-red-500">*</span></label>
-                                        <select
-                                            {...register('role')}
-                                            disabled={watch('role') === 'DEVELOPER_ADMIN'}
-                                            className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all bg-background disabled:bg-muted disabled:text-muted-foreground cursor-pointer disabled:cursor-not-allowed"
-                                        >
-                                            <option value="DEVELOPER_ADMIN" className="font-bold text-red-600">Developer Admin (Super User)</option>
-                                            <option value="ADMIN">Admin (Full Access)</option>
-                                            <option value="MANAGER">Manager (Team & Clients)</option>
-                                            <option value="DM_EXECUTIVE">DM Executive</option>
-                                            <option value="WEB_SEO_EXECUTIVE">Web & SEO Executive</option>
-                                            <option value="CREATIVE_DESIGNER">Creative Designer</option>
-                                            <option value="OPERATIONS_EXECUTIVE">Operations Executive</option>
-                                        </select>
-                                        {watch('role') === 'DEVELOPER_ADMIN' && <p className="text-xs text-red-500 mt-1 font-medium">This role cannot be changed.</p>}
-                                        {watch('role') !== 'DEVELOPER_ADMIN' && <p className="text-xs text-gray-500 mt-1">Determines system permissions.</p>}
-                                    </div>
                                 </div>
                             </div>
 

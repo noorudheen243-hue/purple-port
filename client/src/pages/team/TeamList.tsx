@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useLocation } from 'react-router-dom';
-import { Search, UserPlus, Filter, Mail, Phone, Trash2, Edit, ChevronDown, ChevronRight, LogOut, Save, CheckCircle } from 'lucide-react';
+import { Search, UserPlus, Filter, Mail, Phone, Trash2, Edit, ChevronDown, ChevronRight, LogOut, CheckCircle } from 'lucide-react';
 import api from '../../lib/api';
 import { getAssetUrl } from '../../lib/utils';
 import OnboardingModal from './OnboardingModal';
@@ -9,7 +9,6 @@ import ExitWorkflow from './ExitWorkflow';
 import StaffFormModal from './StaffFormModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../../components/ui/dialog';
 import { Button } from '../../components/ui/button';
-import { ROLES, ROLE_LABELS } from '../../utils/roles';
 
 const TeamList = () => {
     const location = useLocation();
@@ -28,10 +27,6 @@ const TeamList = () => {
         'WEB': true,
         'ADMIN': true
     });
-
-    // Role Management State
-    const [changedRoles, setChangedRoles] = useState<Record<string, string>>({});
-    const [isBulkConfirmOpen, setIsBulkConfirmOpen] = useState(false);
 
     const toggleDept = (dept: string) => {
         setExpandedDepts(prev => ({ ...prev, [dept]: !prev[dept] }));
@@ -52,38 +47,6 @@ const TeamList = () => {
 
     const handleDelete = (id: string) => {
         deleteMutation.mutate(id);
-    };
-
-    // Bulk Update Logic
-    const handleRoleChange = (id: string, newRole: string) => {
-        setChangedRoles(prev => ({ ...prev, [id]: newRole }));
-    };
-
-    const pendingUpdates = useMemo(() => {
-        return Object.keys(changedRoles).length;
-    }, [changedRoles]);
-
-    const handleBulkSaveClick = () => {
-        if (pendingUpdates > 0) {
-            setIsBulkConfirmOpen(true);
-        }
-    };
-
-    const confirmBulkSave = async () => {
-        setIsBulkConfirmOpen(false);
-        try {
-            await Promise.all(
-                Object.entries(changedRoles).map(([id, role]) =>
-                    api.patch(`/team/staff/${id}`, { role })
-                )
-            );
-            queryClient.invalidateQueries({ queryKey: ['staff'] });
-            setChangedRoles({}); // Clear changes
-        } catch (err: any) {
-            console.error("Bulk save error:", err);
-            const msg = err.response?.data?.message;
-            alert("Failed to update roles: " + (typeof msg === 'object' ? JSON.stringify(msg, null, 2) : (msg || err.message)));
-        }
     };
 
     const handleEdit = (staff: any) => {
@@ -185,15 +148,6 @@ const TeamList = () => {
                     <p className="text-muted-foreground">Manage your employees, their roles, and performance.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    {pendingUpdates > 0 && (
-                        <Button
-                            onClick={handleBulkSaveClick}
-                            className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
-                        >
-                            <Save size={16} />
-                            Save {pendingUpdates} Role Updates
-                        </Button>
-                    )}
                     <Link
                         to="/dashboard/team/onboard"
                         className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors"
@@ -265,7 +219,6 @@ const TeamList = () => {
                                                     <th className="px-4 py-3 text-center">Ledger</th>
                                                     <th className="px-4 py-3">ID Number</th>
                                                     <th className="px-4 py-3">Designation</th>
-                                                    <th className="px-4 py-3">System Role</th>
                                                     <th className="px-4 py-3">Contact</th>
                                                     <th className="px-4 py-3">Date of Joining</th>
                                                     <th className="px-4 py-3 text-right pr-6">Actions</th>
@@ -275,11 +228,9 @@ const TeamList = () => {
                                                 {members.map((member: any) => {
                                                     // Ensure user object exists to avoid crash
                                                     const user = member.user || {};
-                                                    const currentRole = changedRoles[member.id] || user.role || 'N/A';
-                                                    const isChanged = changedRoles[member.id] && changedRoles[member.id] !== user.role;
 
                                                     return (
-                                                        <tr key={member.id} className={`hover:bg-gray-50/30 group ${isChanged ? 'bg-yellow-50/30' : ''}`}>
+                                                        <tr key={member.id} className="hover:bg-gray-50/30 group">
                                                             <td className="px-4 py-3 pl-6">
                                                                 <div className="flex items-center gap-3">
                                                                     <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
@@ -309,24 +260,6 @@ const TeamList = () => {
                                                             <td className="px-4 py-3 text-gray-600 font-mono text-xs">{member.staff_number}</td>
                                                             <td className="px-4 py-3 text-gray-600">{member.designation}</td>
                                                             <td className="px-4 py-3">
-                                                                {currentRole === ROLES.DEVELOPER_ADMIN ? (
-                                                                    <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-red-600 text-white font-bold text-xs shadow-sm w-fit opacity-100 cursor-not-allowed select-none">
-                                                                        <span>Developer Admin</span>
-                                                                    </div>
-                                                                ) : (
-                                                                    <select
-                                                                        value={currentRole}
-                                                                        onChange={(e) => handleRoleChange(member.id, e.target.value)}
-                                                                        className={`border-none text-xs font-medium focus:ring-0 cursor-pointer rounded px-1 py-0.5 transition-colors bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 ${isChanged ? 'text-amber-600 font-bold' : 'text-gray-700 dark:text-gray-300'}`}
-                                                                    >
-                                                                        {Object.entries(ROLE_LABELS).map(([role, label]) => {
-                                                                            if (role === ROLES.DEVELOPER_ADMIN || role === ROLES.CLIENT) return null;
-                                                                            return <option key={role} value={role}>{label}</option>
-                                                                        })}
-                                                                    </select>
-                                                                )}
-                                                            </td>
-                                                            <td className="px-4 py-3">
                                                                 <div className="flex flex-col gap-0.5 text-xs text-gray-500">
                                                                     <div className="flex items-center gap-1.5">
                                                                         <Mail size={12} /> {user.email || '-'}
@@ -341,14 +274,14 @@ const TeamList = () => {
                                                             </td>
                                                             <td className="px-4 py-3 text-right pr-6">
                                                                 <div className="flex items-center justify-end gap-2">
-                                                                    <Link
-                                                                        to={`/dashboard/team/edit/${member.id}`}
+                                                                    <button
+                                                                        onClick={() => handleEdit(member)}
                                                                         className="p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded transition-colors"
                                                                         title="Edit Member"
                                                                     >
                                                                         <Edit size={16} />
-                                                                    </Link>
-                                                                    {currentRole !== 'DEVELOPER_ADMIN' && (
+                                                                    </button>
+                                                                    {user.role !== 'DEVELOPER_ADMIN' && (
                                                                         <>
                                                                             <button
                                                                                 onClick={() => {
@@ -391,23 +324,7 @@ const TeamList = () => {
                 </div>
             )}
 
-            {/* Bulk Save Confirmation Dialog */}
-            <Dialog open={isBulkConfirmOpen} onOpenChange={setIsBulkConfirmOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Confirm Role Updates</DialogTitle>
-                        <DialogDescription>
-                            You are about to update the system roles for <strong>{pendingUpdates}</strong> team members.
-                            <br /><br />
-                            Are you sure you want to proceed?
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsBulkConfirmOpen(false)}>Cancel</Button>
-                        <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={confirmBulkSave}>Yes, Update All</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+
         </div>
     );
 };

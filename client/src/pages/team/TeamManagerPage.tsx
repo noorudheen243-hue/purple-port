@@ -4,7 +4,6 @@ import { Users, Shield, Calendar, Banknote, ClipboardList, LogOut } from 'lucide
 
 // Components
 import TeamList from './TeamList';
-import SystemRoleManagement from './SystemRoleManagement';
 import AttendanceSummaryPage from '../attendance/AttendanceSummaryPage';
 import BiometricManagerPage from '../attendance/BiometricManagerPage';
 import LeaveManagementPage from '../attendance/LeaveManagementPage';
@@ -35,7 +34,6 @@ const TeamManagerPage = () => {
     // Tabs Configuration
     const tabs = [
         { id: 'team', label: 'Team List', icon: Users, theme: 'yellow' },
-        { id: 'roles', label: 'System Roles', icon: Users, theme: 'purple' },
         { id: 'attendance', label: 'Attendance', icon: ClipboardList, theme: 'yellow' },
         { id: 'biometric', label: 'Biometric Manager', icon: Shield, theme: 'purple' },
         { id: 'leave', label: 'Leave', icon: Calendar, theme: 'yellow' },
@@ -88,9 +86,6 @@ const TeamManagerPage = () => {
                 <div className="bg-white rounded-lg shadow-sm border p-6 min-h-[600px]">
                     <TabsContent value="team" className="mt-0">
                         <TeamList />
-                    </TabsContent>
-                    <TabsContent value="roles" className="mt-0">
-                        <SystemRoleManagement />
                     </TabsContent>
                     <TabsContent value="attendance" className="mt-0">
                         <AttendanceSummaryPage />

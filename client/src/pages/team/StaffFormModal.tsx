@@ -290,7 +290,8 @@ const StaffFormModal = ({ isOpen, onClose, initialData }: StaffFormModalProps) =
                 </div>
             )}
 
-            <div className="bg-background text-foreground border border-border">
+            {/* Modal Box */}
+            <div className="bg-background text-foreground border border-border rounded-xl shadow-2xl w-full max-w-4xl flex flex-col" style={{ maxHeight: 'calc(100vh - 2rem)' }}>
 
                 {/* Header */}
                 <div className="flex justify-between items-center p-5 border-b bg-muted/30 border-border">
@@ -332,97 +333,86 @@ const StaffFormModal = ({ isOpen, onClose, initialData }: StaffFormModalProps) =
                     </div>
                 )}
 
-                {/* Form Content */}
-                <form onSubmit={handleSubmit(onFormSubmit as any)} className="flex-1 overflow-y-auto p-8 bg-gray-50/30">
+                {/* Form Content - Scrollable */}
+                <form onSubmit={handleSubmit(onFormSubmit as any)} className="flex-1 overflow-y-auto p-6 bg-gray-50/30">
 
                     {/* TAB 1: PROFILE & ACCESS */}
                     {tab === 'profile' && (
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-2">
-                            {/* Left: Image Upload - Prominent */}
-                            <div className="col-span-1 flex flex-col items-center p-6 bg-white rounded-lg border border-gray-100 shadow-sm h-fit">
-                                <label className="block text-sm font-medium text-foreground mb-4 self-start">Profile Photo</label>
+                        <div className="flex gap-5 animate-in fade-in slide-in-from-bottom-2">
+                            {/* Left: Profile Photo - Compact */}
+                            <div className="flex flex-col items-center p-3 bg-white rounded-lg border border-gray-100 shadow-sm w-36 shrink-0 h-fit">
+                                <label className="block text-xs font-medium text-foreground mb-2 self-start">Photo</label>
                                 <ImageUpload
                                     value={watch('avatar_url') || undefined}
                                     onChange={(url) => setValue('avatar_url', url)}
-                                    label="Upload Photo"
+                                    label="Upload"
                                 />
-                                <p className="text-xs text-gray-400 mt-4 text-center">
-                                    Square JPG/PNG images work best.<br />Max size 2MB.
-                                </p>
+                                <p className="text-[10px] text-gray-400 mt-2 text-center">JPG/PNG · Max 2MB</p>
                             </div>
 
-                            {/* Right: Core Fields */}
-                            <div className="col-span-1 lg:col-span-2 space-y-6">
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div className="col-span-2">
-                                        <label className="block text-sm font-medium text-foreground mb-1">Full Name <span className="text-red-500">*</span></label>
-                                        <input {...register('full_name')} className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="e.g. Sarah Jones" />
-                                        {errors.full_name && <p className="text-red-500 text-xs mt-1">{errors.full_name.message}</p>}
-                                    </div>
+                            {/* Right: All Fields */}
+                            <div className="flex-1 space-y-3">
+                                {/* Row 1: Name */}
+                                <div>
+                                    <label className="block text-sm font-medium text-foreground mb-1">Full Name <span className="text-red-500">*</span></label>
+                                    <input {...register('full_name')} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="e.g. Sarah Jones" />
+                                    {errors.full_name && <p className="text-red-500 text-xs mt-0.5">{errors.full_name.message}</p>}
+                                </div>
 
+                                {/* Row 2: Email + Mobile */}
+                                <div className="grid grid-cols-2 gap-3">
                                     <div>
-                                        <label className="block text-sm font-medium text-foreground mb-1">Email (System Login) <span className="text-red-500">*</span></label>
-                                        <input {...register('email')} className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="sarah@qixads.com" />
-                                        {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
+                                        <label className="block text-sm font-medium text-foreground mb-1">Email <span className="text-red-500">*</span></label>
+                                        <input {...register('email')} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="sarah@qixads.com" />
+                                        {errors.email && <p className="text-red-500 text-xs mt-0.5">{errors.email.message}</p>}
                                     </div>
-
                                     <div>
-                                        <label className="block text-sm font-medium text-foreground mb-1">Mobile Number <span className="text-red-500">*</span></label>
-                                        <input {...register('personal_contact')} className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="+91 98765 43210" />
-                                        {errors.personal_contact && <p className="text-red-500 text-xs mt-1">{errors.personal_contact.message}</p>}
+                                        <label className="block text-sm font-medium text-foreground mb-1">Mobile <span className="text-red-500">*</span></label>
+                                        <input {...register('personal_contact')} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="+91 98765 43210" />
+                                        {errors.personal_contact && <p className="text-red-500 text-xs mt-0.5">{errors.personal_contact.message}</p>}
                                     </div>
+                                </div>
 
-                                    {!isEditMode && (
+                                {/* Password - create mode only */}
+                                {!isEditMode && (
+                                    <div className="grid grid-cols-2 gap-3">
                                         <div>
                                             <label className="block text-sm font-medium text-foreground mb-1">Password <span className="text-red-500">*</span></label>
-                                            <input type="password" {...register('password')} className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="******" />
-                                            {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
+                                            <input type="password" {...register('password')} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="******" />
+                                            {errors.password && <p className="text-red-500 text-xs mt-0.5">{errors.password.message}</p>}
                                         </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div className="border-t pt-4">
-                                <h4 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-                                    <Briefcase size={18} className="text-gray-400" /> Work Identifiers
-                                </h4>
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div>
-                                        <label className="block text-sm font-medium text-foreground mb-1">Staff ID (Manual) <span className="text-red-500">*</span></label>
-                                        <input {...register('staff_number')} className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all uppercase" placeholder="QIX-001" />
-                                        {errors.staff_number && <p className="text-red-500 text-xs mt-1">{errors.staff_number.message}</p>}
                                     </div>
+                                )}
 
-                                    <div>
-                                        <label className="block text-sm font-medium text-foreground mb-1">Designation <span className="text-red-500">*</span></label>
-                                        <div className="relative space-y-2">
-                                            <select
-                                                {...register('designation')}
-                                                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all bg-white appearance-none"
-                                            >
-                                                <option value="">Select Designation...</option>
+                                {/* Work Identifiers */}
+                                <div className="border-t pt-3">
+                                    <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2 text-sm">
+                                        <Briefcase size={14} className="text-gray-400" /> Work Identifiers
+                                    </h4>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-sm font-medium text-foreground mb-1">Staff ID <span className="text-red-500">*</span></label>
+                                            <input {...register('staff_number')} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all uppercase" placeholder="QIX-001" />
+                                            {errors.staff_number && <p className="text-red-500 text-xs mt-0.5">{errors.staff_number.message}</p>}
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-foreground mb-1">Designation</label>
+                                            <select {...register('designation')} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all bg-white">
+                                                <option value="">Select...</option>
                                                 {AGENCY_DESIGNATIONS.map(d => (
                                                     <option key={d} value={d}>{d}</option>
                                                 ))}
                                                 <option value="Other">Other (Type below)</option>
                                             </select>
-
                                             {selectedDesignation === 'Other' && (
-                                                <input
-                                                    {...register('custom_designation')}
-                                                    placeholder="Enter Custom Designation"
-                                                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all animate-in fade-in slide-in-from-top-1"
-                                                />
+                                                <input {...register('custom_designation')} placeholder="Enter Custom Designation" className="w-full mt-1 p-2.5 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all animate-in fade-in" />
                                             )}
                                         </div>
-                                        {errors.designation && <p className="text-red-500 text-xs mt-1">{errors.designation.message}</p>}
-                                    </div>
-
-                                    <div>
 
                                         <div>
                                             <label className="block text-sm font-medium text-foreground mb-1">Department <span className="text-red-500">*</span></label>
-                                            <select {...register('department')} className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all bg-white">
+                                            <select {...register('department')} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all bg-white">
                                                 <option value="MARKETING">Marketing</option>
                                                 <option value="CREATIVE">Creative</option>
                                                 <option value="WEB_SEO">Web & SEO</option>
@@ -431,17 +421,14 @@ const StaffFormModal = ({ isOpen, onClose, initialData }: StaffFormModalProps) =
                                             </select>
                                         </div>
 
-
-
                                         <div>
-                                            <label className="block text-sm font-medium text-foreground mb-1">Date of Joining <span className="text-red-500">*</span></label>
-                                            <input type="date" {...register('date_of_joining')} className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all" />
-                                            {errors.date_of_joining && <p className="text-red-500 text-xs mt-1">{errors.date_of_joining.message}</p>}
+                                            <label className="block text-sm font-medium text-foreground mb-1">Date of Joining</label>
+                                            <input type="date" {...register('date_of_joining')} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all" />
                                         </div>
 
                                         <div className="col-span-2">
                                             <label className="block text-sm font-medium text-foreground mb-1">Reporting Manager</label>
-                                            <select {...register('reporting_manager_id')} className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all bg-white">
+                                            <select {...register('reporting_manager_id')} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all bg-white">
                                                 <option value="">None (Self-Managed)</option>
                                                 {staffList?.map((s: any) => (
                                                     <option key={s.user.id} value={s.user.id}>{s.user.full_name} ({s.designation})</option>

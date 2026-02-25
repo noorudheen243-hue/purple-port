@@ -366,14 +366,6 @@ export const getStaffById = async (req: Request, res: Response) => {
     }
 };
 
-export const getNextStaffId = async (req: Request, res: Response) => {
-    try {
-        const nextId = await teamService.generateNextStaffId();
-        res.json({ nextId });
-    } catch (error: any) {
-        res.status(500).json({ message: error.message });
-    }
-};
 
 export const recordAttendance = async (req: Request, res: Response) => {
     try {
@@ -486,6 +478,32 @@ export const initiateExit = async (req: Request, res: Response) => {
             reason
         );
         res.json(result);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// Auto-generate next Staff ID in format QIX0001, QIX0002, ...
+export const getNextStaffId = async (req: Request, res: Response) => {
+    try {
+        const prisma = (await import('../../utils/prisma')).default;
+
+        // Get all staff numbers that match the QIX format
+        const staffList = await prisma.staffProfile.findMany({
+            select: { staff_number: true },
+            where: { staff_number: { startsWith: 'QIX' } }
+        });
+
+        let maxNum = 0;
+        for (const staff of staffList) {
+            const num = parseInt(staff.staff_number.replace(/^QIX0*/i, ''), 10);
+            if (!isNaN(num) && num > maxNum) maxNum = num;
+        }
+
+        const nextNum = maxNum + 1;
+        const nextId = `QIX${String(nextNum).padStart(4, '0')}`;
+
+        res.json({ next_id: nextId });
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }

@@ -131,6 +131,13 @@ const StaffFormModal = ({ isOpen, onClose, initialData }: StaffFormModalProps) =
         enabled: isOpen
     });
 
+    // Fetch next auto-generated staff ID (create mode only)
+    const { data: nextIdData } = useQuery({
+        queryKey: ['next-staff-id'],
+        queryFn: async () => (await api.get('/team/staff/next-id')).data,
+        enabled: isOpen && !isEditMode,
+    });
+
     const form = useForm<StaffFormValues>({
         resolver: zodResolver(staffSchema) as any,
         defaultValues: {
@@ -175,6 +182,14 @@ const StaffFormModal = ({ isOpen, onClose, initialData }: StaffFormModalProps) =
             });
         }
     }, [initialData, reset]);
+
+    // Auto-fill Staff ID in create mode
+    useEffect(() => {
+        if (!isEditMode && nextIdData?.next_id) {
+            setValue('staff_number', nextIdData.next_id);
+        }
+    }, [nextIdData, isEditMode, setValue]);
+
 
     const watchedHeadId = watch('ledger_options.head_id');
 
@@ -391,8 +406,16 @@ const StaffFormModal = ({ isOpen, onClose, initialData }: StaffFormModalProps) =
                                     </h4>
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
-                                            <label className="block text-sm font-medium text-foreground mb-1">Staff ID <span className="text-red-500">*</span></label>
-                                            <input {...register('staff_number')} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all uppercase" placeholder="QIX-001" />
+                                            <label className="block text-sm font-medium text-foreground mb-1">
+                                                Staff ID <span className="text-red-500">*</span>
+                                                {!isEditMode && <span className="ml-2 text-[10px] bg-green-100 text-green-700 rounded px-1.5 py-0.5 font-medium">Auto</span>}
+                                            </label>
+                                            <input
+                                                {...register('staff_number')}
+                                                readOnly={!isEditMode}
+                                                className={`w-full p-2.5 border rounded-lg outline-none transition-all uppercase ${!isEditMode ? 'bg-gray-50 text-gray-500 cursor-default border-gray-200' : 'focus:ring-2 focus:ring-primary/20'}`}
+                                                placeholder="QIX0001"
+                                            />
                                             {errors.staff_number && <p className="text-red-500 text-xs mt-0.5">{errors.staff_number.message}</p>}
                                         </div>
 

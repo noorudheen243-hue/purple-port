@@ -155,6 +155,16 @@ export const saveBackupToDisk = async (req: Request, res: Response) => {
         const destPath = path.join(backupDir, filename);
 
         console.log(`[Backup] Saving backup to: ${destPath}`);
+
+        // CRITICAL: For SQLite in WAL mode, the latest data is in the -wal file.
+        // We MUST force a checkpoint to flush WAL data to the main .db file before backing up.
+        try {
+            await prisma.$executeRawUnsafe('PRAGMA wal_checkpoint(TRUNCATE);');
+            console.log('[Backup] SQLite WAL checkpoint successful.');
+        } catch (e) {
+            console.warn('[Backup] WAL checkpoint failed (might not be in WAL mode):', e);
+        }
+
         await createBackupZip(destPath);
 
         const stats = fs.statSync(destPath);
@@ -258,6 +268,10 @@ function startCronJob() {
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
             const filename = `auto-backup-${timestamp}.zip`;
             const destPath = path.join(backupDir, filename);
+
+            // Force checkpoint for auto-backup too
+            try { await prisma.$executeRawUnsafe('PRAGMA wal_checkpoint(TRUNCATE);'); } catch { }
+
             await createBackupZip(destPath);
             pruneOldBackups(backupDir, 30);
             console.log(`[AutoBackup] Daily backup saved: ${filename}`);

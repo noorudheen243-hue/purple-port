@@ -32,11 +32,13 @@ jobs:
           port: 22
           script: |
             echo "=== Nginx config root ==="
-            grep -r "root " /etc/nginx/sites-enabled/ 2>/dev/null || grep -r "root " /etc/nginx/conf.d/ 2>/dev/null || echo "Could not read nginx config"
-            echo "=== Files in server/public ==="
-            ls -lht /var/www/purple-port/server/public/ | head -20
-            echo "=== index.html modified ==="
-            stat /var/www/purple-port/server/public/index.html 2>/dev/null | grep Modify
+            grep -r "root " /etc/nginx/sites-enabled/ 2>/dev/null || echo "Could not read nginx config"
+            echo "=== Files in client/dist (nginx serves this) ==="
+            ls -lht /var/www/purple-port/client/dist/ | head -10
+            echo "=== index.html in client/dist modified ==="
+            stat /var/www/purple-port/client/dist/index.html 2>/dev/null | grep Modify
+            echo "=== Sample JS file check (StaffFormModal) ==="
+            ls -lht /var/www/purple-port/client/dist/assets/ | grep -i staff | head -5 || echo "No StaffFormModal file found"
             echo "=== PM2 status ==="
             pm2 list
             echo "=== Verification complete ==="

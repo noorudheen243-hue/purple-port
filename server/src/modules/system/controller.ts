@@ -32,7 +32,7 @@ export const syncToCloud = async (req: Request, res: Response) => {
             });
 
             // Run script detached
-            const deployScript = '/root/purple-port/deploy_update.sh';
+            const deployScript = '/var/www/purple-port/deploy_update.sh';
             // We use spawn to fire and forget (mostly), but we want it to survive the parent death if possible.
             // Actually, if this process dies, spawn might too unless detached.
             const child = spawn('bash', [deployScript], {

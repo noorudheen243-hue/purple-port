@@ -113,7 +113,8 @@ export const listStaff = async () => {
         profiles = await prisma.staffProfile.findMany({
             orderBy: { designation: 'asc' },
             where: {
-                staff_number: { notIn: ['QIX0001', 'QIX0002'] }
+                staff_number: { notIn: ['QIX0001', 'QIX0002'] },
+                user: { role: { not: 'CLIENT' } }
             },
             include: {
                 user: { select: { id: true, full_name: true, email: true, role: true, avatar_url: true } },
@@ -130,7 +131,8 @@ export const listStaff = async () => {
         profiles = await prisma.staffProfile.findMany({
             orderBy: { designation: 'asc' },
             where: {
-                staff_number: { notIn: ['QIX0001', 'QIX0002'] }
+                staff_number: { notIn: ['QIX0001', 'QIX0002'] },
+                user: { role: { not: 'CLIENT' } }
             },
             include: {
                 user: { select: { id: true, full_name: true, email: true, role: true, avatar_url: true } }

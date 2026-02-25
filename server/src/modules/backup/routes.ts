@@ -7,7 +7,9 @@ import {
     listLocalBackups,
     restoreFromDisk,
     getAutoBackupSetting,
-    setAutoBackupSetting
+    setAutoBackupSetting,
+    downloadBackupFile,
+    downloadBackupFromRemote
 } from './controller';
 import { protect, authorize } from '../../modules/auth/middleware';
 
@@ -22,6 +24,10 @@ router.post('/restore-from-disk', protect, authorize('DEVELOPER_ADMIN'), restore
 // ─── Auto-Backup Setting ─────────────────────────────────────────────────────
 router.get('/auto-backup-setting', protect, authorize('DEVELOPER_ADMIN'), getAutoBackupSetting);
 router.post('/auto-backup-setting', protect, authorize('DEVELOPER_ADMIN'), setAutoBackupSetting);
+
+// ─── Cross-Environment Retrieval ─────────────────────────────────────────────
+router.get('/download/:filename', protect, authorize('DEVELOPER_ADMIN'), downloadBackupFile);
+router.post('/download-from-remote', protect, authorize('DEVELOPER_ADMIN'), downloadBackupFromRemote);
 
 // ─── Legacy Endpoints (kept for backward-compat with Data Sync tab) ──────────
 // GET /api/backup/export-json  → browser file download

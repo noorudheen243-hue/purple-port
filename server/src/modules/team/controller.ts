@@ -174,13 +174,13 @@ export const onboardStaff = async (req: Request, res: Response) => {
                 payment_method: data.payment_method || undefined,
 
                 previous_company: data.previous_company || undefined,
-                total_experience_years: data.total_experience_years ? Number(data.total_experience_years) : undefined,
+                total_experience_years: data.total_experience_years !== undefined && data.total_experience_years !== '' ? Number(data.total_experience_years) : undefined,
 
-                base_salary: data.base_salary ? Number(data.base_salary) : undefined,
-                hra: data.hra ? Number(data.hra) : undefined,
-                allowances: data.allowances ? Number(data.allowances) : undefined,
-                conveyance_allowance: data.conveyance_allowance ? Number(data.conveyance_allowance) : undefined,
-                accommodation_allowance: data.accommodation_allowance ? Number(data.accommodation_allowance) : undefined,
+                base_salary: data.base_salary !== undefined && data.base_salary !== '' ? Number(data.base_salary) : undefined,
+                hra: data.hra !== undefined && data.hra !== '' ? Number(data.hra) : undefined,
+                allowances: data.allowances !== undefined && data.allowances !== '' ? Number(data.allowances) : undefined,
+                conveyance_allowance: data.conveyance_allowance !== undefined && data.conveyance_allowance !== '' ? Number(data.conveyance_allowance) : undefined,
+                accommodation_allowance: data.accommodation_allowance !== undefined && data.accommodation_allowance !== '' ? Number(data.accommodation_allowance) : undefined,
 
                 salary_type: data.salary_type,
                 incentive_eligible: data.incentive_eligible === 'true' || data.incentive_eligible === true,
@@ -272,12 +272,12 @@ export const updateStaffFull = async (req: Request, res: Response) => {
             emergency_contact_name: data.emergency_contact_name,
             emergency_contact_number: data.emergency_contact_number,
             previous_company: data.previous_company,
-            total_experience_years: data.total_experience_years ? Number(data.total_experience_years) : undefined,
-            base_salary: data.base_salary ? Number(data.base_salary) : undefined,
-            hra: data.hra ? Number(data.hra) : undefined,
-            allowances: data.allowances ? Number(data.allowances) : undefined,
-            conveyance_allowance: data.conveyance_allowance ? Number(data.conveyance_allowance) : undefined,
-            accommodation_allowance: data.accommodation_allowance ? Number(data.accommodation_allowance) : undefined,
+            total_experience_years: data.total_experience_years !== undefined && data.total_experience_years !== '' ? Number(data.total_experience_years) : undefined,
+            base_salary: data.base_salary !== undefined && data.base_salary !== '' ? Number(data.base_salary) : undefined,
+            hra: data.hra !== undefined && data.hra !== '' ? Number(data.hra) : undefined,
+            allowances: data.allowances !== undefined && data.allowances !== '' ? Number(data.allowances) : undefined,
+            conveyance_allowance: data.conveyance_allowance !== undefined && data.conveyance_allowance !== '' ? Number(data.conveyance_allowance) : undefined,
+            accommodation_allowance: data.accommodation_allowance !== undefined && data.accommodation_allowance !== '' ? Number(data.accommodation_allowance) : undefined,
 
             // Payroll & Financial
             salary_type: data.salary_type,

@@ -65,6 +65,10 @@ const cleanPorts = async () => {
     const command = process.platform === 'win32' ? 'npx.cmd' : 'npx';
     const server = spawn(command, ['ts-node-dev', '--respawn', '--transpile-only', 'src/server.ts'], { stdio: 'inherit', shell: true });
 
+    // Start the Biometric Bridge agent in parallel so data syncs to VPS automatically
+    console.log('--- Starting Biometric Bridge to VPS ---');
+    const bridge = spawn(command, ['ts-node-dev', '--transpile-only', 'src/scripts/biometric_bridge.ts'], { stdio: 'inherit', shell: true });
+
     server.on('close', (code) => {
         process.exit(code);
     });

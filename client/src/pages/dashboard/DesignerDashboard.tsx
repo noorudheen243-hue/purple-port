@@ -24,12 +24,12 @@ const DesignerDashboard = () => {
         }
     });
 
-    if (isLoading) return <div className="p-8 text-center text-gray-500 animate-pulse">Loading workspace...</div>;
-
     const { data: creativeDashboard, isLoading: isCreativeLoading } = useQuery({
         queryKey: ['creative-dashboard'],
         queryFn: async () => (await api.get('/analytics/creative-dashboard')).data
     });
+
+    if (isLoading || isCreativeLoading) return <div className="p-8 text-center text-gray-500 animate-pulse">Loading workspace...</div>;
 
     const { distribution } = data || { distribution: [] };
     const myStats = data?.efficiency[0] || { total: 0, completed: 0, efficiency: 0 };

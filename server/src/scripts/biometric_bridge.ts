@@ -5,7 +5,7 @@ import axios from 'axios';
 // --- CONFIGURATION ---
 const DEVICE_IP = '192.168.1.201'; // Local Device IP
 const DEVICE_PORT = 4370;
-const SERVER_URL = 'http://66.116.224.221/api'; // Live VPS Backend URL
+const SERVER_URL = 'https://qixport.com/api'; // Live VPS Backend URL
 const BRIDGE_API_KEY = 'ag_bio_sync_v1_secret_key'; // Matches server .env
 
 // ---------------------
@@ -53,10 +53,42 @@ async function sync() {
 
         console.log(`[${ts()}] 📤 Found ${data.length} raw logs (${cleanLogs.length} valid). Uploading...`);
 
+        // 3.5. Fetch Users too!
+        let deviceUsers = [];
+        try {
+            const usersResp: any = await Promise.race([
+                zk.getUsers(),
+                new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout fetching users')), 10000))
+            ]);
+            deviceUsers = usersResp?.data || [];
+        } catch (e: any) {
+            console.warn(`[${ts()}] ⚠️  Could not fetch users:`, e.message);
+        }
+
         // 4. Show skipped entries warning
         const skipped = data.length - cleanLogs.length;
         if (skipped > 0) {
             console.warn(`[${ts()}] ⚠️  ${skipped} logs skipped (missing user_id). Raw sample:`, JSON.stringify(data[0]));
+        }
+
+        // 4.5. Upload Users List to VPS First
+        if (deviceUsers.length > 0) {
+            try {
+                await axios.post(
+                    `${SERVER_URL}/attendance/biometric/bridge/upload-users`,
+                    { users: deviceUsers },
+                    {
+                        headers: {
+                            'x-api-key': BRIDGE_API_KEY,
+                            'Content-Type': 'application/json'
+                        },
+                        timeout: 10000
+                    }
+                );
+                console.log(`[${ts()}] 👥 Uploaded ${deviceUsers.length} enrolled users to bridge cache.`);
+            } catch (apiErr: any) {
+                console.error(`[${ts()}] ❌ User Upload Failed:`, apiErr.message);
+            }
         }
 
         // 5. Upload to VPS in batches of 500

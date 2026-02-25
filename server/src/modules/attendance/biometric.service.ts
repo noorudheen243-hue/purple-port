@@ -481,6 +481,99 @@ export class BiometricControlService {
         return await this.getDeviceUsers();
     }
 
+    async getUnlinkedDeviceUsers() {
+        return this.mutex.run(async () => {
+            try {
+                let deviceUsers: any[] = [];
+
+                // 1. Check if device is physically reachable FIRST (Fail-Fast)
+                const isReachable = await this.probeDevice(500);
+
+                if (isReachable) {
+                    try {
+                        if (await this.connect()) {
+                            const deviceUsersResp = await this.zk.getUsers();
+                            deviceUsers = deviceUsersResp?.data || [];
+                            await this.disconnect();
+                        }
+                    } catch (e) {
+                        console.error("Direct connect failed for unlinked users:", e);
+                    }
+                }
+
+                // 2. Fallback to Bridge Cache
+                if (deviceUsers.length === 0) {
+                    const status = await prisma.biometricDeviceStatus.findUnique({ where: { id: 'CURRENT' } });
+                    if (status && status.device_info) {
+                        const info = JSON.parse(status.device_info);
+                        deviceUsers = info.deviceUsers || [];
+                    }
+                }
+
+                // Get all existing biometric credentials from DB (Legacy/Direct)
+                const existingCredentials = await prisma.biometricCredential.findMany({ select: { staff_number: true } });
+                const linkedUserIds = new Set(existingCredentials.map(c => c.staff_number));
+
+                // Get all mapped devices from DB (New Method)
+                const linkedStaffProfiles = await prisma.staffProfile.findMany({
+                    where: { biometric_device_id: { not: null } },
+                    select: { biometric_device_id: true, staff_number: true }
+                });
+                const linkedStaffDeviceIds = new Set(linkedStaffProfiles.map(s => s.biometric_device_id));
+                const linkedStaffNumbers = new Set(linkedStaffProfiles.map(s => s.staff_number));
+
+                // Filter device users to only include those NOT in the credentials table or mapped
+                const unlinkedUsers = deviceUsers.filter((u: any) => {
+                    const uidStr = String(u.userId);
+                    return !linkedUserIds.has(uidStr) &&
+                        !linkedStaffDeviceIds.has(uidStr) &&
+                        !linkedStaffNumbers.has(uidStr);
+                });
+
+                return { data: unlinkedUsers };
+            } catch (error: any) {
+                throw new Error(`Failed to fetch unlinked users: ${getErrMsg(error)}`);
+            }
+        });
+    }
+
+    async linkDeviceUser(deviceUserId: string, staffProfileId: string) {
+        return this.mutex.run(async () => {
+            try {
+                // 1. Fetch the selected Staff Profile
+                const staff = await prisma.staffProfile.findUnique({
+                    where: { id: staffProfileId },
+                    select: { staff_number: true, user: { select: { full_name: true } } }
+                });
+
+                if (!staff) throw new Error("Staff profile not found.");
+
+                // 2. Map the ID explicitly onto the Staff Profile
+                await prisma.staffProfile.update({
+                    where: { id: staffProfileId },
+                    data: { biometric_device_id: String(deviceUserId) }
+                });
+
+                return { message: `Device User ${deviceUserId} successfully linked to ${staff.user?.full_name} (${staff.staff_number}).` };
+            } catch (error: any) {
+                throw new Error(`Failed to link user: ${getErrMsg(error)}`);
+            }
+        });
+    }
+
+    async cacheDeviceUsers(users: any[]) {
+        const status = await prisma.biometricDeviceStatus.findUnique({ where: { id: 'CURRENT' } });
+        let info = status && status.device_info ? JSON.parse(status.device_info) : {};
+        info.deviceUsers = users;
+
+        await prisma.biometricDeviceStatus.upsert({
+            where: { id: 'CURRENT' },
+            create: { id: 'CURRENT', status: 'ONLINE', last_heartbeat: new Date(), device_info: JSON.stringify(info) },
+            update: { last_heartbeat: new Date(), device_info: JSON.stringify(info) }
+        });
+        return { message: "Cache updated" };
+    }
+
     async getAttendanceLogs() {
         return this.mutex.run(async () => {
             try {

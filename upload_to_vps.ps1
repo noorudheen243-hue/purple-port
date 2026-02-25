@@ -17,6 +17,12 @@ cd client
 npm run build
 cd ..
 
+# Step 1.5: Build Backend
+Write-Host "[1.5/5] Building Backend..." -ForegroundColor Cyan
+cd server
+npm run build
+cd ..
+
 # Step 2: Prepare Package
 Write-Host "[2/5] Packaging Files..." -ForegroundColor Cyan
 $PACKAGE_DIR = "deploy_temp"
@@ -32,29 +38,25 @@ if (Test-Path "client/dist") {
 
 # Copy Backend Source & dist
 if (Test-Path "server/dist") {
-    Write-Host "-> Copying Backend Build..."
+    Write-Host "-> Copying Backend Build (dist)..."
     Copy-Item -Path "server/dist\*" -Destination "$PACKAGE_DIR/server_dist" -Recurse -Force
+}
+if (Test-Path "server/src") {
+    Write-Host "-> Copying Backend Source (src)..."
+    New-Item -ItemType Directory -Path "$PACKAGE_DIR/server_dist/src" -Force | Out-Null
+    Copy-Item -Path "server/src\*" -Destination "$PACKAGE_DIR/server_dist/src" -Recurse -Force
 }
 if (Test-Path "server/package.json") {
     Copy-Item -Path "server/package.json" -Destination "$PACKAGE_DIR/server_dist" -Force
 }
-
-# Include Data & Uploads
-if (Test-Path "server/prisma/dev.db") {
-    Write-Host "-> Including Database..."
-    Copy-Item -Path "server/prisma/dev.db" -Destination "$PACKAGE_DIR/server_dist/dev.db" -Force
-}
-if (Test-Path "server/uploads") {
-    Write-Host "-> Including Server Uploads..."
-    New-Item -ItemType Directory -Path "$PACKAGE_DIR/server_dist/uploads" -Force | Out-Null
-    Copy-Item -Path "server/uploads\*" -Destination "$PACKAGE_DIR/server_dist/uploads" -Recurse -Force
-}
-if (Test-Path "uploads") {
-    Write-Host "-> Including Root Uploads..."
-    New-Item -ItemType Directory -Path "$PACKAGE_DIR/server_dist/root_uploads" -Force | Out-Null
-    Copy-Item -Path "uploads\*" -Destination "$PACKAGE_DIR/server_dist/root_uploads" -Recurse -Force
+if (Test-Path "server/prisma") {
+    Write-Host "-> Copying Prisma Schema..."
+    New-Item -ItemType Directory -Path "$PACKAGE_DIR/server_dist/prisma" -Force | Out-Null
+    Copy-Item -Path "server/prisma/schema.prisma" -Destination "$PACKAGE_DIR/server_dist/prisma/" -Force
 }
 
+# --- DATA SYNC REMOVED ---
+# Do NOT sync dev.db or uploads. This ensures the live VPS data is never overwritten by local data.
 # Zip it
 Compress-Archive -Path "$PACKAGE_DIR\*" -DestinationPath "./deploy_package.zip" -Force
 Remove-Item -Recurse -Force $PACKAGE_DIR
@@ -83,35 +85,32 @@ rm -rf $REMOTE_PATH/server/dist/*
 # Copy everything EXCEPT root_uploads and uploads from the temp package to dist
 cp -r $REMOTE_PATH/updated_files/server_dist/* $REMOTE_PATH/server/dist/
 
+# Move src folder to server/src
+if [ -d $REMOTE_PATH/updated_files/server_dist/src ]; then
+    echo "-> Updating Backend Source..."
+    mkdir -p $REMOTE_PATH/server/src
+    rm -rf $REMOTE_PATH/server/src/*
+    cp -r $REMOTE_PATH/updated_files/server_dist/src/* $REMOTE_PATH/server/src/
+fi
+
+# Move prisma folder
+if [ -d $REMOTE_PATH/updated_files/server_dist/prisma ]; then
+    echo "-> Updating Prisma Schema..."
+    mkdir -p $REMOTE_PATH/server/prisma
+    cp $REMOTE_PATH/updated_files/server_dist/prisma/schema.prisma $REMOTE_PATH/server/prisma/
+fi
+
 # Now move the specific data files to the correct parent folder
 cp $REMOTE_PATH/updated_files/server_dist/package.json $REMOTE_PATH/server/
 
-# Sync Database (to server/prisma/)
-if [ -f $REMOTE_PATH/updated_files/server_dist/dev.db ]; then
-    mkdir -p $REMOTE_PATH/server/prisma
-    cp $REMOTE_PATH/updated_files/server_dist/dev.db $REMOTE_PATH/server/prisma/dev.db
-fi
+# Clean up temp file
+rm -f $REMOTE_PATH/server/package.json
 
-# Sync Server Uploads (to server/uploads/)
-if [ -d $REMOTE_PATH/updated_files/server_dist/uploads ]; then
-    mkdir -p $REMOTE_PATH/server/uploads
-    cp -r $REMOTE_PATH/updated_files/server_dist/uploads/* $REMOTE_PATH/server/uploads/
-fi
-
-# Sync Root Uploads (to /uploads/)
-if [ -d $REMOTE_PATH/updated_files/server_dist/root_uploads ]; then
-    mkdir -p $REMOTE_PATH/uploads
-    cp -r $REMOTE_PATH/updated_files/server_dist/root_uploads/* $REMOTE_PATH/uploads/
-fi
-
-# Cleanup: if uploads folder was copied into dist by accident, remove it
-rm -rf $REMOTE_PATH/server/dist/uploads
-rm -rf $REMOTE_PATH/server/dist/root_uploads
-rm -f $REMOTE_PATH/server/dist/dev.db
-rm -f $REMOTE_PATH/server/dist/package.json
+echo "-> Applying Database Schema Changes..."
+cd $REMOTE_PATH/server
+npx prisma db push --accept-data-loss
 
 echo "-> Restarting PM2..."
-cd $REMOTE_PATH/server
 pm2 restart qix-backend || pm2 start dist/server.js --name qix-backend
 "@
 

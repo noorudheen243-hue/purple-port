@@ -317,8 +317,13 @@ export class AttendanceService {
                 const dateKeyUTC = new Date(timestamp);
                 dateKeyUTC.setHours(0, 0, 0, 0);
 
-                const staff = await db.staffProfile.findUnique({
-                    where: { staff_number: log.staff_number },
+                const staff = await db.staffProfile.findFirst({
+                    where: {
+                        OR: [
+                            { staff_number: log.staff_number },
+                            { biometric_device_id: String(log.staff_number) }
+                        ]
+                    },
                     include: { user: true }
                 });
 

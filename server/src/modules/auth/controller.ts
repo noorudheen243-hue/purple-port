@@ -38,6 +38,7 @@ export const registerUser = async (req: Request, res: Response) => {
                 email: user.email,
                 role: user.role,
                 department: user.department,
+                avatar_url: user.avatar_url,
                 linked_client_id: user.linked_client_id,
             });
         } else {
@@ -77,6 +78,7 @@ export const loginUser = async (req: Request, res: Response) => {
                     email: user.email,
                     role: user.role,
                     department: user.department,
+                    avatar_url: user.avatar_url,
                     linked_client_id: user.linked_client_id,
                 });
                 return;

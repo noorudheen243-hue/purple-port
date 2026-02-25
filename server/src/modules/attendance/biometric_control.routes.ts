@@ -25,6 +25,8 @@ router.post('/clear-logs', authenticate, authorize('ADMIN', 'DEVELOPER_ADMIN'), 
 // User Management
 router.post('/users/add', authenticate, authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'), BiometricController.addUser);
 router.post('/users/delete', authenticate, authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'), BiometricController.deleteUser);
+router.get('/users/unlinked', authenticate, authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'), BiometricController.getUnlinkedDeviceUsers);
+router.post('/users/link', authenticate, authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'), BiometricController.linkDeviceUser);
 
 // dedicated API Key Middleware for Bridge
 const requireApiKey = (req: any, res: any, next: any) => {
@@ -40,6 +42,7 @@ const requireApiKey = (req: any, res: any, next: any) => {
 
 // Bridge Agent Routes (API Key Protected)
 router.post('/bridge/upload', requireApiKey, BiometricController.uploadLogs);
+router.post('/bridge/upload-users', requireApiKey, BiometricController.uploadUsersFromBridge);
 
 // One-time cleanup: deactivate orphaned StaffShiftAssignments (shift was deleted but assignment still exists)
 router.post('/bridge/clean-orphans', requireApiKey, async (req: any, res: any) => {

@@ -46,55 +46,55 @@ const staffSchema = z.object({
     // Account & System
     full_name: z.string().min(2, "Full Name is required"),
     email: z.string().email("Valid email is required"),
-    password: z.string().optional(),
+    password: z.string().nullish().or(z.literal('')),
     role: z.enum(['ADMIN', 'MANAGER', 'DM_EXECUTIVE', 'WEB_SEO_EXECUTIVE', 'CREATIVE_DESIGNER', 'OPERATIONS_EXECUTIVE', 'DEVELOPER_ADMIN']),
-    avatar_url: z.string().optional(),
+    avatar_url: z.string().nullish().or(z.literal('')),
 
     // Professional
     staff_number: z.string().min(1, "Staff ID is required (e.g., EMP-001)"),
     designation: z.string().min(1, "Designation is required"),
-    custom_designation: z.string().optional(),
+    custom_designation: z.string().nullish().or(z.literal('')),
     department: z.enum(['CREATIVE', 'MARKETING', 'WEB_SEO', 'WEB', 'MANAGEMENT', 'ADMIN']),
     date_of_joining: z.string().min(1, "Joining Date is required"),
-    reporting_manager_id: z.string().optional(),
+    reporting_manager_id: z.string().nullish().or(z.literal('')),
 
 
     // Personal & Contact
-    personal_email: z.string().email().optional().or(z.literal('')),
-    personal_contact: z.string().regex(/^\+?[\d\s-]{10,}$/, "Invalid phone number").optional().or(z.literal('')),
-    whatsapp_number: z.string().optional(),
-    official_contact: z.string().optional(),
-    date_of_birth: z.string().optional(),
-    marital_status: z.enum(['SINGLE', 'MARRIED', 'DIVORCED', 'WIDOWED']).optional(),
-    address: z.string().optional(),
-    pincode: z.string().optional(),
+    personal_email: z.string().email().nullish().or(z.literal('')),
+    personal_contact: z.string().nullish().or(z.literal('')),
+    whatsapp_number: z.string().nullish().or(z.literal('')),
+    official_contact: z.string().nullish().or(z.literal('')),
+    date_of_birth: z.string().nullish().or(z.literal('')),
+    marital_status: z.enum(['SINGLE', 'MARRIED', 'DIVORCED', 'WIDOWED']).nullish().or(z.literal('')),
+    address: z.string().nullish().or(z.literal('')),
+    pincode: z.string().nullish().or(z.literal('')),
 
-    emergency_contact_name: z.string().optional(),
-    emergency_contact_number: z.string().optional(),
+    emergency_contact_name: z.string().nullish().or(z.literal('')),
+    emergency_contact_number: z.string().nullish().or(z.literal('')),
 
-    previous_company: z.string().optional(),
-    total_experience_years: z.coerce.number().optional(),
+    previous_company: z.string().nullish().or(z.literal('')),
+    total_experience_years: z.coerce.number().nullish(),
 
     // Payroll
-    base_salary: z.coerce.number().optional(),
-    salary_type: z.enum(['MONTHLY', 'DAILY', 'CONTRACT']).optional(),
+    base_salary: z.coerce.number().nullish(),
+    salary_type: z.enum(['MONTHLY', 'DAILY', 'CONTRACT']).nullish().or(z.literal('')),
     incentive_eligible: z.boolean().optional(),
-    payroll_status: z.enum(['ACTIVE', 'HOLD']).optional(),
+    payroll_status: z.enum(['ACTIVE', 'HOLD']).nullish().or(z.literal('')),
     ledger_options: z.object({
         create: z.boolean(),
-        head_id: z.string().optional()
+        head_id: z.string().nullish().or(z.literal(''))
     }).optional(),
 
     // Banking
-    bank_name: z.string().optional(),
-    account_holder_name: z.string().optional(),
-    account_number: z.string().optional(),
-    ifsc_code: z.string().optional(),
-    account_type: z.enum(['SAVINGS', 'CURRENT']).optional(),
-    pan_number: z.string().optional(),
-    upi_id: z.string().optional(),
-    upi_linked_mobile: z.string().optional(),
-    payment_method: z.enum(['BANK_TRANSFER', 'CASH', 'CHEQUE', 'UPI']).optional(), // Added to match screenshot
+    bank_name: z.string().nullish().or(z.literal('')),
+    account_holder_name: z.string().nullish().or(z.literal('')),
+    account_number: z.string().nullish().or(z.literal('')),
+    ifsc_code: z.string().nullish().or(z.literal('')),
+    account_type: z.enum(['SAVINGS', 'CURRENT']).nullish().or(z.literal('')),
+    pan_number: z.string().nullish().or(z.literal('')),
+    upi_id: z.string().nullish().or(z.literal('')),
+    upi_linked_mobile: z.string().nullish().or(z.literal('')),
+    payment_method: z.enum(['BANK_TRANSFER', 'CASH', 'CHEQUE', 'UPI']).nullish().or(z.literal('')), // Added to match screenshot
 }).superRefine((data, ctx) => {
     if (data.ledger_options?.create && !data.ledger_options.head_id) {
         ctx.addIssue({
@@ -343,7 +343,7 @@ const StaffFormModal = ({ isOpen, onClose, initialData }: StaffFormModalProps) =
                             <div className="col-span-1 flex flex-col items-center p-6 bg-white rounded-lg border border-gray-100 shadow-sm h-fit">
                                 <label className="block text-sm font-medium text-foreground mb-4 self-start">Profile Photo</label>
                                 <ImageUpload
-                                    value={watch('avatar_url')}
+                                    value={watch('avatar_url') || undefined}
                                     onChange={(url) => setValue('avatar_url', url)}
                                     label="Upload Photo"
                                 />

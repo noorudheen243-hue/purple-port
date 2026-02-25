@@ -34,19 +34,22 @@ const restartDevice = async () => (await api.post('/attendance/biometric/restart
 const clearLogs = async () => (await api.post('/attendance/biometric/clear-logs')).data;
 const addUser = async (data: any) => (await api.post('/attendance/biometric/users/add', data)).data;
 const deleteUser = async (uid: any) => (await api.post('/attendance/biometric/users/delete', { uid })).data;
+const getUnlinkedUsers = async () => (await api.get('/attendance/biometric/users/unlinked')).data;
+const linkUser = async (data: { deviceUserId: string, staffProfileId: string }) => (await api.post('/attendance/biometric/users/link', data)).data;
 const uploadUsers = async () => (await api.post('/attendance/biometric/users/upload')).data;
+const getShifts = async () => (await api.get('/attendance/shifts')).data;
 const importUsers = async () => (await api.post('/attendance/biometric/users/import')).data;
 const getAuditData = async () => (await api.get('/attendance/biometric/audit')).data;
-const enrollUser = async (data: any) => (await api.post('/attendance/biometric/enroll', data)).data;
-const syncTemplates = async () => (await api.post('/attendance/biometric/sync-templates')).data;
 const getStaffList = async () => (await api.get('/team/staff')).data;
-const getShifts = async () => (await api.get('/attendance/shifts')).data;
 
 const BiometricManagerPage = () => {
     const queryClient = useQueryClient();
     const [actionLog, setActionLog] = useState<string[]>([]);
-    const [activeTab, setActiveTab] = useState<'console' | 'audit' | 'policies' | 'shifts'>('console');
+    const [activeTab, setActiveTab] = useState<'console' | 'audit' | 'policies' | 'shifts' | 'link_users'>('console');
     const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
+
+    // State for Link Users tab
+    const [selectedStaffForLink, setSelectedStaffForLink] = useState<Record<string, string>>({});
 
     // Assignment Modal State
     const [assignmentModal, setAssignmentModal] = useState<{ isOpen: boolean, staffId: string, staffName: string }>({
@@ -81,11 +84,18 @@ const BiometricManagerPage = () => {
         queryFn: getDeviceUsers
     });
 
-    // 3. Fetch Staff for Policies
+    // 3. Fetch Staff for Policies and Linking
     const { data: staffList, isLoading: staffLoading, refetch: refetchStaff } = useQuery({
         queryKey: ['staff-list-policies'],
         queryFn: getStaffList,
-        enabled: activeTab === 'policies'
+        enabled: activeTab === 'policies' || activeTab === 'link_users'
+    });
+
+    // 4. Fetch Unlinked device users
+    const { data: unlinkedUsers, isLoading: unlinkedLoading, refetch: refetchUnlinked } = useQuery({
+        queryKey: ['biometric-unlinked-users'],
+        queryFn: getUnlinkedUsers,
+        enabled: activeTab === 'link_users'
     });
 
     const { data: shifts, refetch: refetchShifts } = useQuery({
@@ -137,8 +147,23 @@ const BiometricManagerPage = () => {
             addToLog(`Success: ${data.message}`);
             refetchUsers();
             refetchAudit();
+            refetchUnlinked();
         },
         onError: (err: any) => addToLog(`Error: ${err.response?.data?.error || err.message}`)
+    });
+
+    const linkUserMutation = useMutation({
+        mutationFn: linkUser,
+        onSuccess: (data) => {
+            addToLog(`Link Success: ${data.message}`);
+            Swal.fire('Linked', 'Device user successfully linked to profile.', 'success');
+            refetchUnlinked();
+            refetchAudit();
+        },
+        onError: (err: any) => {
+            addToLog(`Link Error: ${err.response?.data?.error || err.message}`);
+            Swal.fire('Error', err.response?.data?.error || err.message, 'error');
+        }
     });
 
     const uploadUsersMutation = useMutation({
@@ -183,6 +208,7 @@ const BiometricManagerPage = () => {
                     <div className="flex bg-gray-100 rounded-lg p-1 mr-4">
                         {[
                             { id: 'console', label: 'CONSOLE' },
+                            { id: 'link_users', label: 'Link Users' },
                             { id: 'audit', label: 'Audit' },
                             { id: 'shifts', label: 'Create Shift' },
                             { id: 'policies', label: 'Shift Management' }
@@ -371,6 +397,88 @@ const BiometricManagerPage = () => {
                                         <div className="text-sm text-yellow-700">Run "Upload Users" in Console to fix this.</div>
                                     ) : <div className="text-sm text-green-600">All staff present on device.</div>}
                                 </div>
+                            </div>
+                        )}
+                    </Card>
+                </div>
+            )}
+
+            {activeTab === 'link_users' && (
+                <div className="space-y-6">
+                    <Card className="p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                                    <Fingerprint className="w-5 h-5 text-indigo-500" />
+                                    Unlinked Device Users
+                                </h3>
+                                <p className="text-sm text-gray-500">Attach unmapped physical device IDs to existing web application profiles</p>
+                            </div>
+                            <Button onClick={() => refetchUnlinked()} disabled={unlinkedLoading}>
+                                <RefreshCw className={`w-4 h-4 mr-2 ${unlinkedLoading ? 'animate-spin' : ''}`} />
+                                Refresh List
+                            </Button>
+                        </div>
+
+                        {unlinkedLoading || staffLoading ? (
+                            <div className="p-8 text-center text-gray-400">Scanning for unmapped fingerprints...</div>
+                        ) : unlinkedUsers?.data?.length === 0 ? (
+                            <div className="p-8 text-center bg-green-50 rounded border border-green-100 shadow-inner">
+                                <CheckCircle className="w-10 h-10 text-green-500 mx-auto mb-2" />
+                                <h4 className="font-bold text-green-700">All Setup!</h4>
+                                <p className="text-sm text-green-600">Every user on the physical device is matched to a web profile.</p>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto border rounded-md shadow-sm">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="bg-gray-50 text-gray-500 uppercase text-xs">
+                                        <tr>
+                                            <th className="px-4 py-3 border-b">Device ID (UID)</th>
+                                            <th className="px-4 py-3 border-b">Device Name</th>
+                                            <th className="px-4 py-3 border-b w-1/3">Match to Staff Profile</th>
+                                            <th className="px-4 py-3 border-b text-right">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {unlinkedUsers?.data?.map((user: any, i: number) => (
+                                            <tr key={user.userId || i} className="hover:bg-indigo-50/30 transition-colors">
+                                                <td className="px-4 py-4 font-mono font-bold text-indigo-700">{user.userId}</td>
+                                                <td className="px-4 py-4 font-medium">{user.name || 'No Name'}</td>
+                                                <td className="px-4 py-4">
+                                                    <select
+                                                        className="w-full p-2 border border-gray-200 rounded text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                                        value={selectedStaffForLink[user.userId] || ''}
+                                                        onChange={(e) => setSelectedStaffForLink({ ...selectedStaffForLink, [user.userId]: e.target.value })}
+                                                    >
+                                                        <option value="">-- Select Staff Profile --</option>
+                                                        {staffList?.map((staff: any) => (
+                                                            <option key={staff.id} value={staff.id}>
+                                                                {staff.user.full_name} ({staff.staff_number})
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </td>
+                                                <td className="px-4 py-4 text-right">
+                                                    <Button
+                                                        size="sm"
+                                                        className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm gap-2 whitespace-nowrap"
+                                                        disabled={!selectedStaffForLink[user.userId] || linkUserMutation.isPending}
+                                                        onClick={() => {
+                                                            if (window.confirm(`Are you sure you want to permanently link Device ID "${user.userId}" to this profile?`)) {
+                                                                linkUserMutation.mutate({
+                                                                    deviceUserId: user.userId,
+                                                                    staffProfileId: selectedStaffForLink[user.userId]
+                                                                });
+                                                            }
+                                                        }}
+                                                    >
+                                                        <CheckCircle className="w-4 h-4" /> Link Profile
+                                                    </Button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
                         )}
                     </Card>

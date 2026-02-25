@@ -10,6 +10,7 @@ import ImageUpload from '../../components/ui/ImageUpload';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import Swal from 'sweetalert2';
 import FormErrorAlert from '../../components/ui/FormErrorAlert';
+import { useAuthStore } from '../../store/authStore';
 
 // --- Configuration & Constants ---
 const AGENCY_DESIGNATIONS = [
@@ -39,45 +40,46 @@ interface ShiftPreset {
 const onboardingSchema = z.object({
     // Step 1: Personal
     full_name: z.string().min(1, "Name is required"), // Keep minimal check
-    email: z.string().email().optional().or(z.literal('')),
-    avatar_url: z.string().optional(),
-    personal_contact: z.string().optional(),
-    whatsapp_number: z.string().optional(),
-    date_of_birth: z.string().optional(), // Relaxed
-    gender: z.string().optional().nullable(),
-    blood_group: z.string().optional().nullable(),
-    current_address: z.string().optional().nullable(), // Relaxed & Nullable
-    permanent_address: z.string().optional().nullable(), // Relaxed & Nullable
+    email: z.string().email().nullish().or(z.literal('')),
+    avatar_url: z.string().nullish().or(z.literal('')),
+    personal_contact: z.string().nullish().or(z.literal('')),
+    whatsapp_number: z.string().nullish().or(z.literal('')),
+    date_of_birth: z.string().nullish().or(z.literal('')), // Relaxed
+    gender: z.string().nullish().or(z.literal('')).nullish().or(z.literal('')),
+    blood_group: z.string().nullish().or(z.literal('')).nullish().or(z.literal('')),
+    current_address: z.string().nullish().or(z.literal('')).nullable(), // Relaxed & Nullable
+    permanent_address: z.string().nullish().or(z.literal('')).nullable(), // Relaxed & Nullable
 
     // Step 2: Professional
-    staff_number: z.string().optional(),
-    designation: z.string().optional(),
-    custom_designation: z.string().optional(),
-    department: z.string().optional(),
-    date_of_joining: z.string().optional(),
-    reporting_manager_id: z.string().optional(),
+    staff_number: z.string().nullish().or(z.literal('')),
+    designation: z.string().nullish().or(z.literal('')),
+    custom_designation: z.string().nullish().or(z.literal('')),
+    department: z.string().nullish().or(z.literal('')),
+    date_of_joining: z.string().nullish().or(z.literal('')),
+    reporting_manager_id: z.string().nullish().or(z.literal('')),
 
 
     // Step 3: Payroll
+    // Step 3: Payroll
     base_salary: z.any().optional(),
-    salary_type: z.string().optional(),
-    payment_method: z.string().optional(),
-    bank_name: z.string().optional(),
-    account_number: z.string().optional(),
-    ifsc_code: z.string().optional(),
-    pan_number: z.string().optional(),
-    aadhar_number: z.string().optional(),
+    salary_type: z.string().nullish().or(z.literal('')),
+    payment_method: z.string().nullish().or(z.literal('')),
+    bank_name: z.string().nullish().or(z.literal('')),
+    account_number: z.string().nullish().or(z.literal('')),
+    ifsc_code: z.string().nullish().or(z.literal('')),
+    pan_number: z.string().nullish().or(z.literal('')),
+    aadhar_number: z.string().nullish().or(z.literal('')),
     ledger_options: z.object({
         create: z.boolean(),
-        head_id: z.string().optional()
+        head_id: z.string().nullish().or(z.literal(''))
     }).optional(),
 
     // Step 4: Documents
-    resume_url: z.string().optional(),
-    id_proof_url: z.string().optional(),
-    password: z.string().optional(),
-    confirm_password: z.string().optional(),
-    role: z.string().optional(),
+    resume_url: z.string().nullish().or(z.literal('')),
+    id_proof_url: z.string().nullish().or(z.literal('')),
+    password: z.string().nullish().or(z.literal('')),
+    confirm_password: z.string().nullish().or(z.literal('')),
+    role: z.string().nullish().or(z.literal('')),
 }).superRefine((data, ctx) => {
     if (data.password || data.confirm_password) {
         if (data.password !== data.confirm_password) {
@@ -103,6 +105,8 @@ const OnboardingPage = () => {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [currentStep, setCurrentStep] = useState(1);
+    const { user } = useAuthStore();
+    const isSuperUser = user?.role === 'DEVELOPER_ADMIN' || user?.role === 'ADMIN';
 
 
 
@@ -401,7 +405,7 @@ const OnboardingPage = () => {
                                         <label className="block text-sm font-semibold text-gray-700">Profile Photo</label>
                                         <div className="flex justify-center">
                                             <ImageUpload
-                                                value={watch('avatar_url')}
+                                                value={watch('avatar_url') || undefined}
                                                 onChange={(url) => setValue('avatar_url', url)}
                                             />
                                         </div>
@@ -732,7 +736,9 @@ const OnboardingPage = () => {
                                             <li><span className="font-medium text-gray-900">Name:</span> {formData.full_name}</li>
                                             <li><span className="font-medium text-gray-900">Role:</span> {formData.designation} ({formData.department})</li>
                                             <li><span className="font-medium text-gray-900">Email:</span> {formData.email}</li>
-                                            <li><span className="font-medium text-gray-900">Salary:</span> ₹{formData.base_salary} / {formData.salary_type}</li>
+                                            {isSuperUser && (
+                                                <li><span className="font-medium text-gray-900">Salary:</span> ₹{formData.base_salary} / {formData.salary_type}</li>
+                                            )}
                                             {formData.payment_method && <li><span className="font-medium text-gray-900">Payment:</span> {formData.payment_method}</li>}
                                             {formData.pan_number && <li><span className="font-medium text-gray-900">PAN:</span> {formData.pan_number}</li>}
                                         </ul>

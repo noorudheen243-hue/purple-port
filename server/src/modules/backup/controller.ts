@@ -7,6 +7,8 @@ import AdmZip from 'adm-zip';
 import { Readable } from 'stream';
 import * as cron from 'node-cron';
 
+import axios from 'axios';
+
 const prisma = new PrismaClient();
 
 // ─── Backup Directory Resolution ───────────────────────────────────────────────
@@ -283,6 +285,80 @@ export const setAutoBackupSetting = async (req: Request, res: Response) => {
     startCronJob();
     console.log(`[AutoBackup] Auto-backup ${enabled ? 'ENABLED' : 'DISABLED'}.`);
     res.json({ message: `Auto-backup ${enabled ? 'enabled' : 'disabled'}`, enabled });
+};
+
+// ──────────────────────────────────────────────────────────────────────────────
+// ENDPOINT 5: GET /api/backup/download/:filename
+// Streams a backup file for download or cross-server transfer.
+// ──────────────────────────────────────────────────────────────────────────────
+export const downloadBackupFile = async (req: Request, res: Response) => {
+    try {
+        const { filename } = req.params;
+        if (!filename) return res.status(400).json({ message: 'filename is required' });
+
+        // Security: prevent path traversal
+        if (filename.includes('/') || filename.includes('\\') || filename.includes('..')) {
+            return res.status(400).json({ message: 'Invalid filename' });
+        }
+
+        const backupDir = getBackupDir();
+        const zipPath = path.join(backupDir, filename);
+
+        if (!fs.existsSync(zipPath)) {
+            return res.status(404).json({ message: `Backup file not found` });
+        }
+
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+
+        fs.createReadStream(zipPath).pipe(res);
+    } catch (error: any) {
+        console.error('[Backup] Download error:', error);
+        res.status(500).json({ message: error.message || 'Download failed' });
+    }
+};
+
+// ──────────────────────────────────────────────────────────────────────────────
+// ENDPOINT 6: POST /api/backup/download-from-remote
+// Body: { remoteUrl: "https://qixport.com", filename: "backup-xxx.zip", token: "jwt_token" }
+// Pulls a backup from a remote instance and saves it to local disk.
+// ──────────────────────────────────────────────────────────────────────────────
+export const downloadBackupFromRemote = async (req: Request, res: Response) => {
+    try {
+        const { remoteUrl, filename, token } = req.body;
+        if (!remoteUrl || !filename || !token) {
+            return res.status(400).json({ message: 'remoteUrl, filename, and token are required' });
+        }
+
+        const backupDir = getBackupDir();
+        ensureBackupDir(backupDir);
+        const destPath = path.join(backupDir, filename);
+
+        console.log(`[Backup] Pulling from ${remoteUrl} to ${destPath}...`);
+
+        const response = await axios({
+            method: 'get',
+            url: `${remoteUrl}/api/backup/download/${filename}`,
+            responseType: 'stream',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        const writer = fs.createWriteStream(destPath);
+        response.data.pipe(writer);
+
+        await new Promise<void>((resolve, reject) => {
+            writer.on('finish', resolve);
+            writer.on('error', reject);
+        });
+
+        console.log(`[Backup] Successfully pulled remote backup: ${filename}`);
+        res.json({ message: 'Remote backup pulled successfully', filename });
+    } catch (error: any) {
+        console.error('[Backup] Pull-from-remote error:', error);
+        res.status(500).json({ message: error.message || 'Failed to pull remote backup' });
+    }
 };
 
 // ──────────────────────────────────────────────────────────────────────────────

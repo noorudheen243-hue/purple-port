@@ -13,7 +13,10 @@ import {
     ToggleRight,
     Folder,
     CalendarClock,
-    Shield
+    Shield,
+    DownloadCloud,
+    ArrowDownCircle,
+    Globe
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,6 +32,10 @@ interface BackupFile {
 const isOnlineHost = typeof window !== 'undefined' &&
     !['localhost', '127.0.0.1'].includes(window.location.hostname);
 
+const REMOTE_URL = isOnlineHost
+    ? (window.location.protocol === 'https:' ? 'http://localhost:4000' : 'http://localhost:4000')
+    : 'https://qixport.com';
+
 const BackupRestore: React.FC = () => {
     const [backups, setBackups] = useState<BackupFile[]>([]);
     const [loadingList, setLoadingList] = useState(false);
@@ -39,6 +46,11 @@ const BackupRestore: React.FC = () => {
     const [togglingAuto, setTogglingAuto] = useState(false);
     const [lastBackup, setLastBackup] = useState<BackupFile | null>(null);
     const [backupDir, setBackupDir] = useState('');
+
+    // Remote states
+    const [remoteBackups, setRemoteBackups] = useState<BackupFile[]>([]);
+    const [loadingRemote, setLoadingRemote] = useState(false);
+    const [pullingRemote, setPullingRemote] = useState<string | null>(null);
 
     const fetchBackups = useCallback(async () => {
         setLoadingList(true);
@@ -64,10 +76,28 @@ const BackupRestore: React.FC = () => {
         } catch { }
     }, []);
 
+    const fetchRemoteBackups = useCallback(async () => {
+        setLoadingRemote(true);
+        try {
+            // We use the same api instance but override the baseURL temporarily OR just use axios directly
+            // For simplicity, let's try direct fetch if authenticated. 
+            // Note: This requires the user to be logged in to both.
+            const res = await api.get(`${REMOTE_URL}/api/backup/list-local`, {
+                withCredentials: true // Try to send remote cookies if any
+            });
+            setRemoteBackups(res.data.backups || []);
+        } catch (err) {
+            console.warn('Failed to fetch remote backups (unauthorized or network)', err);
+        } finally {
+            setLoadingRemote(false);
+        }
+    }, []);
+
     useEffect(() => {
         fetchBackups();
+        fetchRemoteBackups();
         if (isOnlineHost) fetchAutoSetting();
-    }, [fetchBackups, fetchAutoSetting]);
+    }, [fetchBackups, fetchRemoteBackups, fetchAutoSetting]);
 
     const handleBackupNow = async () => {
         const result = await Swal.fire({
@@ -164,6 +194,47 @@ const BackupRestore: React.FC = () => {
             });
         } finally {
             setTogglingAuto(false);
+        }
+    };
+
+    const handlePullFromRemote = async (filename: string) => {
+        const result = await Swal.fire({
+            title: 'Pull Remote Backup?',
+            text: `This will download "${filename}" from the remote server to this environment and then let you restore it.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#7c3aed',
+            confirmButtonText: 'Yes, Pull it'
+        });
+        if (!result.isConfirmed) return;
+
+        setPullingRemote(filename);
+        try {
+            const token = localStorage.getItem('token'); // Get current JWT to pass to remote
+            await api.post('/backup/download-from-remote', {
+                remoteUrl: REMOTE_URL,
+                filename,
+                token
+            });
+
+            await fetchBackups();
+            setSelectedFile(filename);
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Pulled Successfully!',
+                text: 'The backup is now available in your local history. You can restore it now.',
+                confirmButtonColor: '#7c3aed'
+            });
+        } catch (err: any) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Pull Failed',
+                text: err.response?.data?.message || 'Maybe you are not logged in on the remote server?',
+                confirmButtonColor: '#7c3aed'
+            });
+        } finally {
+            setPullingRemote(null);
         }
     };
 
@@ -347,6 +418,72 @@ const BackupRestore: React.FC = () => {
                     </CardContent>
                 </Card>
             )}
+
+            {/* ─── REMOTE BACKUPS CARD ─── */}
+            <Card className="border-orange-100 shadow-sm transition-all hover:shadow-md">
+                <CardHeader className="pb-3 text-orange-900 bg-orange-50/10 rounded-t-xl">
+                    <CardTitle className="flex items-center gap-2 text-orange-700">
+                        <div className="p-2 bg-orange-100 rounded-lg shadow-sm">
+                            <Globe className="h-5 w-5 text-orange-600" />
+                        </div>
+                        {isOnlineHost ? '💻 Backups on Localhost' : '📡 Backups on Online Server'}
+                    </CardTitle>
+                    <CardDescription className="text-orange-600/80">
+                        {isOnlineHost
+                            ? 'Access and pull backups stored on your local machine (F:\\Antigravity\\Backup).'
+                            : 'Access and pull backups stored on the production VPS (/var/backups/antigravity).'}
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4 pt-4">
+                    {loadingRemote ? (
+                        <div className="flex items-center justify-center p-8">
+                            <RefreshCw className="h-6 w-6 animate-spin text-orange-400" />
+                        </div>
+                    ) : remoteBackups.length > 0 ? (
+                        <div className="grid gap-2">
+                            {remoteBackups.slice(0, 5).map(b => (
+                                <div key={b.filename} className="flex items-center justify-between p-3 bg-orange-50/30 border border-orange-100 rounded-lg text-xs group hover:bg-orange-50 transition-colors">
+                                    <div className="flex items-center gap-2">
+                                        <DownloadCloud className="h-4 w-4 text-orange-500" />
+                                        <div>
+                                            <p className="font-semibold text-orange-800">{b.filename}</p>
+                                            <p className="text-orange-600 opacity-70">{formatDate(b.createdAt)} · {b.sizeKB} KB</p>
+                                        </div>
+                                    </div>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-8 border-orange-200 text-orange-700 hover:bg-orange-600 hover:text-white transition-all shadow-sm"
+                                        onClick={() => handlePullFromRemote(b.filename)}
+                                        disabled={pullingRemote === b.filename}
+                                    >
+                                        {pullingRemote === b.filename ? (
+                                            <RefreshCw className="h-3 w-3 animate-spin mr-1" />
+                                        ) : (
+                                            <ArrowDownCircle className="h-3 w-3 mr-1" />
+                                        )}
+                                        Pull to {isOnlineHost ? 'VPS' : 'Local'}
+                                    </Button>
+                                </div>
+                            ))}
+                            {remoteBackups.length > 5 && (
+                                <p className="text-[10px] text-center text-orange-400 italic">Showing latest 5 remote backups</p>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="p-6 text-center bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+                            <AlertTriangle className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                            <p className="text-sm font-medium text-gray-500">No remote backups visible</p>
+                            <p className="text-xs text-gray-400 mt-1">
+                                Make sure the {isOnlineHost ? 'Local Server' : 'Online Server'} is running and you are logged in there too.
+                            </p>
+                            <Button variant="ghost" size="sm" className="mt-3 text-orange-600 h-8 hover:bg-orange-50" onClick={fetchRemoteBackups}>
+                                <RefreshCw className="h-3 w-3 mr-1" /> Retry Connection
+                            </Button>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
 
             {/* ─── Backup List ─── */}
             {backups.length > 0 && (

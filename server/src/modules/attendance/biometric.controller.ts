@@ -122,6 +122,30 @@ export class BiometricController {
             res.status(500).json({ error: error.message });
         }
     }
+
+    // Get Unlinked Users
+    static async getUnlinkedDeviceUsers(req: Request, res: Response) {
+        try {
+            const result = await biometricControl.getUnlinkedDeviceUsers();
+            res.json(result);
+        } catch (error: any) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+
+    // Link Device User to Staff Profile
+    static async linkDeviceUser(req: Request, res: Response) {
+        try {
+            const { deviceUserId, staffProfileId } = req.body;
+            if (!deviceUserId || !staffProfileId) {
+                throw new Error("Missing required fields: deviceUserId or staffProfileId.");
+            }
+            const result = await biometricControl.linkDeviceUser(String(deviceUserId), String(staffProfileId));
+            res.json(result);
+        } catch (error: any) {
+            res.status(500).json({ error: error.message });
+        }
+    }
     // Upload Logs (Push from Remote Bridge -> DB)
     static async uploadLogs(req: Request, res: Response) {
         try {
@@ -132,6 +156,19 @@ export class BiometricController {
             // Re-use the processing logic
             const { processBiometricLogs } = require('./biometric.service');
             const result = await processBiometricLogs(logs);
+            res.json(result);
+        } catch (error: any) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+
+    // Upload Users List (Push from Remote Bridge -> DB Cache)
+    static async uploadUsersFromBridge(req: Request, res: Response) {
+        try {
+            const { users } = req.body;
+            if (!Array.isArray(users)) throw new Error('Invalid users format. Expected array.');
+
+            const result = await biometricControl.cacheDeviceUsers(users);
             res.json(result);
         } catch (error: any) {
             res.status(500).json({ error: error.message });

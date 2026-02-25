@@ -4,13 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import api from '@/lib/api';
-import { Shield, Lock, CheckCircle2, AlertCircle, Users, Banknote, Database, LayoutDashboard, Wrench } from 'lucide-react';
+import { Shield, Lock, CheckCircle2, AlertCircle, Users, Banknote, Database, LayoutDashboard, Wrench, HardDriveDownload } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Swal from 'sweetalert2';
 import SystemRoleManagement from '../team/SystemRoleManagement';
 import PayrollSettings from '../payroll/PayrollSettings';
 import DataSync from '../admin/DataSync';
+import BackupRestore from '../admin/BackupRestore';
 import { ROLES } from '../../utils/roles';
 
 const SettingsPage = () => {
@@ -77,6 +78,11 @@ const SettingsPage = () => {
                     {(isDevAdmin || user?.role === ROLES.ADMIN) && (
                         <TabsTrigger value="maintenance" className="flex items-center gap-2">
                             <Wrench size={16} /> Maintenance
+                        </TabsTrigger>
+                    )}
+                    {(isDevAdmin || user?.role === ROLES.ADMIN) && (
+                        <TabsTrigger value="backup" className="flex items-center gap-2">
+                            <HardDriveDownload size={16} /> Backup &amp; Restore
                         </TabsTrigger>
                     )}
                 </TabsList>
@@ -226,6 +232,27 @@ const SettingsPage = () => {
                                         Clear Cache & Reload
                                     </Button>
                                 </div>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                )}
+
+                {/* TAB: BACKUP & RESTORE (ADMIN & DEV ADMIN) */}
+                {(isDevAdmin || user?.role === ROLES.ADMIN) && (
+                    <TabsContent value="backup">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <HardDriveDownload className="h-5 w-5 text-violet-600" />
+                                    Backup &amp; Restore
+                                </CardTitle>
+                                <CardDescription>
+                                    Save a complete backup of all application data, uploads, and settings to disk.
+                                    Restore any previous backup with one click.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <BackupRestore />
                             </CardContent>
                         </Card>
                     </TabsContent>

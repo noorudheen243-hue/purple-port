@@ -5,8 +5,289 @@ import fs from 'fs';
 import { PrismaClient } from '@prisma/client';
 import AdmZip from 'adm-zip';
 import { Readable } from 'stream';
+import * as cron from 'node-cron';
 
 const prisma = new PrismaClient();
+
+// ─── Backup Directory Resolution ───────────────────────────────────────────────
+// Windows (localhost): F:\Antigravity\Backup
+// Linux (VPS):         /var/backups/antigravity
+function getBackupDir(): string {
+    if (process.env.BACKUP_DIR) return process.env.BACKUP_DIR;
+    return process.platform === 'win32'
+        ? 'F:\\Antigravity\\Backup'
+        : '/var/backups/antigravity';
+}
+
+function ensureBackupDir(dir: string) {
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+        console.log(`[Backup] Created backup directory: ${dir}`);
+    }
+}
+
+// ─── Database path resolution ───────────────────────────────────────────────
+function resolveDbPath(): string | null {
+    const dbUrl = process.env.DATABASE_URL || '';
+    const candidates = [
+        path.join(process.cwd(), 'prisma', 'prod.db'),
+        path.join(process.cwd(), 'prisma', 'dev.db'),
+    ];
+    if (dbUrl.startsWith('file:')) {
+        const rel = dbUrl.replace('file:', '').replace('./', '');
+        candidates.unshift(path.join(process.cwd(), rel));
+        candidates.unshift(path.join(process.cwd(), 'prisma', rel));
+    }
+    return candidates.find(p => fs.existsSync(p)) || null;
+}
+
+// ─── Core: Create a ZIP backup and save to a named file ────────────────────
+async function createBackupZip(destPath: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+        const output = fs.createWriteStream(destPath);
+        const archive = archiver('zip', { zlib: { level: 9 } });
+
+        output.on('close', resolve);
+        archive.on('error', reject);
+        archive.pipe(output);
+
+        // Database
+        const dbPath = resolveDbPath();
+        if (dbPath) {
+            console.log(`[Backup] Adding DB: ${dbPath}`);
+            archive.file(dbPath, { name: 'database.sqlite' });
+        } else {
+            console.warn('[Backup] Database file not found — skipping DB in backup.');
+        }
+
+        // Uploads
+        const uploadsDir = path.join(process.cwd(), 'uploads');
+        if (fs.existsSync(uploadsDir)) {
+            console.log(`[Backup] Adding uploads directory...`);
+            archive.directory(uploadsDir, 'uploads');
+        }
+
+        archive.finalize();
+    });
+}
+
+// ─── Core: Restore from a zip file path ────────────────────────────────────
+async function restoreFromZip(zipPath: string): Promise<void> {
+    const extractDir = path.join(path.dirname(zipPath), 'extract-' + Date.now());
+    fs.mkdirSync(extractDir, { recursive: true });
+
+    // Extract (AdmZip on Windows, system unzip on Linux)
+    if (process.platform === 'win32') {
+        const zip = new AdmZip(zipPath);
+        zip.extractAllTo(extractDir, true);
+    } else {
+        await new Promise<void>((resolve, reject) => {
+            const { exec } = require('child_process');
+            exec(`unzip -o -q "${zipPath}" -d "${extractDir}"`, (err: any) => {
+                err ? reject(err) : resolve();
+            });
+        });
+    }
+
+    // Restore uploads
+    const sourceUploads = path.join(extractDir, 'uploads');
+    if (fs.existsSync(sourceUploads)) {
+        const targetUploads = path.join(process.cwd(), 'uploads');
+        try {
+            fs.cpSync(sourceUploads, targetUploads, { recursive: true, force: true });
+            console.log('[Backup] Uploads restored.');
+        } catch (e) {
+            console.warn('[Backup] Uploads restore warning:', e);
+        }
+    }
+
+    // Restore SQLite database (if present in backup)
+    const backupDb = path.join(extractDir, 'database.sqlite');
+    if (fs.existsSync(backupDb)) {
+        const targetDb = resolveDbPath();
+        if (targetDb) {
+            // Disconnect Prisma so we can overwrite the file
+            await prisma.$disconnect();
+            fs.copyFileSync(backupDb, targetDb);
+            console.log('[Backup] Database file restored from backup.');
+            // Reconnect (Prisma will reconnect lazily on next query)
+        } else {
+            console.warn('[Backup] Could not locate target DB path — database not restored from file.');
+        }
+    }
+
+    // Cleanup extraction directory
+    try { fs.rmSync(extractDir, { recursive: true, force: true }); } catch { }
+}
+
+// ─── Keep only the last N backups ──────────────────────────────────────────
+function pruneOldBackups(backupDir: string, keepCount = 30) {
+    try {
+        const files = fs.readdirSync(backupDir)
+            .filter(f => f.endsWith('.zip'))
+            .map(f => ({ name: f, time: fs.statSync(path.join(backupDir, f)).mtime.getTime() }))
+            .sort((a, b) => b.time - a.time); // newest first
+
+        if (files.length > keepCount) {
+            files.slice(keepCount).forEach(f => {
+                fs.unlinkSync(path.join(backupDir, f.name));
+                console.log(`[Backup] Pruned old backup: ${f.name}`);
+            });
+        }
+    } catch (e) {
+        console.warn('[Backup] Prune warning:', e);
+    }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// ENDPOINT 1: POST /api/backup/save-to-disk
+// Creates a backup and saves it to the BACKUP_DIR folder on disk.
+// ──────────────────────────────────────────────────────────────────────────────
+export const saveBackupToDisk = async (req: Request, res: Response) => {
+    try {
+        const backupDir = getBackupDir();
+        ensureBackupDir(backupDir);
+
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `backup-${timestamp}.zip`;
+        const destPath = path.join(backupDir, filename);
+
+        console.log(`[Backup] Saving backup to: ${destPath}`);
+        await createBackupZip(destPath);
+
+        const stats = fs.statSync(destPath);
+        const sizeKB = (stats.size / 1024).toFixed(1);
+
+        // Prune old backups (keep last 30)
+        pruneOldBackups(backupDir, 30);
+
+        console.log(`[Backup] Backup saved: ${filename} (${sizeKB} KB)`);
+        res.json({
+            message: 'Backup saved successfully',
+            filename,
+            path: destPath,
+            sizeKB,
+            createdAt: new Date().toISOString()
+        });
+    } catch (error: any) {
+        console.error('[Backup] Save-to-disk error:', error);
+        res.status(500).json({ message: error.message || 'Backup failed' });
+    }
+};
+
+// ──────────────────────────────────────────────────────────────────────────────
+// ENDPOINT 2: GET /api/backup/list-local
+// Lists all backups available in BACKUP_DIR.
+// ──────────────────────────────────────────────────────────────────────────────
+export const listLocalBackups = async (req: Request, res: Response) => {
+    try {
+        const backupDir = getBackupDir();
+        ensureBackupDir(backupDir);
+
+        const files = fs.readdirSync(backupDir)
+            .filter(f => f.endsWith('.zip'))
+            .map(f => {
+                const stats = fs.statSync(path.join(backupDir, f));
+                return {
+                    filename: f,
+                    sizeKB: (stats.size / 1024).toFixed(1),
+                    createdAt: stats.mtime.toISOString()
+                };
+            })
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()); // newest first
+
+        res.json({ backupDir, backups: files });
+    } catch (error: any) {
+        console.error('[Backup] List error:', error);
+        res.status(500).json({ message: error.message || 'Failed to list backups' });
+    }
+};
+
+// ──────────────────────────────────────────────────────────────────────────────
+// ENDPOINT 3: POST /api/backup/restore-from-disk
+// Body: { filename: "backup-2025-01-01T00-00-00-000Z.zip" }
+// Restores a backup from BACKUP_DIR without needing a file upload.
+// ──────────────────────────────────────────────────────────────────────────────
+export const restoreFromDisk = async (req: Request, res: Response) => {
+    try {
+        const { filename } = req.body;
+        if (!filename) return res.status(400).json({ message: 'filename is required' });
+
+        // Security: prevent path traversal
+        if (filename.includes('/') || filename.includes('\\') || filename.includes('..')) {
+            return res.status(400).json({ message: 'Invalid filename' });
+        }
+
+        const backupDir = getBackupDir();
+        const zipPath = path.join(backupDir, filename);
+
+        if (!fs.existsSync(zipPath)) {
+            return res.status(404).json({ message: `Backup file not found: ${filename}` });
+        }
+
+        console.log(`[Backup] Restoring from: ${zipPath}`);
+        await restoreFromZip(zipPath);
+
+        console.log('[Backup] Restore complete.');
+        res.json({ message: 'Backup restored successfully. Please refresh the application.' });
+    } catch (error: any) {
+        console.error('[Backup] Restore-from-disk error:', error);
+        res.status(500).json({ message: error.message || 'Restore failed' });
+    }
+};
+
+// ──────────────────────────────────────────────────────────────────────────────
+// ENDPOINT 4: GET/POST /api/backup/auto-backup-setting
+// GET  → returns auto-backup enabled status
+// POST → { enabled: boolean } to toggle
+// ──────────────────────────────────────────────────────────────────────────────
+let autoBackupEnabled = process.env.AUTO_BACKUP_ENABLED === 'true';
+let cronJob: ReturnType<typeof cron.schedule> | null = null;
+
+function startCronJob() {
+    if (cronJob) { cronJob.stop(); cronJob = null; }
+    if (!autoBackupEnabled) return;
+
+    cronJob = cron.schedule('0 0 * * *', async () => {
+        console.log('[AutoBackup] Running scheduled daily backup...');
+        try {
+            const backupDir = getBackupDir();
+            ensureBackupDir(backupDir);
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const filename = `auto-backup-${timestamp}.zip`;
+            const destPath = path.join(backupDir, filename);
+            await createBackupZip(destPath);
+            pruneOldBackups(backupDir, 30);
+            console.log(`[AutoBackup] Daily backup saved: ${filename}`);
+        } catch (err) {
+            console.error('[AutoBackup] Cron job failed:', err);
+        }
+    }, { timezone: 'Asia/Kolkata' });
+
+    console.log('[AutoBackup] Daily cron job scheduled (midnight IST).');
+}
+
+// Initialize cron job on server start
+startCronJob();
+
+export const getAutoBackupSetting = async (req: Request, res: Response) => {
+    res.json({ enabled: autoBackupEnabled });
+};
+
+export const setAutoBackupSetting = async (req: Request, res: Response) => {
+    const { enabled } = req.body;
+    if (typeof enabled !== 'boolean') {
+        return res.status(400).json({ message: 'enabled must be a boolean' });
+    }
+    autoBackupEnabled = enabled;
+    startCronJob();
+    console.log(`[AutoBackup] Auto-backup ${enabled ? 'ENABLED' : 'DISABLED'}.`);
+    res.json({ message: `Auto-backup ${enabled ? 'enabled' : 'disabled'}`, enabled });
+};
+
+// ──────────────────────────────────────────────────────────────────────────────
+// LEGACY ENDPOINTS (kept for backward-compat with Data Sync tab)
+// ──────────────────────────────────────────────────────────────────────────────
 
 // Helper: Stream Prisma Data in Chunks to avoid OOM
 class TableStream extends Readable {
@@ -15,7 +296,6 @@ class TableStream extends Readable {
     private cursor: string | null = null;
     private isFirst: boolean = true;
     private hasStarted: boolean = false;
-    private totalProcessed: number = 0;
 
     constructor(model: any, batchSize = 500) {
         super();
@@ -32,328 +312,142 @@ class TableStream extends Readable {
 
             const params: any = {
                 take: this.batchSize,
-                orderBy: { id: 'asc' } // Ensure deterministic order
+                orderBy: { id: 'asc' }
             };
 
             if (this.cursor) {
                 params.cursor = { id: this.cursor };
-                params.skip = 1; // Skip the cursor itself
+                params.skip = 1;
             }
 
             const chunk = await this.model.findMany(params);
 
             if (chunk.length === 0) {
-                this.push(']'); // Close Array
-                this.push(null); // EOF
+                this.push(']');
+                this.push(null);
                 return;
             }
 
-            // Process Chunk
             let jsonChunk = '';
             for (let i = 0; i < chunk.length; i++) {
                 const record = chunk[i];
-                if (!this.isFirst) {
-                    jsonChunk += ',';
-                } else {
-                    this.isFirst = false;
-                }
+                if (!this.isFirst) { jsonChunk += ','; } else { this.isFirst = false; }
                 jsonChunk += JSON.stringify(record);
-
-                // Update Cursor
-                if (i === chunk.length - 1) {
-                    this.cursor = record.id;
-                }
+                if (i === chunk.length - 1) { this.cursor = record.id; }
             }
-
-            this.totalProcessed += chunk.length;
             this.push(jsonChunk);
-
         } catch (error) {
-            console.error('[Backup] Stream Error:', error);
             this.destroy(error as Error);
         }
     }
 }
 
-export const downloadBackup = async (req: Request, res: Response) => {
-    try {
-        const { secret } = req.query;
-
-        // 1. Security Check
-        const backupSecret = process.env.BACKUP_SECRET || 'CHANGE_THIS_SECRET';
-        if (secret !== backupSecret) {
-            console.warn(`[Backup] Unauthorized access attempt from ${req.ip}`);
-            return res.status(403).json({ message: 'Forbidden' });
-        }
-
-        console.log(`[Backup] Starting backup download for ${req.ip}`);
-
-        // 2. Setup Response Headers
-        const filename = `backup-${new Date().toISOString().replace(/[:.]/g, '-')}.zip`;
-        res.setHeader('Content-Type', 'application/zip');
-        res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
-
-        // 3. Initialize Archiver
-        const archive = archiver('zip', {
-            zlib: { level: 9 } // Maximum compression
-        });
-
-        // Handle errors
-        archive.on('error', (err) => {
-            console.error('[Backup] Archive Error:', err);
-            if (!res.headersSent) {
-                res.status(500).json({ message: 'Backup generation failed' });
-            } else {
-                res.end();
-            }
-        });
-
-        // Pipe archive to response
-        archive.pipe(res);
-
-        // 4. Add Database File
-        // Detect environment: Production uses prod.db (usually), Dev uses dev.db or from ENV
-        // We usually expect DATABASE_URL="file:./prod.db"
-        const dbUrl = process.env.DATABASE_URL;
-        let dbPath = 'prisma/dev.db'; // fallback
-
-        if (dbUrl && dbUrl.startsWith('file:')) {
-            const relativePath = dbUrl.replace('file:', '');
-            // Resolve relative to prisma folder or root? Prisma schema usually says "file:./dev.db" meaning relative to schema file?
-            // Actually, in prisma schema it is relative to the schema file location.
-            // But usually in deployment we put db in 'prisma' folder or root.
-            // Let's look for likely candidates.
-            const candidates = [
-                path.join(process.cwd(), 'prisma', 'prod.db'),
-                path.join(process.cwd(), 'prisma', 'dev.db'),
-                path.join(process.cwd(), relativePath)
-            ];
-
-            const found = candidates.find(p => fs.existsSync(p));
-            if (found) {
-                dbPath = found;
-            }
-        }
-
-        if (fs.existsSync(dbPath)) {
-            console.log(`[Backup] Adding Database: ${dbPath}`);
-            archive.file(dbPath, { name: 'database.sqlite' });
-        } else {
-            console.warn('[Backup] Database file not found to backup!');
-            if (secret !== (process.env.BACKUP_SECRET || 'CHANGE_THIS_SECRET')) return res.status(403).json({ message: 'Forbidden' });
-
-            const archive = archiver('zip', { zlib: { level: 9 } });
-            res.setHeader('Content-Type', 'application/zip');
-            res.setHeader('Content-Disposition', `attachment; filename=legacy-backup.zip`);
-            archive.pipe(res);
-
-            const dbPath = process.env.DATABASE_URL?.replace('file:', '') || 'prisma/dev.db';
-            if (fs.existsSync(dbPath)) archive.file(dbPath, { name: 'database.sqlite' });
-
-            const uploadsDir = path.join(process.cwd(), 'uploads');
-            if (fs.existsSync(uploadsDir)) archive.directory(uploadsDir, 'uploads');
-
-            await archive.finalize();
-        }
-    } catch (e) {
-        if (!res.headersSent) res.status(500).json({ error: String(e) });
-    }
-};
-
-// ... (Previous imports)
-// No changes to imports
-
-// 6. Refactored Export (Memory Efficient)
+// Legacy browser-download backup (used by old Data Sync tab)
 export const exportFullBackupZip = async (req: Request, res: Response) => {
     try {
-        console.log(`[Backup] Starting Streamed Backup (ZIP) for ${req.ip}`);
-
         const archive = archiver('zip', { zlib: { level: 9 } });
         const filename = `purple-port-backup-${new Date().toISOString().split('T')[0]}.zip`;
-
         res.setHeader('Content-Type', 'application/zip');
         res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
-
-        archive.on('error', (err) => {
-            console.error('[Backup] Archive Error:', err);
-            // Can't send JSON if headers sent, but we log it.
-        });
-
+        archive.on('error', (err) => { console.error('[Backup] Archive error:', err); });
         archive.pipe(res);
 
-        // -- Stream Tables --
-        const addTableToArchive = (name: string, model: any) => {
-            const stream = new TableStream(model);
-            archive.append(stream, { name: `${name}.json` });
+        const addTable = (name: string, model: any) => {
+            archive.append(new TableStream(model), { name: `${name}.json` });
         };
 
-        // Core
-        addTableToArchive('users', prisma.user);
-        addTableToArchive('staffProfiles', prisma.staffProfile);
-        addTableToArchive('clients', prisma.client);
-        addTableToArchive('campaigns', prisma.campaign);
-        addTableToArchive('tasks', prisma.task);
-        addTableToArchive('taskDependencies', prisma.taskDependency);
-        addTableToArchive('assets', prisma.asset);
-        addTableToArchive('comments', prisma.comment);
-        // TimeLogs can be huge -> Streaming is Critical
-        addTableToArchive('timeLogs', prisma.timeLog);
+        addTable('users', prisma.user);
+        addTable('staffProfiles', prisma.staffProfile);
+        addTable('clients', prisma.client);
+        addTable('campaigns', prisma.campaign);
+        addTable('tasks', prisma.task);
+        addTable('taskDependencies', prisma.taskDependency);
+        addTable('assets', prisma.asset);
+        addTable('comments', prisma.comment);
+        addTable('timeLogs', prisma.timeLog);
+        addTable('accountHeads', prisma.accountHead);
+        addTable('ledgers', prisma.ledger);
+        addTable('journalEntries', prisma.journalEntry);
+        addTable('journalLines', prisma.journalLine);
+        addTable('invoices', prisma.invoice);
+        addTable('invoiceItems', prisma.invoiceItem);
+        addTable('notifications', prisma.notification);
+        addTable('attendanceRecords', prisma.attendanceRecord);
+        addTable('leaveRequests', prisma.leaveRequest);
+        addTable('holidays', prisma.holiday);
+        addTable('payrollRuns', prisma.payrollRun);
+        addTable('payrollSlips', prisma.payrollSlip);
+        addTable('stickyNotes', prisma.stickyNote);
+        addTable('stickyTasks', prisma.stickyTask);
+        addTable('stickyNotePermissions', prisma.stickyNotePermission);
+        addTable('adAccounts', prisma.adAccount);
+        addTable('spendSnapshots', prisma.spendSnapshot);
+        addTable('leads', prisma.lead);
 
-        // Accounting
-        addTableToArchive('accountHeads', prisma.accountHead);
-        addTableToArchive('ledgers', prisma.ledger);
-        addTableToArchive('journalEntries', prisma.journalEntry);
-        addTableToArchive('journalLines', prisma.journalLine);
-        addTableToArchive('invoices', prisma.invoice);
-        addTableToArchive('invoiceItems', prisma.invoiceItem);
-
-        // HR & Payroll
-        addTableToArchive('notifications', prisma.notification);
-        // AttendanceRecords can be huge -> Streaming is Critical
-        addTableToArchive('attendanceRecords', prisma.attendanceRecord);
-        addTableToArchive('leaveRequests', prisma.leaveRequest);
-        addTableToArchive('holidays', prisma.holiday);
-        addTableToArchive('payrollRuns', prisma.payrollRun);
-        addTableToArchive('payrollSlips', prisma.payrollSlip);
-
-        // Other
-        addTableToArchive('stickyNotes', prisma.stickyNote);
-        addTableToArchive('stickyTasks', prisma.stickyTask);
-        addTableToArchive('stickyNotePermissions', prisma.stickyNotePermission);
-        addTableToArchive('adAccounts', prisma.adAccount);
-        addTableToArchive('spendSnapshots', prisma.spendSnapshot);
-        addTableToArchive('leads', prisma.lead);
-
-        // Uploads
         const uploadsDir = path.join(process.cwd(), 'uploads');
-        if (fs.existsSync(uploadsDir)) {
-            console.log(`[Backup] Streaming Uploads Directory...`);
-            archive.directory(uploadsDir, 'uploads');
-        }
+        if (fs.existsSync(uploadsDir)) archive.directory(uploadsDir, 'uploads');
 
         await archive.finalize();
-        console.log(`[Backup] Backup Stream Finalized.`);
-
     } catch (error: any) {
-        console.error('[Backup] Export Error:', error);
         if (!res.headersSent) res.status(500).json({ message: `Export failed: ${error.message}` });
     }
 };
 
+// Legacy file-upload restore (used by old Data Sync tab)
 export const importFullBackupZip = async (req: Request, res: Response) => {
     try {
         if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
 
-        console.log(`[Backup] Starting Import from ${req.file.originalname}`);
         const zipPath = req.file.path;
         const extractDir = path.join(path.dirname(zipPath), 'extract-' + Date.now());
+        fs.mkdirSync(extractDir, { recursive: true });
 
-        // Create extraction directory
-        if (!fs.existsSync(extractDir)) {
-            fs.mkdirSync(extractDir, { recursive: true });
-        }
-
-        // --- Memory Optimized Extraction ---
-        // 1. Try system 'unzip' (Linux/Mac) - avoids loading Zip into RAM
-        // 2. Fallback to AdmZip (Windows/Dev) - loads Zip into RAM but acceptable for smaller files/local dev
-
-        const unzipWithSystem = (): Promise<void> => {
-            return new Promise((resolve, reject) => {
+        const unzipWithSystem = (): Promise<void> =>
+            new Promise((resolve, reject) => {
                 const { exec } = require('child_process');
-                // -o: overwrite, -q: quiet, -d: directory
-                exec(`unzip -o -q "${zipPath}" -d "${extractDir}"`, (error: any, stdout: any, stderr: any) => {
-                    if (error) {
-                        console.warn('[Backup] System unzip failed, falling back to AdmZip:', error.message);
-                        reject(error);
-                    } else {
-                        resolve();
-                    }
+                exec(`unzip -o -q "${zipPath}" -d "${extractDir}"`, (error: any) => {
+                    error ? reject(error) : resolve();
                 });
             });
-        };
 
         let useAdmZip = false;
         try {
-            if (process.platform === 'win32') {
-                throw new Error('Windows forces AdmZip fallback');
-            }
+            if (process.platform === 'win32') throw new Error('Windows uses AdmZip');
             await unzipWithSystem();
-            console.log('[Backup] System unzip completed.');
-        } catch (e) {
-            useAdmZip = true;
-        }
+        } catch { useAdmZip = true; }
 
         if (useAdmZip) {
-            console.log('[Backup] Using AdmZip (Legacy/Fallback)...');
             const zip = new AdmZip(zipPath);
             zip.extractAllTo(extractDir, true);
         }
 
-        // --- Restoration Logic ---
-        // Helper: Read JSON from disk (Lower memory than reading from Zip buffer)
         const readJsonFile = (name: string): any[] => {
-            // Check direct file
-            let filePath = path.join(extractDir, `${name}.json`);
-            if (!fs.existsSync(filePath)) {
-                // Check if it's just 'name' (without .json extension in zip?)
-                filePath = path.join(extractDir, name);
-                if (!fs.existsSync(filePath)) return [];
-            }
-
-            try {
-                const content = fs.readFileSync(filePath, 'utf8');
-                return JSON.parse(content);
-            } catch (e) {
-                console.error(`[Backup] Failed to parse ${name}:`, e);
-                return [];
-            }
+            const filePath = path.join(extractDir, `${name}.json`);
+            if (!fs.existsSync(filePath)) return [];
+            try { return JSON.parse(fs.readFileSync(filePath, 'utf8')); }
+            catch { return []; }
         };
 
-        // 2. Move Uploads
         const sourceUploads = path.join(extractDir, 'uploads');
         if (fs.existsSync(sourceUploads)) {
-            console.log(`[Backup] Restoring uploads...`);
-            // Move or Copy? Move is faster.
-            // Target: process.cwd()/uploads
             const targetUploads = path.join(process.cwd(), 'uploads');
-
-            // Simple approach: Copy over
-            // On Linux 'cp -r' or 'rsync' is better? 
-            // Let's use fs-extra logic if possible, or naive recursive copy.
-            // Since we upgraded node, let's use fs.cpSync (Node 16.7+)
-            try {
-                fs.cpSync(sourceUploads, targetUploads, { recursive: true, force: true });
-            } catch (e) {
-                console.warn('[Backup] Uploads restore fallback (fs.cp failed):', e);
-                // Fallback for older node? check manually...
-            }
+            try { fs.cpSync(sourceUploads, targetUploads, { recursive: true, force: true }); } catch { }
         }
 
         await prisma.$transaction(async (tx) => {
-            // ... (Wiping logic remains same as established in previous context) ...
-            // Validating context: We need to re-include the wiping logic here carefully or refer to it.
-            // Since `replace_file_content` replaces the block, I MUST include the full Wiping logic again.
-
-            // Wiping (Order: Leaf -> Root)
-            console.log('[Backup] Wiping tables...');
-
-            // Pre-Wipe: Break Circular Dependencies
-            await tx.user.updateMany({ data: { links: undefined, linked_client_id: null } as any }); // Safety cast
+            // Circular FK break
+            await tx.user.updateMany({ data: { linked_client_id: null } as any });
             await tx.client.updateMany({ data: { account_manager_id: null } });
 
-            // Explicit calls to satisfy TypeScript union complexity & FK Constraints
-            // Batch 1: Deep Leaves
+            // Delete in dependency order (leaves first)
             await tx.chatReadReceipt.deleteMany();
             await tx.chatMessage.deleteMany();
             await tx.chatParticipant.deleteMany();
             await tx.userLauncherPreference.deleteMany();
             await tx.metaToken.deleteMany();
-
             await tx.clientInvoiceItem.deleteMany();
             await tx.clientInvoice.deleteMany();
-
             await tx.contentDeliverable.deleteMany();
-
             await tx.stickyTask.deleteMany();
             await tx.stickyNotePermission.deleteMany();
             await tx.taskDependency.deleteMany();
@@ -363,8 +457,6 @@ export const importFullBackupZip = async (req: Request, res: Response) => {
             await tx.comment.deleteMany();
             await tx.asset.deleteMany();
             await tx.notification.deleteMany();
-
-            // Batch 2: Leaves
             await tx.regularisationRequest.deleteMany();
             await tx.leaveAllocation.deleteMany();
             await tx.leaveRequest.deleteMany();
@@ -373,8 +465,6 @@ export const importFullBackupZip = async (req: Request, res: Response) => {
             await tx.spendSnapshot.deleteMany();
             await tx.lead.deleteMany();
             await tx.launcherApp.deleteMany();
-
-            // Client Logs
             await tx.seoLog.deleteMany();
             await tx.metaAdsLog.deleteMany();
             await tx.googleAdsLog.deleteMany();
@@ -385,8 +475,6 @@ export const importFullBackupZip = async (req: Request, res: Response) => {
             await tx.adCreative.deleteMany();
             await tx.adSet.deleteMany();
             await tx.adCampaign.deleteMany();
-
-            // Batch 3: Roots
             await tx.stickyNote.deleteMany();
             await tx.task.deleteMany();
             await tx.invoice.deleteMany();
@@ -397,34 +485,24 @@ export const importFullBackupZip = async (req: Request, res: Response) => {
             await tx.payrollRun.deleteMany();
             await tx.holiday.deleteMany();
             await tx.staffProfile.deleteMany();
-
             await tx.accountHead.deleteMany();
             await tx.client.deleteMany();
             await tx.chatConversation.deleteMany();
             await tx.user.deleteMany();
 
-            console.log('[Backup] Tables Wiped. Starting Restoration...');
-
-            // Inserting
             const restore = async (name: string, table: any) => {
-                const rows = readJsonFile(name); // Changed from parseEntry(name)
-                // Insert in chunks of 50
+                const rows = readJsonFile(name);
                 for (let i = 0; i < rows.length; i += 50) {
                     const chunk = rows.slice(i, i + 50);
                     try {
                         await table.createMany({ data: chunk });
-                    } catch (batchError) {
-                        console.warn(`[Backup] Batch failed for ${name}, switching to row-by-row...`);
+                    } catch {
                         for (const row of chunk) {
-                            try {
-                                await table.create({ data: row });
-                            } catch (singleError) {
-                                // Ignore duplicate errors (P2002)
-                            }
+                            try { await table.create({ data: row }); } catch { }
                         }
                     }
                 }
-                console.log(`[Backup] Restored ${rows.length} records to ${name}`);
+                console.log(`[Backup] Restored ${rows.length} to ${name}`);
             };
 
             await restore('users', tx.user);
@@ -433,48 +511,36 @@ export const importFullBackupZip = async (req: Request, res: Response) => {
             await restore('clients', tx.client);
             await restore('adAccounts', tx.adAccount);
             await restore('leads', tx.lead);
-
             await restore('campaigns', tx.campaign);
             await restore('spendSnapshots', tx.spendSnapshot);
-
             await restore('tasks', tx.task);
             await restore('taskDependencies', tx.taskDependency);
-
             await restore('assets', tx.asset);
             await restore('comments', tx.comment);
             await restore('timeLogs', tx.timeLog);
-
             await restore('notifications', tx.notification);
             await restore('stickyNotes', tx.stickyNote);
             await restore('stickyTasks', tx.stickyTask);
             await restore('stickyNotePermissions', tx.stickyNotePermission);
-
             await restore('holidays', tx.holiday);
             await restore('attendanceRecords', tx.attendanceRecord);
             await restore('leaveRequests', tx.leaveRequest);
             await restore('payrollRuns', tx.payrollRun);
             await restore('payrollSlips', tx.payrollSlip);
-
             await restore('ledgers', tx.ledger);
             await restore('journalEntries', tx.journalEntry);
             await restore('journalLines', tx.journalLine);
             await restore('invoices', tx.invoice);
             await restore('invoiceItems', tx.invoiceItem);
-        }, {
-            maxWait: 30000,
-            timeout: 1800000 // 30 mins
-        });
+        }, { maxWait: 30000, timeout: 1800000 });
 
-        // Cleanup
         try {
             fs.rmSync(extractDir, { recursive: true, force: true });
             if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
-        } catch (e) { console.warn('Cleanup warning:', e); }
+        } catch { }
 
         res.json({ message: 'Full Backup restored successfully' });
-
     } catch (error: any) {
-        console.error('[Backup] Import Error:', error);
         res.status(500).json({ message: error.message || 'Import failed' });
     }
 };

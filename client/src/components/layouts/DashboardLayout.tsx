@@ -407,14 +407,14 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
 
                             <NotificationBell />
 
-                            <button
-                                onClick={() => setIsSettingsOpen(true)}
+                            <Link
+                                to="/dashboard/settings"
                                 className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-md transition-colors"
                                 title="Settings"
                             >
                                 <Settings size={18} />
                                 <span className="hidden md:inline">Settings</span>
-                            </button>
+                            </Link>
 
                             <button
                                 onClick={handleLogout}

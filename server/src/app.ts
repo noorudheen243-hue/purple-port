@@ -47,6 +47,8 @@ app.use(cors({
         'http://66.116.224.221:4001',
         'https://port.qixads.com', // Custom Domain
         'https://www.port.qixads.com',
+        'https://qixport.com',
+        'https://www.qixport.com',
         process.env.CLIENT_URL || ''
     ].filter(Boolean),
     credentials: true

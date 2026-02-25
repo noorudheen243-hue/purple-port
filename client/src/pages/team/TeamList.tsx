@@ -18,6 +18,7 @@ const TeamList = () => {
     const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
     const [exitStaff, setExitStaff] = useState<any>(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [editingStaff, setEditingStaff] = useState<any>(null);
     const [expandedDepts, setExpandedDepts] = useState<Record<string, boolean>>({
         'MANAGEMENT': true,
@@ -131,6 +132,13 @@ const TeamList = () => {
                 />
             )}
 
+            {isCreateModalOpen && (
+                <StaffFormModal
+                    isOpen={isCreateModalOpen}
+                    onClose={() => setIsCreateModalOpen(false)}
+                />
+            )}
+
             {exitStaff && (
                 <ExitWorkflow
                     staffId={exitStaff.id}
@@ -148,13 +156,13 @@ const TeamList = () => {
                     <p className="text-muted-foreground">Manage your employees, their roles, and performance.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <Link
-                        to="/dashboard/team/onboard"
+                    <button
+                        onClick={() => setIsCreateModalOpen(true)}
                         className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors"
                     >
                         <UserPlus size={16} />
                         Add Member
-                    </Link>
+                    </button>
                 </div>
             </div>
 

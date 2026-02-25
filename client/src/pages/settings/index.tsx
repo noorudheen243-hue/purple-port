@@ -80,7 +80,7 @@ const SettingsPage = () => {
                             <Wrench size={16} /> Maintenance
                         </TabsTrigger>
                     )}
-                    {(isDevAdmin || user?.role === ROLES.ADMIN) && (
+                    {isDevAdmin && (
                         <TabsTrigger value="backup" className="flex items-center gap-2">
                             <HardDriveDownload size={16} /> Backup &amp; Restore
                         </TabsTrigger>
@@ -237,8 +237,8 @@ const SettingsPage = () => {
                     </TabsContent>
                 )}
 
-                {/* TAB: BACKUP & RESTORE (ADMIN & DEV ADMIN) */}
-                {(isDevAdmin || user?.role === ROLES.ADMIN) && (
+                {/* TAB: BACKUP & RESTORE (DEVELOPER ADMIN ONLY) */}
+                {isDevAdmin && (
                     <TabsContent value="backup">
                         <Card>
                             <CardHeader>

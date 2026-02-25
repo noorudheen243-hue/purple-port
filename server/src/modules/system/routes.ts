@@ -10,5 +10,6 @@ router.use(protect);
 router.post('/deploy', authorize('DEVELOPER_ADMIN', 'ADMIN'), controller.syncToCloud);
 router.post('/cleanup-files', authorize('DEVELOPER_ADMIN', 'ADMIN'), controller.cleanupFilesOnly);
 router.post('/optimize', controller.optimizeSystem); // Accessible to all logged-in users
+router.post('/wipe-avatars', authorize('DEVELOPER_ADMIN'), controller.wipeAllAvatars); // One-time wipe
 
 export default router;

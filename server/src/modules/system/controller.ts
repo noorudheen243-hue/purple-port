@@ -203,3 +203,46 @@ export const optimizeSystem = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Optimization Failed', error: error.message });
     }
 };
+
+// One-time admin action: wipe all profile images from DB and disk
+export const wipeAllAvatars = async (req: Request, res: Response) => {
+    try {
+        // Security: Only Developer Admin
+        if (req.user?.role !== 'DEVELOPER_ADMIN') {
+            return res.status(403).json({ message: 'Forbidden. Developer Admin only.' });
+        }
+
+        // Clear avatar_url from all users
+        const usersUpdated = await prisma.user.updateMany({ data: { avatar_url: null } });
+
+        // Clear logo_url from all clients
+        let clientsUpdated = { count: 0 };
+        try {
+            clientsUpdated = await (prisma as any).client.updateMany({ data: { logo_url: null } });
+        } catch (e) {
+            // Ignore if client table doesn't have logo_url
+        }
+
+        // Delete physical upload files
+        const uploadsDir = path.join(__dirname, '../../../../uploads');
+        let deletedFiles = 0;
+        if (fs.existsSync(uploadsDir)) {
+            const files = fs.readdirSync(uploadsDir);
+            for (const file of files) {
+                const filePath = path.join(uploadsDir, file);
+                if (fs.statSync(filePath).isFile()) {
+                    fs.unlinkSync(filePath);
+                    deletedFiles++;
+                }
+            }
+        }
+
+        res.json({
+            message: 'Profile images wiped successfully',
+            details: `Users cleared: ${usersUpdated.count}, Clients cleared: ${clientsUpdated.count}, Files deleted: ${deletedFiles}`
+        });
+    } catch (error: any) {
+        console.error('Wipe avatars error:', error);
+        res.status(500).json({ message: 'Wipe failed', error: error.message });
+    }
+};

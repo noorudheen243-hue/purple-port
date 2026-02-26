@@ -207,21 +207,20 @@ const BackupRestore: React.FC = () => {
     };
 
     const handleToggleAuto = async () => {
+        if (!isOnlineHost) {
+            Swal.fire({
+                icon: 'info',
+                title: 'Online Setting Only',
+                text: 'Auto-Backup can only be activated directly on the Online Server (qixport.com) to ensure data security.',
+                confirmButtonColor: '#7c3aed'
+            });
+            return;
+        }
+
         const newState = !autoBackupEnabled;
         setTogglingAuto(true);
         try {
-            const targetUrl = isOnlineHost ? '/backup/auto-backup-setting' : `${REMOTE_URL}/api/backup/auto-backup-setting`;
-            const payload = { enabled: newState };
-
-            if (isOnlineHost) {
-                await api.post(targetUrl, payload);
-            } else {
-                await axios.post(targetUrl, payload, {
-                    withCredentials: true,
-                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-                });
-            }
-
+            await api.post('/backup/auto-backup-setting', { enabled: newState });
             setAutoBackupEnabled(newState);
             Swal.fire({
                 icon: 'success',
@@ -230,14 +229,7 @@ const BackupRestore: React.FC = () => {
                 showConfirmButton: false
             });
         } catch (err: any) {
-            const isAuthError = err.response?.status === 401 || err.response?.status === 403;
-            Swal.fire({
-                icon: 'error',
-                title: 'Action Failed',
-                text: isAuthError && !isOnlineHost
-                    ? 'Remote Authorization Failed. Your local login session is not valid on the Online Server. Please perform this action while browsing qixport.com directly.'
-                    : err.response?.data?.message || err.message
-            });
+            Swal.fire({ icon: 'error', title: 'Action Failed', text: err.response?.data?.message || err.message });
         } finally {
             setTogglingAuto(false);
         }
@@ -276,10 +268,17 @@ const BackupRestore: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-4 bg-gray-50 p-3 rounded-xl border border-gray-100">
-                    <div className="text-right">
-                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Storage Path</p>
-                        <p className="text-[10px] font-mono text-gray-500">{isOnlineHost ? '/var/backups/antigravity' : 'F:\\Antigravity\\Backup'}</p>
+                <div className="flex flex-col gap-1 bg-gray-50 p-3 rounded-xl border border-gray-200">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Backup Storage Paths</p>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <p className="text-[9px] font-semibold text-violet-500 uppercase">Production Server</p>
+                            <p className="text-[11px] font-bold text-gray-700">/var/backups/antigravity</p>
+                        </div>
+                        <div>
+                            <p className="text-[9px] font-semibold text-emerald-500 uppercase">Local Machine</p>
+                            <p className="text-[11px] font-bold text-gray-700">F:\Antigravity\Backup</p>
+                        </div>
                     </div>
                 </div>
 

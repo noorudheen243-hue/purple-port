@@ -149,14 +149,19 @@ export const getTasks = async (filters: {
         ];
     }
 
+    const isDashboardMode = (filters as any).dashboard === 'true';
+
     return await prisma.task.findMany({
         where: whereClause,
-        include: {
-            assignee: { select: { id: true, full_name: true, avatar_url: true, department: true } }, // Added department
+        include: isDashboardMode ? {
+            client: { select: { name: true } },
+            // We still need status and title obviously
+        } : {
+            assignee: { select: { id: true, full_name: true, avatar_url: true, department: true } },
             reporter: { select: { id: true, full_name: true, avatar_url: true } },
             campaign: { include: { client: true } },
             client: { select: { name: true } },
-            assigned_by: { select: { id: true, full_name: true, avatar_url: true } }, // Ensure assigned_by is fetched with avatar
+            assigned_by: { select: { id: true, full_name: true, avatar_url: true } },
             _count: { select: { comments: true, assets: true, sub_tasks: true } }
         },
         orderBy: { createdAt: 'desc' }

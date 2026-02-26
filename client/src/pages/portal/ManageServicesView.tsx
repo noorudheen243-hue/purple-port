@@ -143,6 +143,8 @@ const ManageServicesView = () => {
         follow_ups: []
     });
 
+    const [clientSearchQuery, setClientSearchQuery] = useState('');
+
     // --- CAMPAIGN FORM STATE ---
     const [activeServiceTab, setActiveServiceTab] = useState('meta');
     const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
@@ -522,15 +524,75 @@ const ManageServicesView = () => {
         }
     };
 
+    const filteredClients = useMemo(() => {
+        if (!clients) return [];
+        if (!clientSearchQuery) return clients;
+        const q = clientSearchQuery.toLowerCase();
+        return clients.filter((c: any) =>
+            c.name.toLowerCase().includes(q) ||
+            c.client_code.toLowerCase().includes(q)
+        );
+    }, [clients, clientSearchQuery]);
+
     if (!clientId) return (
-        <div className="flex flex-col items-center justify-center p-20 min-h-[60vh]">
-            <div className="w-24 h-24 bg-purple-50 flex items-center justify-center rounded-full mb-6">
-                <LayoutDashboard size={40} className="text-purple-300" />
+        <div className="p-6 max-w-[1600px] mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="text-center mb-10">
+                <div className="w-20 h-20 bg-indigo-100 flex items-center justify-center rounded-2xl mx-auto mb-4 text-indigo-600 shadow-sm">
+                    <Users size={40} />
+                </div>
+                <h2 className="text-3xl font-black text-gray-900 mb-2">Select a Client</h2>
+                <p className="text-gray-500 font-medium">Choose a client below to manage their digital marketing services and campaign history.</p>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Start Here</h2>
-            <p className="text-gray-500 text-center max-w-sm">
-                Select a client from the purple menu above to begin managing their services.
-            </p>
+
+            <div className="relative max-w-md mx-auto mb-12">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                <Input
+                    placeholder="Search clients by name or code..."
+                    className="pl-12 h-12 bg-white border-2 border-gray-100 focus:border-indigo-500 rounded-2xl shadow-sm font-medium"
+                    value={clientSearchQuery}
+                    onChange={(e) => setClientSearchQuery(e.target.value)}
+                />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {filteredClients?.map((cl: any) => (
+                    <Card
+                        key={cl.id}
+                        onClick={() => handleClientChange(cl.id)}
+                        className="group hover:border-indigo-500 hover:shadow-xl transition-all cursor-pointer overflow-hidden border-2 border-gray-50 rounded-2xl"
+                    >
+                        <CardContent className="p-6">
+                            <div className="flex items-center gap-4">
+                                {cl.logo_url ? (
+                                    <img
+                                        src={getAssetUrl(cl.logo_url)}
+                                        className="w-14 h-14 rounded-xl object-cover border-2 border-gray-50 group-hover:scale-110 transition-transform"
+                                    />
+                                ) : (
+                                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold group-hover:scale-110 transition-transform">
+                                        {cl.name.charAt(0)}
+                                    </div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors truncate">{cl.name}</h3>
+                                    <Badge variant="outline" className="mt-1 bg-gray-50 text-gray-500 border-none font-bold text-[10px] uppercase tracking-wider">
+                                        {cl.client_code}
+                                    </Badge>
+                                </div>
+                            </div>
+
+                            <div className="mt-6 flex items-center justify-between text-xs font-bold text-gray-400 group-hover:text-indigo-400 transition-colors">
+                                <span className="flex items-center gap-1">
+                                    <Globe size={12} /> Digital Services
+                                </span>
+                                <div className="w-6 h-6 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                                    <Plus size={14} />
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
         </div>
     );
 

@@ -62,3 +62,15 @@ export const updateInvoiceStatus = async (req: Request, res: Response) => {
         res.status(500).json({ error: "Failed to update invoice status." });
     }
 };
+
+export const deleteInvoice = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        await InvoiceService.deleteInvoice(id);
+        res.json({ message: 'Invoice deleted successfully.' });
+    } catch (error: any) {
+        const isClientError = error?.message?.includes('DRAFT') || error?.message?.includes('not found');
+        console.error("Delete Invoice Error:", error);
+        res.status(isClientError ? 400 : 500).json({ error: error?.message || 'Failed to delete invoice.' });
+    }
+};

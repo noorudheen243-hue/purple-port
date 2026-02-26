@@ -348,7 +348,8 @@ export const getMyProfile = async (req: Request, res: Response) => {
 
 export const listStaff = async (req: Request, res: Response) => {
     try {
-        const staff = await teamService.listStaff();
+        const includeHidden = req.user?.role === 'DEVELOPER_ADMIN';
+        const staff = await teamService.listStaff(includeHidden);
         res.json(staff);
     } catch (error: any) {
         res.status(500).json({ message: error.message });

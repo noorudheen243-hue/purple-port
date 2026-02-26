@@ -223,3 +223,13 @@ export const updateInvoiceStatus = async (id: string, status: string) => {
         });
     });
 };
+
+export const deleteInvoice = async (id: string) => {
+    const invoice = await prisma.clientInvoice.findUnique({ where: { id } });
+    if (!invoice) throw new Error('Invoice not found');
+    if (invoice.status !== 'DRAFT') throw new Error('Only DRAFT invoices can be deleted.');
+
+    // Delete items first (in case no cascade configured), then invoice
+    await prisma.clientInvoiceItem.deleteMany({ where: { invoice_id: id } });
+    return await prisma.clientInvoice.delete({ where: { id } });
+};

@@ -106,16 +106,21 @@ export const getStaffByUserId = async (userId: string) => {
     };
 };
 
-export const listStaff = async () => {
+export const listStaff = async (includeHidden = false) => {
     let profiles: any[] = [];
+
+    const whereClause: any = {
+        user: { role: { not: 'CLIENT' } }
+    };
+
+    if (!includeHidden) {
+        whereClause.staff_number = { notIn: ['QIX0001', 'QIX0002'] };
+    }
 
     try {
         profiles = await prisma.staffProfile.findMany({
             orderBy: { designation: 'asc' },
-            where: {
-                staff_number: { notIn: ['QIX0001', 'QIX0002'] },
-                user: { role: { not: 'CLIENT' } }
-            },
+            where: whereClause,
             include: {
                 user: { select: { id: true, full_name: true, email: true, role: true, avatar_url: true } },
                 shift_assignments: {
@@ -130,10 +135,7 @@ export const listStaff = async () => {
         console.warn('[ListStaff] Falling back to query without shift_assignments:', err.message);
         profiles = await prisma.staffProfile.findMany({
             orderBy: { designation: 'asc' },
-            where: {
-                staff_number: { notIn: ['QIX0001', 'QIX0002'] },
-                user: { role: { not: 'CLIENT' } }
-            },
+            where: whereClause,
             include: {
                 user: { select: { id: true, full_name: true, email: true, role: true, avatar_url: true } }
             }

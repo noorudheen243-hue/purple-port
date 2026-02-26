@@ -9,5 +9,6 @@ router.post('/invoices', protect, authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN
 router.get('/invoices', protect, InvoiceController.getInvoices);
 router.get('/invoices/:id', protect, InvoiceController.getInvoiceById);
 router.patch('/invoices/:id/status', protect, authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'), InvoiceController.updateInvoiceStatus);
+router.delete('/invoices/:id', protect, authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'), InvoiceController.deleteInvoice);
 
 export default router;

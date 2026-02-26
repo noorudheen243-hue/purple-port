@@ -122,18 +122,22 @@ async function restoreFromZip(zipPath: string): Promise<void> {
     try { fs.rmSync(extractDir, { recursive: true, force: true }); } catch { }
 }
 
-// ─── Keep only the last N backups ──────────────────────────────────────────
+// ─── Keep only the last N backups (Unified) ──────────────────────────────
 function pruneOldBackups(backupDir: string, keepCount = 30) {
     try {
         const files = fs.readdirSync(backupDir)
             .filter(f => f.endsWith('.zip'))
-            .map(f => ({ name: f, time: fs.statSync(path.join(backupDir, f)).mtime.getTime() }))
+            .map(f => {
+                const fullPath = path.join(backupDir, f);
+                const stats = fs.statSync(fullPath);
+                return { name: f, time: stats.mtime.getTime() };
+            })
             .sort((a, b) => b.time - a.time); // newest first
 
         if (files.length > keepCount) {
             files.slice(keepCount).forEach(f => {
                 fs.unlinkSync(path.join(backupDir, f.name));
-                console.log(`[Backup] Pruned old backup: ${f.name}`);
+                console.log(`[Backup] Pruned old backup (unified list): ${f.name}`);
             });
         }
     } catch (e) {
@@ -147,22 +151,24 @@ function pruneOldBackups(backupDir: string, keepCount = 30) {
 // ──────────────────────────────────────────────────────────────────────────────
 export const saveBackupToDisk = async (req: Request, res: Response) => {
     try {
+        const { type } = req.body; // 'online' | 'offline' | 'auto'
+        const backupType = type || (process.env.NODE_ENV === 'production' ? 'online' : 'offline');
+
         const backupDir = getBackupDir();
         ensureBackupDir(backupDir);
 
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const filename = `backup-${timestamp}.zip`;
+        const filename = `backup-${backupType}-${timestamp}.zip`;
         const destPath = path.join(backupDir, filename);
 
-        console.log(`[Backup] Saving backup to: ${destPath}`);
+        console.log(`[Backup] Saving ${backupType} backup to: ${destPath}`);
 
-        // CRITICAL: For SQLite in WAL mode, the latest data is in the -wal file.
-        // We MUST force a checkpoint to flush WAL data to the main .db file before backing up.
+        // CRITICAL: For SQLite in WAL mode, force checkpoint
         try {
             await prisma.$executeRawUnsafe('PRAGMA wal_checkpoint(TRUNCATE);');
             console.log('[Backup] SQLite WAL checkpoint successful.');
         } catch (e) {
-            console.warn('[Backup] WAL checkpoint failed (might not be in WAL mode):', e);
+            console.warn('[Backup] WAL checkpoint failed:', e);
         }
 
         await createBackupZip(destPath);
@@ -170,7 +176,7 @@ export const saveBackupToDisk = async (req: Request, res: Response) => {
         const stats = fs.statSync(destPath);
         const sizeKB = (stats.size / 1024).toFixed(1);
 
-        // Prune old backups (keep last 30)
+        // Prune old backups (keep last 30 total)
         pruneOldBackups(backupDir, 30);
 
         console.log(`[Backup] Backup saved: ${filename} (${sizeKB} KB)`);
@@ -179,6 +185,7 @@ export const saveBackupToDisk = async (req: Request, res: Response) => {
             filename,
             path: destPath,
             sizeKB,
+            type: backupType,
             createdAt: new Date().toISOString()
         });
     } catch (error: any) {
@@ -200,10 +207,18 @@ export const listLocalBackups = async (req: Request, res: Response) => {
             .filter(f => f.endsWith('.zip'))
             .map(f => {
                 const stats = fs.statSync(path.join(backupDir, f));
+                // Infer type from filename: backup-type-timestamp.zip
+                let type = 'unknown';
+                if (f.startsWith('backup-online-')) type = 'online';
+                else if (f.startsWith('backup-offline-')) type = 'offline';
+                else if (f.startsWith('backup-auto-')) type = 'auto';
+                else if (f.startsWith('auto-backup-')) type = 'auto'; // legacy
+
                 return {
                     filename: f,
                     sizeKB: (stats.size / 1024).toFixed(1),
-                    createdAt: stats.mtime.toISOString()
+                    createdAt: stats.mtime.toISOString(),
+                    type
                 };
             })
             .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()); // newest first
@@ -266,7 +281,7 @@ function startCronJob() {
             const backupDir = getBackupDir();
             ensureBackupDir(backupDir);
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-            const filename = `auto-backup-${timestamp}.zip`;
+            const filename = `backup-auto-${timestamp}.zip`;
             const destPath = path.join(backupDir, filename);
 
             // Force checkpoint for auto-backup too
@@ -372,6 +387,50 @@ export const downloadBackupFromRemote = async (req: Request, res: Response) => {
     } catch (error: any) {
         console.error('[Backup] Pull-from-remote error:', error);
         res.status(500).json({ message: error.message || 'Failed to pull remote backup' });
+    }
+};
+
+// ──────────────────────────────────────────────────────────────────────────────
+// ENDPOINT 7: POST /api/backup/upload-backup
+// Receives a backup file (usually from a local instance) and saves it as 'offline'.
+// ──────────────────────────────────────────────────────────────────────────────
+export const uploadBackup = async (req: Request, res: Response) => {
+    try {
+        if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+
+        const backupDir = getBackupDir();
+        ensureBackupDir(backupDir);
+
+        // For uploads, we rename the temp file to the proper backup name
+        const originalName = req.file.originalname;
+        let finalFilename = originalName;
+
+        // Force 'offline' type if transmitted from elsewhere, or keep original if it already has a type
+        if (!originalName.startsWith('backup-')) {
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            finalFilename = `backup-offline-${timestamp}.zip`;
+        }
+
+        const destPath = path.join(backupDir, finalFilename);
+
+        // Move file from temp to backup dir
+        fs.renameSync(req.file.path, destPath);
+
+        const stats = fs.statSync(destPath);
+        const sizeKB = (stats.size / 1024).toFixed(1);
+
+        // Prune
+        pruneOldBackups(backupDir, 30);
+
+        console.log(`[Backup] Received and stored offline backup: ${finalFilename}`);
+        res.json({
+            message: 'Backup uploaded and stored successfully',
+            filename: finalFilename,
+            sizeKB
+        });
+    } catch (error: any) {
+        console.error('[Backup] Upload error:', error);
+        res.status(500).json({ message: error.message || 'Upload failed' });
     }
 };
 

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import api from '@/lib/api';
-import { Shield, Lock, CheckCircle2, AlertCircle, Users, Banknote, Database, LayoutDashboard, Wrench, HardDriveDownload } from 'lucide-react';
+import { Shield, Lock, CheckCircle2, AlertCircle, Users, Banknote, Database, LayoutDashboard, Wrench, HardDriveDownload, KeyRound } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Swal from 'sweetalert2';
@@ -12,6 +12,7 @@ import SystemRoleManagement from '../team/SystemRoleManagement';
 import PayrollSettings from '../payroll/PayrollSettings';
 import DataSync from '../admin/DataSync';
 import BackupRestore from '../admin/BackupRestore';
+import StaffCredentialManager from '../team/StaffCredentialManager';
 import { ROLES } from '../../utils/roles';
 
 const SettingsPage = () => {
@@ -83,6 +84,11 @@ const SettingsPage = () => {
                     {isDevAdmin && (
                         <TabsTrigger value="backup" className="flex items-center gap-2">
                             <HardDriveDownload size={16} /> Backup &amp; Restore
+                        </TabsTrigger>
+                    )}
+                    {(isDevAdmin || user?.role === ROLES.ADMIN) && (
+                        <TabsTrigger value="credentials" className="flex items-center gap-2">
+                            <KeyRound size={16} /> Team Credential Management
                         </TabsTrigger>
                     )}
                 </TabsList>
@@ -253,6 +259,26 @@ const SettingsPage = () => {
                             </CardHeader>
                             <CardContent>
                                 <BackupRestore />
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                )}
+
+                {/* TAB: TEAM CREDENTIALS (ADMIN & DEV) */}
+                {(isDevAdmin || user?.role === ROLES.ADMIN) && (
+                    <TabsContent value="credentials">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <KeyRound className="h-5 w-5 text-indigo-600" />
+                                    Credential Management
+                                </CardTitle>
+                                <CardDescription>
+                                    Reset passwords and manage login access for team members.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <StaffCredentialManager />
                             </CardContent>
                         </Card>
                     </TabsContent>

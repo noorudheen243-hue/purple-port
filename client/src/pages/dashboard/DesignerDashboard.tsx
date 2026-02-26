@@ -4,7 +4,7 @@ import api from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-import { Layout, TrendingUp, Calendar, BadgeCheck } from 'lucide-react';
+import { Layout, TrendingUp, Calendar, BadgeCheck, CheckSquare, Clock, AlertTriangle } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -29,7 +29,17 @@ const DesignerDashboard = () => {
         queryFn: async () => (await api.get('/analytics/creative-dashboard')).data
     });
 
-    if (isLoading || isCreativeLoading) return <div className="p-8 text-center text-gray-500 animate-pulse">Loading workspace...</div>;
+    const { data: myTasks, isLoading: isTasksLoading } = useQuery({
+        queryKey: ['tasks', 'my-active', user?.id],
+        queryFn: async () => {
+            const { data } = await api.get('/tasks', { params: { assignee_id: user?.id } });
+            // Filter for active/pending tasks
+            return (data as any[]).filter(t => ['ASSIGNED', 'IN_PROGRESS', 'REVIEW', 'REVISION_REQUESTED'].includes(t.status));
+        },
+        enabled: !!user?.id
+    });
+
+    if (isLoading || isCreativeLoading || isTasksLoading) return <div className="p-8 text-center text-gray-500 animate-pulse">Loading workspace...</div>;
 
     const { distribution } = data || { distribution: [] };
     const myStats = data?.efficiency[0] || { total: 0, completed: 0, efficiency: 0 };
@@ -41,6 +51,80 @@ const DesignerDashboard = () => {
                     My Creative Space
                 </h1>
                 <p className="text-muted-foreground mt-1">Track your tasks and performance.</p>
+            </div>
+
+            {/* --- SECTION 0: MY ACTIVE TASKS --- */}
+            <div className="grid grid-cols-1 gap-6">
+                <Card className="border shadow-lg rounded-xl overflow-hidden bg-slate-900 text-white">
+                    <CardHeader className="bg-slate-800 py-4 px-6 border-b border-slate-700">
+                        <div className="flex items-center justify-between">
+                            <CardTitle className="text-lg font-bold flex items-center gap-2">
+                                <CheckSquare size={20} className="text-orange-400" />
+                                My Active Tasks
+                            </CardTitle>
+                            <Badge className="bg-orange-500 text-white border-none">{myTasks?.length || 0} Pending</Badge>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        <div className="overflow-x-auto">
+                            <Table>
+                                <TableHeader className="bg-slate-800/50">
+                                    <TableRow className="border-slate-700 hover:bg-transparent">
+                                        <TableHead className="text-slate-400 font-bold">Task Title</TableHead>
+                                        <TableHead className="text-slate-400 font-bold">Client</TableHead>
+                                        <TableHead className="text-slate-400 font-bold">Type</TableHead>
+                                        <TableHead className="text-slate-400 font-bold">Deadline</TableHead>
+                                        <TableHead className="text-slate-400 font-bold text-right">Status</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {!myTasks || myTasks.length === 0 ? (
+                                        <TableRow className="border-slate-800">
+                                            <TableCell colSpan={5} className="h-32 text-center text-slate-500 italic font-medium">
+                                                No active tasks assigned to you. Enjoy the breather!
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : (
+                                        myTasks.map((task: any) => (
+                                            <TableRow key={task.id} className="border-slate-800 hover:bg-slate-800/50 transition-colors">
+                                                <TableCell className="font-bold">
+                                                    <div className="flex flex-col">
+                                                        <span>{task.title}</span>
+                                                        <span className="text-[10px] text-slate-500 font-normal truncate max-w-[300px]">{task.description}</span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="font-medium text-orange-400">
+                                                    {task.client?.name || 'Internal'}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge className="bg-slate-700 text-slate-300 border-slate-600" variant="outline">
+                                                        {task.type}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-slate-400 text-sm">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <Clock size={12} />
+                                                        {task.due_date ? new Date(task.due_date).toLocaleDateString() : 'No Set Date'}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <Badge className={`
+                                                        ${task.status === 'REVIEW' ? 'bg-amber-500' :
+                                                            task.status === 'IN_PROGRESS' ? 'bg-blue-600' :
+                                                                task.status === 'REVISION_REQUESTED' ? 'bg-red-500' : 'bg-slate-600'} 
+                                                        text-white border-none font-bold text-[10px]
+                                                    `}>
+                                                        {task.status.replace(/_/g, ' ')}
+                                                    </Badge>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
 
             {/* --- SECTION 1: TODAY'S CREATIVE TASKS --- */}

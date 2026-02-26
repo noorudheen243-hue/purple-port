@@ -1,0 +1,1 @@
+import{aI as f,ax as i}from"./index-BPHe9uWR.js";function d(r,p){var a,n;const e=f(),o=e.weekStartsOn??((n=(a=e.locale)==null?void 0:a.options)==null?void 0:n.weekStartsOn)??0,t=i(r),s=t.getDay(),c=(s<o?-7:0)+6-(s-o);return t.setDate(t.getDate()+c),t.setHours(23,59,59,999),t}export{d as e};

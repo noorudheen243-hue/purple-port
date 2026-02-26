@@ -72,3 +72,33 @@ export const deleteUser = async (req: Request, res: Response) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+export const resetPassword = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { newPassword } = req.body;
+
+        if (!newPassword || newPassword.length < 6) {
+            return res.status(400).json({ message: 'Password must be at least 6 characters' });
+        }
+
+        // 1. Fetch user to verify they are not a CLIENT
+        const targetUser = await userService.findUserById(id);
+        if (!targetUser) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        if (targetUser.role === 'CLIENT') {
+            return res.status(400).json({ message: 'Client passwords cannot be reset here.' });
+        }
+
+        // 2. Perform Update (Service handles hashing)
+        await userService.updateUser(id, { password_hash: newPassword });
+
+        res.json({ message: `Password for ${targetUser.full_name} has been reset successfully.` });
+
+    } catch (error: any) {
+        console.error('Reset Password Error:', error);
+        res.status(500).json({ message: error.message || 'Failed to reset password' });
+    }
+};

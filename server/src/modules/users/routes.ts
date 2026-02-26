@@ -8,6 +8,7 @@ const router = Router();
 router.get('/', protect, userController.getUsers);
 router.get('/:id', protect, userController.getUserById); // Self or Admin check should be in controller
 router.patch('/:id', protect, authorize(ROLES.ADMIN, ROLES.MANAGER), userController.updateUser);
+router.patch('/reset-password/:id', protect, authorize(ROLES.ADMIN, ROLES.DEVELOPER_ADMIN), userController.resetPassword);
 router.delete('/:id', protect, authorize(ROLES.ADMIN, ROLES.DEVELOPER_ADMIN), userController.deleteUser);
 
 export default router;

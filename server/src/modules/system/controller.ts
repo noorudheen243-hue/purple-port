@@ -31,11 +31,12 @@ export const syncToCloud = async (req: Request, res: Response) => {
                 details: 'Pulling latest code and restarting services.'
             });
 
-            // Run script detached
+            // Run script detached and capture logs
             const deployScript = '/var/www/purple-port/deploy_update.sh';
-            // We use spawn to fire and forget (mostly), but we want it to survive the parent death if possible.
-            // Actually, if this process dies, spawn might too unless detached.
-            const child = spawn('bash', [deployScript], {
+            const logFile = '/var/www/purple-port/deployment.log';
+
+            // We use a shell wrapper to redirect output to a file that can be checked later
+            const child = spawn('bash', ['-c', `${deployScript} > ${logFile} 2>&1`], {
                 detached: true,
                 stdio: 'ignore'
             });
@@ -88,6 +89,20 @@ export const syncToCloud = async (req: Request, res: Response) => {
                 error: error.message
             });
         }
+    }
+};
+
+export const getDeployLogs = async (req: Request, res: Response) => {
+    try {
+        const logPath = '/var/www/purple-port/deployment.log';
+        if (fs.existsSync(logPath)) {
+            const logs = fs.readFileSync(logPath, 'utf8');
+            res.json({ logs });
+        } else {
+            res.status(404).json({ message: 'No deployment logs found on this environment.' });
+        }
+    } catch (error: any) {
+        res.status(500).json({ message: 'Failed to read logs', error: error.message });
     }
 };
 

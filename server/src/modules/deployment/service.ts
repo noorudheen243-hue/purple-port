@@ -56,13 +56,13 @@ export const deployToVPS = async () => {
         // npm run build (which should build workspaces)
         // pm2 restart all
 
-        const remoteCommand = `cd /var/www/antigravity && git pull && npm install && npm run build && pm2 restart all`;
+        const remoteCommand = `cd /var/www/purple-port && git pull && npm install && npm run build && pm2 restart all`;
 
         log(`Executing Remote SSH Command on 66.116.224.221...`);
         log(`Command: ${remoteCommand}`);
 
         // Note: This relies on local machine having SSH access to 'user@66.116.224.221' without password
-        const { stdout: sshOut, stderr: sshErr } = await execPromise(`ssh -o StrictHostKeyChecking=no user@66.116.224.221 "${remoteCommand}"`);
+        const { stdout: sshOut, stderr: sshErr } = await execPromise(`ssh -o StrictHostKeyChecking=no -o HostKeyAlgorithms=+ssh-rsa root@66.116.224.221 "${remoteCommand}"`);
 
         log('Remote Output: ' + sshOut);
         if (sshErr) log('Remote Stderr: ' + sshErr);

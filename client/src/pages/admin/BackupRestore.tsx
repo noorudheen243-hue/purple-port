@@ -55,7 +55,7 @@ const BackupRestore: React.FC = () => {
         setLoadingList(true);
         try {
             // Always fetch from the remote URL (which is qixport.com)
-            const targetUrl = isOnlineHost ? '/backup/list-local' : `${REMOTE_URL}/api/backup/list-local`;
+            const targetUrl = isOnlineHost ? 'backup/list-local' : `${REMOTE_URL}/api/backup/list-local`;
 
             const res = isOnlineHost
                 ? await api.get(targetUrl)
@@ -77,7 +77,7 @@ const BackupRestore: React.FC = () => {
 
     const fetchAutoSetting = useCallback(async () => {
         try {
-            const targetUrl = isOnlineHost ? '/backup/auto-backup-setting' : `${REMOTE_URL}/api/backup/auto-backup-setting`;
+            const targetUrl = isOnlineHost ? 'backup/auto-backup-setting' : `${REMOTE_URL}/api/backup/auto-backup-setting`;
             const res = isOnlineHost
                 ? await api.get(targetUrl)
                 : await axios.get(targetUrl, { withCredentials: true, headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
@@ -106,15 +106,15 @@ const BackupRestore: React.FC = () => {
         setSavingBackup(true);
         try {
             if (isOnlineHost) {
-                await api.post('/backup/save-to-disk', { type: 'online' });
+                await api.post('backup/save-to-disk', { type: 'online' });
             } else {
                 Swal.update({ title: 'Step 1/2: Preparing backup locally...', text: '' });
-                const localRes = await api.post('/backup/save-to-disk', { type: 'offline' });
+                const localRes = await api.post('backup/save-to-disk', { type: 'offline' });
                 const filename = localRes.data.filename;
 
                 Swal.update({ title: 'Step 2/2: Uploading to Online Server...', text: 'Please wait, transferring file' });
 
-                const downloadRes = await api.get(`/backup/download/${filename}`, { responseType: 'blob' });
+                const downloadRes = await api.get(`backup/download/${filename}`, { responseType: 'blob' });
 
                 const formData = new FormData();
                 formData.append('file', downloadRes.data, filename);
@@ -172,12 +172,12 @@ const BackupRestore: React.FC = () => {
             if (!isOnlineHost) {
                 Swal.fire({ title: 'Preparing Restore...', text: 'Checking file availability...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
-                const localList = await api.get('/backup/list-local');
+                const localList = await api.get('backup/list-local');
                 const fileExistsLocally = (localList.data.backups as any[]).some(b => b.filename === selectedFile);
 
                 if (!fileExistsLocally) {
                     Swal.update({ title: 'Pulling backup from Online Server...', text: 'Transferring file to local machine' });
-                    await api.post('/backup/download-from-remote', {
+                    await api.post('backup/download-from-remote', {
                         remoteUrl: REMOTE_URL,
                         filename: selectedFile,
                         token: localStorage.getItem('token')
@@ -185,7 +185,7 @@ const BackupRestore: React.FC = () => {
                 }
             }
 
-            await api.post('/backup/restore-from-disk', { filename: selectedFile }, { timeout: 1800000 });
+            await api.post('backup/restore-from-disk', { filename: selectedFile }, { timeout: 1800000 });
 
             Swal.fire({
                 icon: 'success',
@@ -220,7 +220,7 @@ const BackupRestore: React.FC = () => {
         const newState = !autoBackupEnabled;
         setTogglingAuto(true);
         try {
-            await api.post('/backup/auto-backup-setting', { enabled: newState });
+            await api.post('backup/auto-backup-setting', { enabled: newState });
             setAutoBackupEnabled(newState);
             Swal.fire({
                 icon: 'success',

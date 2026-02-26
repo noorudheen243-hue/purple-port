@@ -31,7 +31,7 @@ ls -lht "$ROOT/client/dist/" | head -5
 
 # 4. Ensure nginx is pointing to client/dist
 echo ">>> Updating nginx config to serve from client/dist..."
-cat > /etc/nginx/sites-available/default << 'NGINXEOF'
+sudo cat > /etc/nginx/sites-available/default << 'NGINXEOF'
 server {
     listen 80 default_server;
     listen [::]:80 default_server;
@@ -85,10 +85,16 @@ npm run build
 npx prisma generate
 npx prisma db push
 
-# 6. Set Permissions
+# 6. Set Permissions & Directories
 echo ">>> Fixing Permissions..."
-chown -R www-data:www-data "$ROOT"
-chmod -R 755 "$ROOT"
+# Ensure backup dir exists
+sudo mkdir -p /var/backups/antigravity
+sudo chown -R $USER:$USER /var/backups/antigravity
+sudo chmod -R 777 /var/backups/antigravity
+
+# Standard folder permissions
+sudo chown -R www-data:www-data "$ROOT"
+sudo chmod -R 755 "$ROOT"
 chmod +x "$ROOT/client/node_modules/.bin/"* 2>/dev/null || true
 chmod +x "$ROOT/server/node_modules/.bin/"* 2>/dev/null || true
 
@@ -106,8 +112,9 @@ pm2 save
 
 # 8. Restart Nginx
 echo ">>> Restarting Nginx..."
-nginx -t && systemctl restart nginx || echo "Warning: Nginx restart issue"
+sudo nginx -t && sudo systemctl restart nginx || echo "Warning: Nginx restart issue"
 
 echo ">>> === Deployment Complete! (v3.0) ==="
 echo ">>> Nginx now serving from: /var/www/purple-port/client/dist"
+echo ">>> Backup directory ready at: /var/backups/antigravity"
 ls -lht "$ROOT/client/dist/" | head -5

@@ -48,18 +48,37 @@ const BackupRestore: React.FC = () => {
     const [togglingAuto, setTogglingAuto] = useState(false);
     const [latestBackup, setLatestBackup] = useState<BackupFile | null>(null);
 
-    // Fetch unified history from the Online Server
+    // Fetch unified history from the Online Server and Local Server
     const fetchHistory = useCallback(async () => {
         setLoadingList(true);
         try {
-            // Always fetch from the remote URL (which is qixport.com)
+            // 1) Fetch remote backups (or local if already online)
             const targetUrl = isOnlineHost ? 'backup/list-local' : `${REMOTE_URL}/api/backup/list-local`;
-
             const res = isOnlineHost
                 ? await api.get(targetUrl)
                 : await axios.get(targetUrl, { withCredentials: true, headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
 
-            const list = res.data.backups || [];
+            let list = res.data.backups || [];
+
+            // 2) If offline, fetch local backups and merge them with the remote backups
+            if (!isOnlineHost) {
+                try {
+                    const localRes = await api.get('backup/list-local');
+                    const localList = localRes.data.backups || [];
+
+                    // Merge and deduplicate by filename
+                    const map = new Map<string, BackupFile>();
+                    localList.forEach((b: BackupFile) => map.set(b.filename, b));
+                    list.forEach((b: BackupFile) => map.set(b.filename, b));
+
+                    list = Array.from(map.values()).sort((a, b) =>
+                        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                    );
+                } catch (e) {
+                    console.error('Failed to fetch local backups for merge:', e);
+                }
+            }
+
             setBackups(list);
 
             if (list.length > 0) {
@@ -71,7 +90,7 @@ const BackupRestore: React.FC = () => {
         } finally {
             setLoadingList(false);
         }
-    }, [selectedFile]);
+    }, [selectedFile, isOnlineHost]);
 
     const fetchAutoSetting = useCallback(async () => {
         try {
@@ -112,10 +131,17 @@ const BackupRestore: React.FC = () => {
 
                 Swal.update({ title: 'Step 2/2: Uploading to Online Server...', text: 'Please wait, transferring file securely...' });
 
-                await api.post('backup/upload-to-remote', {
-                    remoteUrl: REMOTE_URL,
-                    filename,
-                    token: localStorage.getItem('token')
+                const downloadRes = await api.get(`backup/download/${filename}`, { responseType: 'blob' });
+
+                const formData = new FormData();
+                formData.append('file', downloadRes.data, filename);
+
+                await axios.post(`${REMOTE_URL}/api/backup/upload`, formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    withCredentials: true
                 });
             }
 

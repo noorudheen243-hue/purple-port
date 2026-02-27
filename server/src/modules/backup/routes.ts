@@ -10,6 +10,7 @@ import {
     setAutoBackupSetting,
     downloadBackupFile,
     downloadBackupFromRemote,
+    uploadBackupToRemote,
     uploadBackup
 } from './controller';
 import { protect, authorize } from '../../modules/auth/middleware';
@@ -29,6 +30,7 @@ router.post('/auto-backup-setting', protect, authorize('DEVELOPER_ADMIN'), setAu
 // ─── Cross-Environment Retrieval ─────────────────────────────────────────────
 router.get('/download/:filename', protect, authorize('DEVELOPER_ADMIN'), downloadBackupFile);
 router.post('/download-from-remote', protect, authorize('DEVELOPER_ADMIN'), downloadBackupFromRemote);
+router.post('/upload-to-remote', protect, authorize('DEVELOPER_ADMIN'), uploadBackupToRemote);
 router.post('/upload', protect, authorize('DEVELOPER_ADMIN'), upload.single('file'), uploadBackup);
 
 // ─── Legacy Endpoints (kept for backward-compat with Data Sync tab) ──────────

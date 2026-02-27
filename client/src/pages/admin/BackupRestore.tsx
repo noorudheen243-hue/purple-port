@@ -36,9 +36,7 @@ interface BackupFile {
 const isOnlineHost = typeof window !== 'undefined' &&
     !['localhost', '127.0.0.1'].includes(window.location.hostname);
 
-const REMOTE_URL = isOnlineHost
-    ? '' // Relative if already on online
-    : 'https://qixport.com';
+const REMOTE_URL = 'https://qixport.com';
 
 const BackupRestore: React.FC = () => {
     const [backups, setBackups] = useState<BackupFile[]>([]);
@@ -112,19 +110,12 @@ const BackupRestore: React.FC = () => {
                 const localRes = await api.post('backup/save-to-disk', { type: 'offline' });
                 const filename = localRes.data.filename;
 
-                Swal.update({ title: 'Step 2/2: Uploading to Online Server...', text: 'Please wait, transferring file' });
+                Swal.update({ title: 'Step 2/2: Uploading to Online Server...', text: 'Please wait, transferring file securely...' });
 
-                const downloadRes = await api.get(`backup/download/${filename}`, { responseType: 'blob' });
-
-                const formData = new FormData();
-                formData.append('file', downloadRes.data, filename);
-
-                await axios.post(`${REMOTE_URL}/api/backup/upload`, formData, {
-                    headers: {
-                        'Content-Type': 'multipart/form-data',
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
-                    },
-                    withCredentials: true
+                await api.post('backup/upload-to-remote', {
+                    remoteUrl: REMOTE_URL,
+                    filename,
+                    token: localStorage.getItem('token')
                 });
             }
 

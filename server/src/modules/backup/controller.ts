@@ -354,9 +354,15 @@ export const downloadBackupFile = async (req: Request, res: Response) => {
 // ──────────────────────────────────────────────────────────────────────────────
 export const downloadBackupFromRemote = async (req: Request, res: Response) => {
     try {
-        const { remoteUrl, filename, token } = req.body;
+        const { remoteUrl, filename } = req.body;
+
+        let token = req.cookies.jwt;
+        if (!token && req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+            token = req.headers.authorization.split(' ')[1];
+        }
+
         if (!remoteUrl || !filename || !token) {
-            return res.status(400).json({ message: 'remoteUrl, filename, and token are required' });
+            return res.status(400).json({ message: 'remoteUrl, filename, and authentication token are required' });
         }
 
         const backupDir = getBackupDir();
@@ -387,6 +393,61 @@ export const downloadBackupFromRemote = async (req: Request, res: Response) => {
     } catch (error: any) {
         console.error('[Backup] Pull-from-remote error:', error);
         res.status(500).json({ message: error.message || 'Failed to pull remote backup' });
+    }
+};
+
+// ──────────────────────────────────────────────────────────────────────────────
+// ENDPOINT 6.5: POST /api/backup/upload-to-remote
+// Body: { remoteUrl: "https://qixport.com", filename: "backup-offline-xxx.zip", token: "jwt_token" }
+// Streams a local backup file to a remote instance's upload endpoint.
+// ──────────────────────────────────────────────────────────────────────────────
+export const uploadBackupToRemote = async (req: Request, res: Response) => {
+    try {
+        console.log('[Backup] uploadBackupToRemote payload:', req.body);
+        const { remoteUrl, filename } = req.body;
+
+        let token = req.cookies.jwt;
+        if (!token && req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+            token = req.headers.authorization.split(' ')[1];
+        }
+
+        if (!remoteUrl || !filename || !token) {
+            return res.status(400).json({ message: 'remoteUrl, filename, and authentication token are required' });
+        }
+
+        // Security: prevent path traversal
+        if (filename.includes('/') || filename.includes('\\') || filename.includes('..')) {
+            return res.status(400).json({ message: 'Invalid filename' });
+        }
+
+        const backupDir = getBackupDir();
+        const zipPath = path.join(backupDir, filename);
+
+        if (!fs.existsSync(zipPath)) {
+            return res.status(404).json({ message: `Backup file not found: ${filename}` });
+        }
+
+        const targetUrl = `${remoteUrl}/api/backup/upload`;
+        console.log(`[Backup] Pushing local backup: ${filename} to ${targetUrl}...`);
+
+        const FormData = require('form-data');
+        const form = new FormData();
+        form.append('file', fs.createReadStream(zipPath), filename);
+
+        await axios.post(targetUrl, form, {
+            headers: {
+                ...form.getHeaders(),
+                'Authorization': `Bearer ${token}`
+            },
+            maxBodyLength: Infinity,
+            maxContentLength: Infinity
+        });
+
+        console.log(`[Backup] Successfully pushed backup to remote: ${filename}`);
+        res.json({ message: 'Backup successfully uploaded to remote server', filename });
+    } catch (error: any) {
+        console.error('[Backup] Upload-to-remote error:', error);
+        res.status(500).json({ message: error.message || 'Failed to upload backup to remote server' });
     }
 };
 

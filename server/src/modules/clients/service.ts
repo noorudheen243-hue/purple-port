@@ -466,13 +466,14 @@ export const updateClientCredentials = async (clientId: string, data: { username
         // Create if doesn't exist (Manual Create via Update)
         if (!data.username || !data.password) throw new Error("Credentials don't exist. Provide both username and password to create.");
 
+        const normalizedEmail = data.username.trim().toLowerCase();
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(data.password, salt);
 
         return await prisma.user.create({
             data: {
                 full_name: client.name,
-                email: data.username,
+                email: normalizedEmail,
                 password_hash: hashedPassword,
                 role: 'CLIENT',
                 department: 'CLIENT',
@@ -482,7 +483,7 @@ export const updateClientCredentials = async (clientId: string, data: { username
     } else {
         // Update existing
         const updateData: any = {};
-        if (data.username) updateData.email = data.username;
+        if (data.username) updateData.email = data.username.trim().toLowerCase();
         if (data.password) {
             const salt = await bcrypt.genSalt(10);
             updateData.password_hash = await bcrypt.hash(data.password, salt);

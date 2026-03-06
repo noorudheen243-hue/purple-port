@@ -18,8 +18,13 @@ const Login = () => {
                 email: email.trim().toLowerCase(),
                 password: password.trim()
             });
-            navigate('/dashboard');
-            navigate('/dashboard');
+            // Get the updated user from the store after login
+            const { user: loggedInUser } = useAuthStore.getState();
+            if (loggedInUser?.role === 'CLIENT') {
+                navigate('/dashboard/client-portal');
+            } else {
+                navigate('/dashboard');
+            }
         } catch (err: any) {
             console.error(err);
             const status = err.response?.status;

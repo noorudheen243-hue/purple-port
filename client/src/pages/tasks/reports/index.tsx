@@ -17,8 +17,8 @@ type StatItem = {
     rate: number;
 };
 
-const TaskReports = () => {
-    const [view, setView] = useState<'staff' | 'department' | 'client'>('staff');
+const TaskReports = ({ department }: { department?: string }) => {
+    const [view, setView] = useState<'staff' | 'department' | 'client' | 'staff_type'>(department === 'CREATIVE' ? 'staff_type' : 'staff');
     const [period, setPeriod] = useState<'all' | 'today' | 'week' | 'month' | 'year'>('month');
 
     // Calculate Date Range based on Period
@@ -38,12 +38,17 @@ const TaskReports = () => {
         }
     };
 
-    const { start, end } = getDateRange();
+    const periodRange = getDateRange();
 
     const { data: stats, isLoading } = useQuery<StatItem[]>({
-        queryKey: ['task-stats', view, period],
+        queryKey: ['task-stats', view, period, department],
         queryFn: async () => (await api.get('/tasks/stats', {
-            params: { view, start, end }
+            params: {
+                view,
+                start: periodRange.start,
+                end: periodRange.end,
+                department
+            }
         })).data
     });
 
@@ -87,12 +92,14 @@ const TaskReports = () => {
                     <Select value={view} onValueChange={(val: any) => setView(val)}>
                         <SelectTrigger className="w-[180px]">
                             {view === 'staff' && <Users className="mr-2 h-4 w-4" />}
+                            {view === 'staff_type' && <Users className="mr-2 h-4 w-4" />}
                             {view === 'department' && <Building2 className="mr-2 h-4 w-4" />}
-                            {view === 'client' && <Building2 className="mr-2 h-4 w-4" />} {/* Reusing Icon */}
+                            {view === 'client' && <Building2 className="mr-2 h-4 w-4" />}
                             <SelectValue placeholder="Report Type" />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="staff">Staff Wise</SelectItem>
+                            <SelectItem value="staff_type">Staff & Task Type</SelectItem>
                             <SelectItem value="department">Department Wise</SelectItem>
                             <SelectItem value="client">Client Wise</SelectItem>
                         </SelectContent>
@@ -113,7 +120,7 @@ const TaskReports = () => {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">
-                            {isLoading ? "..." : stats?.reduce((acc, curr) => acc + curr.total, 0)}
+                            {isLoading ? "..." : (Array.isArray(stats) ? stats.reduce((acc, curr) => acc + curr.total, 0) : 0)}
                         </div>
                     </CardContent>
                 </Card>
@@ -124,7 +131,7 @@ const TaskReports = () => {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">
-                            {isLoading ? "..." : stats?.reduce((acc, curr) => acc + curr.completed, 0)}
+                            {isLoading ? "..." : (Array.isArray(stats) ? stats.reduce((acc, curr) => acc + curr.completed, 0) : 0)}
                         </div>
                     </CardContent>
                 </Card>
@@ -135,7 +142,7 @@ const TaskReports = () => {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">
-                            {isLoading ? "..." : stats?.reduce((acc, curr) => acc + curr.pending, 0)}
+                            {isLoading ? "..." : (Array.isArray(stats) ? stats.reduce((acc, curr) => acc + curr.pending, 0) : 0)}
                         </div>
                     </CardContent>
                 </Card>
@@ -146,7 +153,7 @@ const TaskReports = () => {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">
-                            {isLoading ? "..." : stats?.reduce((acc, curr) => acc + curr.overdue, 0)}
+                            {isLoading ? "..." : (Array.isArray(stats) ? stats.reduce((acc, curr) => acc + curr.overdue, 0) : 0)}
                         </div>
                     </CardContent>
                 </Card>
@@ -161,7 +168,7 @@ const TaskReports = () => {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead className="w-[200px]">Name</TableHead>
+                                <TableHead className="w-[200px]">{view === 'staff_type' ? 'Staff & Task Type' : 'Name'}</TableHead>
                                 <TableHead className="text-right">Total Tasks</TableHead>
                                 <TableHead className="text-right">Completed</TableHead>
                                 <TableHead className="text-right">Pending</TableHead>
@@ -176,16 +183,25 @@ const TaskReports = () => {
                                         Loading reports...
                                     </TableCell>
                                 </TableRow>
-                            ) : stats?.length === 0 ? (
+                            ) : !Array.isArray(stats) || stats.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={6} className="text-center py-10">
-                                        No data found for this period.
+                                        {!Array.isArray(stats) ? "Error: Invalid data format received from server." : "No data found for this period."}
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                stats?.map((item) => (
+                                stats.map((item) => (
                                     <TableRow key={item.name}>
-                                        <TableCell className="font-medium">{item.name}</TableCell>
+                                        <TableCell className="font-medium">
+                                            {view === 'staff_type' && item.name.includes(' - ') ? (
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-gray-900">{item.name.split(' - ')[0]}</span>
+                                                    <span className="text-[10px] text-purple-600 font-semibold uppercase tracking-wider">{item.name.split(' - ')[1]}</span>
+                                                </div>
+                                            ) : (
+                                                item.name
+                                            )}
+                                        </TableCell>
                                         <TableCell className="text-right">{item.total}</TableCell>
                                         <TableCell className="text-right text-green-600 font-medium">{item.completed}</TableCell>
                                         <TableCell className="text-right text-yellow-600">{item.pending}</TableCell>

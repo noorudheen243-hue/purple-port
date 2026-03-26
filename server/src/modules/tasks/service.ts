@@ -115,16 +115,20 @@ export const getTasks = async (filters: {
     client_id?: string;
     status?: string;
     priority?: string;
-    startDate?: Date; // Added
-    endDate?: Date;   // Added
+    department?: string;
+    campaign_type?: string;
+    startDate?: Date;
+    endDate?: Date;
 }) => {
-    const whereClause: Prisma.TaskWhereInput = {};
+    let whereClause: Prisma.TaskWhereInput = {};
 
-    if (filters.campaign_id) whereClause.campaign_id = filters.campaign_id;
-    if (filters.client_id) whereClause.client_id = filters.client_id;
-    if (filters.assignee_id) whereClause.assignee_id = filters.assignee_id;
-    if (filters.status) whereClause.status = filters.status;
-    if (filters.priority) whereClause.priority = filters.priority;
+    if (filters?.campaign_id) whereClause.campaign_id = filters.campaign_id;
+    if (filters?.client_id) whereClause.client_id = filters.client_id;
+    if (filters?.assignee_id) whereClause.assignee_id = filters.assignee_id;
+    if (filters?.status) whereClause.status = filters.status;
+    if (filters?.priority) whereClause.priority = filters.priority;
+    if (filters?.department) (whereClause as any).department = filters.department;
+    if (filters?.campaign_type) (whereClause as any).campaign_type = filters.campaign_type;
 
     // Date Range Filtering (Mixed: Due Date OR Created At OR Start Date)
     if (filters.startDate && filters.endDate) {
@@ -248,6 +252,15 @@ export const updateTask = async (id: string, data: Prisma.TaskUpdateInput, userI
         if (data.status === 'COMPLETED') {
             data.completed_date = new Date();
         }
+        // REWORK: auto-sync nature field so analytics track it correctly
+        if (data.status === 'REWORK') {
+            (data as any).nature = 'REWORK';
+            // Stop any running timer when task goes to rework
+            await prisma.timeLog.updateMany({
+                where: { task_id: id, end_time: null },
+                data: { end_time: new Date() }
+            }).catch(() => { });
+        }
     }
 
     const existingTask = await prisma.task.findUnique({ where: { id } });
@@ -327,15 +340,34 @@ export const deleteTask = async (id: string) => {
 export const getTaskStats = async (filters: {
     startDate?: Date;
     endDate?: Date;
-    groupBy?: 'staff' | 'department' | 'status' | 'client';
+    groupBy?: 'staff' | 'department' | 'status' | 'client' | 'staff_type';
+    department?: string;
 }) => {
     const whereClause: Prisma.TaskWhereInput = {};
 
+    // Synchronized Period Logic:
+    // Include tasks that were ACTIVE or COMPLETED during this period.
     if (filters.startDate && filters.endDate) {
-        whereClause.createdAt = {
-            gte: filters.startDate,
-            lte: filters.endDate
-        };
+        whereClause.AND = [
+            { createdAt: { lte: filters.endDate } }, // Created before or during period
+            {
+                OR: [
+                    { completed_date: null }, // Still active (not completed yet)
+                    { completed_date: { gte: filters.startDate } }, // Completed during or after this period
+                    {
+                        AND: [
+                            { completed_date: null },
+                            { status: 'COMPLETED' },
+                            { updatedAt: { gte: filters.startDate } }
+                        ]
+                    } // Fallback for legacy completed tasks without completed_date
+                ]
+            }
+        ];
+    }
+
+    if (filters.department) {
+        whereClause.department = filters.department;
     }
 
     // Fetch all relevant tasks with assignee info
@@ -357,7 +389,10 @@ export const getTaskStats = async (filters: {
                     name: true
                 }
             },
-            due_date: true
+            due_date: true,
+            completed_date: true,
+            updatedAt: true,
+            type: true
         }
     });
 
@@ -375,6 +410,9 @@ export const getTaskStats = async (filters: {
             key = task.client?.name || 'No Client';
         } else if (filters.groupBy === 'status') {
             key = task.status;
+        } else if (filters.groupBy === 'staff_type') {
+            const staffName = task.assignee?.full_name || 'Unassigned';
+            key = `${staffName} - ${task.type}`;
         }
 
         if (!stats[key]) {
@@ -383,12 +421,19 @@ export const getTaskStats = async (filters: {
 
         stats[key].total++;
 
-        if (task.status === 'COMPLETED') {
+        // Strict Period Completion Check
+        const compDate = task.completed_date || (task.status === 'COMPLETED' ? task.updatedAt : null);
+        const isCompletedInPeriod = compDate &&
+            filters.startDate && filters.endDate &&
+            compDate >= filters.startDate &&
+            compDate <= filters.endDate;
+
+        if (isCompletedInPeriod) {
             stats[key].completed++;
         } else {
             stats[key].pending++;
-            // Check Overdue
-            if (task.due_date && new Date(task.due_date) < new Date() && task.status !== 'COMPLETED') {
+            // Check Overdue: If Task is not completed AND due_date < now
+            if (task.due_date && new Date(task.due_date) < new Date()) {
                 stats[key].overdue++;
             }
         }
@@ -428,7 +473,7 @@ export const getDashboardStats = async (user: { id: string, role: string, depart
         // Fetch all tasks for creative staff in one go, grouped by assignee
         // First get creative staff IDs to filter
         const creativeStaff = await prisma.staffProfile.findMany({
-            where: { department: 'CREATIVE' },
+            where: { department: 'CREATIVE', user: { status: 'ACTIVE' } },
             select: { user_id: true, user: { select: { full_name: true } } }
         });
 
@@ -601,3 +646,146 @@ export const calculateDashboardAggregates = async () => {
         overdue
     };
 };
+
+export const getDigitalMarketingDashboardStats = async (month?: number, year?: number) => {
+    // Determine the date range for the selected month/year
+    const now = new Date();
+    const targetMonth = month !== undefined ? month : now.getMonth();
+    const targetYear = year !== undefined ? year : now.getFullYear();
+
+    const startOfPeriod = new Date(targetYear, targetMonth, 1);
+    const endOfPeriod = new Date(targetYear, targetMonth + 1, 0, 23, 59, 59, 999);
+
+    console.log(`[DM-Stats] Calculating for Month: ${targetMonth}, Year: ${targetYear}`);
+    console.log(`[DM-Stats] Period: ${startOfPeriod.toISOString()} to ${endOfPeriod.toISOString()}`);
+
+    const periodFilter = {
+        createdAt: {
+            gte: startOfPeriod,
+            lte: endOfPeriod
+        }
+    };
+
+    // 1. Total Active Clients (Snapshot of current status)
+    const activeClients = await prisma.client.count({
+        where: { status: 'ACTIVE' }
+    });
+
+    // 2. Active Meta Campaigns (Unique campaigns active in the period)
+    const activeMetaLogs = await prisma.metaAdsLog.findMany({
+        where: {
+            status: 'ACTIVE',
+            ...periodFilter
+        },
+        select: { campaign_name: true }
+    });
+    const uniqueMetaCampaigns = new Set(activeMetaLogs.map(l => l.campaign_name));
+    const activeMetaCampaigns = uniqueMetaCampaigns.size;
+
+    // 3. Assigned Creative Tasks (Total non-completed Creative Tasks currently in system)
+    const assignedCreativeTasks = await prisma.task.count({
+        where: {
+            department: 'CREATIVE',
+            status: { notIn: ['COMPLETED', 'CANCELLED'] }
+        }
+    });
+
+    // 4. Completed Creative Tasks (Tasks completed WITHIN this month)
+    const completedCreativeTasks = await prisma.task.count({
+        where: {
+            department: 'CREATIVE',
+            status: 'COMPLETED',
+            OR: [
+                {
+                    completed_date: {
+                        gte: startOfPeriod,
+                        lte: endOfPeriod
+                    }
+                },
+                {
+                    // Fallback to createdAt if completed_date is missing for some reason
+                    AND: [
+                        { completed_date: null },
+                        {
+                            createdAt: {
+                                gte: startOfPeriod,
+                                lte: endOfPeriod
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    });
+
+    // 5. Pending Creative Tasks (Backlog: Not completed AND (Due Date is past OR Status is delayed))
+    const pendingCreativeTasks = await prisma.task.count({
+        where: {
+            department: 'CREATIVE',
+            status: { notIn: ['COMPLETED', 'CANCELLED'] },
+            OR: [
+                { due_date: { lt: now } },
+                { status: { in: ['REVISION', 'REWORK', 'OVERDUE'] } }
+            ]
+        }
+    });
+
+    // 6. Charts Data (Focused on Digital Marketing department only)
+    const allDMTasks = await prisma.task.findMany({
+        where: {
+            department: 'DIGITAL_MARKETING',
+            ...periodFilter
+        },
+        select: { campaign_type: true }
+    });
+    const campaignTypeStatsObj: Record<string, number> = {};
+    allDMTasks.forEach(task => {
+        const type = task.campaign_type || 'Other';
+        campaignTypeStatsObj[type] = (campaignTypeStatsObj[type] || 0) + 1;
+    });
+    const campaignTypeStats = Object.entries(campaignTypeStatsObj).map(([name, value]) => ({ name, value }));
+
+    const statusStatsRaw = await prisma.task.groupBy({
+        by: ['status'],
+        where: {
+            department: 'DIGITAL_MARKETING',
+            ...periodFilter
+        },
+        _count: { id: true }
+    });
+    const statusStats = statusStatsRaw.map(s => ({ name: s.status, value: s._count.id }));
+
+    const staffTasksRaw = await prisma.task.groupBy({
+        by: ['assignee_id'],
+        where: {
+            department: 'DIGITAL_MARKETING',
+            assignee_id: { not: null },
+            ...periodFilter
+        },
+        _count: { id: true }
+    });
+    const staffIds = staffTasksRaw.map(s => s.assignee_id!).filter(Boolean);
+    const staffMembers = await prisma.user.findMany({ where: { id: { in: staffIds } }, select: { id: true, full_name: true } });
+    const staffStats = staffTasksRaw.map(s => ({
+        name: staffMembers.find(m => m.id === s.assignee_id)?.full_name || 'Unknown',
+        value: s._count.id
+    }));
+
+    console.log(`[DM-Stats] Results: Clients=${activeClients}, Meta=${activeMetaCampaigns}, Assigned=${assignedCreativeTasks}, Completed=${completedCreativeTasks}, Pending=${pendingCreativeTasks}`);
+
+    console.log(`[DM-Stats] Results: Clients=${activeClients}, Meta=${activeMetaCampaigns}, Assigned=${assignedCreativeTasks}, Completed=${completedCreativeTasks}, Pending=${pendingCreativeTasks}`);
+
+    return {
+        activeClients,
+        activeMetaCampaigns,
+        assignedCreativeTasks,
+        completedCreativeTasks,
+        pendingCreativeTasks,
+        charts: {
+            campaignTypeStats,
+            staffStats,
+            statusStats
+        }
+    };
+};
+

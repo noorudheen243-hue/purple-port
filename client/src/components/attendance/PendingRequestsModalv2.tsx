@@ -132,9 +132,16 @@ const PendingRequestsModalv2 = ({ trigger, highlightId, autoOpen, onOpenChange }
                                             <div>
                                                 <span className="text-muted-foreground text-xs block mb-1">Dates</span>
                                                 {req.category === 'LEAVE' ? (
-                                                    <span className="font-medium">
-                                                        {new Date(req.start_date).toLocaleDateString()} - {new Date(req.end_date).toLocaleDateString()}
-                                                    </span>
+                                                    <div className="flex flex-col">
+                                                        <span className="font-medium">
+                                                            {new Date(req.start_date).toLocaleDateString()} - {new Date(req.end_date).toLocaleDateString()}
+                                                        </span>
+                                                        {req.is_half_day && (
+                                                            <Badge className="w-fit mt-1 bg-blue-100 text-blue-700 hover:bg-blue-100 text-[10px] py-0">
+                                                                HALF-DAY
+                                                            </Badge>
+                                                        )}
+                                                    </div>
                                                 ) : (
                                                     <span className="font-medium">{new Date(req.date).toLocaleDateString()}</span>
                                                 )}

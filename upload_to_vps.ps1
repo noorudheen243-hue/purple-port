@@ -3,7 +3,7 @@
 
 $SERVER_IP = "66.116.224.221"
 $SSH_USER = "root"
-$REMOTE_PATH = "/var/www/purple-port"
+$REMOTE_PATH = "/var/www/antigravity"
 $KEY_PATH = "f:\Antigravity\deploy_key"
 
 Clear-Host
@@ -57,8 +57,8 @@ if (Test-Path "server/prisma") {
 
 # --- DATA SYNC REMOVED ---
 # Do NOT sync dev.db or uploads. This ensures the live VPS data is never overwritten by local data.
-# Zip it
-Compress-Archive -Path "$PACKAGE_DIR\*" -DestinationPath "./deploy_package.zip" -Force
+if (Test-Path "./deploy_package.zip") { Remove-Item "./deploy_package.zip" -Force }
+tar.exe -a -c -f deploy_package.zip -C deploy_temp .
 Remove-Item -Recurse -Force $PACKAGE_DIR
 
 # Step 3: Upload to VPS
@@ -103,15 +103,17 @@ fi
 # Now move the specific data files to the correct parent folder
 cp $REMOTE_PATH/updated_files/server_dist/package.json $REMOTE_PATH/server/
 
-# Clean up temp file
-rm -f $REMOTE_PATH/server/package.json
+# Ensure .env exists in server folder (if it exists in parent)
+if [ ! -f $REMOTE_PATH/server/.env ] && [ -f $REMOTE_PATH/.env ]; then
+    cp $REMOTE_PATH/.env $REMOTE_PATH/server/.env
+fi
 
 echo "-> Applying Database Schema Changes..."
 cd $REMOTE_PATH/server
 npx prisma db push --accept-data-loss
 
 echo "-> Restarting PM2..."
-pm2 restart qix-backend || pm2 start dist/server.js --name qix-backend
+pm2 restart qix-ads-v2.6 || pm2 start dist/server.js --name qix-ads-v2.6
 "@
 
 # Fix CRLF to LF for Linux

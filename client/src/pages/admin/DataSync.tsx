@@ -78,7 +78,7 @@ const DataSync = () => {
     };
 
     return (
-        <div className="space-y-6 max-w-4xl mx-auto p-6">
+        <div className="space-y-6 mx-auto p-6">
             <h1 className="text-2xl font-bold text-gray-800">Data Synchronization</h1>
             <p className="text-gray-600">Sync data between your Local Application and the Online Server.</p>
 

@@ -9,6 +9,10 @@ interface User {
     department: string;
     avatar_url?: string;
     linked_client_id?: string;
+    staffProfile?: {
+        date_of_birth: string | null;
+        date_of_joining: string | null;
+    };
 }
 
 interface AuthState {
@@ -29,6 +33,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     checkAuth: async () => {
         try {
             const { data } = await api.get('/auth/me');
+            sessionStorage.clear(); // Reset notification flags on app load/checkAuth
             set({ user: data, isAuthenticated: true, isLoading: false });
         } catch (error) {
             set({ user: null, isAuthenticated: false, isLoading: false });
@@ -37,6 +42,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     login: async (credentials) => {
         const { data } = await api.post('/auth/login', credentials);
+        sessionStorage.clear(); // Clear all session flags on fresh login
         set({ user: data, isAuthenticated: true });
     },
 
@@ -47,6 +53,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     logout: async () => {
         await api.post('/auth/logout');
+        sessionStorage.clear(); // Clear all session flags on logout
         set({ user: null, isAuthenticated: false });
     },
 }));

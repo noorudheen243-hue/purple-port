@@ -70,11 +70,11 @@ const TaskDetail = () => {
             if (variables.status) {
                 const newStatus = variables.status;
                 // Start Timer if moving to working status and not already running
-                if (newStatus !== 'PLANNED' && newStatus !== 'COMPLETED' && !activeLog) {
+                if (newStatus !== 'PLANNED' && newStatus !== 'COMPLETED' && newStatus !== 'REWORK' && !activeLog) {
                     timerMutation.mutate('start');
                 }
-                // Stop Timer if moving to COMPLETED and currently running
-                else if (newStatus === 'COMPLETED' && activeLog) {
+                // Stop Timer if moving to COMPLETED or REWORK and currently running
+                else if ((newStatus === 'COMPLETED' || newStatus === 'REWORK') && activeLog) {
                     timerMutation.mutate('stop');
                 }
             }
@@ -113,9 +113,9 @@ const TaskDetail = () => {
         onSuccess: (_, newStatus) => {
             queryClient.invalidateQueries({ queryKey: ['task', id] });
 
-            if (newStatus !== 'PLANNED' && newStatus !== 'COMPLETED' && !activeLog) {
+            if (newStatus !== 'PLANNED' && newStatus !== 'COMPLETED' && newStatus !== 'REWORK' && !activeLog) {
                 timerMutation.mutate('start');
-            } else if (newStatus === 'COMPLETED' && activeLog) {
+            } else if ((newStatus === 'COMPLETED' || newStatus === 'REWORK') && activeLog) {
                 timerMutation.mutate('stop');
             }
         }
@@ -230,9 +230,14 @@ const TaskDetail = () => {
             {/* Header */}
             <div className="bg-white border-b border-gray-200 p-4 flex justify-between items-center shrink-0">
                 <div className="flex items-center gap-4">
-                    <Link to="/dashboard/tasks" className="text-gray-500 hover:text-gray-700">
-                        <ArrowLeft size={20} />
-                    </Link>
+                    <button
+                        onClick={() => window.history.back()}
+                        className="p-2 hover:bg-gray-100 rounded-full text-gray-500 hover:text-gray-700 transition-colors border border-gray-100 shadow-sm flex items-center gap-1"
+                        title="Back"
+                    >
+                        <ArrowLeft size={18} />
+                        <span className="text-xs font-bold pr-1">Dashboard</span>
+                    </button>
                     <div>
                         <div className="flex items-center gap-2">
                             <h1 className="text-xl font-bold">{task.title}</h1>
@@ -241,7 +246,9 @@ const TaskDetail = () => {
                         <div className="flex items-center gap-4 text-xs text-gray-500 mt-1">
                             <span className={`px-2 py-0.5 rounded-full font-medium ${task.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
                                 task.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
-                                    'bg-gray-100 text-gray-700'
+                                    task.status === 'REWORK' ? 'bg-orange-100 text-orange-700' :
+                                        task.status === 'REVIEW' ? 'bg-purple-100 text-purple-700' :
+                                            'bg-gray-100 text-gray-700'
                                 }`}>
                                 {task.status.replace('_', ' ')}
                             </span>
@@ -294,7 +301,7 @@ const TaskDetail = () => {
             </div>
 
             <div className="flex-1 overflow-y-auto p-6">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-7xl mx-auto h-full">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full h-full">
 
                     {/* Main Content (Left Column) */}
                     <div className="lg:col-span-2 flex flex-col gap-6 overflow-y-auto pr-2">
@@ -490,7 +497,11 @@ const TaskDetail = () => {
                                 onChange={(e) => setDraftStatus(e.target.value)}
                             >
                                 <option value="PLANNED">Planned</option>
+                                <option value="ASSIGNED">Assigned</option>
                                 <option value="IN_PROGRESS">In Progress</option>
+                                <option value="REVIEW">In Review</option>
+                                <option value="REVISION_REQUESTED">Revision Requested</option>
+                                <option value="REWORK">🔄 Rework</option>
                                 <option value="COMPLETED">Completed</option>
                                 <option value="ON_HOLD">On Hold</option>
                             </select>

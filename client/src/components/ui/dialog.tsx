@@ -112,22 +112,15 @@ const DialogContent = React.forwardRef<
                     >
                         {/* --- System Bar (Drag Handle) - Only if not hidden --- */}
                         {!hideDraggableBar && (
-                            <div className="window-drag-handle h-9 bg-muted/80 flex items-center justify-between px-3 cursor-move select-none border-b shrink-0">
-                                <div className="flex gap-1.5">
-                                    {/* Window Controls (Mac-style or similar) */}
-                                    <DialogPrimitive.Close className="h-3 w-3 rounded-full bg-red-500 hover:bg-red-600 focus:outline-none ring-offset-background transition-colors opacity-80 hover:opacity-100" />
-                                    <div className="h-3 w-3 rounded-full bg-yellow-400 hover:bg-yellow-500 cursor-pointer opacity-80 hover:opacity-100"
-                                        onClick={(e) => { e.stopPropagation(); setIsMinimized(!isMinimized); }}
-                                    />
-                                    {/* Green (Maximize) - Optional, maybe reset size? */}
-                                    <div className="h-3 w-3 rounded-full bg-green-500 hover:bg-green-600 cursor-pointer opacity-80 hover:opacity-100"
-                                        onClick={(e) => { e.stopPropagation(); setSize({ width: 800, height: 600 }); }}
-                                    />
-                                </div>
-                                <div className="text-xs text-muted-foreground font-medium ml-4 truncate flex-1 text-center pointer-events-none">
+                            <div className="window-drag-handle h-9 bg-muted/80 flex items-center justify-between px-3 cursor-move select-none border-b shrink-0 relative">
+                                <div className="absolute inset-x-0 text-xs text-muted-foreground font-medium truncate text-center flex items-center justify-center pointer-events-none h-full">
                                     {title}
                                 </div>
-                                <div className="w-10"></div> {/* Spacer for balance */}
+                                <div className="ml-auto relative z-10">
+                                    <DialogPrimitive.Close className="h-5 w-5 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-white focus:outline-none ring-offset-background transition-colors opacity-80 hover:opacity-100">
+                                        <X className="h-3 w-3" />
+                                    </DialogPrimitive.Close>
+                                </div>
                             </div>
                         )}
 

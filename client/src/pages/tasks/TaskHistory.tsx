@@ -65,7 +65,11 @@ const TaskHistory = () => {
     }) || [];
 
     // Sort by recent first
-    const sortedTasks = [...filteredTasks].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    const sortedTasks = [...filteredTasks].sort((a: any, b: any) => {
+        const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        return timeB - timeA;
+    });
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -129,9 +133,9 @@ const TaskHistory = () => {
                                             <div>
                                                 <p className="font-medium text-gray-900">{task.title}</p>
                                                 <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wide border ${task.priority === 'URGENT' ? 'bg-red-50 text-red-700 border-red-200' :
-                                                        task.priority === 'HIGH' ? 'bg-orange-50 text-orange-700 border-orange-200' :
-                                                            task.priority === 'MEDIUM' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                                                                'bg-gray-50 text-gray-600 border-gray-200'
+                                                    task.priority === 'HIGH' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                                                        task.priority === 'MEDIUM' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                                            'bg-gray-50 text-gray-600 border-gray-200'
                                                     }`}>
                                                     {task.priority}
                                                 </span>
@@ -150,15 +154,15 @@ const TaskHistory = () => {
                                         </td>
                                         <td className="p-4">
                                             <span className={`px-2 py-1 rounded-full text-xs font-semibold ${task.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
-                                                    task.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
-                                                        task.status === 'REVIEW' ? 'bg-yellow-100 text-yellow-800' :
-                                                            'bg-gray-100 text-gray-600'
+                                                task.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
+                                                    task.status === 'REVIEW' ? 'bg-yellow-100 text-yellow-800' :
+                                                        'bg-gray-100 text-gray-600'
                                                 }`}>
                                                 {task.status.replace('_', ' ')}
                                             </span>
                                         </td>
                                         <td className="p-4 text-sm text-gray-500">
-                                            {format(new Date(task.created_at), 'MMM dd, yyyy')}
+                                            {task.created_at ? format(new Date(task.created_at), 'MMM dd, yyyy') : '-'}
                                         </td>
                                         <td className="p-4 text-right">
                                             <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">

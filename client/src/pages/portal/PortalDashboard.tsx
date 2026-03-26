@@ -35,7 +35,7 @@ const PortalDashboard = () => {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const { user } = useAuthStore();
-    const isAdminOrManager = user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'DEVELOPER_ADMIN';
+    const isInternal = user?.role !== 'CLIENT';
 
     // State for Management
     const [manageClientId, setManageClientId] = useState<string | null>(
@@ -201,8 +201,8 @@ const PortalDashboard = () => {
                     </p>
                 </div>
 
-                {/* Purple Client Selector (Only for Admin/Manager) */}
-                {isAdminOrManager && (
+                {/* Purple Client Selector (Only for Internal Staff) */}
+                {isInternal && (
                     <div className="relative w-full md:w-96">
                         <select
                             className="w-full h-12 pl-5 pr-12 rounded-xl border-2 border-purple-200 bg-purple-50 text-purple-900 font-bold text-lg ring-offset-background focus-visible:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-200 transition-all appearance-none cursor-pointer hover:bg-purple-100"
@@ -282,7 +282,7 @@ const PortalDashboard = () => {
                                                         <h4 className={`font-bold text-base ${isActive ? 'text-gray-900' : 'text-gray-500'}`}>{SERVICE_DEF[serviceKey].title}</h4>
                                                     </div>
                                                 </div>
-                                                {isAdminOrManager && (
+                                                {isInternal && (
                                                     <div
                                                         onClick={() => toggleService(serviceKey)}
                                                         className={`cursor-pointer w-10 h-6 rounded-full flex items-center transition-colors p-1 ${isActive ? 'bg-green-500 justify-end' : 'bg-gray-300 justify-start'}`}

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import api from '@/lib/api';
 import {
     HardDriveDownload,
@@ -16,7 +16,10 @@ import {
     Shield,
     DownloadCloud,
     ArrowDownCircle,
-    Globe
+    Globe,
+    Trash2,
+    Square,
+    CheckSquare
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -51,6 +54,25 @@ const BackupRestore: React.FC = () => {
     const [remoteBackups, setRemoteBackups] = useState<BackupFile[]>([]);
     const [loadingRemote, setLoadingRemote] = useState(false);
     const [pullingRemote, setPullingRemote] = useState<string | null>(null);
+
+    // Multi-select state
+    const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
+
+    const toggleSelection = (filename: string) => {
+        setSelectedFiles(prev =>
+            prev.includes(filename)
+                ? prev.filter(f => f !== filename)
+                : [...prev, filename]
+        );
+    };
+
+    const toggleAllSelection = () => {
+        if (selectedFiles.length === backups.length) {
+            setSelectedFiles([]);
+        } else {
+            setSelectedFiles(backups.map(b => b.filename));
+        }
+    };
 
     const fetchBackups = useCallback(async () => {
         setLoadingList(true);
@@ -143,7 +165,7 @@ const BackupRestore: React.FC = () => {
         }
 
         const result = await Swal.fire({
-            title: 'ΓÜá∩╕Å Confirm Restore',
+            title: '⚠️ Confirm Restore',
             html: `<p>This will <b>permanently replace ALL current data</b> with:</p>
                    <code style="font-size:12px;background:#fef2f2;color:#991b1b;padding:4px 10px;border-radius:4px;display:block;margin:8px 0;">${selectedFile}</code>
                    <p style="color:#6b7280;font-size:13px;">This action cannot be undone.</p>`,
@@ -151,7 +173,7 @@ const BackupRestore: React.FC = () => {
             showCancelButton: true,
             confirmButtonColor: '#dc2626',
             cancelButtonColor: '#6b7280',
-            confirmButtonText: '≡ƒöä Yes, Restore Now',
+            confirmButtonText: '🔄 Yes, Restore Now',
             cancelButtonText: 'Cancel'
         });
         if (!result.isConfirmed) return;
@@ -176,6 +198,83 @@ const BackupRestore: React.FC = () => {
             });
         } finally {
             setRestoringBackup(false);
+        }
+    };
+
+    const handleDeleteBackup = async (filename: string) => {
+        const result = await Swal.fire({
+            title: 'Delete Backup?',
+            html: `<p>Are you sure you want to permanently delete:</p>
+                   <code style="font-size:12px;background:#fef2f2;color:#991b1b;padding:4px 10px;border-radius:4px;display:block;margin:8px 0;">${filename}</code>
+                   <p style="color:#6b7280;font-size:13px;">This file will be removed from the server storage.</p>`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: '🗑️ Yes, Delete It',
+            cancelButtonText: 'Cancel'
+        });
+
+        if (!result.isConfirmed) return;
+
+        try {
+            await api.delete(`/backup/delete/${filename}`);
+            Swal.fire({
+                icon: 'success',
+                title: 'Deleted!',
+                text: 'The backup file has been removed.',
+                confirmButtonColor: '#7c3aed',
+                timer: 2000,
+                timerProgressBar: true
+            });
+            await fetchBackups();
+            if (selectedFile === filename) {
+                setSelectedFile(backups.length > 1 ? backups[0].filename : '');
+            }
+        } catch (err: any) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Delete Failed',
+                text: err.response?.data?.message || err.message || 'Unknown error',
+                confirmButtonColor: '#7c3aed'
+            });
+        }
+    };
+
+    const handleDeleteMultiple = async () => {
+        if (selectedFiles.length === 0) return;
+
+        const result = await Swal.fire({
+            title: `Delete ${selectedFiles.length} Backups?`,
+            html: `<p>Are you sure you want to permanently delete <b>${selectedFiles.length}</b> backup files?</p>
+                   <p style="color:#6b7280;font-size:13px;margin-top:8px;">These files will be removed from the server storage.</p>`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: '🗑️ Yes, Delete All',
+            cancelButtonText: 'Cancel'
+        });
+
+        if (!result.isConfirmed) return;
+
+        try {
+            const res = await api.post('/backup/delete-multiple', { filenames: selectedFiles });
+            Swal.fire({
+                icon: 'success',
+                title: 'Bulk Delete Complete',
+                text: res.data.message,
+                confirmButtonColor: '#7c3aed'
+            });
+            setSelectedFiles([]);
+            await fetchBackups();
+        } catch (err: any) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Bulk Delete Failed',
+                text: err.response?.data?.message || err.message || 'Unknown error',
+                confirmButtonColor: '#7c3aed'
+            });
         }
     };
 
@@ -246,23 +345,22 @@ const BackupRestore: React.FC = () => {
             });
         } catch { return iso; }
     };
-
     return (
-        <div className="space-y-6 max-w-4xl">
+        <div className="space-y-6">
             {/* Environment Banner */}
             <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium ${isOnlineHost
                 ? 'bg-violet-50 border-violet-200 text-violet-800'
                 : 'bg-emerald-50 border-emerald-200 text-emerald-800'
                 }`}>
                 {isOnlineHost ? <Server className="h-4 w-4" /> : <Monitor className="h-4 w-4" />}
-                <span>{isOnlineHost ? '≡ƒôí Online Server (www.qixport.com)' : '≡ƒÆ╗ Local Development (localhost)'}</span>
+                <span>{isOnlineHost ? '🌐 Online Server (www.qixport.com)' : '💻 Local Development (localhost)'}</span>
                 <span className="ml-auto text-xs opacity-70">
                     Backup folder: <code className="bg-white/70 px-1 rounded">{backupDir || '...'}</code>
                 </span>
             </div>
 
             <div className="grid md:grid-cols-2 gap-6">
-                {/* ΓöÇΓöÇΓöÇ BACKUP CARD ΓöÇΓöÇΓöÇ */}
+                {/* ─── BACKUP CARD ─── */}
                 <Card className="border-violet-100 shadow-sm hover:shadow-md transition-shadow">
                     <CardHeader className="pb-3">
                         <CardTitle className="flex items-center gap-2 text-violet-700">
@@ -282,7 +380,7 @@ const BackupRestore: React.FC = () => {
                                 <div>
                                     <p className="font-semibold">Last backup</p>
                                     <p className="opacity-80">{formatDate(lastBackup.createdAt)}</p>
-                                    <p className="opacity-70">{lastBackup.filename} ┬╖ {lastBackup.sizeKB} KB</p>
+                                    <p className="opacity-70">{lastBackup.filename} · {lastBackup.sizeKB} KB</p>
                                 </div>
                             </div>
                         )}
@@ -312,7 +410,7 @@ const BackupRestore: React.FC = () => {
                     </CardContent>
                 </Card>
 
-                {/* ΓöÇΓöÇΓöÇ RESTORE CARD ΓöÇΓöÇΓöÇ */}
+                {/* ─── RESTORE CARD ─── */}
                 <Card className="border-red-100 shadow-sm hover:shadow-md transition-shadow">
                     <CardHeader className="pb-3">
                         <CardTitle className="flex items-center gap-2 text-red-700">
@@ -342,7 +440,7 @@ const BackupRestore: React.FC = () => {
                                     {backups.length === 0 && <option value="">No backups available</option>}
                                     {backups.map(b => (
                                         <option key={b.filename} value={b.filename}>
-                                            {formatDate(b.createdAt)} ┬╖ {b.sizeKB} KB
+                                            {formatDate(b.createdAt)} · {b.sizeKB} KB
                                         </option>
                                     ))}
                                 </select>
@@ -375,7 +473,7 @@ const BackupRestore: React.FC = () => {
                 </Card>
             </div>
 
-            {/* ΓöÇΓöÇΓöÇ AUTO-BACKUP CARD (online only) ΓöÇΓöÇΓöÇ */}
+            {/* ─── AUTO-BACKUP CARD (online only) ─── */}
             {isOnlineHost && (
                 <Card className="border-blue-100 shadow-sm">
                     <CardHeader className="pb-3">
@@ -419,14 +517,14 @@ const BackupRestore: React.FC = () => {
                 </Card>
             )}
 
-            {/* ΓöÇΓöÇΓöÇ REMOTE BACKUPS CARD ΓöÇΓöÇΓöÇ */}
+            {/* ─── REMOTE BACKUPS CARD ─── */}
             <Card className="border-orange-100 shadow-sm transition-all hover:shadow-md">
                 <CardHeader className="pb-3 text-orange-900 bg-orange-50/10 rounded-t-xl">
                     <CardTitle className="flex items-center gap-2 text-orange-700">
                         <div className="p-2 bg-orange-100 rounded-lg shadow-sm">
                             <Globe className="h-5 w-5 text-orange-600" />
                         </div>
-                        {isOnlineHost ? '≡ƒÆ╗ Backups on Localhost' : '≡ƒôí Backups on Online Server'}
+                        {isOnlineHost ? '💻 Backups on Localhost' : '🌐 Backups on Online Server'}
                     </CardTitle>
                     <CardDescription className="text-orange-600/80">
                         {isOnlineHost
@@ -447,7 +545,7 @@ const BackupRestore: React.FC = () => {
                                         <DownloadCloud className="h-4 w-4 text-orange-500" />
                                         <div>
                                             <p className="font-semibold text-orange-800">{b.filename}</p>
-                                            <p className="text-orange-600 opacity-70">{formatDate(b.createdAt)} ┬╖ {b.sizeKB} KB</p>
+                                            <p className="text-orange-600 opacity-70">{formatDate(b.createdAt)} · {b.sizeKB} KB</p>
                                         </div>
                                     </div>
                                     <Button
@@ -485,7 +583,7 @@ const BackupRestore: React.FC = () => {
                 </CardContent>
             </Card>
 
-            {/* ΓöÇΓöÇΓöÇ Backup List ΓöÇΓöÇΓöÇ */}
+            {/* ─── Backup List ─── */}
             {backups.length > 0 && (
                 <Card className="border-gray-100 shadow-sm">
                     <CardHeader className="pb-2">
@@ -493,6 +591,31 @@ const BackupRestore: React.FC = () => {
                             <Clock className="h-4 w-4" />
                             Backup History ({backups.length} files)
                         </CardTitle>
+                        <div className="flex items-center gap-2 ml-auto">
+                            {selectedFiles.length > 0 && (
+                                <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={handleDeleteMultiple}
+                                    className="h-8 px-3 text-xs"
+                                >
+                                    <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                                    Delete Selected ({selectedFiles.length})
+                                </Button>
+                            )}
+                            <button
+                                onClick={toggleAllSelection}
+                                className="flex items-center gap-1.5 px-2 py-1 text-[11px] font-medium text-gray-500 hover:text-violet-600 hover:bg-violet-50 rounded-md transition-colors"
+                                title={selectedFiles.length === backups.length ? "Deselect All" : "Select All"}
+                            >
+                                {selectedFiles.length === backups.length ? (
+                                    <CheckSquare className="h-3.5 w-3.5 text-violet-500" />
+                                ) : (
+                                    <Square className="h-3.5 w-3.5" />
+                                )}
+                                {selectedFiles.length === backups.length ? "Deselect All" : "Select All"}
+                            </button>
+                        </div>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
@@ -500,24 +623,52 @@ const BackupRestore: React.FC = () => {
                                 <div
                                     key={b.filename}
                                     onClick={() => setSelectedFile(b.filename)}
-                                    className={`flex items-center justify-between p-3 rounded-lg border text-xs cursor-pointer transition-colors
+                                    className={`flex items-center justify-between p-3 rounded-lg border text-xs cursor-pointer transition-colors group
                                         ${selectedFile === b.filename
                                             ? 'bg-violet-50 border-violet-300'
                                             : 'bg-gray-50 border-gray-100 hover:bg-gray-100'
                                         }`}
                                 >
-                                    <div className="flex items-center gap-2">
-                                        {selectedFile === b.filename && (
-                                            <CheckCircle2 className="h-3.5 w-3.5 text-violet-500 shrink-0" />
-                                        )}
-                                        <div>
-                                            <p className="font-medium text-gray-700">{b.filename}</p>
-                                            <p className="text-gray-400">{formatDate(b.createdAt)}</p>
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                toggleSelection(b.filename);
+                                            }}
+                                            className="p-1 hover:bg-violet-100 rounded transition-colors"
+                                            title={selectedFiles.includes(b.filename) ? "Deselect" : "Select"}
+                                        >
+                                            {selectedFiles.includes(b.filename) ? (
+                                                <CheckSquare className="h-4 w-4 text-violet-600" />
+                                            ) : (
+                                                <Square className="h-4 w-4 text-gray-400 group-hover:text-violet-400" />
+                                            )}
+                                        </button>
+                                        <div className="flex items-center gap-2">
+                                            {selectedFile === b.filename && (
+                                                <CheckCircle2 className="h-3.5 w-3.5 text-violet-500 shrink-0" />
+                                            )}
+                                            <div>
+                                                <p className="font-medium text-gray-700">{b.filename}</p>
+                                                <p className="text-gray-400">{formatDate(b.createdAt)}</p>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="text-right shrink-0 ml-2">
-                                        <p className="text-gray-500">{b.sizeKB} KB</p>
-                                        {i === 0 && <span className="text-violet-500 font-semibold">Latest</span>}
+                                    <div className="flex items-center gap-3 shrink-0 ml-2">
+                                        <div className="text-right">
+                                            <p className="text-gray-500">{b.sizeKB} KB</p>
+                                            {i === 0 && <span className="text-violet-500 font-semibold">Latest</span>}
+                                        </div>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeleteBackup(b.filename);
+                                            }}
+                                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                                            title="Delete backup"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </button>
                                     </div>
                                 </div>
                             ))}

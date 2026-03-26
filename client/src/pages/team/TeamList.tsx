@@ -9,10 +9,15 @@ import ExitWorkflow from './ExitWorkflow';
 import StaffFormModal from './StaffFormModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../../components/ui/dialog';
 import { Button } from '../../components/ui/button';
+import { useAuthStore } from '../../store/authStore';
+import { ROLES } from '../../utils/roles';
 
 const TeamList = () => {
     const location = useLocation();
     const queryClient = useQueryClient();
+    const { user: currentUser } = useAuthStore();
+    // Only ADMIN and DEVELOPER_ADMIN can delete team members; MANAGER cannot
+    const canDelete = currentUser?.role === ROLES.DEVELOPER_ADMIN || currentUser?.role === ROLES.ADMIN;
     const [searchTerm, setSearchTerm] = useState('');
     const [filterDept, setFilterDept] = useState('ALL');
     const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
@@ -291,17 +296,19 @@ const TeamList = () => {
                                                                     </button>
                                                                     {user.role !== 'DEVELOPER_ADMIN' && (
                                                                         <>
-                                                                            <button
-                                                                                onClick={() => {
-                                                                                    if (window.confirm("Are you sure you want to delete this team member?")) {
-                                                                                        handleDelete(member.id);
-                                                                                    }
-                                                                                }}
-                                                                                className="p-1.5 text-red-600 bg-red-50 hover:bg-red-100 rounded transition-colors"
-                                                                                title="Delete Member"
-                                                                            >
-                                                                                <Trash2 size={16} />
-                                                                            </button>
+                                                                            {canDelete && (
+                                                                                <button
+                                                                                    onClick={() => {
+                                                                                        if (window.confirm("Are you sure you want to delete this team member?")) {
+                                                                                            handleDelete(member.id);
+                                                                                        }
+                                                                                    }}
+                                                                                    className="p-1.5 text-red-600 bg-red-50 hover:bg-red-100 rounded transition-colors"
+                                                                                    title="Delete Member"
+                                                                                >
+                                                                                    <Trash2 size={16} />
+                                                                                </button>
+                                                                            )}
                                                                             <button
                                                                                 onClick={() => handleInitiateExit(member)}
                                                                                 className="p-1.5 text-orange-600 bg-orange-50 hover:bg-orange-100 rounded transition-colors"

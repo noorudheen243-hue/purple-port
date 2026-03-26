@@ -14,7 +14,7 @@ const TaskManagerPage = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl px-4">
                 <button
-                    onClick={() => navigate('/dashboard/client-portal')}
+                    onClick={() => navigate('/dashboard/tasks/digital-marketing')}
                     className="p-10 rounded-3xl border-2 transition-all flex flex-col items-center gap-6 group border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-50 shadow-sm hover:shadow-xl hover:-translate-y-1"
                 >
                     <div className="p-6 rounded-full bg-purple-100 text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors">

@@ -82,10 +82,26 @@ const LeaveSummaryPage = () => {
     };
 
     // Calculate Balances 
-    const casualUsed = displayedLeaves.filter((l: any) => l.type === 'CASUAL' && l.status === 'APPROVED').length;
-    const sickUsed = displayedLeaves.filter((l: any) => l.type === 'SICK' && l.status === 'APPROVED').length;
-    const unpaidUsed = displayedLeaves.filter((l: any) => (l.type === 'UNPAID' || l.type === 'LOP') && l.status === 'APPROVED').length;
-    const earnedUsed = displayedLeaves.filter((l: any) => l.type === 'EARNED' && l.status === 'APPROVED').length;
+    const calculateUsed = (type: string) => {
+        return displayedLeaves
+            .filter((l: any) => {
+                if (l.status !== 'APPROVED') return false;
+                if (type === 'UNPAID') return l.type === 'UNPAID' || l.type === 'LOP';
+                return l.type === type;
+            })
+            .reduce((acc: number, l: any) => {
+                if (l.is_half_day) return acc + 0.5;
+                const start = new Date(l.start_date);
+                const end = new Date(l.end_date);
+                const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                return acc + days;
+            }, 0);
+    };
+
+    const casualUsed = calculateUsed('CASUAL');
+    const sickUsed = calculateUsed('SICK');
+    const unpaidUsed = calculateUsed('UNPAID');
+    const earnedUsed = calculateUsed('EARNED');
 
     return (
         <div className="p-6 space-y-6">
@@ -169,7 +185,12 @@ const LeaveSummaryPage = () => {
                             ) : (
                                 displayedLeaves.map((leave: any) => (
                                     <TableRow key={leave.id}>
-                                        <TableCell><Badge variant="outline">{leave.type}</Badge></TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center gap-2">
+                                                <Badge variant="outline">{leave.type}</Badge>
+                                                {leave.is_half_day && <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">Half-Day</Badge>}
+                                            </div>
+                                        </TableCell>
                                         <TableCell>
                                             <div className="flex flex-col">
                                                 <span>{format(new Date(leave.start_date), 'PP')} - {format(new Date(leave.end_date), 'PP')}</span>

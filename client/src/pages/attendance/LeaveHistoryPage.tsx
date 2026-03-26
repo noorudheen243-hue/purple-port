@@ -223,10 +223,10 @@ const LeaveHistoryPage = () => {
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            history.map((request: any) => {
+                                    history.map((request: any) => {
                                 const startDate = new Date(request.start_date);
                                 const endDate = new Date(request.end_date);
-                                const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                                const days = request.is_half_day ? 0.5 : (Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1);
 
                                 return (
                                     <TableRow key={request.id}>
@@ -237,7 +237,10 @@ const LeaveHistoryPage = () => {
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <Badge variant="outline" className="font-mono text-xs">{request.type}</Badge>
+                                            <div className="flex flex-col gap-1">
+                                                <Badge variant="outline" className="font-mono text-xs w-fit">{request.type}</Badge>
+                                                {request.is_half_day && <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 text-[10px] py-0 w-fit">HALF-DAY</Badge>}
+                                            </div>
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex flex-col text-sm">

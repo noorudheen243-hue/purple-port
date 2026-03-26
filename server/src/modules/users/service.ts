@@ -40,6 +40,12 @@ export const findUserById = async (id: string) => {
             department: true,
             avatar_url: true,
             linked_client_id: true,
+            staffProfile: {
+                select: {
+                    date_of_birth: true,
+                    date_of_joining: true,
+                }
+            }
         }
     });
 };
@@ -53,9 +59,7 @@ export const getAllUsers = async (includeHidden = false) => {
     // If NOT asking for hidden users (default behavior for Dropdowns), apply strict filters
     if (!includeHidden) {
         whereClause.role = { not: 'CLIENT' }; // Exclude Clients
-        whereClause.staffProfile = {
-            staff_number: { notIn: ['QIX0001', 'QIX0002'] } // Exclude Co-founders
-        };
+        whereClause.status = 'ACTIVE';        // Only active users
     }
 
     return await prisma.user.findMany({
@@ -67,6 +71,7 @@ export const getAllUsers = async (includeHidden = false) => {
             role: true,
             department: true,
             avatar_url: true,
+            status: true,
         },
         orderBy: { createdAt: 'desc' }
     });

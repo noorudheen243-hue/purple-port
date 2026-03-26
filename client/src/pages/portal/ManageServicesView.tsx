@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
@@ -29,10 +29,18 @@ import {
     AlertCircle,
     CheckCircle2,
     Clock,
-    Activity
+    Activity,
+    Palette,
+    Code2,
+    Megaphone,
+    LineChart,
+    PlusCircle,
+    ExternalLink,
+    ChevronRight
 } from 'lucide-react';
 import { format } from 'date-fns';
 import Swal from 'sweetalert2';
+import NewTaskModal from '../tasks/TaskFormModal';
 
 // --- TYPES ---
 
@@ -76,8 +84,16 @@ const SERVICE_ICONS: Record<string, any> = {
     'META': TrendingUp,
     'GOOGLE': Search,
     'SEO': Globe,
-    'WEB': LayoutDashboard,
-    'CONTENT': PenTool
+    'WEB': Code2,
+    'CONTENT': Palette
+};
+
+const SERVICE_TAB_CONFIG: Record<string, { icon: any; label: string; bg: string; text: string; activeBg: string; activeText: string }> = {
+    'meta': { icon: Megaphone, label: 'Meta Ads', bg: 'bg-blue-50', text: 'text-blue-600', activeBg: 'bg-blue-600', activeText: 'text-white' },
+    'google': { icon: Search, label: 'Google Ads', bg: 'bg-red-50', text: 'text-red-500', activeBg: 'bg-red-500', activeText: 'text-white' },
+    'seo': { icon: LineChart, label: 'SEO', bg: 'bg-green-50', text: 'text-green-600', activeBg: 'bg-green-600', activeText: 'text-white' },
+    'web': { icon: Code2, label: 'Web Dev', bg: 'bg-indigo-50', text: 'text-indigo-600', activeBg: 'bg-indigo-600', activeText: 'text-white' },
+    'content': { icon: Palette, label: 'Creative Task', bg: 'bg-purple-50', text: 'text-purple-600', activeBg: 'bg-purple-600', activeText: 'text-white' },
 };
 
 const QUALITY_COLORS: Record<string, string> = {
@@ -131,7 +147,10 @@ const ManageServicesView = () => {
     const selectedClient = isInternal ? clients?.find((c: any) => c.id === clientId) : ownClientData;
 
     // --- STATE ---
-    const [activeTab, setActiveTab] = useState(isInternal ? 'campaignData' : 'history');
+    const initialView = searchParams.get('view') || (isInternal ? 'campaignData' : 'history');
+    const initialServiceTab = searchParams.get('tab') || 'meta';
+
+    const [activeTab, setActiveTab] = useState(initialView);
     const [isAddingLead, setIsAddingLead] = useState(false);
     const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
     const [leadDateFrom, setLeadDateFrom] = useState<string>('');
@@ -146,17 +165,24 @@ const ManageServicesView = () => {
     const [clientSearchQuery, setClientSearchQuery] = useState('');
 
     // --- CAMPAIGN FORM STATE ---
-    const [activeServiceTab, setActiveServiceTab] = useState('meta');
+    const [activeServiceTab, setActiveServiceTab] = useState(initialServiceTab);
     const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
+    const [metaEntryMode, setMetaEntryMode] = useState<'NEW' | 'UPDATE'>('NEW');
+    const [googleEntryMode, setGoogleEntryMode] = useState<'NEW' | 'UPDATE'>('NEW');
+    const [seoEntryMode, setSeoEntryMode] = useState<'NEW' | 'UPDATE'>('NEW');
+    const [webEntryMode, setWebEntryMode] = useState<'NEW' | 'UPDATE'>('NEW');
     const [campaignForm, setCampaignForm] = useState<any>({
         date: new Date().toISOString(),
         status: 'ACTIVE'
     });
 
+    // --- CREATIVE TASK MODAL STATE ---
+    const [isCreativeTaskModalOpen, setIsCreativeTaskModalOpen] = useState(false);
+    const [editingCreativeTask, setEditingCreativeTask] = useState<any>(null);
+
     // --- HISTORY FILTERS ---
     const [historyStartDate, setHistoryStartDate] = useState<string>('');
     const [historyEndDate, setHistoryEndDate] = useState<string>('');
-
     // --- QUERIES ---
 
     // 1. Campaign History queries
@@ -190,6 +216,35 @@ const ManageServicesView = () => {
             if (historyEndDate) params.append('endDate', historyEndDate);
             return (await api.get(`/client-portal/tracking/seo?${params.toString()}`)).data;
         },
+        enabled: !!clientId
+    });
+
+    const { data: webLogs } = useQuery({
+        queryKey: ['tracking-web', clientId, historyStartDate, historyEndDate],
+        queryFn: async () => {
+            const params = new URLSearchParams({ clientId: clientId as string });
+            if (historyStartDate) params.append('startDate', historyStartDate);
+            if (historyEndDate) params.append('endDate', historyEndDate);
+            return (await api.get(`/client-portal/tracking/web-dev?${params.toString()}`)).data;
+        },
+        enabled: !!clientId
+    });
+
+    const { data: contentLogs } = useQuery({
+        queryKey: ['tracking-content', clientId, historyStartDate, historyEndDate],
+        queryFn: async () => {
+            const params = new URLSearchParams({ clientId: clientId as string });
+            if (historyStartDate) params.append('startDate', historyStartDate);
+            if (historyEndDate) params.append('endDate', historyEndDate);
+            return (await api.get(`/client-portal/tracking/content?${params.toString()}`)).data;
+        },
+        enabled: !!clientId
+    });
+
+    // Creative Team Tasks assigned to this client
+    const { data: creativeTasks } = useQuery({
+        queryKey: ['creative-tasks-for-client', clientId],
+        queryFn: async () => (await api.get(`/tasks?client_id=${clientId}&department=CREATIVE`)).data,
         enabled: !!clientId
     });
 
@@ -260,12 +315,40 @@ const ManageServicesView = () => {
             });
         });
 
+        webLogs?.forEach((log: any) => {
+            items.push({
+                id: log.id,
+                date: log.createdAt,
+                service: 'Web Development',
+                title: log.project_name,
+                description: `Live URL: ${log.live_url || 'N/A'}. Staging URL: ${log.staging_url || 'N/A'}`,
+                badge: log.status,
+                status: log.status === 'DEPLOYED' ? 'CLOSED' : 'ACTIVE',
+                type: 'WEB',
+                originalData: log
+            });
+        });
+
+        contentLogs?.forEach((log: any) => {
+            items.push({
+                id: log.id,
+                date: log.createdAt,
+                service: 'Creative Task',
+                title: log.title,
+                description: `${log.type} Deliverable. Notes: ${log.feedback || 'N/A'}`,
+                badge: log.status,
+                status: log.status === 'APPROVED' ? 'CLOSED' : 'ACTIVE',
+                type: 'CONTENT',
+                originalData: log
+            });
+        });
+
         return items.sort((a, b) => {
             if (a.status === 'ACTIVE' && b.status !== 'ACTIVE') return -1;
             if (b.status === 'ACTIVE' && a.status !== 'ACTIVE') return 1;
             return new Date(b.date).getTime() - new Date(a.date).getTime();
         }).slice(0, 20); // Limit to 20 campaigns
-    }, [metaLogs, googleLogs, seoLogs]);
+    }, [metaLogs, googleLogs, seoLogs, webLogs, contentLogs]);
 
     const campaignSummary = useMemo(() => {
         const activeCount = aggregatedHistory.filter(i => i.status === 'ACTIVE').length;
@@ -351,8 +434,11 @@ const ManageServicesView = () => {
 
     const metaMutation = useMutation({
         mutationFn: async (data: any) => {
-            if (editingCampaignId) return await api.patch(`/client-portal/tracking/meta-ads/${editingCampaignId}?clientId=${clientId}`, data);
-            return await api.post(`/client-portal/tracking/meta-ads?clientId=${clientId}`, { ...data, client_id: clientId });
+            const payload = { ...data, client_id: clientId };
+            delete payload.id;
+            delete payload.createdAt;
+            delete payload.updatedAt;
+            return await api.post(`/client-portal/tracking/meta-ads?clientId=${clientId}`, payload);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['tracking-meta', clientId] });
@@ -364,8 +450,11 @@ const ManageServicesView = () => {
 
     const googleMutation = useMutation({
         mutationFn: async (data: any) => {
-            if (editingCampaignId) return await api.patch(`/client-portal/tracking/google-ads/${editingCampaignId}?clientId=${clientId}`, data);
-            return await api.post(`/client-portal/tracking/google-ads?clientId=${clientId}`, { ...data, client_id: clientId });
+            const payload = { ...data, client_id: clientId };
+            delete payload.id;
+            delete payload.createdAt;
+            delete payload.updatedAt;
+            return await api.post(`/client-portal/tracking/google-ads?clientId=${clientId}`, payload);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['tracking-google', clientId] });
@@ -376,11 +465,44 @@ const ManageServicesView = () => {
 
     const seoMutation = useMutation({
         mutationFn: async (data: any) => {
-            if (editingCampaignId) return await api.patch(`/client-portal/tracking/seo/${editingCampaignId}?clientId=${clientId}`, data);
-            return await api.post(`/client-portal/tracking/seo?clientId=${clientId}`, { ...data, client_id: clientId });
+            const payload = { ...data, client_id: clientId };
+            delete payload.id;
+            delete payload.createdAt;
+            delete payload.updatedAt;
+            return await api.post(`/client-portal/tracking/seo?clientId=${clientId}`, payload);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['tracking-seo', clientId] });
+            resetCampaignForm();
+            Swal.fire({ title: 'Success', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+        }
+    });
+
+    const webMutation = useMutation({
+        mutationFn: async (data: any) => {
+            const payload = { ...data, client_id: clientId };
+            delete payload.id;
+            delete payload.createdAt;
+            delete payload.updatedAt;
+            return await api.post(`/client-portal/tracking/web-dev?clientId=${clientId}`, payload);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['tracking-web', clientId] });
+            resetCampaignForm();
+            Swal.fire({ title: 'Success', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+        }
+    });
+
+    const contentMutation = useMutation({
+        mutationFn: async (data: any) => {
+            const payload = { ...data, client_id: clientId };
+            delete payload.id;
+            delete payload.createdAt;
+            delete payload.updatedAt;
+            return await api.post(`/client-portal/tracking/content?clientId=${clientId}`, payload);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['tracking-content', clientId] });
             resetCampaignForm();
             Swal.fire({ title: 'Success', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
         }
@@ -390,6 +512,7 @@ const ManageServicesView = () => {
         mutationFn: async (id: string) => await api.delete(`/client-portal/tracking/meta-ads/${id}?clientId=${clientId}`),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['tracking-meta', clientId] });
+            queryClient.removeQueries({ queryKey: ['activity-logs'] });
             Swal.fire({ title: 'Deleted', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
         }
     });
@@ -398,6 +521,7 @@ const ManageServicesView = () => {
         mutationFn: async (id: string) => await api.delete(`/client-portal/tracking/google-ads/${id}?clientId=${clientId}`),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['tracking-google', clientId] });
+            queryClient.removeQueries({ queryKey: ['activity-logs'] });
             Swal.fire({ title: 'Deleted', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
         }
     });
@@ -406,8 +530,28 @@ const ManageServicesView = () => {
         mutationFn: async (id: string) => await api.delete(`/client-portal/tracking/seo/${id}?clientId=${clientId}`),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['tracking-seo', clientId] });
+            queryClient.removeQueries({ queryKey: ['activity-logs'] });
             Swal.fire({ title: 'Deleted', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
         }
+    });
+
+    const deleteContentMutation = useMutation({
+        mutationFn: async (id: string) => await api.delete(`/client-portal/tracking/content/${id}?clientId=${clientId}`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['tracking-content', clientId] });
+            queryClient.removeQueries({ queryKey: ['activity-logs'] });
+            Swal.fire({ title: 'Deleted', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+        }
+    });
+
+    const deleteWebMutation = useMutation({
+        mutationFn: async (id: string) => await api.delete(`/client-portal/tracking/web-dev/${id}?clientId=${clientId}`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['tracking-web', clientId] });
+            queryClient.removeQueries({ queryKey: ['activity-logs'] });
+            Swal.fire({ title: 'Deleted', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+        },
+        onError: (err: any) => Swal.fire('Error', err.response?.data?.message || 'Failed to delete web dev project', 'error')
     });
 
 
@@ -481,6 +625,8 @@ const ManageServicesView = () => {
                 if (item.type === 'META') deleteMetaMutation.mutate(item.id);
                 else if (item.type === 'GOOGLE') deleteGoogleMutation.mutate(item.id);
                 else if (item.type === 'SEO') deleteSeoMutation.mutate(item.id);
+                else if (item.type === 'CONTENT') deleteContentMutation.mutate(item.id);
+                else if (item.type === 'WEB') deleteWebMutation.mutate(item.id);
             }
         });
     };
@@ -488,6 +634,10 @@ const ManageServicesView = () => {
     const resetCampaignForm = () => {
         setEditingCampaignId(null);
         setCampaignForm({ date: new Date().toISOString(), status: 'ACTIVE' });
+        setMetaEntryMode('NEW');
+        setGoogleEntryMode('NEW');
+        setSeoEntryMode('NEW');
+        setWebEntryMode('NEW');
     };
 
     const startEditCampaign = (item: HistoryItem) => {
@@ -495,12 +645,34 @@ const ManageServicesView = () => {
         setActiveTab('campaignData');
 
         let targetType = 'meta';
-        if (item.type === 'GOOGLE') targetType = 'google';
-        if (item.type === 'SEO') targetType = 'seo';
+        if (item.type === 'META') { targetType = 'meta'; setMetaEntryMode('UPDATE'); }
+        if (item.type === 'GOOGLE') { targetType = 'google'; setGoogleEntryMode('UPDATE'); }
+        if (item.type === 'SEO') { targetType = 'seo'; setSeoEntryMode('UPDATE'); }
+        if (item.type === 'WEB') { targetType = 'web'; setWebEntryMode('UPDATE'); }
+        if (item.type === 'CONTENT') { targetType = 'content'; }
 
         setActiveServiceTab(targetType);
         setCampaignForm({ ...item.originalData });
     };
+
+    // Auto-open a specific entry when `entry_id` is passed in the URL (from activity log deep-link)
+    const autoOpenedRef = React.useRef<string | null>(null);
+    useEffect(() => {
+        const entryId = searchParams.get('entry_id');
+        if (!entryId || autoOpenedRef.current === entryId) return;
+        // Wait until data is loaded
+        if (!metaLogs && !googleLogs && !seoLogs && !webLogs && !contentLogs) return;
+        const found = aggregatedHistory.find(item => item.id === entryId);
+        if (found) {
+            autoOpenedRef.current = entryId;
+            startEditCampaign(found);
+            // Scroll to campaign form with a short delay to let the UI render
+            setTimeout(() => {
+                const el = document.getElementById('campaign-data-form');
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 300);
+        }
+    }, [searchParams, aggregatedHistory, metaLogs, googleLogs, seoLogs, webLogs, contentLogs]);
 
     const saveCampaignData = () => {
         if (activeServiceTab === 'meta') {
@@ -521,6 +693,18 @@ const ManageServicesView = () => {
                 return;
             }
             seoMutation.mutate(campaignForm);
+        } else if (activeServiceTab === 'web') {
+            if (!campaignForm.project_name || !campaignForm.status) {
+                Swal.fire('Error', 'Project Name and Status are required', 'warning');
+                return;
+            }
+            webMutation.mutate(campaignForm);
+        } else if (activeServiceTab === 'content') {
+            if (!campaignForm.title || !campaignForm.type) {
+                Swal.fire('Error', 'Title and Content Type are required', 'warning');
+                return;
+            }
+            contentMutation.mutate(campaignForm);
         }
     };
 
@@ -646,14 +830,14 @@ const ManageServicesView = () => {
                 <TabsList className="bg-yellow-50/50 p-1.5 rounded-2xl mb-6 border border-yellow-200/50 flex flex-wrap gap-2">
                     {isInternal && (
                         <TabsTrigger value="campaignData" className="rounded-xl px-6 py-2.5 data-[state=active]:bg-[#2c185a] data-[state=active]:text-white data-[state=active]:shadow-md transition-all text-gray-700 font-bold hover:bg-yellow-100">
-                            <PenTool size={18} className="mr-2" /> Manage Campaign
+                            <PenTool size={16} className="mr-2 text-purple-500" /> Manage Campaign
                         </TabsTrigger>
                     )}
                     <TabsTrigger value="history" className="rounded-xl px-6 py-2.5 data-[state=active]:bg-[#2c185a] data-[state=active]:text-white data-[state=active]:shadow-md transition-all text-gray-700 font-bold hover:bg-yellow-100">
-                        <Clock size={18} className="mr-2" /> Campaign History
+                        <Clock size={16} className="mr-2 text-amber-500" /> Campaign History
                     </TabsTrigger>
                     <TabsTrigger value="leads" className="rounded-xl px-6 py-2.5 data-[state=active]:bg-[#2c185a] data-[state=active]:text-white data-[state=active]:shadow-md transition-all text-gray-700 font-bold hover:bg-yellow-100">
-                        <Users size={18} className="mr-2" /> Lead Management
+                        <Users size={16} className="mr-2 text-blue-500" /> Lead Management
                     </TabsTrigger>
                 </TabsList>
 
@@ -740,7 +924,7 @@ const ManageServicesView = () => {
                                                             >
                                                                 <PenTool size={16} />
                                                             </Button>
-                                                            {user?.role === 'DEVELOPER_ADMIN' && (
+                                                            {['DEVELOPER_ADMIN', 'ADMIN'].includes(user?.role || '') && (
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="icon"
@@ -765,7 +949,7 @@ const ManageServicesView = () => {
                 {/* --- CAMPAIGN DATA TAB (INTERNAL ONLY) --- */}
                 {isInternal && (
                     <TabsContent value="campaignData">
-                        <Card className="border-none shadow-sm rounded-2xl overflow-hidden">
+                        <Card id="campaign-data-form" className="border-none shadow-sm rounded-2xl overflow-hidden">
                             <CardHeader className="flex flex-row items-center justify-between border-b bg-gray-50/30 p-6">
                                 <div>
                                     <CardTitle className="text-xl">Campaign Data Entry</CardTitle>
@@ -779,16 +963,64 @@ const ManageServicesView = () => {
                             </CardHeader>
                             <CardContent className="p-6">
                                 <Tabs value={activeServiceTab} onValueChange={setActiveServiceTab} className="w-full">
-                                    <TabsList className="grid grid-cols-3 mb-6 bg-gray-100/50 p-1 rounded-xl w-[400px]">
-                                        <TabsTrigger value="meta" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">Meta Ads</TabsTrigger>
-                                        <TabsTrigger value="google" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">Google Ads</TabsTrigger>
-                                        <TabsTrigger value="seo" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">SEO</TabsTrigger>
+                                    <TabsList className="flex flex-wrap gap-2 mb-6 bg-transparent p-0 w-full">
+                                        {Object.entries(SERVICE_TAB_CONFIG).map(([key, cfg]) => {
+                                            const Icon = cfg.icon;
+                                            const isActive = activeServiceTab === key;
+                                            return (
+                                                <button
+                                                    key={key}
+                                                    onClick={() => setActiveServiceTab(key)}
+                                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all border shadow-sm ${isActive
+                                                        ? `${cfg.activeBg} ${cfg.activeText} border-transparent shadow-md scale-105`
+                                                        : `${cfg.bg} ${cfg.text} border-gray-200 hover:scale-105 hover:shadow`
+                                                        }`}
+                                                >
+                                                    <Icon size={16} />
+                                                    {cfg.label}
+                                                </button>
+                                            );
+                                        })}
                                     </TabsList>
 
                                     {/* Sub-Tabs for Different Services */}
 
-                                    <TabsContent value="meta" className="space-y-4 max-w-2xl">
-                                        <div className="grid grid-cols-2 gap-4">
+                                    <TabsContent value="meta" className="space-y-4">
+                                        <div className="flex bg-gray-100 p-1 rounded-lg w-full max-w-sm mb-4">
+                                            <button
+                                                onClick={() => { setMetaEntryMode('NEW'); setEditingCampaignId(null); setCampaignForm({ date: new Date().toISOString(), status: 'ACTIVE' }); }}
+                                                className={`flex-1 py-1.5 text-sm font-bold rounded-md transition-all ${metaEntryMode === 'NEW' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                            >
+                                                New Entry
+                                            </button>
+                                            <button
+                                                onClick={() => setMetaEntryMode('UPDATE')}
+                                                className={`flex-1 py-1.5 text-sm font-bold rounded-md transition-all ${metaEntryMode === 'UPDATE' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                            >
+                                                Update Existing
+                                            </button>
+                                        </div>
+
+                                        {metaEntryMode === 'UPDATE' && (
+                                            <div className="mb-4 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                                                <label className="text-xs font-bold text-gray-500 mb-2 block">Select Campaign to Update</label>
+                                                <select
+                                                    className="w-full px-3 py-2.5 rounded-lg border border-blue-200 bg-white shadow-sm focus:ring-2 focus:ring-blue-500 text-sm font-semibold"
+                                                    value={editingCampaignId || ''}
+                                                    onChange={(e) => {
+                                                        const item = aggregatedHistory.find(i => i.id === e.target.value);
+                                                        if (item) startEditCampaign(item);
+                                                        else { setEditingCampaignId(null); setCampaignForm({ date: new Date().toISOString(), status: 'ACTIVE' }); }
+                                                    }}
+                                                >
+                                                    <option value="">-- Select a Meta Campaign --</option>
+                                                    {aggregatedHistory.filter(i => i.type === 'META').map(item => (
+                                                        <option key={item.id} value={item.id}>{item.title} ({item.date ? new Date(item.date).toISOString().split('T')[0] : ''})</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        )}
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                             <div>
                                                 <label className="text-xs font-bold text-gray-500 mb-1 block">Date</label>
                                                 <Input type="date" value={campaignForm.date ? new Date(campaignForm.date).toISOString().split('T')[0] : ''} onChange={(e) => setCampaignForm({ ...campaignForm, date: new Date(e.target.value).toISOString() })} />
@@ -800,8 +1032,6 @@ const ManageServicesView = () => {
                                                     <option value="CLOSED">Closed</option>
                                                 </select>
                                             </div>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
                                             <div>
                                                 <label className="text-xs font-bold text-gray-500 mb-1 block">Campaign Name *</label>
                                                 <Input value={campaignForm.campaign_name || ''} onChange={(e) => setCampaignForm({ ...campaignForm, campaign_name: e.target.value })} />
@@ -811,14 +1041,56 @@ const ManageServicesView = () => {
                                                 <Input placeholder="e.g. Engagement" value={campaignForm.objective || ''} onChange={(e) => setCampaignForm({ ...campaignForm, objective: e.target.value })} />
                                             </div>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                             <div>
                                                 <label className="text-xs font-bold text-gray-500 mb-1 block">Platform *</label>
                                                 <Input placeholder="e.g. Facebook" value={campaignForm.platform || ''} onChange={(e) => setCampaignForm({ ...campaignForm, platform: e.target.value })} />
                                             </div>
+                                            {/* GST Spend Widget */}
                                             <div>
-                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Spend (₹)</label>
-                                                <Input type="number" value={campaignForm.spend || 0} onChange={(e) => setCampaignForm({ ...campaignForm, spend: e.target.value })} />
+                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Amount (₹)</label>
+                                                <Input
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    placeholder="Enter amount"
+                                                    value={campaignForm._rawAmount || ''}
+                                                    onChange={(e) => {
+                                                        const raw = e.target.value;
+                                                        const gst = campaignForm._includeGst;
+                                                        const gross = raw ? (gst ? (parseFloat(raw) * 1.18).toFixed(2) : parseFloat(raw).toFixed(2)) : '';
+                                                        setCampaignForm({ ...campaignForm, _rawAmount: raw, spend: gross ? parseFloat(gross) : 0 });
+                                                    }}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs font-bold text-gray-500 mb-1 block invisible">GST</label>
+                                                <label className="flex items-center gap-2 h-10 px-3 border rounded-md bg-orange-50 border-orange-200 cursor-pointer hover:bg-orange-100 transition-colors">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={!!campaignForm._includeGst}
+                                                        onChange={(e) => {
+                                                            const gst = e.target.checked;
+                                                            const raw = campaignForm._rawAmount || '';
+                                                            const gross = raw ? (gst ? (parseFloat(raw) * 1.18).toFixed(2) : parseFloat(raw).toFixed(2)) : '';
+                                                            setCampaignForm({ ...campaignForm, _includeGst: gst, spend: gross ? parseFloat(gross) : 0 });
+                                                        }}
+                                                        className="w-4 h-4 accent-orange-500"
+                                                    />
+                                                    <span className="text-sm font-medium text-orange-700">+ GST 18%</span>
+                                                </label>
+                                            </div>
+                                            <div>
+                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Gross Amount (₹)</label>
+                                                <div className={`flex h-10 w-full items-center rounded-md border px-3 py-2 text-sm font-semibold ${campaignForm._includeGst ? 'bg-orange-50 border-orange-300 text-orange-800' : 'bg-gray-50 border-gray-200 text-gray-700'
+                                                    }`}>
+                                                    {campaignForm.spend ? `₹ ${parseFloat(campaignForm.spend).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '—'}
+                                                    {campaignForm._includeGst && campaignForm._rawAmount && (
+                                                        <span className="ml-auto text-[10px] text-orange-500 font-normal">
+                                                            +₹{(parseFloat(campaignForm._rawAmount) * 0.18).toFixed(2)} GST
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -841,8 +1113,42 @@ const ManageServicesView = () => {
                                         </div>
                                     </TabsContent>
 
-                                    <TabsContent value="google" className="space-y-4 max-w-2xl">
-                                        <div className="grid grid-cols-2 gap-4">
+                                    <TabsContent value="google" className="space-y-4">
+                                        <div className="flex bg-gray-100 p-1 rounded-lg w-full max-w-sm mb-4">
+                                            <button
+                                                onClick={() => { setGoogleEntryMode('NEW'); setEditingCampaignId(null); setCampaignForm({ date: new Date().toISOString(), status: 'ACTIVE' }); }}
+                                                className={`flex-1 py-1.5 text-sm font-bold rounded-md transition-all ${googleEntryMode === 'NEW' ? 'bg-white text-red-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                            >
+                                                New Entry
+                                            </button>
+                                            <button
+                                                onClick={() => setGoogleEntryMode('UPDATE')}
+                                                className={`flex-1 py-1.5 text-sm font-bold rounded-md transition-all ${googleEntryMode === 'UPDATE' ? 'bg-white text-red-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                            >
+                                                Update Existing
+                                            </button>
+                                        </div>
+
+                                        {googleEntryMode === 'UPDATE' && (
+                                            <div className="mb-4 bg-red-50/50 p-4 rounded-xl border border-red-100">
+                                                <label className="text-xs font-bold text-gray-500 mb-2 block">Select Campaign to Update</label>
+                                                <select
+                                                    className="w-full px-3 py-2.5 rounded-lg border border-red-200 bg-white shadow-sm focus:ring-2 focus:ring-red-500 text-sm font-semibold"
+                                                    value={editingCampaignId || ''}
+                                                    onChange={(e) => {
+                                                        const item = aggregatedHistory.find(i => i.id === e.target.value);
+                                                        if (item) startEditCampaign(item);
+                                                        else { setEditingCampaignId(null); setCampaignForm({ date: new Date().toISOString(), status: 'ACTIVE' }); }
+                                                    }}
+                                                >
+                                                    <option value="">-- Select a Google Ads Campaign --</option>
+                                                    {aggregatedHistory.filter(i => i.type === 'GOOGLE').map(item => (
+                                                        <option key={item.id} value={item.id}>{item.title} ({item.date ? new Date(item.date).toISOString().split('T')[0] : ''})</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        )}
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                             <div>
                                                 <label className="text-xs font-bold text-gray-500 mb-1 block">Date</label>
                                                 <Input type="date" value={campaignForm.date ? new Date(campaignForm.date).toISOString().split('T')[0] : ''} onChange={(e) => setCampaignForm({ ...campaignForm, date: new Date(e.target.value).toISOString() })} />
@@ -854,8 +1160,6 @@ const ManageServicesView = () => {
                                                     <option value="CLOSED">Closed</option>
                                                 </select>
                                             </div>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
                                             <div>
                                                 <label className="text-xs font-bold text-gray-500 mb-1 block">Campaign Name *</label>
                                                 <Input value={campaignForm.campaign_name || ''} onChange={(e) => setCampaignForm({ ...campaignForm, campaign_name: e.target.value })} />
@@ -865,10 +1169,52 @@ const ManageServicesView = () => {
                                                 <Input placeholder="e.g. Search, Display" value={campaignForm.campaign_type || ''} onChange={(e) => setCampaignForm({ ...campaignForm, campaign_type: e.target.value })} />
                                             </div>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                            {/* GST Spend Widget - Google Ads */}
                                             <div>
-                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Spend (₹)</label>
-                                                <Input type="number" value={campaignForm.spend || 0} onChange={(e) => setCampaignForm({ ...campaignForm, spend: e.target.value })} />
+                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Amount (₹)</label>
+                                                <Input
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    placeholder="Enter amount"
+                                                    value={campaignForm._rawAmount || ''}
+                                                    onChange={(e) => {
+                                                        const raw = e.target.value;
+                                                        const gst = campaignForm._includeGst;
+                                                        const gross = raw ? (gst ? (parseFloat(raw) * 1.18).toFixed(2) : parseFloat(raw).toFixed(2)) : '';
+                                                        setCampaignForm({ ...campaignForm, _rawAmount: raw, spend: gross ? parseFloat(gross) : 0 });
+                                                    }}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs font-bold text-gray-500 mb-1 block invisible">GST</label>
+                                                <label className="flex items-center gap-2 h-10 px-3 border rounded-md bg-orange-50 border-orange-200 cursor-pointer hover:bg-orange-100 transition-colors">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={!!campaignForm._includeGst}
+                                                        onChange={(e) => {
+                                                            const gst = e.target.checked;
+                                                            const raw = campaignForm._rawAmount || '';
+                                                            const gross = raw ? (gst ? (parseFloat(raw) * 1.18).toFixed(2) : parseFloat(raw).toFixed(2)) : '';
+                                                            setCampaignForm({ ...campaignForm, _includeGst: gst, spend: gross ? parseFloat(gross) : 0 });
+                                                        }}
+                                                        className="w-4 h-4 accent-orange-500"
+                                                    />
+                                                    <span className="text-sm font-medium text-orange-700">+ GST 18%</span>
+                                                </label>
+                                            </div>
+                                            <div>
+                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Gross Amount (₹)</label>
+                                                <div className={`flex h-10 w-full items-center rounded-md border px-3 py-2 text-sm font-semibold ${campaignForm._includeGst ? 'bg-orange-50 border-orange-300 text-orange-800' : 'bg-gray-50 border-gray-200 text-gray-700'
+                                                    }`}>
+                                                    {campaignForm.spend ? `₹ ${parseFloat(campaignForm.spend).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '—'}
+                                                    {campaignForm._includeGst && campaignForm._rawAmount && (
+                                                        <span className="ml-auto text-[10px] text-orange-500 font-normal">
+                                                            +₹{(parseFloat(campaignForm._rawAmount) * 0.18).toFixed(2)} GST
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
                                             <div>
                                                 <label className="text-xs font-bold text-gray-500 mb-1 block">Conversions</label>
@@ -877,7 +1223,41 @@ const ManageServicesView = () => {
                                         </div>
                                     </TabsContent>
 
-                                    <TabsContent value="seo" className="space-y-4 max-w-2xl">
+                                    <TabsContent value="seo" className="space-y-4">
+                                        <div className="flex bg-gray-100 p-1 rounded-lg w-full max-w-sm mb-4">
+                                            <button
+                                                onClick={() => { setSeoEntryMode('NEW'); setEditingCampaignId(null); setCampaignForm({ date: new Date().toISOString(), status: 'ACTIVE' }); }}
+                                                className={`flex-1 py-1.5 text-sm font-bold rounded-md transition-all ${seoEntryMode === 'NEW' ? 'bg-white text-green-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                            >
+                                                New Entry
+                                            </button>
+                                            <button
+                                                onClick={() => setSeoEntryMode('UPDATE')}
+                                                className={`flex-1 py-1.5 text-sm font-bold rounded-md transition-all ${seoEntryMode === 'UPDATE' ? 'bg-white text-green-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                            >
+                                                Update Existing
+                                            </button>
+                                        </div>
+
+                                        {seoEntryMode === 'UPDATE' && (
+                                            <div className="mb-4 bg-green-50/50 p-4 rounded-xl border border-green-100">
+                                                <label className="text-xs font-bold text-gray-500 mb-2 block">Select SEO Log to Update</label>
+                                                <select
+                                                    className="w-full px-3 py-2.5 rounded-lg border border-green-200 bg-white shadow-sm focus:ring-2 focus:ring-green-500 text-sm font-semibold"
+                                                    value={editingCampaignId || ''}
+                                                    onChange={(e) => {
+                                                        const item = aggregatedHistory.find(i => i.id === e.target.value);
+                                                        if (item) startEditCampaign(item);
+                                                        else { setEditingCampaignId(null); setCampaignForm({ date: new Date().toISOString(), status: 'ACTIVE' }); }
+                                                    }}
+                                                >
+                                                    <option value="">-- Select an SEO Monthly Log --</option>
+                                                    {aggregatedHistory.filter(i => i.type === 'SEO').map(item => (
+                                                        <option key={item.id} value={item.id}>{item.title}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        )}
                                         <div className="grid grid-cols-3 gap-4">
                                             <div>
                                                 <label className="text-xs font-bold text-gray-500 mb-1 block">Month (1-12) *</label>
@@ -907,20 +1287,203 @@ const ManageServicesView = () => {
                                         </div>
                                     </TabsContent>
 
-                                    <div className="mt-8 flex justify-end">
-                                        <Button
-                                            onClick={saveCampaignData}
-                                            className="bg-indigo-600 hover:bg-indigo-700 text-white min-w-[120px]"
-                                            disabled={metaMutation.isPending || googleMutation.isPending || seoMutation.isPending}
-                                        >
-                                            {editingCampaignId ? 'Update Data' : 'Save Data'}
-                                        </Button>
-                                    </div>
+                                    <TabsContent value="web" className="space-y-4">
+                                        <div className="flex bg-gray-100 p-1 rounded-lg w-full max-w-sm mb-4">
+                                            <button
+                                                onClick={() => { setWebEntryMode('NEW'); setEditingCampaignId(null); setCampaignForm({ date: new Date().toISOString(), status: 'ACTIVE' }); }}
+                                                className={`flex-1 py-1.5 text-sm font-bold rounded-md transition-all ${webEntryMode === 'NEW' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                            >
+                                                New Entry
+                                            </button>
+                                            <button
+                                                onClick={() => setWebEntryMode('UPDATE')}
+                                                className={`flex-1 py-1.5 text-sm font-bold rounded-md transition-all ${webEntryMode === 'UPDATE' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                            >
+                                                Update Existing
+                                            </button>
+                                        </div>
+
+                                        {webEntryMode === 'UPDATE' && (
+                                            <div className="mb-4 bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
+                                                <label className="text-xs font-bold text-gray-500 mb-2 block">Select Web Project to Update</label>
+                                                <select
+                                                    className="w-full px-3 py-2.5 rounded-lg border border-indigo-200 bg-white shadow-sm focus:ring-2 focus:ring-indigo-500 text-sm font-semibold"
+                                                    value={editingCampaignId || ''}
+                                                    onChange={(e) => {
+                                                        const item = aggregatedHistory.find(i => i.id === e.target.value);
+                                                        if (item) startEditCampaign(item);
+                                                        else { setEditingCampaignId(null); setCampaignForm({ date: new Date().toISOString(), status: 'ACTIVE' }); }
+                                                    }}
+                                                >
+                                                    <option value="">-- Select a Web Project --</option>
+                                                    {aggregatedHistory.filter(i => i.type === 'WEB').map(item => (
+                                                        <option key={item.id} value={item.id}>{item.title} ({item.status})</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        )}
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                            <div className="sm:col-span-2">
+                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Project Name *</label>
+                                                <Input value={campaignForm.project_name || ''} onChange={(e) => setCampaignForm({ ...campaignForm, project_name: e.target.value })} />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Status *</label>
+                                                <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={campaignForm.status || 'PLANNING'} onChange={(e) => setCampaignForm({ ...campaignForm, status: e.target.value })}>
+                                                    <option value="PLANNING">Planning</option>
+                                                    <option value="DESIGN">Design</option>
+                                                    <option value="DEVELOPMENT">Development</option>
+                                                    <option value="AMENDS">Amends</option>
+                                                    <option value="TESTING">Testing</option>
+                                                    <option value="DEPLOYED">Deployed</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Staging URL</label>
+                                                <Input value={campaignForm.staging_url || ''} onChange={(e) => setCampaignForm({ ...campaignForm, staging_url: e.target.value })} />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Live URL</label>
+                                                <Input value={campaignForm.live_url || ''} onChange={(e) => setCampaignForm({ ...campaignForm, live_url: e.target.value })} />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-gray-500 mb-1 block">Timeline JSON / Details</label>
+                                            <Input placeholder="e.g. Design Approved, Next step Development" value={campaignForm.timeline_json || ''} onChange={(e) => setCampaignForm({ ...campaignForm, timeline_json: e.target.value })} />
+                                        </div>
+                                    </TabsContent>
+
+                                    <TabsContent value="content" className="space-y-6">
+                                        {/* Hero assign button */}
+                                        <div className="flex flex-col items-center justify-center py-6 gap-2">
+                                            <button
+                                                onClick={() => { setEditingCreativeTask({ client_id: clientId, department: 'CREATIVE', category: 'CAMPAIGN' }); setIsCreativeTaskModalOpen(true); }}
+                                                className="flex items-center gap-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold px-10 py-4 rounded-2xl shadow-xl shadow-purple-300/40 transition-all active:scale-95 text-lg"
+                                            >
+                                                <PlusCircle size={24} /> Assign Task to Creative Team
+                                            </button>
+                                            <p className="text-xs text-gray-400 mt-1">Tasks assigned here will appear in the Creative Task Manager.</p>
+                                        </div>
+
+                                        {/* Task history */}
+                                        <div>
+                                            <h4 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                                <Palette size={16} className="text-purple-500" /> Task History
+                                            </h4>
+                                            {creativeTasks && creativeTasks.length > 0 ? (
+                                                <div className="rounded-xl border border-purple-100 overflow-hidden shadow-sm">
+                                                    <table className="w-full text-sm">
+                                                        <thead className="bg-purple-50/70">
+                                                            <tr>
+                                                                <th className="text-left font-bold text-purple-700 px-4 py-3 text-xs uppercase">Task</th>
+                                                                <th className="text-left font-bold text-purple-700 px-4 py-3 text-xs uppercase">Assigned To</th>
+                                                                <th className="text-left font-bold text-purple-700 px-4 py-3 text-xs uppercase">Priority</th>
+                                                                <th className="text-left font-bold text-purple-700 px-4 py-3 text-xs uppercase">Status</th>
+                                                                <th className="text-left font-bold text-purple-700 px-4 py-3 text-xs uppercase">Due</th>
+                                                                <th className="text-right font-bold text-purple-700 px-4 py-3 text-xs uppercase">Actions</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-purple-50">
+                                                            {(creativeTasks as any[]).map((task: any) => {
+                                                                const statusColor: Record<string, string> = {
+                                                                    'PLANNED': 'bg-gray-100 text-gray-600',
+                                                                    'IN_PROGRESS': 'bg-blue-100 text-blue-700',
+                                                                    'REVIEW': 'bg-amber-100 text-amber-700',
+                                                                    'COMPLETED': 'bg-green-100 text-green-700',
+                                                                    'REWORK': 'bg-red-100 text-red-700',
+                                                                };
+                                                                const priorityColor: Record<string, string> = {
+                                                                    'LOW': 'text-gray-500',
+                                                                    'MEDIUM': 'text-blue-600',
+                                                                    'HIGH': 'text-orange-600',
+                                                                    'URGENT': 'text-red-600 font-bold',
+                                                                };
+                                                                return (
+                                                                    <tr key={task.id} className="hover:bg-purple-50/40 transition-colors">
+                                                                        <td className="px-4 py-3">
+                                                                            <div className="font-semibold text-gray-900 truncate max-w-[200px]">{task.title}</div>
+                                                                            <div className="text-xs text-gray-400">{task.type}</div>
+                                                                        </td>
+                                                                        <td className="px-4 py-3 text-gray-600">{task.assignee?.full_name || '—'}</td>
+                                                                        <td className={`px-4 py-3 font-semibold text-xs ${priorityColor[task.priority] || ''}`}>{task.priority}</td>
+                                                                        <td className="px-4 py-3">
+                                                                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${statusColor[task.status] || 'bg-gray-100 text-gray-600'}`}>
+                                                                                {task.status?.replace('_', ' ')}
+                                                                            </span>
+                                                                        </td>
+                                                                        <td className="px-4 py-3 text-gray-500 text-xs">
+                                                                            {task.due_date ? format(new Date(task.due_date), 'dd MMM yyyy') : '—'}
+                                                                        </td>
+                                                                        <td className="px-4 py-3 text-right">
+                                                                            <div className="inline-flex items-center gap-1">
+                                                                                <button
+                                                                                    onClick={() => { setEditingCreativeTask(task); setIsCreativeTaskModalOpen(true); }}
+                                                                                    className="h-8 w-8 flex items-center justify-center rounded-lg text-purple-500 hover:bg-purple-100 transition-colors"
+                                                                                    title="Edit Task"
+                                                                                >
+                                                                                    <PenTool size={14} />
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={async () => {
+                                                                                        const result = await Swal.fire({ title: 'Delete Task?', text: 'This cannot be undone.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, delete', confirmButtonColor: '#dc2626' });
+                                                                                        if (result.isConfirmed) {
+                                                                                            await api.delete(`/tasks/${task.id}`);
+                                                                                            queryClient.invalidateQueries({ queryKey: ['creative-tasks-for-client', clientId] });
+                                                                                            Swal.fire({ title: 'Deleted', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+                                                                                        }
+                                                                                    }}
+                                                                                    className="h-8 w-8 flex items-center justify-center rounded-lg text-red-400 hover:bg-red-50 transition-colors"
+                                                                                    title="Delete Task"
+                                                                                >
+                                                                                    <Trash2 size={14} />
+                                                                                </button>
+                                                                            </div>
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            })}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            ) : (
+                                                <div className="text-center py-12 bg-purple-50/30 rounded-xl border-2 border-dashed border-purple-100">
+                                                    <Palette size={40} className="mx-auto text-purple-200 mb-3" />
+                                                    <p className="text-sm font-semibold text-gray-500">No creative tasks assigned for this client yet.</p>
+                                                    <p className="text-xs text-gray-400 mt-1">Use the button above to assign a task to the creative team.</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </TabsContent>
+                                    {activeServiceTab !== 'content' && (
+                                        <div className="mt-8 flex justify-end">
+                                            <Button
+                                                onClick={saveCampaignData}
+                                                className="bg-indigo-600 hover:bg-indigo-700 text-white min-w-[120px]"
+                                                disabled={metaMutation.isPending || googleMutation.isPending || seoMutation.isPending || webMutation.isPending}
+                                            >
+                                                {editingCampaignId ? 'Update Data' : 'Save Data'}
+                                            </Button>
+                                        </div>
+                                    )}
                                 </Tabs>
                             </CardContent>
                         </Card>
                     </TabsContent>
                 )}
+
+                {/* Creative Task Assign Modal — rendered once at page level */}
+                <NewTaskModal
+                    isOpen={isCreativeTaskModalOpen}
+                    onClose={() => {
+                        setIsCreativeTaskModalOpen(false);
+                        setEditingCreativeTask(null);
+                        queryClient.invalidateQueries({ queryKey: ['creative-tasks-for-client', clientId] });
+                    }}
+                    initialData={editingCreativeTask}
+                />
+
 
                 {/* --- LEAD MANAGEMENT TAB --- */}
                 <TabsContent value="leads">
@@ -1212,7 +1775,7 @@ const ManageServicesView = () => {
                                                                         <div key={f.id} className="flex flex-col bg-gray-50 p-2 rounded-lg border border-gray-100 relative group">
                                                                             <div className="flex items-center justify-between mb-0.5">
                                                                                 <span className="text-[10px] font-extrabold text-indigo-500 uppercase">
-                                                                                    {f.follow_up_number === 1 ? '1st' : f.follow_up_number === 2 ? '2nd' : f.follow_up_number === 3 ? '3rd' : `${f.follow_up_number}th`} Follow Up • <span className="text-gray-500">{f.channel || 'Phone Call'}</span>
+                                                                                    {f.follow_up_number === 1 ? '1st' : f.follow_up_number === 2 ? '2nd' : f.follow_up_number === 3 ? '3rd' : `${f.follow_up_number}th`} Follow Up ΓÇó <span className="text-gray-500">{f.channel || 'Phone Call'}</span>
                                                                                 </span>
                                                                                 <span className="text-[9px] text-gray-400">{format(new Date(f.date), 'dd/MM/yy')}</span>
                                                                             </div>
@@ -1263,7 +1826,7 @@ const ManageServicesView = () => {
                     </Card>
                 </TabsContent>
             </Tabs>
-        </div>
+        </div >
     );
 };
 

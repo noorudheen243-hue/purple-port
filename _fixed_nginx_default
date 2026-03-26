@@ -1,0 +1,73 @@
+server {
+    listen 80;
+    server_name qixport.com www.qixport.com 66.116.224.221 localhost;
+
+    # Redirect all HTTP requests to HTTPS
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    server_name qixport.com www.qixport.com 66.116.224.221 localhost;
+
+    # SSL Configuration (Certbot paths)
+    ssl_certificate /etc/letsencrypt/live/qixport.com/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/qixport.com/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+
+    # Root directory for static files (Corrected to consolidated public/ folder)
+    root /var/www/purple-port/public;
+    index index.html;
+
+    # Gzip Compression
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    gzip_buffers 16 8k;
+    gzip_http_version 1.1;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+
+    # Static Assets Cache (V2.7 fixes - no-cache for index.html)
+    location /assets/ {
+        root /var/www/purple-port/public;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        try_files $uri =404;
+    }
+
+    # API Proxy
+    location /api/ {
+        proxy_pass http://localhost:4001/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Socket.io Proxy
+    location /socket.io/ {
+        proxy_pass http://localhost:4001/socket.io/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
+        proxy_set_header Host $host;
+    }
+
+    # Frontend Routing (SPA)
+    location / {
+        # Force no-cache for index.html
+        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0";
+        expires off;
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Error pages
+    error_page 404 /index.html;
+}

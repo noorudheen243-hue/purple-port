@@ -33,8 +33,6 @@ const ExecutiveDashboard = () => {
         queryFn: async () => (await api.get('/analytics/creative-dashboard')).data
     });
 
-    if (isLoading || isCreativeLoading) return <div className="p-8 text-center text-gray-500 animate-pulse">Loading dashboard elements...</div>;
-
     const { distribution, efficiency } = data || { distribution: [], efficiency: [] };
 
     return (
@@ -92,7 +90,11 @@ const ExecutiveDashboard = () => {
                                         <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic font-medium">No new creative tasks assigned yet today.</TableCell></TableRow>
                                     ) : (
                                         creativeDashboard?.dailyTasks?.map((task: any) => (
-                                            <TableRow key={task.id} className="hover:bg-gray-50 transition-colors">
+                                            <TableRow
+                                                key={task.id}
+                                                className="hover:bg-gray-50 transition-colors cursor-pointer"
+                                                onClick={() => window.open(`/dashboard/tasks/${task.id}`, '_blank')}
+                                            >
                                                 <TableCell className="font-semibold text-gray-500">{task.s_no}</TableCell>
                                                 <TableCell className="font-bold text-gray-900">{task.staff_name}</TableCell>
                                                 <TableCell className="font-bold text-indigo-600">{task.client_name}</TableCell>
@@ -118,28 +120,32 @@ const ExecutiveDashboard = () => {
                         <TrendingUp size={16} />
                     </CardHeader>
                     <CardContent className="p-0">
-                        <div className="overflow-x-auto">
-                            <Table>
-                                <TableHeader className="bg-gray-50">
-                                    <TableRow>
-                                        <TableHead className="text-xs font-bold uppercase">Member</TableHead>
-                                        <TableHead className="text-xs font-bold text-right uppercase">Score</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {creativeDashboard?.dailyEfficiency?.map((item: any) => (
-                                        <TableRow key={item.id} className="hover:bg-gray-50 transition-colors">
-                                            <TableCell className="text-sm font-bold text-gray-700">{item.staff_name}</TableCell>
-                                            <TableCell className="text-right">
-                                                <Badge className={`${item.efficiency >= 80 ? 'bg-green-100 text-green-700 border-green-200' : item.efficiency >= 50 ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-red-100 text-red-700 border-red-200'} font-black text-xs px-2`}>
-                                                    {item.efficiency}%
-                                                </Badge>
-                                            </TableCell>
+                        {isCreativeLoading ? (
+                            <div className="h-24 flex items-center justify-center text-sm text-muted-foreground animate-pulse">Loading...</div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader className="bg-gray-50">
+                                        <TableRow>
+                                            <TableHead className="text-xs font-bold uppercase">Member</TableHead>
+                                            <TableHead className="text-xs font-bold text-right uppercase">Score</TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {creativeDashboard?.dailyEfficiency?.map((item: any) => (
+                                            <TableRow key={item.id} className="hover:bg-gray-50 transition-colors">
+                                                <TableCell className="text-sm font-bold text-gray-700">{item.staff_name}</TableCell>
+                                                <TableCell className="text-right">
+                                                    <Badge className={`${item.efficiency >= 80 ? 'bg-green-100 text-green-700 border-green-200' : item.efficiency >= 50 ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-red-100 text-red-700 border-red-200'} font-black text-xs px-2`}>
+                                                        {item.efficiency}%
+                                                    </Badge>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 
@@ -150,28 +156,32 @@ const ExecutiveDashboard = () => {
                         <Calendar size={16} />
                     </CardHeader>
                     <CardContent className="p-0">
-                        <div className="overflow-x-auto">
-                            <Table>
-                                <TableHeader className="bg-gray-50">
-                                    <TableRow>
-                                        <TableHead className="text-xs font-bold uppercase">Member</TableHead>
-                                        <TableHead className="text-xs font-bold text-right uppercase">Avg</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {creativeDashboard?.weeklyEfficiency?.map((item: any) => (
-                                        <TableRow key={item.id} className="hover:bg-gray-50 transition-colors">
-                                            <TableCell className="text-sm font-bold text-gray-700">{item.staff_name}</TableCell>
-                                            <TableCell className="text-right">
-                                                <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-black text-xs ${item.efficiency >= 80 ? 'bg-green-600 text-white' : item.efficiency >= 50 ? 'bg-cyan-600 text-white' : 'bg-slate-400 text-white shadow-inner uppercase'}`}>
-                                                    {item.efficiency}
-                                                </span>
-                                            </TableCell>
+                        {isCreativeLoading ? (
+                            <div className="h-24 flex items-center justify-center text-sm text-muted-foreground animate-pulse">Loading...</div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader className="bg-gray-50">
+                                        <TableRow>
+                                            <TableHead className="text-xs font-bold uppercase">Member</TableHead>
+                                            <TableHead className="text-xs font-bold text-right uppercase">Avg</TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {creativeDashboard?.weeklyEfficiency?.map((item: any) => (
+                                            <TableRow key={item.id} className="hover:bg-gray-50 transition-colors">
+                                                <TableCell className="text-sm font-bold text-gray-700">{item.staff_name}</TableCell>
+                                                <TableCell className="text-right">
+                                                    <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-black text-xs ${item.efficiency >= 80 ? 'bg-green-600 text-white' : item.efficiency >= 50 ? 'bg-cyan-600 text-white' : 'bg-slate-400 text-white shadow-inner uppercase'}`}>
+                                                        {item.efficiency}
+                                                    </span>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 
@@ -182,34 +192,38 @@ const ExecutiveDashboard = () => {
                         <BadgeCheck size={18} />
                     </CardHeader>
                     <CardContent className="p-0">
-                        <div className="overflow-x-auto">
-                            <Table>
-                                <TableHeader className="bg-gray-50">
-                                    <TableRow>
-                                        <TableHead className="text-xs font-bold uppercase">Member</TableHead>
-                                        <TableHead className="text-xs font-bold text-right uppercase">Progress</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {creativeDashboard?.monthlyEfficiency?.map((item: any) => (
-                                        <TableRow key={item.id} className="hover:bg-gray-50 transition-colors">
-                                            <TableCell className="text-sm font-bold text-gray-700">{item.staff_name}</TableCell>
-                                            <TableCell className="text-right">
-                                                <div className="flex flex-col items-end gap-1">
-                                                    <span className="text-[10px] font-black text-rose-600 leading-none">{item.efficiency}%</span>
-                                                    <div className="w-16 h-2 bg-gray-100 rounded-full overflow-hidden shadow-inner border border-gray-200">
-                                                        <div
-                                                            className="h-full bg-rose-500 shadow-sm"
-                                                            style={{ width: `${item.efficiency}%` }}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </TableCell>
+                        {isCreativeLoading ? (
+                            <div className="h-24 flex items-center justify-center text-sm text-muted-foreground animate-pulse">Loading...</div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader className="bg-gray-50">
+                                        <TableRow>
+                                            <TableHead className="text-xs font-bold uppercase">Member</TableHead>
+                                            <TableHead className="text-xs font-bold text-right uppercase">Progress</TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {creativeDashboard?.monthlyEfficiency?.map((item: any) => (
+                                            <TableRow key={item.id} className="hover:bg-gray-50 transition-colors">
+                                                <TableCell className="text-sm font-bold text-gray-700">{item.staff_name}</TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex flex-col items-end gap-1">
+                                                        <span className="text-[10px] font-black text-rose-600 leading-none">{item.efficiency}%</span>
+                                                        <div className="w-16 h-2 bg-gray-100 rounded-full overflow-hidden shadow-inner border border-gray-200">
+                                                            <div
+                                                                className="h-full bg-rose-500 shadow-sm"
+                                                                style={{ width: `${item.efficiency}%` }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </div>

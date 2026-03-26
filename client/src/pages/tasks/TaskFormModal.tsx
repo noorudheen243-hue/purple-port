@@ -23,6 +23,8 @@ const schema = z.object({
     client_id: z.string().optional(), // Now Optional for "General" tasks
     assignee_id: z.string().min(1, "Assigned To is required"), // Mandatory for ALL
     due_date: z.string().optional(), // Soft optional
+    department: z.enum(['CREATIVE', 'DIGITAL_MARKETING']),
+    campaign_type: z.string().optional(),
 });
 
 type TaskFormData = z.infer<typeof schema>;
@@ -57,7 +59,9 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
             type: 'GENERIC',
             category: 'CAMPAIGN',
             nature: 'NEW',
-            description: ''
+            description: '',
+            department: 'CREATIVE',
+            campaign_type: ''
         }
     });
 
@@ -74,9 +78,11 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                 client_id: initialData.client_id || (initialData.category === 'INTERNAL' ? 'GENERAL' : ''),
                 assignee_id: initialData.assignee_id,
                 due_date: initialData.due_date ? new Date(initialData.due_date).toISOString().split('T')[0] : '',
-                content_type: initialData.content_type || ''
+                content_type: initialData.content_type || '',
+                department: initialData.department || 'CREATIVE',
+                campaign_type: initialData.campaign_type || ''
             });
-            if (initialData.client_id) setValue('client_id', initialData.client_id); // Trigger watcher
+            if (initialData.client_id) setValue('client_id', initialData.client_id);
             // Note: Attachments editing in Create Modal not supported yet, rely on Task Detail
         } else if (isOpen && !initialData) {
             reset({
@@ -84,7 +90,9 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                 type: 'GENERIC',
                 category: 'CAMPAIGN',
                 nature: 'NEW',
-                description: ''
+                description: '',
+                department: 'CREATIVE',
+                campaign_type: ''
             });
             setFiles([]);
             setLinks([]);
@@ -95,6 +103,7 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
     const category = watch('category');
     const nature = watch('nature');
     const selectedClientId = watch('client_id');
+    const departmentStr = watch('department');
 
     // Filter campaigns by selected client
     const filteredCampaigns = campaigns?.filter((c: any) => c.client_id === selectedClientId) || [];
@@ -110,7 +119,7 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
             let taskId = initialData?.id;
             let response;
 
-            if (initialData) {
+            if (initialData && initialData.id) {
                 response = await api.put(`/tasks/${initialData.id}`, payload);
             } else {
                 response = await api.post('/tasks', payload);
@@ -118,7 +127,7 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
             }
 
             // Handle Attachments (Only on Create for now, Edit handled in TaskDetail)
-            if (taskId && !initialData) {
+            if (taskId && !initialData?.id) {
                 // Upload Files
                 if (files.length > 0) {
                     await Promise.all(files.map(async (file) => {
@@ -249,6 +258,59 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                                 </div>
                                 <input type="hidden" {...register('nature')} />
                             </div>
+                        </div>
+
+                        {/* Department & Campaign Type Selection */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-foreground">Department</label>
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setValue('department', 'CREATIVE')}
+                                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg border transition-all ${departmentStr === 'CREATIVE' ? 'bg-purple-50 border-purple-500 text-purple-700 ring-1 ring-purple-500' : 'bg-background border-border text-muted-foreground hover:bg-muted/50'}`}
+                                    >
+                                        Creative / Design
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setValue('department', 'DIGITAL_MARKETING')}
+                                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg border transition-all ${departmentStr === 'DIGITAL_MARKETING' ? 'bg-indigo-50 border-indigo-500 text-indigo-700 ring-1 ring-indigo-500' : 'bg-background border-border text-muted-foreground hover:bg-muted/50'}`}
+                                    >
+                                        Digital Marketing
+                                    </button>
+                                </div>
+                                <input type="hidden" {...register('department')} />
+                            </div>
+
+                            {/* Auto-Department Logic Observer */}
+                            <div className="hidden">
+                                {(() => {
+                                    const campaignType = watch('campaign_type');
+                                    const currentDept = watch('department');
+                                    if (campaignType && currentDept === 'CREATIVE') {
+                                        setValue('department', 'DIGITAL_MARKETING');
+                                    }
+                                    return null;
+                                })()}
+                            </div>
+
+                            {departmentStr === 'DIGITAL_MARKETING' && (
+                                <div className="space-y-2 animate-in fade-in slide-in-from-right-2">
+                                    <label className="text-sm font-semibold text-foreground">Campaign Type</label>
+                                    <select
+                                        {...register('campaign_type')}
+                                        className="w-full px-4 py-2.5 border border-input rounded-lg bg-background text-foreground focus:ring-2 focus:ring-indigo-200 outline-none"
+                                    >
+                                        <option value="">-- Optional: Specific Campaign Type --</option>
+                                        <option value="META_ADS">Meta Ads</option>
+                                        <option value="GOOGLE_ADS">Google Ads</option>
+                                        <option value="SEO">SEO</option>
+                                        <option value="CONTENT_PLANNING">Content Planning</option>
+                                        <option value="WEB_DEVELOPMENT">Web Development</option>
+                                    </select>
+                                </div>
+                            )}
                         </div>
 
                         {/* Title (Always visible) */}
@@ -415,9 +477,10 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                                     <Briefcase className="absolute left-3 top-3 text-muted-foreground" size={18} />
                                     <select
                                         {...register('client_id')}
+                                        value={selectedClientId || ''}
                                         className={`w-full pl-10 pr-4 py-2.5 border rounded-lg appearance-none bg-background text-foreground focus:ring-2 focus:ring-purple-200 outline-none ${errors.client_id ? 'border-red-300' : 'border-input'}`}
                                         onChange={(e) => {
-                                            setValue('client_id', e.target.value);
+                                            setValue('client_id', e.target.value, { shouldValidate: true });
                                             setValue('campaign_id', ''); // Reset campaign on client change
                                         }}
                                     >

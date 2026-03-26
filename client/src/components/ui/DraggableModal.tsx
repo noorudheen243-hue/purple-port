@@ -1,5 +1,6 @@
 import React from 'react';
 import Draggable from 'react-draggable';
+import { X } from 'lucide-react';
 
 interface DraggableModalProps {
     isOpen: boolean;
@@ -78,25 +79,18 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
                     }}
                 >
                     {/* System Bar */}
-                    <div className="window-drag-handle h-9 bg-muted/80 flex items-center justify-between px-3 cursor-move select-none border-b shrink-0">
-                        <div className="flex gap-1.5">
-                            <button
-                                onClick={onClose}
-                                className="h-3 w-3 rounded-full bg-red-500 hover:bg-red-600 focus:outline-none transition-colors opacity-80 hover:opacity-100"
-                            />
-                            <button
-                                onClick={() => setIsMinimized(!isMinimized)}
-                                className="h-3 w-3 rounded-full bg-yellow-400 hover:bg-yellow-500 focus:outline-none transition-colors opacity-80 hover:opacity-100"
-                            />
-                            <button
-                                onClick={() => setSize({ width: 1000, height: 700 })}
-                                className="h-3 w-3 rounded-full bg-green-500 hover:bg-green-600 focus:outline-none transition-colors opacity-80 hover:opacity-100"
-                            />
-                        </div>
-                        <div className="text-xs text-muted-foreground font-medium ml-4 truncate flex-1 text-center pointer-events-none">
+                    <div className="window-drag-handle h-9 bg-muted/80 flex items-center justify-between px-3 cursor-move select-none border-b shrink-0 relative">
+                        <div className="absolute inset-x-0 text-xs text-muted-foreground font-medium truncate text-center flex items-center justify-center pointer-events-none h-full">
                             {title}
                         </div>
-                        <div className="w-10"></div>
+                        <div className="ml-auto relative z-10">
+                            <button
+                                onClick={onClose}
+                                className="h-5 w-5 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-white focus:outline-none transition-colors opacity-80 hover:opacity-100"
+                            >
+                                <X className="h-3 w-3" />
+                            </button>
+                        </div>
                     </div>
 
                     {/* Content */}

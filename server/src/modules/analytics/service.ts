@@ -47,10 +47,11 @@ export const getManagerStats = async () => {
 
 export const getTeamPerformanceStats = async (department?: string, startDate?: Date, endDate?: Date) => {
     // 1. Fetch Staff (Creative, Marketing, SEO)
-    const targetDepartments = ['CREATIVE', 'MARKETING', 'WEB_SEO'];
+    const targetDepartments = department && department !== 'ALL' ? [department] : ['CREATIVE', 'MARKETING', 'WEB_SEO'];
     const whereUser: any = {
         department: { in: targetDepartments },
         role: { not: 'ADMIN' },
+        status: 'ACTIVE',
         staffProfile: {
             staff_number: { notIn: ['QIX0001', 'QIX0002'] }
         }
@@ -124,11 +125,13 @@ export const getTeamPerformanceStats = async (department?: string, startDate?: D
             totalActHours += (t.actual_time_minutes || 0) / 60;
         });
 
-        // D. Task Type Distribution
-        const taskTypes: Record<string, number> = {};
+        // D. Task Type Distribution (Only for COMPLETED tasks to calculate marks)
+        const completedTaskTypes: Record<string, number> = {};
         userTasks.forEach(t => {
-            const type = t.type || 'Generic';
-            taskTypes[type] = (taskTypes[type] || 0) + 1;
+            if (t.status === 'COMPLETED') {
+                const type = t.type || 'Generic';
+                completedTaskTypes[type] = (completedTaskTypes[type] || 0) + 1;
+            }
         });
 
         // E. Productivity Score Calculation
@@ -173,7 +176,7 @@ export const getTeamPerformanceStats = async (department?: string, startDate?: D
                 actual: parseFloat(totalActHours.toFixed(1))
             },
 
-            taskTypes,
+            taskTypes: completedTaskTypes,
             productivityScore: finalScore
         };
     });
@@ -282,7 +285,7 @@ export const getAttendanceStats = async () => {
 export const getCreativeTeamMetrics = async () => {
     // 1. Creative Team Users
     const creatives = await prisma.user.findMany({
-        where: { department: 'CREATIVE' },
+        where: { department: 'CREATIVE', status: 'ACTIVE' },
         select: { id: true }
     });
     const creativeIds = creatives.map(c => c.id);
@@ -325,33 +328,47 @@ export const getCreativeDashboardStats = async () => {
 
     // 1. Creative Staff
     const creatives = await prisma.user.findMany({
-        where: { department: 'CREATIVE', role: { not: 'ADMIN' } },
+        where: { department: 'CREATIVE', role: { not: 'ADMIN' }, status: 'ACTIVE' },
         select: { id: true, full_name: true }
     });
     const creativeIds = creatives.map(c => c.id);
 
-    // 2. Optimized Fetch: All tasks for the whole month in ONE query
+    // 2. Optimized Fetch: All tasks for the whole month OR pending tasks in ONE query
     const tasksMonth = await prisma.task.findMany({
         where: {
             assignee_id: { in: creativeIds },
-            createdAt: { gte: startMnth }
+            OR: [
+                { createdAt: { gte: startMnth } },
+                { status: { notIn: ['COMPLETED', 'CANCELLED'] } }
+            ]
         },
-        include: {
+        select: {
+            id: true,
+            createdAt: true,
+            status: true,
+            type: true,
+            assignee_id: true,
+            estimated_hours: true,
+            actual_time_minutes: true,
             client: { select: { name: true } },
             assigned_by: { select: { full_name: true } }
         },
         orderBy: { createdAt: 'desc' }
     });
 
-    // 3. Process Daily Tasks (Today)
-    const dailyAssignedTasks = tasksMonth.filter(t => t.createdAt >= today);
-    const formatTasksResponse = dailyAssignedTasks.map((t, index) => ({
+    // 3. Process Table Tasks (Today's tasks + All Pending)
+    const tableTasks = tasksMonth.filter(t =>
+        t.createdAt >= today || !['COMPLETED', 'CANCELLED'].includes(t.status)
+    );
+
+    const formatTasksResponse = tableTasks.map((t, index) => ({
         s_no: index + 1,
         id: t.id,
         staff_name: creatives.find(c => c.id === t.assignee_id)?.full_name || 'Unknown',
         client_name: t.client?.name || 'Internal',
         task_type: t.type || 'Generic',
-        assigned_by: t.assigned_by?.full_name || 'System'
+        assigned_by: t.assigned_by?.full_name || 'System',
+        status: t.status
     }));
 
     // 4. Helper to calculate efficiency from the CACHED task list
@@ -388,7 +405,7 @@ export const getCreativeDashboardStats = async () => {
         });
     };
 
-    const dailyEfficiency = calculateEfficiencyFromList(dailyAssignedTasks, 'completed');
+    const dailyEfficiency = calculateEfficiencyFromList(tasksMonth.filter(t => t.createdAt >= today), 'completed');
     const weeklyEfficiency = calculateEfficiencyFromList(tasksMonth.filter(t => t.createdAt >= startWeek), 'completed');
     const monthlyEfficiency = calculateEfficiencyFromList(tasksMonth, 'efficiency');
 

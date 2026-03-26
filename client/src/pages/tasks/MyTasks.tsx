@@ -129,6 +129,7 @@ const MyTasks = () => {
                         <option value="ASSIGNED">Assigned</option>
                         <option value="IN_PROGRESS">In Progress</option>
                         <option value="REVIEW">Review</option>
+                        <option value="REWORK">🔄 Rework</option>
                         <option value="COMPLETED">Completed</option>
                     </select>
                 </div>
@@ -186,6 +187,7 @@ const MyTasks = () => {
                                                 text-sm px-2 py-1.5 rounded border focus:outline-none focus:ring-2 focus:ring-purple-200
                                                 ${currentStatus === 'COMPLETED' ? 'bg-green-50 text-green-900 border-green-200' : ''}
                                                 ${currentStatus === 'IN_PROGRESS' ? 'bg-blue-50 text-blue-900 border-blue-200' : ''}
+                                                ${currentStatus === 'REWORK' ? 'bg-orange-50 text-orange-900 border-orange-300' : ''}
                                                 ${['PLANNED', 'ASSIGNED'].includes(currentStatus) ? 'bg-gray-100 text-gray-700 border-gray-200' : ''}
                                                 ${isModified ? 'ring-2 ring-yellow-400 border-yellow-500' : ''} 
                                             `}
@@ -194,6 +196,7 @@ const MyTasks = () => {
                                             <option value="IN_PROGRESS">In Progress</option>
                                             <option value="REVIEW">Under Review</option>
                                             <option value="REVISION_REQUESTED">Revision Needed</option>
+                                            <option value="REWORK">🔄 Rework</option>
                                             <option value="COMPLETED">Completed</option>
                                         </select>
                                     </td>

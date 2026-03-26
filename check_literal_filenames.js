@@ -1,0 +1,16 @@
+
+const { Client } = require('ssh2');
+const conn = new Client();
+const serverIp = '66.116.224.221';
+const username = 'root';
+const password = 'EzdanAdam@243';
+
+conn.on('ready', () => {
+    // List all files in updated_files with a simple ls to see literal names
+    const cmd = `ls -1 /var/www/purple-port/updated_files/`;
+    conn.exec(cmd, (err, stream) => {
+        if (err) throw err;
+        stream.on('close', () => conn.end());
+        stream.on('data', (data) => process.stdout.write(data.toString()));
+    });
+}).connect({ host: serverIp, port: 22, username, password });

@@ -238,4 +238,22 @@
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: rgba(0, 0, 0, 0.2);
   }
+
+  /* Space Optimization Utilities */
+  .fluid-container {
+    @apply w-full max-w-[1600px] mx-auto px-2 md:px-4 lg:px-6;
+  }
+
+  .table-wrapper {
+     @apply w-full overflow-x-auto custom-scrollbar rounded-xl border border-border bg-card shadow-sm;
+  }
+
+  /* Force table to use all available width */
+  table.fluid-table {
+    @apply w-full border-collapse min-w-[800px];
+  }
+
+  table.fluid-table th, table.fluid-table td {
+    @apply px-4 py-3 text-sm;
+  }
 }

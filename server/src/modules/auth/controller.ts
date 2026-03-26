@@ -14,6 +14,13 @@ const registerSchema = z.object({
 
 export const registerUser = async (req: Request, res: Response) => {
     try {
+        // Security: restrict registration to admins if needed, or check if requester is admin
+        // According to requirement: "restrict the new user registration from the login page, only the login can create through the application"
+        // This implies an admin must be logged in to create a user.
+        if (!req.user || (req.user.role !== 'DEVELOPER_ADMIN' && req.user.role !== 'ADMIN')) {
+            return res.status(403).json({ message: 'Only administrators can create new users.' });
+        }
+
         const validatedData = registerSchema.parse(req.body);
 
         const userExists = await userService.findUserByEmail(validatedData.email);
@@ -46,7 +53,8 @@ export const registerUser = async (req: Request, res: Response) => {
         }
     } catch (error: any) {
         if (error instanceof z.ZodError) {
-            res.status(400).json({ message: error.errors });
+            const errorMsg = error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+            res.status(400).json({ message: errorMsg });
         } else {
             res.status(500).json({ message: error.message });
         }
@@ -141,27 +149,3 @@ export const changePassword = async (req: Request, res: Response) => {
     }
 };
 
-export const emergencyReset = async (req: Request, res: Response) => {
-    try {
-        const EMAIL = "noorudheen243@gmail.com";
-        const NEW_PASS = "password123";
-
-        const user = await userService.findUserByEmail(EMAIL);
-        if (!user) {
-            return res.status(404).json({ message: `User ${EMAIL} not found on this server.` });
-        }
-
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(NEW_PASS, salt);
-        await userService.updateUserPassword(user.id, hashedPassword);
-
-        res.json({
-            message: "EMERGENCY RESET SUCCESSFUL",
-            email: EMAIL,
-            new_password: NEW_PASS,
-            server_time: new Date().toISOString()
-        });
-    } catch (e: any) {
-        res.status(500).json({ error: e.message });
-    }
-};

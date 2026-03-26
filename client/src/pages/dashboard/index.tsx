@@ -16,6 +16,8 @@ const ClientContentStatus = lazy(() => import('../clients/ClientContentStatus'))
 // const ClientAdsPage = lazy(() => import('../../pages/clients/ClientAdsPage')); // DEPRECATED
 const ClientAccountsPage = lazy(() => import('../../pages/clients/ClientAccountsPage'));
 const TaskDetail = lazy(() => import('../tasks/TaskDetail'));
+const MarketingDashboard = lazy(() => import('../../pages/marketing/MarketingDashboard'));
+const MarketingIntegrations = lazy(() => import('../../pages/marketing/MarketingIntegrations'));
 
 // Client Portal Modules
 const ClientPortalLayout = lazy(() => import('../../pages/portal/ClientPortalLayout'));
@@ -45,10 +47,20 @@ const ResignationPage = lazy(() => import('../team/resignation/ResignationPage')
 const DataSync = lazy(() => import('../admin/DataSync')); // [New Route]
 const SettingsPage = lazy(() => import('../settings/index'));
 
+// Meetings Module
+const MeetingLayout = lazy(() => import('../meetings/MeetingLayout'));
+const MeetingDashboard = lazy(() => import('../meetings/index'));
+const ScheduleMeeting = lazy(() => import('../meetings/ScheduleMeeting'));
+const ScheduledMeetings = lazy(() => import('../meetings/ScheduledMeetings'));
+const MinutesOfMeeting = lazy(() => import('../meetings/MinutesOfMeeting'));
+const AdminInbox = lazy(() => import('../meetings/AdminInbox'));
+const MeetingReports = lazy(() => import('../meetings/Reports'));
+
 
 // Advanced Task Views
 const TaskManagerPage = lazy(() => import('../tasks/TaskManagerPage'));
 const CreativeTaskManager = lazy(() => import('../tasks/CreativeTaskManager'));
+const DigitalMarketingTaskManager = lazy(() => import('../tasks/DigitalMarketingTaskManager'));
 const TaskDashboard = lazy(() => import('../tasks/TaskDashboard'));
 const MyTasks = lazy(() => import('../tasks/MyTasks'));
 const TaskBoard = lazy(() => import('../tasks/TaskBoard'));
@@ -109,6 +121,7 @@ const Dashboard = () => {
                     {/* Advanced Task Module */}
                     <Route path="tasks/manager" element={<TaskManagerPage />} /> {/* New Main View */}
                     <Route path="tasks/creative" element={<CreativeTaskManager />} /> {/* New Creative Tasks View */}
+                    <Route path="tasks/digital-marketing" element={<DigitalMarketingTaskManager />} /> {/* DM Tasks with Client Selector */}
                     <Route path="tasks" element={<TaskList />} />
                     <Route path="tasks/dashboard" element={<TaskDashboard />} />
                     <Route path="tasks/my-tasks" element={<MyTasks />} />
@@ -135,6 +148,8 @@ const Dashboard = () => {
 
                     {/* Module 4: Ad Intelligence */}
                     <Route path="roi" element={<ROIDashboard />} />
+                    <Route path="marketing-performance" element={<MarketingDashboard />} />
+                    <Route path="marketing-integrations" element={<MarketingIntegrations />} />
 
 
 
@@ -175,6 +190,16 @@ const Dashboard = () => {
                     <Route path="attendance/reports" element={<ReportsPage />} />
                     <Route path="attendance/biometric" element={<BiometricDetailsPage />} />
                     <Route path="attendance/biometric-manager" element={<BiometricManagerPage />} />
+
+                    {/* Meetings Module */}
+                    <Route path="meetings" element={<MeetingLayout />}>
+                        <Route index element={<MeetingDashboard />} />
+                        <Route path="scheduled" element={<ScheduledMeetings />} />
+                        <Route path="new" element={<ScheduleMeeting />} />
+                        <Route path="mom" element={<MinutesOfMeeting />} />
+                        <Route path="admin-inbox" element={<AdminInbox />} />
+                        <Route path="reports" element={<MeetingReports />} />
+                    </Route>
 
                     {/* Client Dashboard Routes */}
                     <Route path="client/accounts" element={<ClientAccountsPage />} />

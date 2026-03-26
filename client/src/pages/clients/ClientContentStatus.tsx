@@ -1,7 +1,16 @@
-import React, { useState } from 'react';
+import React, { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../lib/api';
-import { Target, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { Target, CheckCircle, Clock } from 'lucide-react';
+
+const COLORS = [
+    'bg-blue-50 text-blue-800 border-blue-200',
+    'bg-purple-50 text-purple-800 border-purple-200',
+    'bg-pink-50 text-pink-800 border-pink-200',
+    'bg-orange-50 text-orange-800 border-orange-200',
+    'bg-teal-50 text-teal-800 border-teal-200',
+    'bg-indigo-50 text-indigo-800 border-indigo-200',
+];
 
 const ClientContentStatus = () => {
     const { data: clients, isLoading: clientsLoading } = useQuery({
@@ -9,136 +18,193 @@ const ClientContentStatus = () => {
         queryFn: async () => (await api.get('/clients')).data
     });
 
-    const [selectedClientId, setSelectedClientId] = useState('');
-
-    // Fetch Tasks for the selected client to calculate "Completed" counts
-    const { data: clientTasks, isLoading: tasksLoading } = useQuery({
-        queryKey: ['tasks', selectedClientId],
-        queryFn: async () => (await api.get(`/tasks?client_id=${selectedClientId}`)).data, // Backend needs to support filtering by client_id on /tasks?
-        enabled: !!selectedClientId
+    const { data: allTasks, isLoading: tasksLoading } = useQuery({
+        queryKey: ['tasks-all-content'],
+        queryFn: async () => (await api.get('/tasks')).data
     });
 
-    // NOTE: Check if Backend /tasks supports filtering by client_id. 
-    // In `tasks/controller.ts`, `getTasks` filters by `assignee_id`, `campaign_id`. 
-    // It DOES NOT yet support `client_id`. I need to update `tasks/controller` and `service` to support `client_id` filter.
-    // I will assume I will do that next or now. 
-    // Actually, I should check `getTasks` in controller.ts.
+    // 1. Extract all unique Content Strategy types across all clients
+    const uniqueContentTypes = useMemo(() => {
+        if (!clients) return [];
+        const types = new Set<string>();
+        clients.forEach((client: any) => {
+            if (client.content_strategies && Array.isArray(client.content_strategies)) {
+                client.content_strategies.forEach((strategy: any) => {
+                    if (strategy.type) types.add(strategy.type);
+                });
+            }
+        });
+        return Array.from(types).sort();
+    }, [clients]);
 
-    const selectedClient = clients?.find((c: any) => c.id === selectedClientId);
+    // 2. Pre-process table rows 
+    const tableData = useMemo(() => {
+        if (!clients || !allTasks) return [];
 
-    if (clientsLoading) return <div className="p-8 text-center">Loading Data...</div>;
+        return clients.map((client: any) => {
+            let totalAssigned = 0;
+            const strategyMap: Record<string, number> = {};
 
-    const calculateCompleted = (contentType: string) => {
-        if (!clientTasks) return 0;
-        return clientTasks.filter((t: any) =>
-            t.status === 'COMPLETED' &&
-            t.content_type === contentType
-        ).length;
-    };
+            // Map planned quantities
+            if (client.content_strategies && Array.isArray(client.content_strategies)) {
+                client.content_strategies.forEach((strategy: any) => {
+                    if (strategy.type && strategy.quantity) {
+                        strategyMap[strategy.type] = strategy.quantity;
+                        totalAssigned += strategy.quantity;
+                    }
+                });
+            }
+
+            // Calculate completed
+            let completed = 0;
+            const clientTasks = allTasks.filter((t: any) => t.client_id === client.id);
+            clientTasks.forEach((task: any) => {
+                // If it's completed and its content_type matches one of the planned strategies
+                if (task.status === 'COMPLETED' && task.content_type && strategyMap[task.content_type]) {
+                    completed++;
+                }
+            });
+
+            const pending = Math.max(0, totalAssigned - completed);
+
+            return {
+                id: client.id,
+                name: client.name,
+                code: client.client_code,
+                strategyMap,
+                totalAssigned,
+                completed,
+                pending
+            };
+        });
+    }, [clients, allTasks]);
+
+    if (clientsLoading || tasksLoading) {
+        return (
+            <div className="p-8 text-center animate-pulse">
+                <div className="h-8 bg-gray-200 rounded w-64 mb-6 mx-auto"></div>
+                <div className="h-96 bg-gray-100 rounded-xl border border-gray-200"></div>
+                <p className="mt-4 text-muted-foreground">Gathering content strategy data...</p>
+            </div>
+        );
+    }
+
+    if (uniqueContentTypes.length === 0) {
+        return (
+            <div className="p-8 text-center bg-gray-50 rounded-xl border-2 border-dashed mt-6">
+                <Target className="mx-auto h-12 w-12 text-gray-400 mb-3" />
+                <h3 className="text-lg font-medium text-gray-900">No Content Strategies Found</h3>
+                <p className="text-gray-500 mt-1">None of the clients currently have a defined content strategy plan.</p>
+            </div>
+        );
+    }
 
     return (
         <div className="p-6 space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center mb-2">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Content Status Report</h1>
-                    <p className="text-muted-foreground">Track monthly content commitments vs. actual delivery.</p>
+                    <h1 className="text-2xl font-bold tracking-tight">Client Content Status</h1>
+                    <p className="text-muted-foreground">Comprehensive overview of planned content strategies vs. execution.</p>
                 </div>
             </div>
 
-            {/* Client Selector - Main Control */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border space-y-4 max-w-xl">
-                <label className="text-sm font-semibold text-gray-700">Select Client to View Report</label>
-                <div className="relative">
-                    <select
-                        className="w-full px-4 py-3 border rounded-lg appearance-none bg-gray-50 focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                        value={selectedClientId}
-                        onChange={e => setSelectedClientId(e.target.value)}
-                    >
-                        <option value="">-- Choose a Client --</option>
-                        {clients?.map((c: any) => (
-                            <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                    </select>
-                </div>
-            </div>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left whitespace-nowrap">
+                        <thead className="bg-gray-50/80">
+                            {/* TOP HEADER ROW */}
+                            <tr>
+                                <th rowSpan={2} className="px-5 py-4 font-bold text-gray-900 border-b border-r align-bottom bg-white sticky left-0 z-10 shadow-[1px_0_0_0_#e5e7eb]">
+                                    Client Name
+                                </th>
+                                <th colSpan={uniqueContentTypes.length} className="px-5 py-3 font-bold text-center text-indigo-900 border-b border-r bg-indigo-50/50">
+                                    Content Strategy (Planned Items)
+                                </th>
+                                <th rowSpan={2} className="px-5 py-4 font-bold text-center text-blue-900 border-b border-r align-bottom bg-blue-50/30">
+                                    Total Assigned
+                                </th>
+                                <th rowSpan={2} className="px-5 py-4 font-bold text-center text-emerald-900 border-b border-r align-bottom bg-emerald-50/30">
+                                    Completed
+                                </th>
+                                <th rowSpan={2} className="px-5 py-4 font-bold text-center text-orange-900 border-b align-bottom bg-orange-50/30">
+                                    Pending
+                                </th>
+                            </tr>
+                            {/* SUB HEADER ROW FOR DYNAMIC STRATEGIES */}
+                            <tr>
+                                {uniqueContentTypes.map((type, idx) => (
+                                    <th key={type} className={`px-4 py-2 text-xs font-semibold text-center border-b border-r ${COLORS[idx % COLORS.length]}`}>
+                                        {type}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {tableData.length > 0 ? tableData.map((client: any) => {
+                                const isAllCompleted = client.totalAssigned > 0 && client.pending === 0;
 
-            {selectedClientId ? (
-                <div className="bg-white rounded-lg shadow border overflow-hidden animate-in fade-in slide-in-from-bottom-4">
-                    <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
-                        <h2 className="font-semibold text-lg flex items-center gap-2">
-                            Status for: <span className="text-primary">{selectedClient?.name}</span>
-                        </h2>
-                        {tasksLoading && <span className="text-xs text-muted-foreground animate-pulse">Syncing tasks...</span>}
-                    </div>
+                                return (
+                                    <tr key={client.id} className="hover:bg-gray-50 transition-colors">
+                                        {/* Client Name Col */}
+                                        <td className="px-5 py-3 font-medium text-gray-900 border-r bg-white sticky left-0 z-10 shadow-[1px_0_0_0_#f3f4f6] group-hover:shadow-[1px_0_0_0_#e5e7eb] group-hover:bg-gray-50">
+                                            <div className="flex flex-col">
+                                                <span>{client.name}</span>
+                                                <span className="text-[10px] text-gray-400 font-mono">{client.code}</span>
+                                            </div>
+                                        </td>
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                            <thead className="bg-gray-50 text-gray-500 font-medium border-b">
-                                <tr>
-                                    <th className="px-6 py-4">Content Type</th>
-                                    <th className="px-6 py-4 text-center">Committed (Monthly)</th>
-                                    <th className="px-6 py-4 text-center">Delivered (Completed Tasks)</th>
-                                    <th className="px-6 py-4 text-center">Balance</th>
-                                    <th className="px-6 py-4 text-center">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y">
-                                {selectedClient?.content_strategies?.length > 0 ? (
-                                    selectedClient.content_strategies.map((strategy: any) => {
-                                        const completed = calculateCompleted(strategy.type);
-                                        const balance = strategy.quantity - completed;
-                                        const isMet = balance <= 0;
-
-                                        return (
-                                            <tr key={strategy.id || strategy.type} className="hover:bg-gray-50">
-                                                <td className="px-6 py-4 font-medium text-gray-900 flex items-center gap-2">
-                                                    <Target size={16} className="text-gray-400" />
-                                                    {strategy.type}
-                                                </td>
-                                                <td className="px-6 py-4 text-center font-bold text-gray-700 text-lg">{strategy.quantity}</td>
-                                                <td className="px-6 py-4 text-center text-green-600 font-bold text-lg">
-                                                    {completed}
-                                                </td>
-                                                <td className="px-6 py-4 text-center font-mono font-medium">
-                                                    {balance > 0 ? balance : 0}
-                                                </td>
-                                                <td className="px-6 py-4 text-center">
-                                                    {isMet ? (
-                                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800">
-                                                            <CheckCircle size={12} /> Target Met
+                                        {/* Dynamic Strategy Quantities */}
+                                        {uniqueContentTypes.map((type) => {
+                                            const qty = client.strategyMap[type];
+                                            return (
+                                                <td key={type} className="px-4 py-3 text-center border-r">
+                                                    {qty ? (
+                                                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-gray-700 font-bold text-xs">
+                                                            {qty}
                                                         </span>
                                                     ) : (
-                                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                                            <Clock size={12} /> Pending
-                                                        </span>
+                                                        <span className="text-gray-300">-</span>
                                                     )}
                                                 </td>
-                                            </tr>
-                                        );
-                                    })
-                                ) : (
-                                    <tr>
-                                        <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">
-                                            No Content Strategy defined for this client.
-                                            <br />Go to <span className="font-mono text-xs bg-gray-100 px-1">Client List &gt; Edit</span> to add commitments.
+                                            );
+                                        })}
+
+                                        {/* Totals */}
+                                        <td className="px-5 py-3 text-center font-bold text-blue-700 border-r bg-blue-50/10">
+                                            {client.totalAssigned}
+                                        </td>
+                                        <td className="px-5 py-3 text-center border-r bg-emerald-50/10">
+                                            {client.completed > 0 ? (
+                                                <span className="inline-flex items-center gap-1 font-bold text-emerald-600">
+                                                    {isAllCompleted && <CheckCircle size={14} className="text-emerald-500" />}
+                                                    {client.completed}
+                                                </span>
+                                            ) : (
+                                                <span className="text-gray-400 font-medium">0</span>
+                                            )}
+                                        </td>
+                                        <td className="px-5 py-3 text-center bg-orange-50/10">
+                                            {client.pending > 0 ? (
+                                                <span className="inline-flex items-center gap-1 font-bold text-orange-600 bg-orange-100 px-2.5 py-0.5 rounded-full text-xs">
+                                                    <Clock size={12} /> {client.pending}
+                                                </span>
+                                            ) : (
+                                                <span className="text-gray-400 font-medium">-</span>
+                                            )}
                                         </td>
                                     </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                                );
+                            }) : (
+                                <tr>
+                                    <td colSpan={uniqueContentTypes.length + 4} className="px-6 py-12 text-center text-muted-foreground">
+                                        No client data found.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
                 </div>
-            ) : (
-                <div className="flex flex-col items-center justify-center py-20 bg-gray-50/50 border-2 border-dashed rounded-xl text-center">
-                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                        <AlertCircle className="text-gray-400" size={32} />
-                    </div>
-                    <h3 className="text-lg font-medium text-gray-900">No Client Selected</h3>
-                    <p className="text-muted-foreground max-w-sm mt-1">
-                        Please select a client from the dropdown above to view their content delivery status.
-                    </p>
-                </div>
-            )}
+            </div>
         </div>
     );
 };

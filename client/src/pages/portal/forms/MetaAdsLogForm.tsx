@@ -22,11 +22,22 @@ export const MetaAdsLogForm: React.FC<MetaAdsLogFormProps> = ({ clientId, initia
     const { register, handleSubmit, reset, setValue } = useForm();
     const [platform, setPlatform] = useState('Facebook');
     const [objective, setObjective] = useState('Engagement');
+    const [amount, setAmount] = useState('');
+    const [includeGst, setIncludeGst] = useState(false);
+
+    // Compute gross amount whenever amount or GST toggle changes
+    const grossAmount = amount
+        ? includeGst
+            ? (parseFloat(amount) * 1.18).toFixed(2)
+            : parseFloat(amount).toFixed(2)
+        : '';
 
     useEffect(() => {
         if (initialData) {
             setPlatform(initialData.platform || 'Facebook');
             setObjective(initialData.objective || 'Engagement');
+            // Pre-fill amount from existing spend
+            if (initialData.spend) setAmount(String(initialData.spend));
 
             // Parse results if string
             const results = typeof initialData.results_json === 'string'
@@ -45,6 +56,8 @@ export const MetaAdsLogForm: React.FC<MetaAdsLogFormProps> = ({ clientId, initia
             reset({});
             setPlatform('Facebook');
             setObjective('Engagement');
+            setAmount('');
+            setIncludeGst(false);
         }
     }, [initialData, reset]);
 
@@ -67,7 +80,7 @@ export const MetaAdsLogForm: React.FC<MetaAdsLogFormProps> = ({ clientId, initia
                 campaign_name: data.campaign_name,
                 objective: objective,
                 platform: platform,
-                spend: data.spend,
+                spend: grossAmount ? parseFloat(grossAmount) : 0, // Gross amount (with GST if selected) as the spend
                 results_json: results,
                 notes: data.notes
             };
@@ -140,9 +153,43 @@ export const MetaAdsLogForm: React.FC<MetaAdsLogFormProps> = ({ clientId, initia
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* GST Spend Widget: Amount → GST Checkbox → Gross Amount */}
                         <div className="space-y-2">
-                            <Label>Spend (₹)</Label>
-                            <Input type="number" step="0.01" {...register('spend')} required />
+                            <Label>Amount (₹)</Label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                placeholder="Enter amount"
+                                value={amount}
+                                onChange={(e) => setAmount(e.target.value)}
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                required
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="invisible">GST</Label>
+                            <label className="flex items-center gap-2 h-10 px-3 border rounded-md bg-orange-50 border-orange-200 cursor-pointer hover:bg-orange-100 transition-colors">
+                                <input
+                                    type="checkbox"
+                                    checked={includeGst}
+                                    onChange={(e) => setIncludeGst(e.target.checked)}
+                                    className="w-4 h-4 accent-orange-500"
+                                />
+                                <span className="text-sm font-medium text-orange-700">+ GST 18%</span>
+                            </label>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Gross Amount (₹)</Label>
+                            <div className={`flex h-10 w-full items-center rounded-md border px-3 py-2 text-sm font-semibold ${includeGst ? 'bg-orange-50 border-orange-300 text-orange-800' : 'bg-gray-50 border-gray-200 text-gray-700'
+                                }`}>
+                                {grossAmount ? `₹ ${parseFloat(grossAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '—'}
+                                {includeGst && amount && (
+                                    <span className="ml-auto text-[10px] text-orange-500 font-normal">
+                                        +₹{(parseFloat(amount) * 0.18).toFixed(2)} GST
+                                    </span>
+                                )}
+                            </div>
                         </div>
 
                         {/* Dynamic Fields based on Objective */}

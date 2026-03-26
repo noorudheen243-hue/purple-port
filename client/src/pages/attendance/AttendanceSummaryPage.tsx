@@ -336,7 +336,7 @@ const AttendanceSummaryPage = () => {
     const years = Array.from({ length: 11 }, (_, i) => 2026 + i);
 
     return (
-        <div className="p-6 space-y-6">
+        <div className="p-4 md:p-6 w-full space-y-6">
             {/* Header Section */}
             <div className="flex flex-col gap-4">
                 <div>
@@ -476,7 +476,7 @@ const AttendanceSummaryPage = () => {
                         <CardTitle className="text-purple-900">Monthly Register</CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto custom-scrollbar">
                             <Table>
                                 <TableHeader>
                                     <TableRow className="bg-muted/50">

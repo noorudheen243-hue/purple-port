@@ -33,12 +33,12 @@ const TeamManagerPage = () => {
 
     // Tabs Configuration
     const tabs = [
-        { id: 'team', label: 'Team List', icon: Users, theme: 'yellow' },
-        { id: 'attendance', label: 'Attendance', icon: ClipboardList, theme: 'yellow' },
-        { id: 'biometric', label: 'Biometric Manager', icon: Shield, theme: 'purple' },
-        { id: 'leave', label: 'Leave', icon: Calendar, theme: 'yellow' },
-        { id: 'payroll', label: 'Payroll', icon: Banknote, theme: 'purple' },
-        { id: 'resignation', label: 'Relieve / Resignation', icon: LogOut, theme: 'yellow' },
+        { id: 'team', label: 'Team List', icon: Users, activeClass: 'data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:border-blue-600' },
+        { id: 'attendance', label: 'Attendance', icon: ClipboardList, activeClass: 'data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:border-emerald-600' },
+        { id: 'biometric', label: 'Biometric Manager', icon: Shield, activeClass: 'data-[state=active]:bg-purple-600 data-[state=active]:text-white data-[state=active]:border-purple-600' },
+        { id: 'leave', label: 'Leave', icon: Calendar, activeClass: 'data-[state=active]:bg-amber-500 data-[state=active]:text-white data-[state=active]:border-amber-500' },
+        { id: 'payroll', label: 'Payroll', icon: Banknote, activeClass: 'data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:border-indigo-600' },
+        { id: 'resignation', label: 'Relieve / Resignation', icon: LogOut, activeClass: 'data-[state=active]:bg-rose-600 data-[state=active]:text-white data-[state=active]:border-rose-600' },
     ];
 
     return (
@@ -67,14 +67,7 @@ const TeamManagerPage = () => {
                         <TabsTrigger
                             key={tab.id}
                             value={tab.id}
-                            className={`
-                                data-[state=active]:bg-${tab.theme === 'purple' ? 'purple-900' : 'yellow-400'} 
-                                data-[state=active]:text-${tab.theme === 'purple' ? 'yellow-400' : 'purple-900'} 
-                                data-[state=inactive]:bg-white data-[state=inactive]:text-gray-600 
-                                px-4 py-2 rounded-md font-bold transition-all shadow-sm border border-transparent 
-                                data-[state=active]:border-${tab.theme === 'purple' ? 'yellow-400' : 'purple-900'} 
-                                data-[state=inactive]:border-gray-200
-                            `}
+                            className={`px-4 py-2 rounded-md font-bold transition-all shadow-sm border border-transparent data-[state=inactive]:border-gray-200 data-[state=inactive]:bg-white data-[state=inactive]:text-gray-600 ${tab.activeClass}`}
                         >
                             <tab.icon className="w-4 h-4 mr-2" /> {tab.label}
                         </TabsTrigger>

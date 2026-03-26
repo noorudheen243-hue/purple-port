@@ -20,10 +20,21 @@ const Register = () => {
             await register(formData);
             navigate('/dashboard');
         } catch (err: any) {
-            // handle Zod array errors or simple message
-            const msg = Array.isArray(err.response?.data?.errors)
-                ? err.response.data.errors.map((e: any) => e.message).join(', ')
-                : err.response?.data?.message || 'Registration failed';
+            console.error('Registration Error:', err);
+            let msg = 'Registration failed';
+
+            if (err.response?.data?.message) {
+                if (Array.isArray(err.response.data.message)) {
+                    msg = err.response.data.message.map((e: any) => e.message || JSON.stringify(e)).join(', ');
+                } else if (typeof err.response.data.message === 'object') {
+                    msg = JSON.stringify(err.response.data.message);
+                } else {
+                    msg = String(err.response.data.message);
+                }
+            } else if (err.message) {
+                msg = err.message;
+            }
+
             setError(msg);
         }
     };
@@ -37,8 +48,8 @@ const Register = () => {
                 </div>
 
                 {error && (
-                    <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
-                        {error}
+                    <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md whitespace-pre-wrap">
+                        {String(error)}
                     </div>
                 )}
 

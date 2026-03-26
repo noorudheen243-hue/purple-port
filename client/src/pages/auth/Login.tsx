@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { APP_VERSION } from '../../version';
 
 const Login = () => {
@@ -26,9 +26,20 @@ const Login = () => {
                 navigate('/dashboard');
             }
         } catch (err: any) {
-            console.error(err);
+            console.error('Login Error:', err);
             const status = err.response?.status;
-            const message = err.response?.data?.message || err.message || 'Unknown error';
+            let message = 'Unknown error';
+
+            if (err.response?.data?.message) {
+                if (typeof err.response.data.message === 'object') {
+                    message = JSON.stringify(err.response.data.message);
+                } else {
+                    message = String(err.response.data.message);
+                }
+            } else if (err.message) {
+                message = err.message;
+            }
+
             setError(`Login Failed (${status || 'Net'}): ${message}`);
         }
     };
@@ -44,8 +55,8 @@ const Login = () => {
                 </div>
 
                 {error && (
-                    <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
-                        {error}
+                    <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md whitespace-pre-wrap">
+                        {String(error)}
                     </div>
                 )}
 
@@ -96,10 +107,6 @@ const Login = () => {
                     </button>
                 </form>
 
-                <div className="text-center text-sm">
-                    <span className="text-muted-foreground">Don't have an account? </span>
-                    <Link to="/register" className="text-primary hover:underline">Register</Link>
-                </div>
                 {/* Version Tag for Debugging */}
                 <div className="text-center text-xs text-gray-400 mt-4">
                     v{APP_VERSION} (Live Update Confirmed)

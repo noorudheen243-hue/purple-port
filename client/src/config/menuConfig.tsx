@@ -35,7 +35,6 @@ export interface MenuItem {
 }
 
 export const ADMIN_MANAGER_MENU: MenuItem[] = [
-
     {
         label: "Client Management",
         path: "/dashboard/client-manager",
@@ -51,17 +50,15 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
         label: "Team Management",
         path: "/dashboard/team-management",
         icon: Users,
-        // Reverted to single view as per request
     },
     {
         label: "Task Management",
         icon: CheckSquare,
         path: "/dashboard/tasks/manager"
-    }
+    },
 ];
 
 export const STAFF_MENU: MenuItem[] = [
-
     {
         label: "Client Management",
         path: "/dashboard/client-manager",
@@ -73,25 +70,31 @@ export const STAFF_MENU: MenuItem[] = [
         path: "/dashboard/tasks/manager"
     },
     {
-        label: "Attendance",
-        icon: UserCheck,
-        path: '/dashboard/attendance/summary'
+        label: "Team Management",
+        icon: Users,
+        children: [
+            {
+                label: "Attendance",
+                icon: UserCheck,
+                path: '/dashboard/attendance/summary'
+            },
+            {
+                label: "Leave",
+                path: "/dashboard/leave",
+                icon: Calendar
+            },
+            {
+                label: "Payroll",
+                icon: Banknote,
+                path: '/dashboard/payroll/manager'
+            },
+            {
+                label: "Relieve / Resignation",
+                path: "/dashboard/team/resignation",
+                icon: LogOut
+            }
+        ]
     },
-    {
-        label: "Leave",
-        path: "/dashboard/leave",
-        icon: Calendar
-    },
-    {
-        label: "Payroll",
-        icon: Banknote,
-        path: '/dashboard/payroll/manager'
-    },
-    {
-        label: "Relieve / Resignation",
-        path: "/dashboard/team/resignation",
-        icon: LogOut
-    }
 ];
 
 export const CLIENT_MENU: MenuItem[] = [

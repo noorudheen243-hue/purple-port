@@ -365,6 +365,58 @@ const ApprovalsPage = () => {
         </div>
     );
 
+    const ResignationHistoryTable = ({ requests }: { requests: any[] }) => (
+        <div className="rounded-md border">
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Employee</TableHead>
+                        <TableHead>Applied Date</TableHead>
+                        <TableHead>Action Taken By</TableHead>
+                        <TableHead>Reason / Remarks</TableHead>
+                        <TableHead>Status</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {requests.length === 0 ? (
+                        <TableRow>
+                            <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
+                                No resignation history found.
+                            </TableCell>
+                        </TableRow>
+                    ) : (
+                        requests.map((req) => (
+                            <TableRow key={req.id}>
+                                <TableCell className="font-medium">
+                                    <div className="flex flex-col">
+                                        <span>{req.employee?.full_name}</span>
+                                        <span className="text-xs text-muted-foreground">{req.employee?.role}</span>
+                                    </div>
+                                </TableCell>
+                                <TableCell>{format(new Date(req.applied_date), 'dd MMM yyyy')}</TableCell>
+                                <TableCell>
+                                    <span className="text-sm font-medium">{req.approver?.full_name || '-'}</span>
+                                </TableCell>
+                                <TableCell className="max-w-[250px]">
+                                    <div className="flex flex-col">
+                                        <span className="truncate text-sm text-muted-foreground" title={req.reason}>Reason: {req.reason}</span>
+                                        {req.rejection_reason && <span className="truncate text-xs text-red-500" title={req.rejection_reason}>Remark: {req.rejection_reason}</span>}
+                                        {req.revision_reason && <span className="truncate text-xs text-orange-500" title={req.revision_reason}>Revision: {req.revision_reason}</span>}
+                                    </div>
+                                </TableCell>
+                                <TableCell>
+                                    <Badge variant={req.status === 'UNDER_NOTICE' ? 'default' : req.status === 'COMPLETED' ? 'secondary' : 'destructive'}>
+                                        {req.status === 'UNDER_NOTICE' ? 'APPROVED (NOTICE)' : req.status}
+                                    </Badge>
+                                </TableCell>
+                            </TableRow>
+                        ))
+                    )}
+                </TableBody>
+            </Table>
+        </div>
+    );
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500" >
             <Card>
@@ -378,9 +430,9 @@ const ApprovalsPage = () => {
                 </CardHeader>
                 <CardContent>
                     <Tabs defaultValue="pending" className="w-full">
-                        <TabsList className="grid w-full grid-cols-2 mb-6">
-                            <TabsTrigger value="pending">Pending Actions</TabsTrigger>
-                            <TabsTrigger value="history">Approval History</TabsTrigger>
+                        <TabsList className="grid w-full grid-cols-2 mb-6 gap-2 bg-transparent h-auto p-0">
+                            <TabsTrigger value="pending" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:bg-white border rounded-md py-2 font-bold shadow-sm">Pending Actions</TabsTrigger>
+                            <TabsTrigger value="history" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white data-[state=inactive]:bg-white border rounded-md py-2 font-bold shadow-sm">Approval History</TabsTrigger>
                         </TabsList>
 
                         <TabsContent value="pending" className="space-y-6">
@@ -493,15 +545,19 @@ const ApprovalsPage = () => {
                             </div>
 
                             <Tabs defaultValue="hist-leave" className="w-full">
-                                <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent space-x-6">
-                                    <TabsTrigger value="hist-leave" className="data-[state=active]:border-b-2 data-[state=active]:border-yellow-500 rounded-none px-0 py-2">Leave History</TabsTrigger>
-                                    <TabsTrigger value="hist-reg" className="data-[state=active]:border-b-2 data-[state=active]:border-purple-500 rounded-none px-0 py-2">Regularization History</TabsTrigger>
+                                <TabsList className="w-full justify-start border-b pb-2 mb-2 bg-transparent p-0 flex flex-wrap gap-2 h-auto">
+                                    <TabsTrigger value="hist-leave" className="data-[state=active]:bg-amber-500 data-[state=active]:text-white data-[state=inactive]:bg-white border rounded-md px-4 py-2 font-semibold shadow-sm text-sm">Leave History</TabsTrigger>
+                                    <TabsTrigger value="hist-reg" className="data-[state=active]:bg-indigo-500 data-[state=active]:text-white data-[state=inactive]:bg-white border rounded-md px-4 py-2 font-semibold shadow-sm text-sm">Regularization History</TabsTrigger>
+                                    <TabsTrigger value="hist-res" className="data-[state=active]:bg-rose-500 data-[state=active]:text-white data-[state=inactive]:bg-white border rounded-md px-4 py-2 font-semibold shadow-sm text-sm">Resignation History</TabsTrigger>
                                 </TabsList>
                                 <TabsContent value="hist-leave" className="mt-4">
                                     <RequestTable requests={leaveHistory} type="LEAVE" isHistory={true} />
                                 </TabsContent>
                                 <TabsContent value="hist-reg" className="mt-4">
                                     <RequestTable requests={regHistory} type="REGULARISATION" isHistory={true} />
+                                </TabsContent>
+                                <TabsContent value="hist-res" className="mt-4">
+                                    <ResignationHistoryTable requests={resignation.filter((r: any) => r.status !== 'APPLIED')} />
                                 </TabsContent>
                             </Tabs>
                         </TabsContent>

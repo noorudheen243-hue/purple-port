@@ -261,3 +261,50 @@ export const wipeAllAvatars = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Wipe failed', error: error.message });
     }
 };
+
+export const getSystemSettings = async (req: Request, res: Response) => {
+    try {
+        const settings = await prisma.systemSetting.findMany();
+        const settingsMap = settings.reduce((acc: any, setting) => {
+            acc[setting.key] = setting.value;
+            return acc;
+        }, {});
+
+        // Ensure AUTO_LOGOUT_LIMIT has a default if not found
+        if (!settingsMap.AUTO_LOGOUT_LIMIT) {
+            settingsMap.AUTO_LOGOUT_LIMIT = '30';
+            
+            // Optional: Auto-populate the database for visibility
+            await prisma.systemSetting.upsert({
+                where: { key: 'AUTO_LOGOUT_LIMIT' },
+                update: {},
+                create: { key: 'AUTO_LOGOUT_LIMIT', value: '30' }
+            }).catch(e => console.error("Failed to auto-populate setting:", e));
+        }
+
+        res.json(settingsMap);
+    } catch (error: any) {
+        res.status(500).json({ message: 'Failed to fetch settings', error: error.message });
+    }
+};
+
+export const updateSystemSetting = async (req: Request, res: Response) => {
+    try {
+        const { key, value } = req.body;
+        
+        // Security: Only Developer Admin
+        if (req.user?.role !== 'DEVELOPER_ADMIN') {
+            return res.status(403).json({ message: 'Forbidden. Developer Admin only.' });
+        }
+
+        await prisma.systemSetting.upsert({
+            where: { key },
+            update: { value: String(value) },
+            create: { key, value: String(value) }
+        });
+
+        res.json({ message: `Setting ${key} updated successfully` });
+    } catch (error: any) {
+        res.status(500).json({ message: 'Failed to update setting', error: error.message });
+    }
+};

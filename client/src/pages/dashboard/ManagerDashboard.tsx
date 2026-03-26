@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Moon, Sun, Bell, Users } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import PendingRequestsModal from '@/components/attendance/PendingRequestsModalv2';
 import { getAssetUrl } from '@/lib/utils';
@@ -16,30 +16,13 @@ const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#94a3b8']; // Green, Blue, Yel
 
 // Clock Component Removed - Moved to Global Layout
 
-// Theme Hook
-const useTheme = () => {
-    const [isDark, setIsDark] = useState(document.documentElement.classList.contains('dark'));
-    useEffect(() => {
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                if (mutation.attributeName === 'class') {
-                    setIsDark(document.documentElement.classList.contains('dark'));
-                }
-            });
-        });
-        observer.observe(document.documentElement, { attributes: true });
-        return () => observer.disconnect();
-    }, []);
-    return isDark;
-};
+// Theme Hook Removed
 
 import { useSearchParams } from 'react-router-dom';
 
 const ManagerDashboard = () => {
     const { user } = useAuthStore();
     const navigate = useNavigate();
-    const isDarkMode = useTheme();
-    const axisColor = isDarkMode ? '#e2e8f0' : '#64748b';
     const [searchParams, setSearchParams] = useSearchParams();
     const highlightRequestId = searchParams.get('requestId'); // slate-200 (dark) vs slate-500 (light)
 
@@ -184,21 +167,40 @@ const ManagerDashboard = () => {
                                             <TableHead className="text-xs font-bold">Client</TableHead>
                                             <TableHead className="text-xs font-bold">Task Type</TableHead>
                                             <TableHead className="text-xs font-bold">Assigned By</TableHead>
+                                            <TableHead className="text-xs font-bold text-right">Status</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {isCreativeLoading ? (
-                                            <TableRow><TableCell colSpan={5} className="h-24 text-center text-xs text-muted-foreground animate-pulse">Loading today's tasks...</TableCell></TableRow>
+                                            <TableRow><TableCell colSpan={6} className="h-24 text-center text-xs text-muted-foreground animate-pulse">Loading today's tasks...</TableCell></TableRow>
                                         ) : creativeDashboard?.dailyTasks?.length === 0 ? (
-                                            <TableRow><TableCell colSpan={5} className="h-24 text-center text-xs text-muted-foreground italic">No tasks assigned yet today.</TableCell></TableRow>
+                                            <TableRow><TableCell colSpan={6} className="h-24 text-center text-xs text-muted-foreground italic">No tasks assigned yet today.</TableCell></TableRow>
                                         ) : (
                                             creativeDashboard?.dailyTasks?.map((task: any) => (
-                                                <TableRow key={task.id} className="hover:bg-gray-50/50 transition-colors">
+                                                <TableRow
+                                                    key={task.id}
+                                                    className="hover:bg-gray-50/50 transition-colors cursor-pointer"
+                                                    onClick={() => navigate(`/dashboard/tasks/${task.id}`)}
+                                                >
                                                     <TableCell className="text-xs font-medium text-gray-500">{task.s_no}</TableCell>
                                                     <TableCell className="text-xs font-bold text-gray-900">{task.staff_name}</TableCell>
                                                     <TableCell className="text-xs font-medium text-indigo-600">{task.client_name}</TableCell>
                                                     <TableCell className="text-xs font-medium"><Badge variant="outline" className="text-[10px] font-bold py-0">{task.task_type}</Badge></TableCell>
                                                     <TableCell className="text-xs text-gray-600">{task.assigned_by}</TableCell>
+                                                    <TableCell className="text-right">
+                                                        <Badge className={`
+                                                            ${task.status === 'REVIEW' ? 'bg-amber-500' :
+                                                                task.status === 'IN_PROGRESS' ? 'bg-blue-600' :
+                                                                    task.status === 'REVISION_REQUESTED' ? 'bg-red-500' :
+                                                                        task.status === 'COMPLETED' ? 'bg-green-600' :
+                                                                            task.status === 'PLANNED' ? 'bg-slate-400' :
+                                                                                task.status === 'ASSIGNED' ? 'bg-indigo-500' :
+                                                                                    task.status === 'ON_HOLD' ? 'bg-gray-500' : 'bg-slate-500'} 
+                                                            text-white border-none font-bold text-[8px] px-1 py-0
+                                                        `}>
+                                                            {task.status?.replace(/_/g, ' ') || 'PLANNED'}
+                                                        </Badge>
+                                                    </TableCell>
                                                 </TableRow>
                                             ))
                                         )}

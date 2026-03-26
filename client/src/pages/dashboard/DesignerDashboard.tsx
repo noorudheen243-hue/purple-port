@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
@@ -23,7 +24,7 @@ const DesignerDashboard = () => {
             };
         }
     });
-
+    const navigate = useNavigate();
     const { data: creativeDashboard, isLoading: isCreativeLoading } = useQuery({
         queryKey: ['creative-dashboard'],
         queryFn: async () => (await api.get('/analytics/creative-dashboard')).data
@@ -39,10 +40,8 @@ const DesignerDashboard = () => {
         enabled: !!user?.id
     });
 
-    if (isLoading || isCreativeLoading || isTasksLoading) return <div className="p-8 text-center text-gray-500 animate-pulse">Loading workspace...</div>;
-
     const { distribution } = data || { distribution: [] };
-    const myStats = data?.efficiency[0] || { total: 0, completed: 0, efficiency: 0 };
+    const myStats = data?.efficiency?.[0] || { total: 0, completed: 0, efficiency: 0 };
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
@@ -78,7 +77,13 @@ const DesignerDashboard = () => {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {!myTasks || myTasks.length === 0 ? (
+                                    {isTasksLoading ? (
+                                        <TableRow className="border-slate-800">
+                                            <TableCell colSpan={5} className="h-32 text-center text-slate-500 animate-pulse font-medium">
+                                                Loading your tasks...
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : !myTasks || myTasks.length === 0 ? (
                                         <TableRow className="border-slate-800">
                                             <TableCell colSpan={5} className="h-32 text-center text-slate-500 italic font-medium">
                                                 No active tasks assigned to you. Enjoy the breather!
@@ -146,21 +151,40 @@ const DesignerDashboard = () => {
                                         <TableHead className="font-bold">Client</TableHead>
                                         <TableHead className="font-bold">Task Type</TableHead>
                                         <TableHead className="font-bold">Assigned By</TableHead>
+                                        <TableHead className="font-bold text-right">Status</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {isCreativeLoading ? (
-                                        <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted-foreground animate-pulse font-medium text-sm">Refreshing creative assignments...</TableCell></TableRow>
+                                        <TableRow><TableCell colSpan={6} className="h-32 text-center text-muted-foreground animate-pulse font-medium text-sm">Refreshing creative assignments...</TableCell></TableRow>
                                     ) : creativeDashboard?.dailyTasks?.length === 0 ? (
-                                        <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic font-medium text-sm">No tasks assigned to your team yet today.</TableCell></TableRow>
+                                        <TableRow><TableCell colSpan={6} className="h-32 text-center text-muted-foreground italic font-medium text-sm">No tasks assigned to your team yet today.</TableCell></TableRow>
                                     ) : (
                                         creativeDashboard?.dailyTasks?.map((task: any) => (
-                                            <TableRow key={task.id} className="hover:bg-gray-50 transition-colors">
+                                            <TableRow
+                                                key={task.id}
+                                                className="hover:bg-gray-50 transition-colors cursor-pointer"
+                                                onClick={() => navigate(`/dashboard/tasks/${task.id}`)}
+                                            >
                                                 <TableCell className="font-semibold text-gray-400">{task.s_no}</TableCell>
                                                 <TableCell className="font-bold text-gray-800">{task.staff_name}</TableCell>
                                                 <TableCell className="font-bold text-orange-600">{task.client_name}</TableCell>
                                                 <TableCell><Badge className="bg-orange-50 text-orange-700 border-orange-100 font-bold" variant="outline">{task.task_type}</Badge></TableCell>
                                                 <TableCell className="text-gray-500 font-medium">{task.assigned_by}</TableCell>
+                                                <TableCell className="text-right">
+                                                    <Badge className={`
+                                                        ${task.status === 'REVIEW' ? 'bg-amber-500' :
+                                                            task.status === 'IN_PROGRESS' ? 'bg-blue-600' :
+                                                                task.status === 'REVISION_REQUESTED' ? 'bg-red-500' :
+                                                                    task.status === 'COMPLETED' ? 'bg-green-600' :
+                                                                        task.status === 'PLANNED' ? 'bg-slate-400' :
+                                                                            task.status === 'ASSIGNED' ? 'bg-indigo-500' :
+                                                                                task.status === 'ON_HOLD' ? 'bg-gray-500' : 'bg-slate-600'} 
+                                                        text-white border-none font-bold text-[10px]
+                                                    `}>
+                                                        {task.status?.replace(/_/g, ' ') || 'PLANNED'}
+                                                    </Badge>
+                                                </TableCell>
                                             </TableRow>
                                         ))
                                     )}
@@ -181,30 +205,34 @@ const DesignerDashboard = () => {
                         <TrendingUp size={18} />
                     </CardHeader>
                     <CardContent className="p-0">
-                        <div className="overflow-x-auto">
-                            <Table>
-                                <TableHeader className="bg-gray-50">
-                                    <TableRow>
-                                        <TableHead className="text-xs font-bold uppercase">Staff</TableHead>
-                                        <TableHead className="text-xs font-bold text-right uppercase">Efficiency</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {creativeDashboard?.dailyEfficiency?.map((item: any) => (
-                                        <TableRow key={item.id} className="hover:bg-gray-50 transition-colors">
-                                            <TableCell className={`text-sm font-bold ${item.id === user?.id ? 'text-orange-600' : 'text-gray-600'}`}>
-                                                {item.staff_name} {item.id === user?.id && '(Me)'}
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <Badge className={`${item.efficiency >= 80 ? 'bg-green-100 text-green-700 border-green-200' : item.efficiency >= 50 ? 'bg-orange-100 text-orange-700 border-orange-200' : 'bg-red-100 text-red-700 border-red-200'} font-black text-xs`}>
-                                                    {item.efficiency}%
-                                                </Badge>
-                                            </TableCell>
+                        {isCreativeLoading ? (
+                            <div className="h-24 flex items-center justify-center text-sm text-muted-foreground animate-pulse">Loading...</div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader className="bg-gray-50">
+                                        <TableRow>
+                                            <TableHead className="text-xs font-bold uppercase">Staff</TableHead>
+                                            <TableHead className="text-xs font-bold text-right uppercase">Efficiency</TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {creativeDashboard?.dailyEfficiency?.map((item: any) => (
+                                            <TableRow key={item.id} className="hover:bg-gray-50 transition-colors">
+                                                <TableCell className={`text-sm font-bold ${item.id === user?.id ? 'text-orange-600' : 'text-gray-600'}`}>
+                                                    {item.staff_name} {item.id === user?.id && '(Me)'}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <Badge className={`${item.efficiency >= 80 ? 'bg-green-100 text-green-700 border-green-200' : item.efficiency >= 50 ? 'bg-orange-100 text-orange-700 border-orange-200' : 'bg-red-100 text-red-700 border-red-200'} font-black text-xs`}>
+                                                        {item.efficiency}%
+                                                    </Badge>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 
@@ -215,30 +243,34 @@ const DesignerDashboard = () => {
                         <Calendar size={18} />
                     </CardHeader>
                     <CardContent className="p-0">
-                        <div className="overflow-x-auto">
-                            <Table>
-                                <TableHeader className="bg-gray-50">
-                                    <TableRow>
-                                        <TableHead className="text-xs font-bold uppercase">Staff</TableHead>
-                                        <TableHead className="text-xs font-bold text-right uppercase">Rank</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {creativeDashboard?.weeklyEfficiency?.map((item: any) => (
-                                        <TableRow key={item.id} className="hover:bg-gray-50 transition-colors">
-                                            <TableCell className={`text-sm font-bold ${item.id === user?.id ? 'text-blue-600' : 'text-gray-600'}`}>
-                                                {item.staff_name}
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-black text-xs ${item.efficiency >= 80 ? 'bg-green-500 text-white shadow-sm' : item.efficiency >= 50 ? 'bg-blue-500 text-white shadow-sm' : 'bg-slate-300 text-white shadow-inner'}`}>
-                                                    {item.efficiency}
-                                                </span>
-                                            </TableCell>
+                        {isCreativeLoading ? (
+                            <div className="h-24 flex items-center justify-center text-sm text-muted-foreground animate-pulse">Loading...</div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader className="bg-gray-50">
+                                        <TableRow>
+                                            <TableHead className="text-xs font-bold uppercase">Staff</TableHead>
+                                            <TableHead className="text-xs font-bold text-right uppercase">Rank</TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {creativeDashboard?.weeklyEfficiency?.map((item: any) => (
+                                            <TableRow key={item.id} className="hover:bg-gray-50 transition-colors">
+                                                <TableCell className={`text-sm font-bold ${item.id === user?.id ? 'text-blue-600' : 'text-gray-600'}`}>
+                                                    {item.staff_name}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-black text-xs ${item.efficiency >= 80 ? 'bg-green-500 text-white shadow-sm' : item.efficiency >= 50 ? 'bg-blue-500 text-white shadow-sm' : 'bg-slate-300 text-white shadow-inner'}`}>
+                                                        {item.efficiency}
+                                                    </span>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 
@@ -249,36 +281,40 @@ const DesignerDashboard = () => {
                         <BadgeCheck size={20} />
                     </CardHeader>
                     <CardContent className="p-0">
-                        <div className="overflow-x-auto">
-                            <Table>
-                                <TableHeader className="bg-gray-50">
-                                    <TableRow>
-                                        <TableHead className="text-xs font-bold uppercase">Staff</TableHead>
-                                        <TableHead className="text-xs font-bold text-right uppercase">Track</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {creativeDashboard?.monthlyEfficiency?.map((item: any) => (
-                                        <TableRow key={item.id} className="hover:bg-gray-50 transition-colors">
-                                            <TableCell className={`text-sm font-bold ${item.id === user?.id ? 'text-indigo-600' : 'text-gray-600'}`}>
-                                                {item.staff_name}
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <div className="flex flex-col items-end gap-1">
-                                                    <span className="text-[10px] font-black text-indigo-600 leading-none">{item.efficiency}%</span>
-                                                    <div className="w-16 h-2 bg-gray-100 rounded-full overflow-hidden shadow-inner border border-gray-100">
-                                                        <div
-                                                            className={`h-full ${item.id === user?.id ? 'bg-indigo-600 shadow-md' : 'bg-indigo-400 opacity-60'}`}
-                                                            style={{ width: `${item.efficiency}%` }}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </TableCell>
+                        {isCreativeLoading ? (
+                            <div className="h-24 flex items-center justify-center text-sm text-muted-foreground animate-pulse">Loading...</div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader className="bg-gray-50">
+                                        <TableRow>
+                                            <TableHead className="text-xs font-bold uppercase">Staff</TableHead>
+                                            <TableHead className="text-xs font-bold text-right uppercase">Track</TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {creativeDashboard?.monthlyEfficiency?.map((item: any) => (
+                                            <TableRow key={item.id} className="hover:bg-gray-50 transition-colors">
+                                                <TableCell className={`text-sm font-bold ${item.id === user?.id ? 'text-indigo-600' : 'text-gray-600'}`}>
+                                                    {item.staff_name}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex flex-col items-end gap-1">
+                                                        <span className="text-[10px] font-black text-indigo-600 leading-none">{item.efficiency}%</span>
+                                                        <div className="w-16 h-2 bg-gray-100 rounded-full overflow-hidden shadow-inner border border-gray-100">
+                                                            <div
+                                                                className={`h-full ${item.id === user?.id ? 'bg-indigo-600 shadow-md' : 'bg-indigo-400 opacity-60'}`}
+                                                                style={{ width: `${item.efficiency}%` }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </div>

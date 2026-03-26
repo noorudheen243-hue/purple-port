@@ -103,10 +103,10 @@ const CreativeTaskManager = () => {
                             <CalendarView />
                         </TabsContent>
                         <TabsContent value="performance" className="mt-0">
-                            <TeamPerformance />
+                            <TeamPerformance defaultDept="CREATIVE" />
                         </TabsContent>
                         <TabsContent value="reports" className="mt-0">
-                            <TaskReports />
+                            <TaskReports department="CREATIVE" />
                         </TabsContent>
                         <TabsContent value="history" className="mt-0">
                             <TaskHistory />

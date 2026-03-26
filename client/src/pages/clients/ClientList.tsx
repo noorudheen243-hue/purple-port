@@ -131,6 +131,11 @@ const ClientList = ({ defaultOpenCreate = false }: ClientListProps) => {
 
     if (isLoading) return <div>Loading clients...</div>;
 
+    // --- Calculate Summary Counts ---
+    const activeCount = clients?.filter((c: any) => c.status === 'ACTIVE').length || 0;
+    const onHoldCount = clients?.filter((c: any) => c.status === 'ON_HOLD').length || 0;
+    const inactiveCount = clients?.filter((c: any) => c.status === 'INACTIVE').length || 0;
+
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
@@ -142,6 +147,39 @@ const ClientList = ({ defaultOpenCreate = false }: ClientListProps) => {
                     <Plus size={16} />
                     New Client
                 </button>
+            </div>
+
+            {/* --- Summary Cards --- */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div className="bg-white rounded-lg p-5 shadow-sm border border-green-100 flex items-center justify-between">
+                    <div>
+                        <p className="text-sm font-medium text-gray-500 mb-1">Active Clients</p>
+                        <h3 className="text-3xl font-bold text-green-700">{activeCount}</h3>
+                    </div>
+                    <div className="p-3 bg-green-50 rounded-full text-green-600">
+                        <CheckCircle size={24} />
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-lg p-5 shadow-sm border border-amber-100 flex items-center justify-between">
+                    <div>
+                        <p className="text-sm font-medium text-gray-500 mb-1">On Hold</p>
+                        <h3 className="text-3xl font-bold text-amber-700">{onHoldCount}</h3>
+                    </div>
+                    <div className="p-3 bg-amber-50 rounded-full text-amber-600">
+                        <Users size={24} />
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-lg p-5 shadow-sm border border-gray-200 flex items-center justify-between">
+                    <div>
+                        <p className="text-sm font-medium text-gray-500 mb-1">Inactive Clients</p>
+                        <h3 className="text-3xl font-bold text-gray-700">{inactiveCount}</h3>
+                    </div>
+                    <div className="p-3 bg-gray-100 rounded-full text-gray-500">
+                        <Trash2 size={24} />
+                    </div>
+                </div>
             </div>
 
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">

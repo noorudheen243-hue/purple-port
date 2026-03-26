@@ -2,6 +2,7 @@ import 'dotenv/config';
 import app from './app';
 // import cors from 'cors'; // cors handled in app.ts
 import { syncBiometrics, BiometricDaemon } from './modules/attendance/biometric.service';
+import { initAIEngine } from './cron/aiNotificationEngine';
 
 const PORT = process.env.PORT || 4001;
 
@@ -29,6 +30,9 @@ const runningServer = server.listen(PORT, async () => {
 
     // Start Biometric Management Service (Heartbeat + Auto-Sync)
     BiometricDaemon.start();
+
+    // Start AI Smart Notification Engine
+    initAIEngine();
 });
 
 const shutdown = async () => {

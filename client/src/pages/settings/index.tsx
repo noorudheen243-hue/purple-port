@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import api from '@/lib/api';
-import { Shield, Lock, CheckCircle2, AlertCircle, Users, Banknote, Database, LayoutDashboard, Wrench, HardDriveDownload, KeyRound } from 'lucide-react';
+import { Shield, Lock, CheckCircle2, AlertCircle, Users, Banknote, Database, LayoutDashboard, Wrench, HardDriveDownload, KeyRound, Zap, Sparkles, UserPlus, UserRoundX } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Swal from 'sweetalert2';
@@ -13,6 +13,9 @@ import PayrollSettings from '../payroll/PayrollSettings';
 import DataSync from '../admin/DataSync';
 import BackupRestore from '../admin/BackupRestore';
 import StaffCredentialManager from '../team/StaffCredentialManager';
+import { MarketingIntegrations } from '../marketing/MarketingIntegrations';
+import { WhatsAppIntegration } from './WhatsAppIntegration';
+import { SmartAlertRulesTab } from './SmartAlertRulesTab';
 import { ROLES } from '../../utils/roles';
 
 const SettingsPage = () => {
@@ -22,6 +25,8 @@ const SettingsPage = () => {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const [autoLogoutLimit, setAutoLogoutLimit] = useState<string>('30');
+    const [settingsLoading, setSettingsLoading] = useState(false);
 
     const isDevAdmin = user?.role === ROLES.DEVELOPER_ADMIN;
 
@@ -59,36 +64,93 @@ const SettingsPage = () => {
         }
     };
 
+    const fetchSettings = async () => {
+        try {
+            setSettingsLoading(true);
+            const { data } = await api.get('/system/settings');
+            if (data.AUTO_LOGOUT_LIMIT) {
+                setAutoLogoutLimit(data.AUTO_LOGOUT_LIMIT);
+            }
+        } catch (error) {
+            console.error('Failed to fetch settings:', error);
+        } finally {
+            setSettingsLoading(false);
+        }
+    };
+
+    const handleUpdateSetting = async (key: string, value: string) => {
+        try {
+            setSettingsLoading(true);
+            await api.post('/system/settings', { key, value });
+            Swal.fire({
+                icon: 'success',
+                title: 'Setting Updated',
+                text: `${key} has been updated to ${value} minutes.`,
+                timer: 2000,
+                showConfirmButton: false
+            });
+        } catch (error: any) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Update Failed',
+                text: error.response?.data?.message || 'Failed to update setting'
+            });
+        } finally {
+            setSettingsLoading(false);
+        }
+    };
+
+    React.useEffect(() => {
+        if (isDevAdmin) {
+            fetchSettings();
+        }
+    }, [isDevAdmin]);
+
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
+        <div className="space-y-4 animate-in fade-in duration-500">
             <div>
                 <h2 className="text-3xl font-bold tracking-tight">Settings</h2>
                 <p className="text-muted-foreground">Manage your account and system preferences.</p>
             </div>
 
             <Tabs defaultValue="profile" className="space-y-6">
-                <TabsList className="bg-muted p-1 rounded-lg">
-                    <TabsTrigger value="profile" className="flex items-center gap-2">
-                        <Lock size={16} /> My Security
+                <TabsList className="w-full flex flex-row flex-wrap gap-1.5 bg-gray-50 border border-gray-200 p-1.5 h-auto rounded-xl">
+                    <TabsTrigger value="profile" className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-purple-200 bg-purple-50 text-purple-700 data-[state=active]:bg-purple-600 data-[state=active]:text-white data-[state=active]:border-purple-600 shadow-sm transition-all hover:bg-purple-100 data-[state=active]:hover:bg-purple-700 whitespace-nowrap">
+                        <Lock size={13} /> My Security
                     </TabsTrigger>
                     {isDevAdmin && (
-                        <TabsTrigger value="system" className="flex items-center gap-2">
-                            <Shield size={16} /> System Control
+                        <TabsTrigger value="system" className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-blue-200 bg-blue-50 text-blue-700 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:border-blue-600 shadow-sm transition-all hover:bg-blue-100 data-[state=active]:hover:bg-blue-700 whitespace-nowrap">
+                            <Shield size={13} /> System Control
                         </TabsTrigger>
                     )}
                     {(isDevAdmin || user?.role === ROLES.ADMIN) && (
-                        <TabsTrigger value="maintenance" className="flex items-center gap-2">
-                            <Wrench size={16} /> Maintenance
+                        <TabsTrigger value="maintenance" className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-orange-200 bg-orange-50 text-orange-700 data-[state=active]:bg-orange-600 data-[state=active]:text-white data-[state=active]:border-orange-600 shadow-sm transition-all hover:bg-orange-100 data-[state=active]:hover:bg-orange-700 whitespace-nowrap">
+                            <Wrench size={13} /> Maintenance
                         </TabsTrigger>
                     )}
                     {isDevAdmin && (
-                        <TabsTrigger value="backup" className="flex items-center gap-2">
-                            <HardDriveDownload size={16} /> Backup &amp; Restore
+                        <TabsTrigger value="backup" className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-violet-200 bg-violet-50 text-violet-700 data-[state=active]:bg-violet-600 data-[state=active]:text-white data-[state=active]:border-violet-600 shadow-sm transition-all hover:bg-violet-100 data-[state=active]:hover:bg-violet-700 whitespace-nowrap">
+                            <HardDriveDownload size={13} /> Backup &amp; Restore
                         </TabsTrigger>
                     )}
                     {(isDevAdmin || user?.role === ROLES.ADMIN) && (
-                        <TabsTrigger value="credentials" className="flex items-center gap-2">
-                            <KeyRound size={16} /> Team Credential Management
+                        <TabsTrigger value="credentials" className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:border-indigo-600 shadow-sm transition-all hover:bg-indigo-100 data-[state=active]:hover:bg-indigo-700 whitespace-nowrap">
+                            <KeyRound size={13} /> Team Credentials
+                        </TabsTrigger>
+                    )}
+                    {isDevAdmin && (
+                        <TabsTrigger value="app-security" className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-red-200 bg-red-50 text-red-700 data-[state=active]:bg-red-600 data-[state=active]:text-white data-[state=active]:border-red-600 shadow-sm transition-all hover:bg-red-100 data-[state=active]:hover:bg-red-700 whitespace-nowrap">
+                            <Shield size={13} /> App Security
+                        </TabsTrigger>
+                    )}
+                    {(isDevAdmin || user?.role === ROLES.ADMIN || user?.role === ROLES.MANAGER) && (
+                        <TabsTrigger value="integrations" className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-teal-200 bg-teal-50 text-teal-700 data-[state=active]:bg-teal-600 data-[state=active]:text-white data-[state=active]:border-teal-600 shadow-sm transition-all hover:bg-teal-100 data-[state=active]:hover:bg-teal-700 whitespace-nowrap">
+                            <Zap size={13} /> Integrations
+                        </TabsTrigger>
+                    )}
+                    {(isDevAdmin || user?.role === ROLES.ADMIN) && (
+                        <TabsTrigger value="smart-alerts" className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:border-indigo-600 shadow-sm transition-all hover:bg-indigo-100 data-[state=active]:hover:bg-indigo-700 whitespace-nowrap">
+                            <Sparkles size={13} /> Smart Alerts
                         </TabsTrigger>
                     )}
                 </TabsList>
@@ -318,6 +380,64 @@ const SettingsPage = () => {
                                 <DataSync />
                             </TabsContent>
                         </Tabs>
+                    </TabsContent>
+                )}
+
+                {/* TAB: APP SECURITY (DEVELOPER ADMIN ONLY) */}
+                {isDevAdmin && (
+                    <TabsContent value="app-security">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <Shield className="h-5 w-5 text-red-600" />
+                                    Application Security Settings
+                                </CardTitle>
+                                <CardDescription>
+                                    Configure global security policies for the entire application.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                <div className="space-y-4 max-w-md">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="autoLogout">Auto-Logout Time Limit (Minutes)</Label>
+                                        <div className="flex gap-2">
+                                            <Input
+                                                id="autoLogout"
+                                                type="number"
+                                                min="1"
+                                                value={autoLogoutLimit}
+                                                onChange={(e) => setAutoLogoutLimit(e.target.value)}
+                                                placeholder="e.g. 30"
+                                            />
+                                            <Button 
+                                                onClick={() => handleUpdateSetting('AUTO_LOGOUT_LIMIT', autoLogoutLimit)}
+                                                disabled={settingsLoading}
+                                            >
+                                                {settingsLoading ? "Saving..." : "Save"}
+                                            </Button>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            Users will be automatically logged out after this many minutes of inactivity.
+                                        </p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                )}
+
+                {/* TAB: INTEGRATIONS (DEV ADMIN, ADMIN, MANAGER) */}
+                {(isDevAdmin || user?.role === ROLES.ADMIN || user?.role === ROLES.MANAGER) && (
+                    <TabsContent value="integrations" className="mt-0 space-y-6">
+                        <WhatsAppIntegration />
+                        <MarketingIntegrations />
+                    </TabsContent>
+                )}
+
+                {/* TAB: SMART ALERTS (ADMIN) */}
+                {(isDevAdmin || user?.role === ROLES.ADMIN) && (
+                    <TabsContent value="smart-alerts" className="mt-0">
+                        <SmartAlertRulesTab />
                     </TabsContent>
                 )}
             </Tabs>

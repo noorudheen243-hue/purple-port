@@ -9,8 +9,17 @@ import { Textarea } from '../../components/ui/textarea';
 import api from '../../lib/api';
 
 const RequestPage = () => {
-    const { register, handleSubmit, formState: { errors }, setValue } = useForm();
+    const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm();
     const [isLoading, setIsLoading] = useState(false);
+    const isHalfDay = watch("is_half_day");
+    const startDate = watch("start_date");
+
+    // Sync end date with start date if half day
+    React.useEffect(() => {
+        if (isHalfDay && startDate) {
+            setValue("end_date", startDate);
+        }
+    }, [isHalfDay, startDate, setValue]);
 
     const onSubmit = async (data: any) => {
         setIsLoading(true);
@@ -18,8 +27,9 @@ const RequestPage = () => {
             await api.post('/leave/apply', {
                 type: data.type,
                 start_date: data.start_date,
-                end_date: data.end_date,
-                reason: data.reason
+                end_date: data.is_half_day ? data.start_date : data.end_date,
+                reason: data.reason,
+                is_half_day: data.is_half_day
             });
             alert("Leave request submitted successfully!");
             // Reset form
@@ -27,9 +37,10 @@ const RequestPage = () => {
             setValue("type", "");
             setValue("start_date", "");
             setValue("end_date", "");
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            alert("Failed to submit request. Please try again.");
+            const errorMessage = error.response?.data?.message || error.message || "Failed to submit request. Please try again.";
+            alert(errorMessage);
         } finally {
             setIsLoading(false);
         }
@@ -44,6 +55,18 @@ const RequestPage = () => {
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                        <div className="flex items-center space-x-2 py-2">
+                            <input
+                                type="checkbox"
+                                id="is_half_day"
+                                {...register("is_half_day")}
+                                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                            />
+                            <Label htmlFor="is_half_day" className="text-sm font-medium cursor-pointer">
+                                This is a Half-Day Leave Request
+                            </Label>
+                        </div>
+
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label>Start Date</Label>
@@ -51,7 +74,11 @@ const RequestPage = () => {
                             </div>
                             <div className="space-y-2">
                                 <Label>End Date</Label>
-                                <Input type="date" {...register("end_date", { required: true })} />
+                                <Input
+                                    type="date"
+                                    {...register("end_date", { required: !isHalfDay })}
+                                    disabled={isHalfDay}
+                                />
                             </div>
                         </div>
 

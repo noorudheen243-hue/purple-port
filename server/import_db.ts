@@ -32,7 +32,11 @@ async function importData() {
         for (const u of data.users) await prisma.user.create({ data: u }).catch(e => console.log(`Skipping User ${u.email}: Exists`));
 
         console.log("Importing StaffProfiles...");
-        for (const s of data.staffProfiles) await prisma.staffProfile.create({ data: s }).catch(e => console.log(`Skipping Staff ${s.staff_number}`));
+        for (const s of data.staffProfiles) {
+            delete s.shift_timing;
+            delete s.grace_time;
+            await prisma.staffProfile.create({ data: s }).catch(e => console.log(`Skipping Staff ${s.staff_number}`));
+        }
 
         // --- 2. Core Entities ---
         console.log("Importing AccountHeads...");

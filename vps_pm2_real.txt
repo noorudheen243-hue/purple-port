@@ -1,0 +1,1005 @@
+[TAILING] Tailing last 500 lines for [qix-ads-v2.6] process (change the value with --lines option)
+/root/.pm2/logs/qix-ads-v2.6-error.log last 500 lines:
+0|qix-ads- | {
+0|qix-ads- |   where: {
+0|qix-ads- |     campaignId: "63b3ee17-c9b2-43fa-b1de-27cedea6a345",
+0|qix-ads- |     date: {
+0|qix-ads- |       gte: new Date("Invalid Date"),
+0|qix-ads- |            ~~~~~~~~~~~~~~~~~~~~~~~~
+0|qix-ads- |       lt: new Date("Invalid Date")
+0|qix-ads- |     }
+0|qix-ads- |   }
+0|qix-ads- | }
+0|qix-ads- | 
+0|qix-ads- | Invalid value for argument `gte`: Provided Date object is invalid. Expected Date.
+0|qix-ads- |     at wn (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:1363)
+0|qix-ads- |     at e.throwValidationError (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:10206)
+0|qix-ads- |     at sa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:7746)
+0|qix-ads- |     at aa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8908)
+0|qix-ads- |     at sa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8439)
+0|qix-ads- |     at aa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8908)
+0|qix-ads- |     at sa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8439)
+0|qix-ads- |     at aa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8908)
+0|qix-ads- |     at mr (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:6037)
+0|qix-ads- |     at vn (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:5902) {
+0|qix-ads- |   clientVersion: '5.22.0'
+0|qix-ads- | }
+0|qix-ads- | Failed to sync campaign 63b3ee17-c9b2-43fa-b1de-27cedea6a345 PrismaClientValidationError: 
+0|qix-ads- | Invalid `prisma.marketingMetric.findFirst()` invocation:
+0|qix-ads- | 
+0|qix-ads- | {
+0|qix-ads- |   where: {
+0|qix-ads- |     campaignId: "63b3ee17-c9b2-43fa-b1de-27cedea6a345",
+0|qix-ads- |     date: {
+0|qix-ads- |       gte: new Date("Invalid Date"),
+0|qix-ads- |            ~~~~~~~~~~~~~~~~~~~~~~~~
+0|qix-ads- |       lt: new Date("Invalid Date")
+0|qix-ads- |     }
+0|qix-ads- |   }
+0|qix-ads- | }
+0|qix-ads- | 
+0|qix-ads- | Invalid value for argument `gte`: Provided Date object is invalid. Expected Date.
+0|qix-ads- |     at wn (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:1363)
+0|qix-ads- |     at e.throwValidationError (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:10206)
+0|qix-ads- |     at sa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:7746)
+0|qix-ads- |     at aa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8908)
+0|qix-ads- |     at sa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8439)
+0|qix-ads- |     at aa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8908)
+0|qix-ads- |     at sa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8439)
+0|qix-ads- |     at aa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8908)
+0|qix-ads- |     at mr (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:6037)
+0|qix-ads- |     at vn (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:5902) {
+0|qix-ads- |   clientVersion: '5.22.0'
+0|qix-ads- | }
+0|qix-ads- | No marketing account with token found for client 1dca8a40-5cf5-4b66-b256-0e5e2c1d6cae on meta. Skipping campaign.
+0|qix-ads- | No marketing account with token found for client 1dca8a40-5cf5-4b66-b256-0e5e2c1d6cae on google. Skipping campaign.
+0|qix-ads- | Error syncing metrics for campaign af92449a-e131-405b-be37-e4f495c5ea49 on meta PrismaClientValidationError: 
+0|qix-ads- | Invalid `prisma.marketingMetric.findFirst()` invocation:
+0|qix-ads- | 
+0|qix-ads- | {
+0|qix-ads- |   where: {
+0|qix-ads- |     campaignId: "af92449a-e131-405b-be37-e4f495c5ea49",
+0|qix-ads- |     date: {
+0|qix-ads- |       gte: new Date("Invalid Date"),
+0|qix-ads- |            ~~~~~~~~~~~~~~~~~~~~~~~~
+0|qix-ads- |       lt: new Date("Invalid Date")
+0|qix-ads- |     }
+0|qix-ads- |   }
+0|qix-ads- | }
+0|qix-ads- | 
+0|qix-ads- | Invalid value for argument `gte`: Provided Date object is invalid. Expected Date.
+0|qix-ads- |     at wn (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:1363)
+0|qix-ads- |     at e.throwValidationError (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:10206)
+0|qix-ads- |     at sa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:7746)
+0|qix-ads- |     at aa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8908)
+0|qix-ads- |     at sa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8439)
+0|qix-ads- |     at aa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8908)
+0|qix-ads- |     at sa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8439)
+0|qix-ads- |     at aa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8908)
+0|qix-ads- |     at mr (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:6037)
+0|qix-ads- |     at vn (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:5902) {
+0|qix-ads- |   clientVersion: '5.22.0'
+0|qix-ads- | }
+0|qix-ads- | Failed to sync campaign af92449a-e131-405b-be37-e4f495c5ea49 PrismaClientValidationError: 
+0|qix-ads- | Invalid `prisma.marketingMetric.findFirst()` invocation:
+0|qix-ads- | 
+0|qix-ads- | {
+0|qix-ads- |   where: {
+0|qix-ads- |     campaignId: "af92449a-e131-405b-be37-e4f495c5ea49",
+0|qix-ads- |     date: {
+0|qix-ads- |       gte: new Date("Invalid Date"),
+0|qix-ads- |            ~~~~~~~~~~~~~~~~~~~~~~~~
+0|qix-ads- |       lt: new Date("Invalid Date")
+0|qix-ads- |     }
+0|qix-ads- |   }
+0|qix-ads- | }
+0|qix-ads- | 
+0|qix-ads- | Invalid value for argument `gte`: Provided Date object is invalid. Expected Date.
+0|qix-ads- |     at wn (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:1363)
+0|qix-ads- |     at e.throwValidationError (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:10206)
+0|qix-ads- |     at sa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:7746)
+0|qix-ads- |     at aa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8908)
+0|qix-ads- |     at sa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8439)
+0|qix-ads- |     at aa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8908)
+0|qix-ads- |     at sa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8439)
+0|qix-ads- |     at aa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8908)
+0|qix-ads- |     at mr (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:6037)
+0|qix-ads- |     at vn (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:5902) {
+0|qix-ads- |   clientVersion: '5.22.0'
+0|qix-ads- | }
+0|qix-ads- | Error syncing metrics for campaign 63b3ee17-c9b2-43fa-b1de-27cedea6a345 on meta PrismaClientValidationError: 
+0|qix-ads- | Invalid `prisma.marketingMetric.findFirst()` invocation:
+0|qix-ads- | 
+0|qix-ads- | {
+0|qix-ads- |   where: {
+0|qix-ads- |     campaignId: "63b3ee17-c9b2-43fa-b1de-27cedea6a345",
+0|qix-ads- |     date: {
+0|qix-ads- |       gte: new Date("Invalid Date"),
+0|qix-ads- |            ~~~~~~~~~~~~~~~~~~~~~~~~
+0|qix-ads- |       lt: new Date("Invalid Date")
+0|qix-ads- |     }
+0|qix-ads- |   }
+0|qix-ads- | }
+0|qix-ads- | 
+0|qix-ads- | Invalid value for argument `gte`: Provided Date object is invalid. Expected Date.
+0|qix-ads- |     at wn (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:1363)
+0|qix-ads- |     at e.throwValidationError (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:10206)
+0|qix-ads- |     at sa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:7746)
+0|qix-ads- |     at aa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8908)
+0|qix-ads- |     at sa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8439)
+0|qix-ads- |     at aa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8908)
+0|qix-ads- |     at sa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8439)
+0|qix-ads- |     at aa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8908)
+0|qix-ads- |     at mr (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:6037)
+0|qix-ads- |     at vn (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:5902) {
+0|qix-ads- |   clientVersion: '5.22.0'
+0|qix-ads- | }
+0|qix-ads- | Failed to sync campaign 63b3ee17-c9b2-43fa-b1de-27cedea6a345 PrismaClientValidationError: 
+0|qix-ads- | Invalid `prisma.marketingMetric.findFirst()` invocation:
+0|qix-ads- | 
+0|qix-ads- | {
+0|qix-ads- |   where: {
+0|qix-ads- |     campaignId: "63b3ee17-c9b2-43fa-b1de-27cedea6a345",
+0|qix-ads- |     date: {
+0|qix-ads- |       gte: new Date("Invalid Date"),
+0|qix-ads- |            ~~~~~~~~~~~~~~~~~~~~~~~~
+0|qix-ads- |       lt: new Date("Invalid Date")
+0|qix-ads- |     }
+0|qix-ads- |   }
+0|qix-ads- | }
+0|qix-ads- | 
+0|qix-ads- | Invalid value for argument `gte`: Provided Date object is invalid. Expected Date.
+0|qix-ads- |     at wn (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:1363)
+0|qix-ads- |     at e.throwValidationError (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:10206)
+0|qix-ads- |     at sa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:7746)
+0|qix-ads- |     at aa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8908)
+0|qix-ads- |     at sa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8439)
+0|qix-ads- |     at aa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8908)
+0|qix-ads- |     at sa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8439)
+0|qix-ads- |     at aa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8908)
+0|qix-ads- |     at mr (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:6037)
+0|qix-ads- |     at vn (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:5902) {
+0|qix-ads- |   clientVersion: '5.22.0'
+0|qix-ads- | }
+0|qix-ads- | TypeError: Cannot read properties of undefined (reading 'findMany')
+0|qix-ads- |     at /var/www/antigravity/server/dist/modules/marketing-tasks/controller.js:118:63
+0|qix-ads- |     at Generator.next (<anonymous>)
+0|qix-ads- |     at /var/www/antigravity/server/dist/modules/marketing-tasks/controller.js:8:71
+0|qix-ads- |     at new Promise (<anonymous>)
+0|qix-ads- |     at __awaiter (/var/www/antigravity/server/dist/modules/marketing-tasks/controller.js:4:12)
+0|qix-ads- |     at authMeta (/var/www/antigravity/server/dist/modules/marketing-tasks/controller.js:113:12)
+0|qix-ads- |     at Layer.handle [as handle_request] (/var/www/antigravity/node_modules/express/lib/router/layer.js:95:5)
+0|qix-ads- |     at next (/var/www/antigravity/node_modules/express/lib/router/route.js:149:13)
+0|qix-ads- |     at Route.dispatch (/var/www/antigravity/node_modules/express/lib/router/route.js:119:3)
+0|qix-ads- |     at Layer.handle [as handle_request] (/var/www/antigravity/node_modules/express/lib/router/layer.js:95:5)
+0|qix-ads- | TypeError: Cannot read properties of undefined (reading 'findMany')
+0|qix-ads- |     at /var/www/antigravity/server/dist/modules/marketing-tasks/controller.js:118:63
+0|qix-ads- |     at Generator.next (<anonymous>)
+0|qix-ads- |     at /var/www/antigravity/server/dist/modules/marketing-tasks/controller.js:8:71
+0|qix-ads- |     at new Promise (<anonymous>)
+0|qix-ads- |     at __awaiter (/var/www/antigravity/server/dist/modules/marketing-tasks/controller.js:4:12)
+0|qix-ads- |     at authMeta (/var/www/antigravity/server/dist/modules/marketing-tasks/controller.js:113:12)
+0|qix-ads- |     at Layer.handle [as handle_request] (/var/www/antigravity/node_modules/express/lib/router/layer.js:95:5)
+0|qix-ads- |     at next (/var/www/antigravity/node_modules/express/lib/router/route.js:149:13)
+0|qix-ads- |     at Route.dispatch (/var/www/antigravity/node_modules/express/lib/router/route.js:119:3)
+0|qix-ads- |     at Layer.handle [as handle_request] (/var/www/antigravity/node_modules/express/lib/router/layer.js:95:5)
+0|qix-ads- | TypeError: Cannot read properties of undefined (reading 'findMany')
+0|qix-ads- |     at /var/www/antigravity/server/dist/modules/marketing-tasks/controller.js:118:63
+0|qix-ads- |     at Generator.next (<anonymous>)
+0|qix-ads- |     at /var/www/antigravity/server/dist/modules/marketing-tasks/controller.js:8:71
+0|qix-ads- |     at new Promise (<anonymous>)
+0|qix-ads- |     at __awaiter (/var/www/antigravity/server/dist/modules/marketing-tasks/controller.js:4:12)
+0|qix-ads- |     at authMeta (/var/www/antigravity/server/dist/modules/marketing-tasks/controller.js:113:12)
+0|qix-ads- |     at Layer.handle [as handle_request] (/var/www/antigravity/node_modules/express/lib/router/layer.js:95:5)
+0|qix-ads- |     at next (/var/www/antigravity/node_modules/express/lib/router/route.js:149:13)
+0|qix-ads- |     at Route.dispatch (/var/www/antigravity/node_modules/express/lib/router/route.js:119:3)
+0|qix-ads- |     at Layer.handle [as handle_request] (/var/www/antigravity/node_modules/express/lib/router/layer.js:95:5)
+0|qix-ads- | No marketing account with token found for client 1dca8a40-5cf5-4b66-b256-0e5e2c1d6cae on meta. Skipping campaign.
+0|qix-ads- | No marketing account with token found for client 1dca8a40-5cf5-4b66-b256-0e5e2c1d6cae on google. Skipping campaign.
+0|qix-ads- | Error syncing metrics for campaign af92449a-e131-405b-be37-e4f495c5ea49 on meta PrismaClientValidationError: 
+0|qix-ads- | Invalid `prisma.marketingMetric.findFirst()` invocation:
+0|qix-ads- | 
+0|qix-ads- | {
+0|qix-ads- |   where: {
+0|qix-ads- |     campaignId: "af92449a-e131-405b-be37-e4f495c5ea49",
+0|qix-ads- |     date: {
+0|qix-ads- |       gte: new Date("Invalid Date"),
+0|qix-ads- |            ~~~~~~~~~~~~~~~~~~~~~~~~
+0|qix-ads- |       lt: new Date("Invalid Date")
+0|qix-ads- |     }
+0|qix-ads- |   }
+0|qix-ads- | }
+0|qix-ads- | 
+0|qix-ads- | Invalid value for argument `gte`: Provided Date object is invalid. Expected Date.
+0|qix-ads- |     at wn (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:1363)
+0|qix-ads- |     at e.throwValidationError (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:10206)
+0|qix-ads- |     at sa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:7746)
+0|qix-ads- |     at aa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8908)
+0|qix-ads- |     at sa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8439)
+0|qix-ads- |     at aa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8908)
+0|qix-ads- |     at sa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8439)
+0|qix-ads- |     at aa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8908)
+0|qix-ads- |     at mr (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:6037)
+0|qix-ads- |     at vn (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:5902) {
+0|qix-ads- |   clientVersion: '5.22.0'
+0|qix-ads- | }
+0|qix-ads- | Failed to sync campaign af92449a-e131-405b-be37-e4f495c5ea49 PrismaClientValidationError: 
+0|qix-ads- | Invalid `prisma.marketingMetric.findFirst()` invocation:
+0|qix-ads- | 
+0|qix-ads- | {
+0|qix-ads- |   where: {
+0|qix-ads- |     campaignId: "af92449a-e131-405b-be37-e4f495c5ea49",
+0|qix-ads- |     date: {
+0|qix-ads- |       gte: new Date("Invalid Date"),
+0|qix-ads- |            ~~~~~~~~~~~~~~~~~~~~~~~~
+0|qix-ads- |       lt: new Date("Invalid Date")
+0|qix-ads- |     }
+0|qix-ads- |   }
+0|qix-ads- | }
+0|qix-ads- | 
+0|qix-ads- | Invalid value for argument `gte`: Provided Date object is invalid. Expected Date.
+0|qix-ads- |     at wn (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:1363)
+0|qix-ads- |     at e.throwValidationError (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:10206)
+0|qix-ads- |     at sa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:7746)
+0|qix-ads- |     at aa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8908)
+0|qix-ads- |     at sa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8439)
+0|qix-ads- |     at aa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8908)
+0|qix-ads- |     at sa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8439)
+0|qix-ads- |     at aa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8908)
+0|qix-ads- |     at mr (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:6037)
+0|qix-ads- |     at vn (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:5902) {
+0|qix-ads- |   clientVersion: '5.22.0'
+0|qix-ads- | }
+0|qix-ads- | Error syncing metrics for campaign 63b3ee17-c9b2-43fa-b1de-27cedea6a345 on meta PrismaClientValidationError: 
+0|qix-ads- | Invalid `prisma.marketingMetric.findFirst()` invocation:
+0|qix-ads- | 
+0|qix-ads- | {
+0|qix-ads- |   where: {
+0|qix-ads- |     campaignId: "63b3ee17-c9b2-43fa-b1de-27cedea6a345",
+0|qix-ads- |     date: {
+0|qix-ads- |       gte: new Date("Invalid Date"),
+0|qix-ads- |            ~~~~~~~~~~~~~~~~~~~~~~~~
+0|qix-ads- |       lt: new Date("Invalid Date")
+0|qix-ads- |     }
+0|qix-ads- |   }
+0|qix-ads- | }
+0|qix-ads- | 
+0|qix-ads- | Invalid value for argument `gte`: Provided Date object is invalid. Expected Date.
+0|qix-ads- |     at wn (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:1363)
+0|qix-ads- |     at e.throwValidationError (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:10206)
+0|qix-ads- |     at sa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:7746)
+0|qix-ads- |     at aa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8908)
+0|qix-ads- |     at sa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8439)
+0|qix-ads- |     at aa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8908)
+0|qix-ads- |     at sa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8439)
+0|qix-ads- |     at aa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8908)
+0|qix-ads- |     at mr (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:6037)
+0|qix-ads- |     at vn (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:5902) {
+0|qix-ads- |   clientVersion: '5.22.0'
+0|qix-ads- | }
+0|qix-ads- | Failed to sync campaign 63b3ee17-c9b2-43fa-b1de-27cedea6a345 PrismaClientValidationError: 
+0|qix-ads- | Invalid `prisma.marketingMetric.findFirst()` invocation:
+0|qix-ads- | 
+0|qix-ads- | {
+0|qix-ads- |   where: {
+0|qix-ads- |     campaignId: "63b3ee17-c9b2-43fa-b1de-27cedea6a345",
+0|qix-ads- |     date: {
+0|qix-ads- |       gte: new Date("Invalid Date"),
+0|qix-ads- |            ~~~~~~~~~~~~~~~~~~~~~~~~
+0|qix-ads- |       lt: new Date("Invalid Date")
+0|qix-ads- |     }
+0|qix-ads- |   }
+0|qix-ads- | }
+0|qix-ads- | 
+0|qix-ads- | Invalid value for argument `gte`: Provided Date object is invalid. Expected Date.
+0|qix-ads- |     at wn (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:1363)
+0|qix-ads- |     at e.throwValidationError (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:10206)
+0|qix-ads- |     at sa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:7746)
+0|qix-ads- |     at aa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8908)
+0|qix-ads- |     at sa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8439)
+0|qix-ads- |     at aa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8908)
+0|qix-ads- |     at sa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8439)
+0|qix-ads- |     at aa (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:8908)
+0|qix-ads- |     at mr (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:6037)
+0|qix-ads- |     at vn (/var/www/antigravity/node_modules/@prisma/client/runtime/library.js:29:5902) {
+0|qix-ads- |   clientVersion: '5.22.0'
+0|qix-ads- | }
+0|qix-ads- | TypeError: Cannot read properties of undefined (reading 'findMany')
+0|qix-ads- |     at /var/www/antigravity/server/dist/modules/marketing-tasks/controller.js:118:63
+0|qix-ads- |     at Generator.next (<anonymous>)
+0|qix-ads- |     at /var/www/antigravity/server/dist/modules/marketing-tasks/controller.js:8:71
+0|qix-ads- |     at new Promise (<anonymous>)
+0|qix-ads- |     at __awaiter (/var/www/antigravity/server/dist/modules/marketing-tasks/controller.js:4:12)
+0|qix-ads- |     at authMeta (/var/www/antigravity/server/dist/modules/marketing-tasks/controller.js:113:12)
+0|qix-ads- |     at Layer.handle [as handle_request] (/var/www/antigravity/node_modules/express/lib/router/layer.js:95:5)
+0|qix-ads- |     at next (/var/www/antigravity/node_modules/express/lib/router/route.js:149:13)
+0|qix-ads- |     at Route.dispatch (/var/www/antigravity/node_modules/express/lib/router/route.js:119:3)
+0|qix-ads- |     at Layer.handle [as handle_request] (/var/www/antigravity/node_modules/express/lib/router/layer.js:95:5)
+0|qix-ads- | Select Account Error: 
+0|qix-ads- | Invalid `prisma.marketingCampaign.deleteMany()` invocation:
+0|qix-ads- | 
+0|qix-ads- | 
+0|qix-ads- | Foreign key constraint violated: `foreign key`
+0|qix-ads- | Meta API fetchMetrics error for campaign camp_meta_1: {
+0|qix-ads- |   error: {
+0|qix-ads- |     message: "Unsupported get request. Object with ID 'camp_meta_1' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api",
+0|qix-ads- |     type: 'GraphMethodException',
+0|qix-ads- |     code: 100,
+0|qix-ads- |     error_subcode: 33,
+0|qix-ads- |     fbtrace_id: 'A5QVj11qzFwK9-4CRByAY4Q'
+0|qix-ads- |   }
+0|qix-ads- | }
+0|qix-ads- | Meta API fetchMetrics error for campaign camp_meta_2: {
+0|qix-ads- |   error: {
+0|qix-ads- |     message: "Unsupported get request. Object with ID 'camp_meta_2' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api",
+0|qix-ads- |     type: 'GraphMethodException',
+0|qix-ads- |     code: 100,
+0|qix-ads- |     error_subcode: 33,
+0|qix-ads- |     fbtrace_id: 'AJfi5ladnmTx1O-gAyea7YO'
+0|qix-ads- |   }
+0|qix-ads- | }
+0|qix-ads- | Meta API fetchMetrics error for campaign camp_meta_1: {
+0|qix-ads- |   error: {
+0|qix-ads- |     message: "Unsupported get request. Object with ID 'camp_meta_1' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api",
+0|qix-ads- |     type: 'GraphMethodException',
+0|qix-ads- |     code: 100,
+0|qix-ads- |     error_subcode: 33,
+0|qix-ads- |     fbtrace_id: 'AXRsP0B65w2NgawF9rs3YpZ'
+0|qix-ads- |   }
+0|qix-ads- | }
+0|qix-ads- | Meta API fetchMetrics error for campaign camp_meta_2: {
+0|qix-ads- |   error: {
+0|qix-ads- |     message: "Unsupported get request. Object with ID 'camp_meta_2' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api",
+0|qix-ads- |     type: 'GraphMethodException',
+0|qix-ads- |     code: 100,
+0|qix-ads- |     error_subcode: 33,
+0|qix-ads- |     fbtrace_id: 'AfMsXFZj_F_CfjsaHm_xpb1'
+0|qix-ads- |   }
+0|qix-ads- | }
+0|qix-ads- | Meta API fetchMetrics error for campaign camp_meta_1: {
+0|qix-ads- |   error: {
+0|qix-ads- |     message: "Unsupported get request. Object with ID 'camp_meta_1' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api",
+0|qix-ads- |     type: 'GraphMethodException',
+0|qix-ads- |     code: 100,
+0|qix-ads- |     error_subcode: 33,
+0|qix-ads- |     fbtrace_id: 'AeNFvHBG8a7A1s0Ta9oGvOV'
+0|qix-ads- |   }
+0|qix-ads- | }
+0|qix-ads- | Meta API fetchMetrics error for campaign camp_meta_2: {
+0|qix-ads- |   error: {
+0|qix-ads- |     message: "Unsupported get request. Object with ID 'camp_meta_2' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api",
+0|qix-ads- |     type: 'GraphMethodException',
+0|qix-ads- |     code: 100,
+0|qix-ads- |     error_subcode: 33,
+0|qix-ads- |     fbtrace_id: 'AKvzQ3Vfu09vua5KrBXqYTT'
+0|qix-ads- |   }
+0|qix-ads- | }
+0|qix-ads- | Meta API fetchMetrics error for campaign camp_meta_1: {
+0|qix-ads- |   error: {
+0|qix-ads- |     message: "Unsupported get request. Object with ID 'camp_meta_1' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api",
+0|qix-ads- |     type: 'GraphMethodException',
+0|qix-ads- |     code: 100,
+0|qix-ads- |     error_subcode: 33,
+0|qix-ads- |     fbtrace_id: 'AJHdqlpwwsqnImv2Y4O5nPH'
+0|qix-ads- |   }
+0|qix-ads- | }
+0|qix-ads- | Meta API fetchMetrics error for campaign camp_meta_2: {
+0|qix-ads- |   error: {
+0|qix-ads- |     message: "Unsupported get request. Object with ID 'camp_meta_2' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api",
+0|qix-ads- |     type: 'GraphMethodException',
+0|qix-ads- |     code: 100,
+0|qix-ads- |     error_subcode: 33,
+0|qix-ads- |     fbtrace_id: 'AIbs22Y_U_W3bHtBzUeVQaM'
+0|qix-ads- |   }
+0|qix-ads- | }
+0|qix-ads- | Meta API fetchMetrics error for campaign camp_meta_1: {
+0|qix-ads- |   error: {
+0|qix-ads- |     message: "Unsupported get request. Object with ID 'camp_meta_1' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api",
+0|qix-ads- |     type: 'GraphMethodException',
+0|qix-ads- |     code: 100,
+0|qix-ads- |     error_subcode: 33,
+0|qix-ads- |     fbtrace_id: 'ALu5q7XVJaN3fY1vJzrCEp3'
+0|qix-ads- |   }
+0|qix-ads- | }
+0|qix-ads- | Meta API fetchMetrics error for campaign camp_meta_2: {
+0|qix-ads- |   error: {
+0|qix-ads- |     message: "Unsupported get request. Object with ID 'camp_meta_2' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api",
+0|qix-ads- |     type: 'GraphMethodException',
+0|qix-ads- |     code: 100,
+0|qix-ads- |     error_subcode: 33,
+0|qix-ads- |     fbtrace_id: 'AwCPx6QgrUObYxdamO_CGoI'
+0|qix-ads- |   }
+0|qix-ads- | }
+0|qix-ads- | Meta API fetchMetrics error for campaign camp_meta_1: {
+0|qix-ads- |   error: {
+0|qix-ads- |     message: "Unsupported get request. Object with ID 'camp_meta_1' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api",
+0|qix-ads- |     type: 'GraphMethodException',
+0|qix-ads- |     code: 100,
+0|qix-ads- |     error_subcode: 33,
+0|qix-ads- |     fbtrace_id: 'A8Iqksif232h0I3AHEntHPY'
+0|qix-ads- |   }
+0|qix-ads- | }
+0|qix-ads- | Meta API fetchMetrics error for campaign camp_meta_2: {
+0|qix-ads- |   error: {
+0|qix-ads- |     message: "Unsupported get request. Object with ID 'camp_meta_2' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api",
+0|qix-ads- |     type: 'GraphMethodException',
+0|qix-ads- |     code: 100,
+0|qix-ads- |     error_subcode: 33,
+0|qix-ads- |     fbtrace_id: 'AUgJ9YINU6w0it9gnFriFkw'
+0|qix-ads- |   }
+0|qix-ads- | }
+0|qix-ads- | Meta API fetchMetrics error for campaign camp_meta_1: {
+0|qix-ads- |   error: {
+0|qix-ads- |     message: "Unsupported get request. Object with ID 'camp_meta_1' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api",
+0|qix-ads- |     type: 'GraphMethodException',
+0|qix-ads- |     code: 100,
+0|qix-ads- |     error_subcode: 33,
+0|qix-ads- |     fbtrace_id: 'AZ4lew-u7_vJrMrTo83gDmA'
+0|qix-ads- |   }
+0|qix-ads- | }
+0|qix-ads- | Meta API fetchMetrics error for campaign camp_meta_2: {
+0|qix-ads- |   error: {
+0|qix-ads- |     message: "Unsupported get request. Object with ID 'camp_meta_2' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api",
+0|qix-ads- |     type: 'GraphMethodException',
+0|qix-ads- |     code: 100,
+0|qix-ads- |     error_subcode: 33,
+0|qix-ads- |     fbtrace_id: 'Am_OMqdxcTtjkS_GqObcDmN'
+0|qix-ads- |   }
+0|qix-ads- | }
+0|qix-ads- | Meta API fetchMetrics error for campaign camp_meta_1: {
+0|qix-ads- |   error: {
+0|qix-ads- |     message: "Unsupported get request. Object with ID 'camp_meta_1' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api",
+0|qix-ads- |     type: 'GraphMethodException',
+0|qix-ads- |     code: 100,
+0|qix-ads- |     error_subcode: 33,
+0|qix-ads- |     fbtrace_id: 'AcWpfoUiR3sLfLSNmlNPZk3'
+0|qix-ads- |   }
+0|qix-ads- | }
+0|qix-ads- | Meta API fetchMetrics error for campaign camp_meta_2: {
+0|qix-ads- |   error: {
+0|qix-ads- |     message: "Unsupported get request. Object with ID 'camp_meta_2' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api",
+0|qix-ads- |     type: 'GraphMethodException',
+0|qix-ads- |     code: 100,
+0|qix-ads- |     error_subcode: 33,
+0|qix-ads- |     fbtrace_id: 'A62sZOUawZROajPgfcVYhuT'
+0|qix-ads- |   }
+0|qix-ads- | }
+0|qix-ads- | Meta API fetchMetrics error for campaign camp_meta_1: {
+0|qix-ads- |   error: {
+0|qix-ads- |     message: "Unsupported get request. Object with ID 'camp_meta_1' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api",
+0|qix-ads- |     type: 'GraphMethodException',
+0|qix-ads- |     code: 100,
+0|qix-ads- |     error_subcode: 33,
+0|qix-ads- |     fbtrace_id: 'AK96uf9Nj9G1pR59QbYAhNK'
+0|qix-ads- |   }
+0|qix-ads- | }
+0|qix-ads- | Meta API fetchMetrics error for campaign camp_meta_2: {
+0|qix-ads- |   error: {
+0|qix-ads- |     message: "Unsupported get request. Object with ID 'camp_meta_2' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api",
+0|qix-ads- |     type: 'GraphMethodException',
+0|qix-ads- |     code: 100,
+0|qix-ads- |     error_subcode: 33,
+0|qix-ads- |     fbtrace_id: 'ADM6mkNSN2Lg-I9k5IA2RGZ'
+0|qix-ads- |   }
+0|qix-ads- | }
+0|qix-ads- | Meta API fetchMetrics error for campaign camp_meta_1: {
+0|qix-ads- |   error: {
+0|qix-ads- |     message: "Unsupported get request. Object with ID 'camp_meta_1' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api",
+0|qix-ads- |     type: 'GraphMethodException',
+0|qix-ads- |     code: 100,
+0|qix-ads- |     error_subcode: 33,
+0|qix-ads- |     fbtrace_id: 'ATE7Bm7FULhXuiyG_er_ctT'
+0|qix-ads- |   }
+0|qix-ads- | }
+0|qix-ads- | Meta API fetchMetrics error for campaign camp_meta_2: {
+0|qix-ads- |   error: {
+0|qix-ads- |     message: "Unsupported get request. Object with ID 'camp_meta_2' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api",
+0|qix-ads- |     type: 'GraphMethodException',
+0|qix-ads- |     code: 100,
+0|qix-ads- |     error_subcode: 33,
+0|qix-ads- |     fbtrace_id: 'AbrjSC-8WqchtjZgcNaMT00'
+0|qix-ads- |   }
+0|qix-ads- | }
+
+/root/.pm2/logs/qix-ads-v2.6-out.log last 500 lines:
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 5.177 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (6ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 4.585 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (5ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 5.366 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (6ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 3.613 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (4ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 5.502 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (6ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 3.111 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (3ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 8.403 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (9ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 6.804 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (7ms)
+0|qix-ads- | [BiometricDaemon] Running Auto-Sync...
+0|qix-ads- | Starting Biometric Sync (AUTO)...
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 4.440 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (4ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 2.820 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (2ms)
+0|qix-ads- | [0mGET /api/notifications [36m304[0m 2.775 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/notifications - 304 (4ms)
+0|qix-ads- | [0mGET /api/clients [36m304[0m 8.839 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/clients - 304 (9ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 4.067 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (5ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 3.433 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (4ms)
+0|qix-ads- | [0mPOST /api/settings/batch [32m200[0m 14.952 ms - 260[0m
+0|qix-ads- | [HTTP] POST /api/settings/batch - 200 (7ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 4.712 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (5ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 3.153 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (3ms)
+0|qix-ads- | [0mGET /api/marketing/status?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86 [36m304[0m 2.326 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/marketing/status?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86 - 304 (3ms)
+0|qix-ads- | [0mGET /api/settings [32m200[0m 1.499 ms - 140[0m
+0|qix-ads- | [HTTP] GET /api/settings - 200 (1ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 3.983 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (5ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 2.433 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (2ms)
+0|qix-ads- | [DEBUG selectAccount] Received Request: {
+0|qix-ads- |   clientId: 'b8199325-e5ee-4e64-85c1-bfcc20664d86',
+0|qix-ads- |   platform: 'meta',
+0|qix-ads- |   externalAccountId: '2844542265768540'
+0|qix-ads- | }
+0|qix-ads- | [DEBUG selectAccount] Existing Account Found: true
+0|qix-ads- | [DEBUG selectAccount] ID changed from mock-meta-ad-account to 2844542265768540. Deleting old campaigns.
+0|qix-ads- | prisma:error 
+0|qix-ads- | Invalid `prisma.marketingCampaign.deleteMany()` invocation:
+0|qix-ads- | 
+0|qix-ads- | 
+0|qix-ads- | Foreign key constraint violated: `foreign key`
+0|qix-ads- | [0mPOST /api/marketing/accounts/select [31m500[0m 7.592 ms - 162[0m
+0|qix-ads- | [HTTP] POST /api/marketing/accounts/select - 500 (8ms)
+0|qix-ads- | [0mPOST /api/marketing/accounts/disconnect [32m200[0m 4.102 ms - 47[0m
+0|qix-ads- | [HTTP] POST /api/marketing/accounts/disconnect - 200 (4ms)
+0|qix-ads- | [0mGET /api/marketing/auth/meta?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86 [36m302[0m 3.167 ms - 269[0m
+0|qix-ads- | [HTTP] GET /api/marketing/auth/meta?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86 - 302 (4ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 5.153 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (6ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 4.151 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (5ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 6.291 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (7ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 4.910 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (5ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 5.511 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (6ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 3.947 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (4ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 2.055 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (2ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 6.612 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (7ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 3.757 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (4ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 3.094 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (3ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 3.890 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (5ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 2.641 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (3ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 3.284 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (4ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 2.284 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (2ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 5.707 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (6ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 4.404 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (5ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 2.989 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (3ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 1.908 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (2ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 3.709 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (4ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 1.922 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (2ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 4.711 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (5ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 4.872 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (6ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 4.336 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (4ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 3.190 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (4ms)
+0|qix-ads- | [0mGET /api/notifications [36m304[0m 4.393 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/notifications - 304 (5ms)
+0|qix-ads- | [0mGET /api/clients [36m304[0m 7.707 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/clients - 304 (8ms)
+0|qix-ads- | [0mGET /api/clients [36m304[0m 11.617 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/clients - 304 (12ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 2.284 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (3ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 5.183 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (6ms)
+0|qix-ads- | [0mGET /api/auth/me [36m304[0m 3.173 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/auth/me - 304 (4ms)
+0|qix-ads- | [0mGET /api/uploads/file-1772090117592-93716361.png [33m404[0m 0.727 ms - 36[0m
+0|qix-ads- | [HTTP] GET /api/uploads/file-1772090117592-93716361.png - 404 (1ms)
+0|qix-ads- | [0mGET /api/sticky-notes [36m304[0m 4.602 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/sticky-notes - 304 (5ms)
+0|qix-ads- | [0mGET /api/notifications [36m304[0m 3.976 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/notifications - 304 (4ms)
+0|qix-ads- | [0mGET /api/launcher/apps [36m304[0m 9.895 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/launcher/apps - 304 (10ms)
+0|qix-ads- | [0mGET /api/clients [36m304[0m 6.354 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/clients - 304 (7ms)
+0|qix-ads- | [0mGET /api/notifications [36m304[0m 4.565 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/notifications - 304 (5ms)
+0|qix-ads- | [0mGET /api/clients [36m304[0m 8.152 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/clients - 304 (9ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 4.958 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (6ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 3.293 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (3ms)
+0|qix-ads- | [0mGET /api/notifications [36m304[0m 3.444 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/notifications - 304 (4ms)
+0|qix-ads- | [0mGET /api/clients [36m304[0m 7.425 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/clients - 304 (8ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 6.731 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (7ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 4.853 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (5ms)
+0|qix-ads- | [0mGET /api/notifications [36m304[0m 3.719 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/notifications - 304 (4ms)
+0|qix-ads- | [0mGET /api/clients [36m304[0m 8.031 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/clients - 304 (9ms)
+0|qix-ads- | [0mPOST /api/settings/batch [32m200[0m 7.461 ms - 261[0m
+0|qix-ads- | [HTTP] POST /api/settings/batch - 200 (8ms)
+0|qix-ads- | [0mGET /api/marketing/status?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86 [32m200[0m 2.167 ms - 2[0m
+0|qix-ads- | [HTTP] GET /api/marketing/status?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86 - 200 (2ms)
+0|qix-ads- | [0mGET /api/settings [32m200[0m 1.946 ms - 141[0m
+0|qix-ads- | [HTTP] GET /api/settings - 200 (2ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 3.654 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (4ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 2.531 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (3ms)
+0|qix-ads- | [DEBUG selectAccount] Received Request: {
+0|qix-ads- |   clientId: 'b8199325-e5ee-4e64-85c1-bfcc20664d86',
+0|qix-ads- |   platform: 'meta',
+0|qix-ads- |   externalAccountId: '2844542265768540'
+0|qix-ads- | }
+0|qix-ads- | [DEBUG selectAccount] Existing Account Found: false
+0|qix-ads- | [DEBUG selectAccount] Create successful. New externalAccountId in DB: 2844542265768540
+0|qix-ads- | [DEBUG selectAccount] Sending success response for ID: 2844542265768540
+0|qix-ads- | [0mPOST /api/marketing/accounts/select [32m200[0m 6.681 ms - 82[0m
+0|qix-ads- | [HTTP] POST /api/marketing/accounts/select - 200 (7ms)
+0|qix-ads- | [0mGET /api/marketing/status?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86 [32m200[0m 1.184 ms - 86[0m
+0|qix-ads- | [HTTP] GET /api/marketing/status?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86 - 200 (2ms)
+0|qix-ads- | [0mGET /api/marketing/auth/meta?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86 [36m302[0m 1.735 ms - 270[0m
+0|qix-ads- | [HTTP] GET /api/marketing/auth/meta?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86 - 302 (3ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 3.156 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (3ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 2.029 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (2ms)
+0|qix-ads- | [0mGET /api/marketing/auth/meta/callback?code=AQCWP54KR02qSwbYtgV5RvvhMXsNo2_ZV6vdvBSADZqFS2b9OGRB02d8I6_ow9xHijhVDhjqcAHurDs4-CdIJ0lxtszq5L9T4TTdy18iVt4U5-b_BukKL4cnmWbIzx1EieRHSZ4_t2KMva-RE1dTdLFDLzyeJgH9t60yJVk0BoWf-NlnYOCIB5P43Hh2umo3l3OCN7uL3oqi-9sDf8nlqUcHcQI3tT7lUCUwyiPy45pFWwpCX1gezSz2IvxFeSxHGiEstPdaUfhcTeLrLi0yKcRC_OaI7FXqVGwhnupVYtKZL0yul9N0mI2H6nZa4BEI36qHljo-6KPgz0XFvmm0GZawdNGNJPmlLkDrnXEmbxR2971hpyVtcmH4jz1_Zkx24ltl66SqxgdwHUvD83KnAFIu3HLgH6DmxM8vNrVYDBwyoQ&state=b8199325-e5ee-4e64-85c1-bfcc20664d86 [36m302[0m 1259.638 ms - 94[0m
+0|qix-ads- | [HTTP] GET /api/marketing/auth/meta/callback?code=AQCWP54KR02qSwbYtgV5RvvhMXsNo2_ZV6vdvBSADZqFS2b9OGRB02d8I6_ow9xHijhVDhjqcAHurDs4-CdIJ0lxtszq5L9T4TTdy18iVt4U5-b_BukKL4cnmWbIzx1EieRHSZ4_t2KMva-RE1dTdLFDLzyeJgH9t60yJVk0BoWf-NlnYOCIB5P43Hh2umo3l3OCN7uL3oqi-9sDf8nlqUcHcQI3tT7lUCUwyiPy45pFWwpCX1gezSz2IvxFeSxHGiEstPdaUfhcTeLrLi0yKcRC_OaI7FXqVGwhnupVYtKZL0yul9N0mI2H6nZa4BEI36qHljo-6KPgz0XFvmm0GZawdNGNJPmlLkDrnXEmbxR2971hpyVtcmH4jz1_Zkx24ltl66SqxgdwHUvD83KnAFIu3HLgH6DmxM8vNrVYDBwyoQ&state=b8199325-e5ee-4e64-85c1-bfcc20664d86 - 302 (1260ms)
+0|qix-ads- | [0mGET /api/auth/me [36m304[0m 3.022 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/auth/me - 304 (3ms)
+0|qix-ads- | [0mGET /api/uploads/file-1772090117592-93716361.png [33m404[0m 0.656 ms - 36[0m
+0|qix-ads- | [HTTP] GET /api/uploads/file-1772090117592-93716361.png - 404 (1ms)
+0|qix-ads- | [0mGET /api/sticky-notes [36m304[0m 7.311 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/sticky-notes - 304 (8ms)
+0|qix-ads- | [0mGET /api/notifications [36m304[0m 5.653 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/notifications - 304 (6ms)
+0|qix-ads- | [0mGET /api/clients [36m304[0m 8.193 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/clients - 304 (9ms)
+0|qix-ads- | [0mGET /api/launcher/apps [36m304[0m 18.501 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/launcher/apps - 304 (18ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 5.078 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (6ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 3.997 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (5ms)
+0|qix-ads- | [0mGET /api/marketing/status?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86 [32m200[0m 2.036 ms - 287[0m
+0|qix-ads- | [HTTP] GET /api/marketing/status?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86 - 200 (2ms)
+0|qix-ads- | [0mGET /api/settings [36m304[0m 0.651 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/settings - 304 (1ms)
+0|qix-ads- | [0mGET /api/clients [36m304[0m 7.546 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/clients - 304 (8ms)
+0|qix-ads- | [0mGET /api/marketing/metrics?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86&from=2026-02-07T21:34:14.474Z&to=2026-03-09T21:34:14.474Z [32m200[0m 2.613 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/marketing/metrics?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86&from=2026-02-07T21:34:14.474Z&to=2026-03-09T21:34:14.474Z - 200 (4ms)
+0|qix-ads- | [0mPOST /api/marketing/sync [32m200[0m 2539.790 ms - 41[0m
+0|qix-ads- | [HTTP] POST /api/marketing/sync - 200 (2541ms)
+0|qix-ads- | [0mGET /api/marketing/metrics?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86&from=2026-02-07T21:34:19.209Z&to=2026-03-09T21:34:19.209Z [32m200[0m 2.291 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/marketing/metrics?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86&from=2026-02-07T21:34:19.209Z&to=2026-03-09T21:34:19.209Z - 200 (4ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 4.935 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (5ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 4.136 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (5ms)
+0|qix-ads- | [0mPOST /api/marketing/sync [32m200[0m 2449.859 ms - 41[0m
+0|qix-ads- | [HTTP] POST /api/marketing/sync - 200 (2451ms)
+0|qix-ads- | [0mGET /api/marketing/metrics?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86&from=2026-02-07T21:34:21.609Z&to=2026-03-09T21:34:21.609Z [32m200[0m 1.779 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/marketing/metrics?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86&from=2026-02-07T21:34:21.609Z&to=2026-03-09T21:34:21.609Z - 200 (3ms)
+0|qix-ads- | [0mPOST /api/marketing/sync [32m200[0m 1534.561 ms - 41[0m
+0|qix-ads- | [HTTP] POST /api/marketing/sync - 200 (1535ms)
+0|qix-ads- | [0mGET /api/marketing/metrics?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86&from=2026-02-07T21:34:21.995Z&to=2026-03-09T21:34:21.995Z [32m200[0m 1.550 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/marketing/metrics?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86&from=2026-02-07T21:34:21.995Z&to=2026-03-09T21:34:21.995Z - 200 (2ms)
+0|qix-ads- | [0mGET /api/clients [36m304[0m 6.087 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/clients - 304 (7ms)
+0|qix-ads- | [0mGET /api/marketing/status?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86 [36m304[0m 1.105 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/marketing/status?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86 - 304 (1ms)
+0|qix-ads- | [0mGET /api/settings [36m304[0m 0.928 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/settings - 304 (1ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 3.902 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (4ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 4.015 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (4ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 2.967 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (3ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 2.364 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (3ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 4.801 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (6ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 4.491 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (5ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 3.780 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (5ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 2.656 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (3ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 5.740 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (7ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 5.151 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (6ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 2.072 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (3ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 4.928 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (6ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 5.845 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (7ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 4.523 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (5ms)
+0|qix-ads- | [BiometricDaemon] Running Auto-Sync...
+0|qix-ads- | Starting Biometric Sync (AUTO)...
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 3.003 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (4ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 2.917 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (3ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 7.022 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (7ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 3.346 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (3ms)
+0|qix-ads- | --- Stopping Server ---
+0|qix-ads- | HTTP Server closed.
+0|qix-ads- | Database disconnected.
+0|qix-ads- | [Socket] Socket.IO Initialized
+0|qix-ads- | Server running on port 4001
+0|qix-ads- | [BiometricDaemon] Initializing background service...
+0|qix-ads- | [BiometricDaemon] Starting heartbeat every 60s
+0|qix-ads- | SQLite WAL Mode Verified
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 16.245 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (17ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 12.994 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (13ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 5.714 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (6ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 4.096 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (4ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 2.671 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (3ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 5.976 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (6ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 4.859 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (5ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 2.589 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (3ms)
+0|qix-ads- | [0mGET /api/auth/me [36m304[0m 3.695 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/auth/me - 304 (4ms)
+0|qix-ads- | [0mGET /api/uploads/file-1772090117592-93716361.png [33m404[0m 2.321 ms - 36[0m
+0|qix-ads- | [HTTP] GET /api/uploads/file-1772090117592-93716361.png - 404 (4ms)
+0|qix-ads- | [0mGET /api/sticky-notes [36m304[0m 6.497 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/sticky-notes - 304 (7ms)
+0|qix-ads- | [0mGET /api/notifications [36m304[0m 3.671 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/notifications - 304 (3ms)
+0|qix-ads- | [0mGET /api/launcher/apps [36m304[0m 12.408 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/launcher/apps - 304 (13ms)
+0|qix-ads- | [0mGET /api/clients [36m304[0m 7.657 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/clients - 304 (8ms)
+0|qix-ads- | [0mGET /api/auth/me [36m304[0m 2.933 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/auth/me - 304 (4ms)
+0|qix-ads- | [0mGET /api/auth/me [36m304[0m 2.549 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/auth/me - 304 (3ms)
+0|qix-ads- | [0mGET /api/uploads/file-1772090117592-93716361.png [33m404[0m 0.660 ms - 36[0m
+0|qix-ads- | [HTTP] GET /api/uploads/file-1772090117592-93716361.png - 404 (1ms)
+0|qix-ads- | [0mGET /api/auth/me [36m304[0m 3.782 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/auth/me - 304 (4ms)
+0|qix-ads- | [0mGET /api/auth/me [36m304[0m 3.061 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/auth/me - 304 (3ms)
+0|qix-ads- | [0mGET /api/auth/me [36m304[0m 3.714 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/auth/me - 304 (5ms)
+0|qix-ads- | [0mGET /api/auth/me [36m304[0m 3.125 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/auth/me - 304 (3ms)
+0|qix-ads- | [0mGET /api/auth/me [36m304[0m 2.895 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/auth/me - 304 (3ms)
+0|qix-ads- | [0mGET /api/auth/me [36m304[0m 2.452 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/auth/me - 304 (3ms)
+0|qix-ads- | [0mGET /api/auth/me [36m304[0m 2.475 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/auth/me - 304 (3ms)
+0|qix-ads- | [0mGET /api/uploads/file-1772090117592-93716361.png [33m404[0m 0.509 ms - 36[0m
+0|qix-ads- | [HTTP] GET /api/uploads/file-1772090117592-93716361.png - 404 (2ms)
+0|qix-ads- | [0mGET /api/sticky-notes [36m304[0m 5.594 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/sticky-notes - 304 (6ms)
+0|qix-ads- | [0mGET /api/notifications [36m304[0m 4.810 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/notifications - 304 (6ms)
+0|qix-ads- | [0mGET /api/uploads/file-1772090117592-93716361.png [33m404[0m 4.721 ms - 36[0m
+0|qix-ads- | [HTTP] GET /api/uploads/file-1772090117592-93716361.png - 404 (6ms)
+0|qix-ads- | [0mGET /api/launcher/apps [36m304[0m 16.463 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/launcher/apps - 304 (17ms)
+0|qix-ads- | [0mGET /api/clients [36m304[0m 12.191 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/clients - 304 (12ms)
+0|qix-ads- | [0mGET /api/marketing/status?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86 [36m304[0m 1.863 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/marketing/status?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86 - 304 (3ms)
+0|qix-ads- | [0mGET /api/settings [36m304[0m 1.893 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/settings - 304 (3ms)
+0|qix-ads- | [0mPOST /api/marketing/accounts/disconnect [32m200[0m 10.072 ms - 47[0m
+0|qix-ads- | [HTTP] POST /api/marketing/accounts/disconnect - 200 (5ms)
+0|qix-ads- | [DEBUG selectAccount] Received Request: {
+0|qix-ads- |   clientId: 'b8199325-e5ee-4e64-85c1-bfcc20664d86',
+0|qix-ads- |   platform: 'meta',
+0|qix-ads- |   externalAccountId: '2844542265768540'
+0|qix-ads- | }
+0|qix-ads- | [DEBUG selectAccount] Existing Account Found: false
+0|qix-ads- | [DEBUG selectAccount] Create successful. New externalAccountId in DB: 2844542265768540
+0|qix-ads- | [DEBUG selectAccount] Sending success response for ID: 2844542265768540
+0|qix-ads- | [0mPOST /api/marketing/accounts/select [32m200[0m 9.331 ms - 82[0m
+0|qix-ads- | [HTTP] POST /api/marketing/accounts/select - 200 (9ms)
+0|qix-ads- | [0mGET /api/marketing/status?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86 [32m200[0m 1.043 ms - 86[0m
+0|qix-ads- | [HTTP] GET /api/marketing/status?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86 - 200 (2ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 2.666 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (4ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 6.512 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (7ms)
+0|qix-ads- | [0mGET /api/marketing/auth/meta?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86 [36m302[0m 4.297 ms - 270[0m
+0|qix-ads- | [HTTP] GET /api/marketing/auth/meta?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86 - 302 (5ms)
+0|qix-ads- | [0mGET /api/marketing/auth/meta/callback?code=AQBiLwUqYD4hJxwUw-1A0oPdIiXy9-06bZTsRAu2SoKMJimlc1ShWUTK7WSI_IxaQCeib7jL7d1qk0gfXhExh8uayNuwE4G9kjeD30IDhF31CYSw5rc45HJAKw9OE-VDeOvCwX2h-KGX0HMp_Mx1QsdSCuRmhQlkbMOEQwfhW4MXQzMpHKCXpyFd1HKg-TZoFzWm64Pp8ui-4ZH29p56CI4c18eNY3oAM1iQoENi-9vvO0uHekoSRU7eM8NzoxrSwBrlOIpvkI3sk2fU1hAe3GpQS44O0DUTpSvDGg6lTSEm1HKNnbOFBe9VYIG3GbAC-tdWYjG7B2WVB0kkMKdbFHhfpnW86ogEE0wmmWcA3vM9Bvju1EL0Ria_aSA_3PKjKGfFmLfb75wCPeW6_NfV2Flex1ykbga4NcuvSCxL9RC40w&state=b8199325-e5ee-4e64-85c1-bfcc20664d86 [36m302[0m 2073.580 ms - 94[0m
+0|qix-ads- | [HTTP] GET /api/marketing/auth/meta/callback?code=AQBiLwUqYD4hJxwUw-1A0oPdIiXy9-06bZTsRAu2SoKMJimlc1ShWUTK7WSI_IxaQCeib7jL7d1qk0gfXhExh8uayNuwE4G9kjeD30IDhF31CYSw5rc45HJAKw9OE-VDeOvCwX2h-KGX0HMp_Mx1QsdSCuRmhQlkbMOEQwfhW4MXQzMpHKCXpyFd1HKg-TZoFzWm64Pp8ui-4ZH29p56CI4c18eNY3oAM1iQoENi-9vvO0uHekoSRU7eM8NzoxrSwBrlOIpvkI3sk2fU1hAe3GpQS44O0DUTpSvDGg6lTSEm1HKNnbOFBe9VYIG3GbAC-tdWYjG7B2WVB0kkMKdbFHhfpnW86ogEE0wmmWcA3vM9Bvju1EL0Ria_aSA_3PKjKGfFmLfb75wCPeW6_NfV2Flex1ykbga4NcuvSCxL9RC40w&state=b8199325-e5ee-4e64-85c1-bfcc20664d86 - 302 (2074ms)
+0|qix-ads- | [0mGET /api/auth/me [36m304[0m 8.774 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/auth/me - 304 (9ms)
+0|qix-ads- | [0mGET /api/uploads/file-1772090117592-93716361.png [33m404[0m 0.819 ms - 36[0m
+0|qix-ads- | [HTTP] GET /api/uploads/file-1772090117592-93716361.png - 404 (1ms)
+0|qix-ads- | [0mGET /api/sticky-notes [36m304[0m 7.304 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/sticky-notes - 304 (8ms)
+0|qix-ads- | [0mGET /api/notifications [36m304[0m 4.085 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/notifications - 304 (4ms)
+0|qix-ads- | [0mGET /api/launcher/apps [36m304[0m 11.689 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/launcher/apps - 304 (12ms)
+0|qix-ads- | [0mGET /api/clients [36m304[0m 12.015 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/clients - 304 (13ms)
+0|qix-ads- | [0mGET /api/marketing/status?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86 [32m200[0m 1.344 ms - 284[0m
+0|qix-ads- | [HTTP] GET /api/marketing/status?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86 - 200 (3ms)
+0|qix-ads- | [0mGET /api/settings [36m304[0m 1.261 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/settings - 304 (1ms)
+0|qix-ads- | [0mGET /api/auth/me [36m304[0m 2.669 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/auth/me - 304 (3ms)
+0|qix-ads- | [0mGET /api/uploads/file-1772090117592-93716361.png [33m404[0m 0.501 ms - 36[0m
+0|qix-ads- | [HTTP] GET /api/uploads/file-1772090117592-93716361.png - 404 (1ms)
+0|qix-ads- | [0mGET /api/sticky-notes [36m304[0m 3.703 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/sticky-notes - 304 (5ms)
+0|qix-ads- | [0mGET /api/notifications [36m304[0m 4.591 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/notifications - 304 (6ms)
+0|qix-ads- | [0mGET /api/uploads/file-1772090117592-93716361.png [33m404[0m 1.637 ms - 36[0m
+0|qix-ads- | [HTTP] GET /api/uploads/file-1772090117592-93716361.png - 404 (2ms)
+0|qix-ads- | [0mGET /api/clients [36m304[0m 8.017 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/clients - 304 (8ms)
+0|qix-ads- | [0mGET /api/launcher/apps [36m304[0m 14.778 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/launcher/apps - 304 (15ms)
+0|qix-ads- | [0mGET /api/clients [36m304[0m 7.656 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/clients - 304 (14ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 3.426 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (4ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 3.112 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (4ms)
+0|qix-ads- | [0mPOST /api/marketing/sync [32m200[0m 1949.400 ms - 41[0m
+0|qix-ads- | [HTTP] POST /api/marketing/sync - 200 (1951ms)
+0|qix-ads- | [0mGET /api/marketing/metrics?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86&from=2026-02-07T21:41:53.778Z&to=2026-03-09T21:41:53.778Z [32m200[0m 2.120 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/marketing/metrics?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86&from=2026-02-07T21:41:53.778Z&to=2026-03-09T21:41:53.778Z - 200 (5ms)
+0|qix-ads- | [0mPOST /api/marketing/sync [32m200[0m 1357.952 ms - 41[0m
+0|qix-ads- | [HTTP] POST /api/marketing/sync - 200 (1359ms)
+0|qix-ads- | [0mGET /api/marketing/metrics?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86&from=2026-02-07T21:41:58.086Z&to=2026-03-09T21:41:58.086Z [32m200[0m 1.587 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/marketing/metrics?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86&from=2026-02-07T21:41:58.086Z&to=2026-03-09T21:41:58.086Z - 200 (4ms)
+0|qix-ads- | [0mPOST /api/marketing/sync [32m200[0m 1613.428 ms - 41[0m
+0|qix-ads- | [HTTP] POST /api/marketing/sync - 200 (1614ms)
+0|qix-ads- | [0mGET /api/marketing/metrics?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86&from=2026-02-07T21:41:59.765Z&to=2026-03-09T21:41:59.765Z [32m200[0m 1.715 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/marketing/metrics?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86&from=2026-02-07T21:41:59.765Z&to=2026-03-09T21:41:59.765Z - 200 (3ms)
+0|qix-ads- | [0mPOST /api/marketing/sync [32m200[0m 1294.280 ms - 41[0m
+0|qix-ads- | [HTTP] POST /api/marketing/sync - 200 (1295ms)
+0|qix-ads- | [0mGET /api/marketing/metrics?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86&from=2026-02-07T21:42:01.352Z&to=2026-03-09T21:42:01.352Z [32m200[0m 1.571 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/marketing/metrics?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86&from=2026-02-07T21:42:01.352Z&to=2026-03-09T21:42:01.352Z - 200 (3ms)
+0|qix-ads- | [0mGET /api/auth/me [36m304[0m 3.599 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/auth/me - 304 (4ms)
+0|qix-ads- | [0mGET /api/uploads/file-1772090117592-93716361.png [33m404[0m 1.176 ms - 36[0m
+0|qix-ads- | [HTTP] GET /api/uploads/file-1772090117592-93716361.png - 404 (2ms)
+0|qix-ads- | [0mGET /api/sticky-notes [36m304[0m 6.115 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/sticky-notes - 304 (6ms)
+0|qix-ads- | [0mGET /api/notifications [36m304[0m 5.205 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/notifications - 304 (6ms)
+0|qix-ads- | [0mGET /api/clients [36m304[0m 9.038 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/clients - 304 (9ms)
+0|qix-ads- | [0mGET /api/launcher/apps [36m304[0m 18.355 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/launcher/apps - 304 (19ms)
+0|qix-ads- | [0mGET /api/auth/me [36m304[0m 2.375 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/auth/me - 304 (2ms)
+0|qix-ads- | [0mGET /api/uploads/file-1772090117592-93716361.png [33m404[0m 0.566 ms - 36[0m
+0|qix-ads- | [HTTP] GET /api/uploads/file-1772090117592-93716361.png - 404 (1ms)
+0|qix-ads- | [0mGET /api/auth/me [36m304[0m 2.364 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/auth/me - 304 (3ms)
+0|qix-ads- | [0mGET /api/uploads/file-1772090117592-93716361.png [33m404[0m 0.652 ms - 36[0m
+0|qix-ads- | [HTTP] GET /api/uploads/file-1772090117592-93716361.png - 404 (1ms)
+0|qix-ads- | [0mGET /api/sticky-notes [0m-[0m - ms - -[0m
+0|qix-ads- | [0mGET /api/launcher/apps [0m-[0m - ms - -[0m
+0|qix-ads- | [0mGET /api/notifications [0m-[0m - ms - -[0m
+0|qix-ads- | [0mGET /api/uploads/file-1772090117592-93716361.png [0m-[0m - ms - -[0m
+0|qix-ads- | [0mGET /api/auth/me [36m304[0m 3.309 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/auth/me - 304 (3ms)
+0|qix-ads- | [0mGET /api/uploads/file-1772090117592-93716361.png [33m404[0m 0.596 ms - 36[0m
+0|qix-ads- | [HTTP] GET /api/uploads/file-1772090117592-93716361.png - 404 (1ms)
+0|qix-ads- | [0mGET /api/auth/me [36m304[0m 2.819 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/auth/me - 304 (3ms)
+0|qix-ads- | [0mGET /api/uploads/file-1772090117592-93716361.png [33m404[0m 0.540 ms - 36[0m
+0|qix-ads- | [HTTP] GET /api/uploads/file-1772090117592-93716361.png - 404 (1ms)
+0|qix-ads- | [0mGET /api/sticky-notes [32m200[0m 3.353 ms - 2[0m
+0|qix-ads- | [HTTP] GET /api/sticky-notes - 200 (3ms)
+0|qix-ads- | [0mGET /api/notifications [32m200[0m 3.428 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/notifications - 200 (5ms)
+0|qix-ads- | [0mGET /api/clients [32m200[0m 6.728 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/clients - 200 (32ms)
+0|qix-ads- | [0mGET /api/launcher/apps [32m200[0m 43.019 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/launcher/apps - 200 (45ms)
+0|qix-ads- | [0mGET /api/marketing/metrics?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86&from=2026-02-07T21:42:15.419Z&to=2026-03-09T21:42:15.419Z [32m200[0m 1.785 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/marketing/metrics?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86&from=2026-02-07T21:42:15.419Z&to=2026-03-09T21:42:15.419Z - 200 (3ms)
+0|qix-ads- | [0mPOST /api/marketing/sync [32m200[0m 1401.852 ms - 41[0m
+0|qix-ads- | [HTTP] POST /api/marketing/sync - 200 (1402ms)
+0|qix-ads- | [0mGET /api/marketing/metrics?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86&from=2026-02-07T21:42:20.927Z&to=2026-03-09T21:42:20.927Z [32m200[0m 1.829 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/marketing/metrics?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86&from=2026-02-07T21:42:20.927Z&to=2026-03-09T21:42:20.927Z - 200 (2ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 2.672 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (3ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 5.819 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (6ms)
+0|qix-ads- | [0mGET /api/marketing/metrics?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86&from=2026-02-07T21:42:22.790Z&to=2026-03-09T21:42:22.790Z&platform=meta [32m200[0m 1.727 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/marketing/metrics?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86&from=2026-02-07T21:42:22.790Z&to=2026-03-09T21:42:22.790Z&platform=meta - 200 (3ms)
+0|qix-ads- | [0mPOST /api/marketing/sync [32m200[0m 1291.131 ms - 41[0m
+0|qix-ads- | [HTTP] POST /api/marketing/sync - 200 (1292ms)
+0|qix-ads- | [0mGET /api/marketing/metrics?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86&from=2026-02-07T21:42:25.725Z&to=2026-03-09T21:42:25.725Z&platform=meta [32m200[0m 1.820 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/marketing/metrics?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86&from=2026-02-07T21:42:25.725Z&to=2026-03-09T21:42:25.725Z&platform=meta - 200 (3ms)
+0|qix-ads- | [0mPOST /api/marketing/sync [32m200[0m 1916.585 ms - 41[0m
+0|qix-ads- | [HTTP] POST /api/marketing/sync - 200 (1917ms)
+0|qix-ads- | [0mGET /api/marketing/metrics?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86&from=2026-02-07T21:42:27.576Z&to=2026-03-09T21:42:27.576Z&platform=meta [32m200[0m 1.723 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/marketing/metrics?clientId=b8199325-e5ee-4e64-85c1-bfcc20664d86&from=2026-02-07T21:42:27.576Z&to=2026-03-09T21:42:27.576Z&platform=meta - 200 (2ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 3.583 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (4ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 2.681 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (2ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 3.318 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (4ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 2.653 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (3ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 3.285 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (4ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 2.133 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (3ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 4.546 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (4ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 4.092 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (5ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 4.118 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (4ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 2.226 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (2ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 3.718 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (4ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 2.204 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (2ms)
+0|qix-ads- | [0mGET /api/leave/requests [36m304[0m 4.404 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/leave/requests - 304 (5ms)
+0|qix-ads- | [0mGET /api/attendance/regularisation/requests?status=PENDING [36m304[0m 3.312 ms - -[0m
+0|qix-ads- | [HTTP] GET /api/attendance/regularisation/requests?status=PENDING - 304 (4ms)
+

@@ -52,7 +52,7 @@ const PayrollProcess = () => {
     };
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto pb-12">
+        <div className="space-y-6 w-full pb-12">
             <div className="flex justify-between items-center bg-white p-6 rounded-lg shadow-sm border">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Payroll Process</h1>

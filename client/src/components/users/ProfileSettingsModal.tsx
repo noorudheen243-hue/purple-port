@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import clsx from 'clsx';
 import { SystemToolsTab } from '../settings/SystemToolsTab';
+import { SmartNotificationPreferences } from './SmartNotificationPreferences';
 
 // --- Types ---
 interface ProfileSettingsModalProps {
@@ -220,7 +221,7 @@ const TeamCredentialsTab = () => {
 const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOpen, onClose }) => {
     const { user } = useAuthStore();
     const isAdmin = user?.role === 'ADMIN' || user?.role === 'DEVELOPER_ADMIN';
-    const [activeTab, setActiveTab] = useState<'profile' | 'team' | 'tools'>('profile');
+    const [activeTab, setActiveTab] = useState<'profile' | 'team' | 'tools' | 'ai'>('profile');
 
     // Reset tab on close
     useEffect(() => { if (!isOpen) setActiveTab('profile'); }, [isOpen]);
@@ -249,6 +250,17 @@ const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOpen, onC
                         )}
                     >
                         <User size={16} /> My Profile
+                    </button>
+
+                    <button
+                        onClick={() => setActiveTab('ai')}
+                        className={clsx("relative px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-2",
+                            activeTab === 'ai'
+                                ? "text-primary after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary"
+                                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                        )}
+                    >
+                        <AlertCircle size={16} /> AI Notifications
                     </button>
 
                     {isAdmin && (
@@ -282,6 +294,7 @@ const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOpen, onC
                 <div className="flex-1 p-6 md:p-8 overflow-y-auto bg-background/50">
                     <div className="max-w-6xl mx-auto h-full">
                         {activeTab === 'profile' && <MyProfileTab user={user} onClose={onClose} />}
+                        {activeTab === 'ai' && <SmartNotificationPreferences />}
                         {activeTab === 'team' && isAdmin && <TeamCredentialsTab />}
                         {activeTab === 'tools' && isAdmin && <SystemToolsTab />}
                     </div>

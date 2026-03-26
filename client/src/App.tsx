@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { useAuthStore } from './store/authStore'
 import ErrorBoundary from './components/ErrorBoundary';
+import AutoLogoutHandler from './components/auth/AutoLogoutHandler';
 
 // Lazy Load Pages
 const Login = lazy(() => import('./pages/auth/Login'));
@@ -58,23 +59,21 @@ function App() {
         <QueryClientProvider client={queryClient}>
             <ErrorBoundary>
                 <BrowserRouter>
-                    <div className="min-h-screen bg-background text-foreground font-sans antialiased relative">
-                        <Suspense fallback={<LoadingFallback />}>
-                            <Routes>
-                                <Route path="/login" element={<Login />} />
-                                <Route path="/register" element={<Register />} />
+                    <AutoLogoutHandler>
+                        <div className="min-h-screen bg-background text-foreground font-sans antialiased relative">
+                            <Suspense fallback={<LoadingFallback />}>
+                                <Routes>
+                                    <Route path="/login" element={<Login />} />
+                                    <Route path="/register" element={<Register />} />
 
-                                <Route element={<ProtectedRoute />}>
-                                    <Route path="/dashboard/*" element={<Dashboard />} />
-                                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                                </Route>
-                            </Routes>
-                        </Suspense>
-                        {/* VERSION INDICATOR */}
-                        <div className="fixed bottom-1 right-1 opacity-50 text-[10px] bg-black/80 text-white px-2 py-0.5 rounded pointer-events-none z-[9999]">
-                            v2.2 - Auto-Reload Enabled
+                                    <Route element={<ProtectedRoute />}>
+                                        <Route path="/dashboard/*" element={<Dashboard />} />
+                                        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                                    </Route>
+                                </Routes>
+                            </Suspense>
                         </div>
-                    </div>
+                    </AutoLogoutHandler>
                 </BrowserRouter>
             </ErrorBoundary>
         </QueryClientProvider>

@@ -1,5 +1,6 @@
 import React, { ReactNode, useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
+import { useQuery } from '@tanstack/react-query';
 import { useChatStore } from '../../store/chatStore';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import {
@@ -10,13 +11,12 @@ import {
     ChevronDown,
     ChevronRight,
     Settings,
-    Sun,
-    Moon,
     Upload,
     MoreVertical,
     TrendingUp,
     Home,
-    Smartphone
+    Smartphone,
+    Calendar
 } from 'lucide-react';
 import api from '../../lib/api';
 import Swal from 'sweetalert2';
@@ -32,6 +32,44 @@ import { AnimatePresence } from 'framer-motion';
 import { AppLauncher } from '../launcher/AppLauncher';
 import { WidgetManager } from '../widgets/WidgetManager';
 import { useRealTimeSync } from '../../hooks/useRealTimeSync';
+import UserGreetingAlerter from '../meetings/UserGreetingAlerter';
+
+const HeaderMeetingsButton = () => {
+    const { data: meetings = [] } = useQuery({
+        queryKey: ['myPendingMeetingsHeader'],
+        queryFn: async () => {
+            const res = await api.get('/meetings/my-meetings');
+            return res.data;
+        }
+    });
+
+    const getMeetingStatus = (meeting: any): string => {
+        if (meeting.mom && ['SUBMITTED', 'REVIEWED', 'APPROVED'].includes(meeting.mom.status)) {
+            return 'COMPLETED';
+        }
+        if (meeting.status === 'CANCELLED') return 'CANCELLED';
+        return 'UPCOMING';
+    };
+
+    const pendingCount = Array.isArray(meetings) ? meetings.filter((m: any) => getMeetingStatus(m) === 'UPCOMING').length : 0;
+
+    return (
+        <Link
+            to="/dashboard/meetings"
+            className="group relative flex items-center gap-2 px-6 py-2.5 text-sm font-bold text-white bg-purple-600 hover:bg-purple-500 rounded-lg transition-all duration-150 transform hover:-translate-y-1 shadow-[0_5px_0_0_#581c87] active:shadow-none active:translate-y-[4px]"
+            title="Meetings"
+        >
+            <Calendar size={18} className="drop-shadow-sm" />
+            <span className="hidden md:inline drop-shadow-sm tracking-wide">Meetings</span>
+            
+            {pendingCount > 0 && (
+                <span className="absolute -top-3 -right-3 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-red-500 text-[11px] font-black text-white shadow-sm ring-2 ring-red-600/30 animate-pulse">
+                    {pendingCount}
+                </span>
+            )}
+        </Link>
+    );
+};
 
 // Clock Component
 const DigitalClock = () => {
@@ -219,29 +257,14 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
     const navigate = useNavigate();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-    const [isDarkMode, setIsDarkMode] = useState(document.documentElement.classList.contains('dark'));
 
     // Global Real-Time Sync
     useRealTimeSync();
 
-    // Toggle Theme Logic
-    const toggleTheme = () => {
-        const newMode = !isDarkMode;
-        setIsDarkMode(newMode);
-        document.documentElement.classList.toggle('dark', newMode);
-        localStorage.setItem('theme', newMode ? 'dark' : 'light');
-    };
-
-    // Initialize Theme
+    // Enforce Light Mode Always
     React.useEffect(() => {
-        const savedTheme = localStorage.getItem('theme');
-        if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            setIsDarkMode(true);
-            document.documentElement.classList.add('dark');
-        } else {
-            setIsDarkMode(false);
-            document.documentElement.classList.remove('dark');
-        }
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
     }, []);
 
     // Initialize Socket
@@ -301,6 +324,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
             <div className="print-hidden">
                 <StickyNoteContainer />
             </div>
+            <UserGreetingAlerter />
             <AppLauncher />
             <WidgetManager />
 
@@ -320,7 +344,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
 
             <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
-            <main className="ml-0 md:ml-64 p-4 md:p-8 transition-[margin] duration-300">
+            <main className="ml-0 md:ml-64 p-2 md:p-4 lg:p-6 transition-[margin] duration-300">
                 <header className="flex justify-between items-center mb-8">
                     <div className="flex items-center gap-4">
                         <button
@@ -358,22 +382,8 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                     </div>
                     <div>
                         <div className="flex items-center gap-4">
-                            {/* Theme Toggle Button */}
+                            {/* Theme Toggle Button Removed */}
 
-                            <button
-                                onClick={toggleTheme}
-                                className={`
-                                    p-2 rounded-full transition-colors
-                                    ${isDarkMode ? 'bg-secondary/20 text-yellow-400 hover:bg-secondary/30' : 'bg-primary/10 text-primary hover:bg-primary/20'}
-                                `}
-                                title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-                            >
-                                {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-                            </button>
-
-                            <div className="hidden md:block text-[10px] text-gray-400 mr-2 border border-gray-200 p-1 rounded">
-                                v2.4 | Role: {user?.role || 'None'}
-                            </div>
 
                             {(user?.role === ROLES.DEVELOPER_ADMIN || user?.role === ROLES.ADMIN) && (
                                 <button
@@ -406,6 +416,8 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                             )}
 
                             <NotificationBell />
+
+                            <HeaderMeetingsButton />
 
                             <Link
                                 to="/dashboard/settings"

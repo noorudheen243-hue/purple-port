@@ -11,6 +11,7 @@ router.post('/deploy', authorize('DEVELOPER_ADMIN', 'ADMIN'), controller.syncToC
 router.get('/deploy-logs', authorize('DEVELOPER_ADMIN', 'ADMIN'), controller.getDeployLogs);
 router.post('/cleanup-files', authorize('DEVELOPER_ADMIN', 'ADMIN'), controller.cleanupFilesOnly);
 router.post('/optimize', controller.optimizeSystem); // Accessible to all logged-in users
-router.post('/wipe-avatars', authorize('DEVELOPER_ADMIN'), controller.wipeAllAvatars); // One-time wipe
+router.get('/settings', controller.getSystemSettings); // All logged in users can read settings
+router.post('/settings', authorize('DEVELOPER_ADMIN'), controller.updateSystemSetting); // Only Dev Admin can update
 
 export default router;

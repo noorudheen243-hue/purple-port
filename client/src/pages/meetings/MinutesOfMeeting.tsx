@@ -54,7 +54,7 @@ const MinutesOfMeeting = () => {
             return res.data;
         },
         onSuccess: () => {
-            Swal.fire('Success', 'MoM Submitted successfully!', 'success');
+            Swal.fire('Success', 'Saved the Changes', 'success');
             queryClient.invalidateQueries({ queryKey: ['mom', selectedMeetingId] });
             queryClient.invalidateQueries({ queryKey: ['allMeetings'] });
             navigate('/dashboard/meetings/scheduled');
@@ -180,9 +180,17 @@ const MinutesOfMeeting = () => {
                 <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-700 to-indigo-600">
                     Minutes of Meeting (MoM) Center
                 </h1>
-                {momData && (
-                    <div className="flex gap-3">
-                        {!isEditing ? (
+                <div className="flex gap-3">
+                    {!momData ? (
+                        <button 
+                            onClick={handleSubmit}
+                            disabled={mutation.isPending}
+                            className="bg-purple-600 text-white px-6 py-2 rounded-lg font-bold shadow-md hover:bg-purple-700 transition-all flex items-center gap-2"
+                        >
+                            {mutation.isPending ? 'Submitting...' : 'Submit MoM'}
+                        </button>
+                    ) : (
+                        !isEditing ? (
                             <button 
                                 onClick={handleEditClick}
                                 className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold shadow-md hover:bg-blue-700 transition-all flex items-center gap-2"
@@ -208,9 +216,9 @@ const MinutesOfMeeting = () => {
                                     {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
                                 </button>
                             </div>
-                        )}
-                    </div>
-                )}
+                        )
+                    )}
+                </div>
             </div>
 
             <Card className="p-6 border-blue-200 bg-blue-50/30">

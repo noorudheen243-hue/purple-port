@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
 import { ROLES } from '../../utils/roles';
-import { Eye, Pencil, Trash2, Calendar, Clock, Users } from 'lucide-react';
+import { Eye, Pencil, Trash2, Calendar, Clock, Users, FileText } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 const ADMIN_ROLES = [ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN] as string[];
@@ -270,6 +270,20 @@ const ViewMeetingModal = ({ meeting, onClose }: { meeting: any; onClose: () => v
                             </div>
                         </div>
                     )}
+                </div>
+
+                <div className="p-4 border-t bg-gray-50/50">
+                    <button 
+                        onClick={() => {
+                            onClose();
+                            // Redirect to MoM Center
+                            window.location.assign(`/dashboard/meetings/mom?meetingId=${meeting.id}`);
+                        }}
+                        className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold py-3 rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                    >
+                        <FileText size={18} />
+                        {meeting.mom ? 'Go to MoM Center (View/Edit)' : 'Write Minutes of Meeting (MoM)'}
+                    </button>
                 </div>
             </div>
         </div>

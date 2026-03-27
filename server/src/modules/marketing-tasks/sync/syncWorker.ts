@@ -70,6 +70,7 @@ export class MarketingSyncWorker {
                             conversions: normalized.conversions,
                             reach: normalized.reach,
                             results: normalized.results,
+                            conversations: normalized.conversations,
                             ctr: normalized.ctr,
                             cpc: normalized.cpc,
                             cpm: normalized.cpm
@@ -86,6 +87,7 @@ export class MarketingSyncWorker {
                             conversions: normalized.conversions,
                             reach: normalized.reach,
                             results: normalized.results,
+                            conversations: normalized.conversations,
                             ctr: normalized.ctr,
                             cpc: normalized.cpc,
                             cpm: normalized.cpm

@@ -161,14 +161,14 @@ export class MetaAdsService {
                 let totalResults = 0;
                 let totalConversions = 0;
 
+                let maxMessages = 0;
+                let maxLeads = 0;
+                let maxPurchases = 0;
+
                 if (day.actions && Array.isArray(day.actions)) {
                     // Find the most relevant resulting action for this campaign.
                     // Meta often returns both generic ("lead") and specific ("onsite_conversion.lead_grouped").
                     // To prevent double counting, we will take the max value of these primary conversion types.
-                    let maxLeads = 0;
-                    let maxMessages = 0;
-                    let maxPurchases = 0;
-
                     for (const action of day.actions) {
                         const val = parseInt(action.value || '0', 10);
                         const type = action.action_type;
@@ -186,7 +186,8 @@ export class MetaAdsService {
                 return {
                     ...day,
                     results: totalResults,
-                    conversions: totalConversions
+                    conversions: totalConversions,
+                    conversations: maxMessages
                 };
             });
         } catch (error: any) {

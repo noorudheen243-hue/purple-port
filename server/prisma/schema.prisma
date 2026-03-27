@@ -1477,6 +1477,7 @@ model MarketingMetric {
   conversions Int?
   reach       Int? // New field
   results     Int? // New field (Meta: Actions, Google: Conversions/Actions)
+  conversations Int? // New field for messaging conversations
   ctr         Float?
   cpc         Float?
   cpm         Float?

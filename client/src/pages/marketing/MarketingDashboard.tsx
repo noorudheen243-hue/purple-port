@@ -5,6 +5,8 @@ import api from '../../lib/api';
 import { format } from 'date-fns';
 import { Loader2, AlertCircle, Facebook, BarChart3, Users, Calendar } from 'lucide-react';
 import { MetaLeads } from './MetaLeads';
+import { MetaAdsDashboard } from './MetaAdsDashboard';
+import { Sparkles } from 'lucide-react';
 
 const GoogleIcon = () => (
     <svg viewBox="0 0 24 24" className="w-full h-full" fill="currentColor">
@@ -19,7 +21,7 @@ export const MarketingDashboard: React.FC = () => {
     const [metrics, setMetrics] = useState<any[]>([]);
     const [summary, setSummary] = useState<any>(null);
     const [loading, setLoading] = useState(false);
-    const [view, setView] = useState<'performance' | 'leads'>('performance');
+    const [view, setView] = useState<'performance' | 'leads' | 'meta-dashboard'>('performance');
     const [platform, setPlatform] = useState<string>('all');
     const [error, setError] = useState<string | null>(null);
     const [selectedClientId, setSelectedClientId] = useState<string>('');
@@ -195,10 +197,20 @@ export const MarketingDashboard: React.FC = () => {
             )}
 
             {/* View Toggle */}
-            <div className="flex border-b border-gray-200 dark:border-gray-700 mb-6">
+            <div className="flex border-b border-gray-200 dark:border-gray-700 mb-6 overflow-x-auto">
+                <button
+                    onClick={() => setView('meta-dashboard')}
+                    className={`py-3 px-6 text-sm font-medium flex items-center border-b-2 transition-all whitespace-nowrap ${view === 'meta-dashboard'
+                            ? 'border-purple-600 text-purple-600 dark:text-purple-400 bg-purple-50/30 dark:bg-purple-900/10'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                        }`}
+                >
+                    <Sparkles className={`w-4 h-4 mr-2 ${view === 'meta-dashboard' ? 'animate-pulse text-purple-500' : ''}`} />
+                    Meta Ads Performance Dashboard
+                </button>
                 <button
                     onClick={() => setView('performance')}
-                    className={`py-3 px-6 text-sm font-medium flex items-center border-b-2 transition-colors ${view === 'performance'
+                    className={`py-3 px-6 text-sm font-medium flex items-center border-b-2 transition-colors whitespace-nowrap ${view === 'performance'
                             ? 'border-purple-600 text-purple-600 dark:text-purple-400'
                             : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
                         }`}
@@ -208,7 +220,7 @@ export const MarketingDashboard: React.FC = () => {
                 </button>
                 <button
                     onClick={() => setView('leads')}
-                    className={`py-3 px-6 text-sm font-medium flex items-center border-b-2 transition-colors ${view === 'leads'
+                    className={`py-3 px-6 text-sm font-medium flex items-center border-b-2 transition-colors whitespace-nowrap ${view === 'leads'
                             ? 'border-purple-600 text-purple-600 dark:text-purple-400'
                             : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
                         }`}
@@ -217,6 +229,14 @@ export const MarketingDashboard: React.FC = () => {
                     Generated Leads
                 </button>
             </div>
+
+            {view === 'meta-dashboard' && (
+                <MetaAdsDashboard 
+                    clientId={selectedClientId} 
+                    fromDate={fromDate} 
+                    toDate={toDate} 
+                />
+            )}
 
             {view === 'performance' ? (
                 <>

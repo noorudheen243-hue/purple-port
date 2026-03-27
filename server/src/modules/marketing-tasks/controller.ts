@@ -88,8 +88,9 @@ export async function getMetrics(req: Request, res: Response) {
             acc.conversions += (curr.conversions || 0);
             acc.reach += (curr.reach || 0);
             acc.results += (curr.results || 0);
+            acc.conversations += (curr.conversations || 0);
             return acc;
-        }, { impressions: 0, clicks: 0, spend: 0, conversions: 0, reach: 0, results: 0 });
+        }, { impressions: 0, clicks: 0, spend: 0, conversions: 0, reach: 0, results: 0, conversations: 0 });
 
         res.json({
             summary,
@@ -98,6 +99,18 @@ export async function getMetrics(req: Request, res: Response) {
     } catch (error) {
         console.error('Error fetching marketing metrics:', error);
         res.status(500).json({ message: 'Error fetching metrics', error: (error as Error).message });
+    }
+}
+
+export async function getAiTips(req: Request, res: Response) {
+    try {
+        const { clientId } = req.query;
+        if (!clientId) return res.status(400).json({ message: 'clientId is required.' });
+        const tips = await require('./services/marketingAiService').MarketingAIService.generateTips(clientId as string);
+        res.json(tips);
+    } catch (error) {
+        console.error('Error generating AI tips:', error);
+        res.status(500).json({ message: 'Error generating tips', error: (error as Error).message });
     }
 }
 

@@ -3,7 +3,7 @@ import {
     manualSync, getMetrics, authMeta, metaCallback, authGoogle, googleCallback,
     getAvailableAccounts, getIntegrationStatus, selectAccount, disconnectAccount,
     middleware, getLeads, syncLeads, createLead, updateLead, deleteLead, addFollowUp,
-    getMetaProfiles, linkAccountToProfile
+    getMetaProfiles, linkAccountToProfile, getAiTips
 } from './controller';
 import { protect } from '../auth/middleware';
 
@@ -26,6 +26,7 @@ router.post('/sync', manualSync);
 
 // Get metrics endpoint (GET)
 router.get('/metrics', getMetrics);
+router.get('/ai-tips', getAiTips);
 
 // Leads endpoints
 router.get('/leads', getLeads);

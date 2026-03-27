@@ -6,6 +6,7 @@ export interface ExternalMarketingMetric {
     conversions?: number | string;
     reach?: number | string;      // New
     results?: number | string;    // New
+    conversations?: number | string; // New
     ctr?: number | string;
     cpc?: number | string;
     cpm?: number | string;
@@ -19,6 +20,7 @@ export interface NormalizedMarketingMetric {
     conversions: number;
     reach: number;
     results: number;
+    conversations: number;
     ctr: number;
     cpc: number;
     cpm: number;
@@ -48,6 +50,7 @@ export class MarketingDataNormalizer {
             conversions: this.parseNumber(data.conversions),
             reach: this.parseNumber(data.reach),
             results: this.parseNumber(data.results),
+            conversations: this.parseNumber(data.conversations),
             ctr: this.parseFloatNumber(data.ctr),
             cpc: this.parseFloatNumber(data.cpc),
             cpm: this.parseFloatNumber(data.cpm),

@@ -61,7 +61,7 @@ const TaskDashboard = ({ view = 'ALL' }: TaskDashboardProps) => {
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                         <div className="bg-white p-4 rounded-xl shadow-sm border border-purple-100">
                             <p className="text-xs text-muted-foreground uppercase font-bold">Total Ad Spend</p>
-                            <h3 className="text-2xl font-bold text-purple-900 mt-1">₹{((dmStats?.meta_spend || 0) + (dmStats?.google_spend || 0)).toLocaleString()}</h3>
+                             <h3 className="text-2xl font-bold text-purple-900 mt-1">{"\u20B9"}{((dmStats?.meta_spend || 0) + (dmStats?.google_spend || 0)).toLocaleString()}</h3>
                             <p className="text-xs text-gray-500 mt-1">Meta & Google Ads</p>
                         </div>
                         <div className="bg-white p-4 rounded-xl shadow-sm border border-pink-100">

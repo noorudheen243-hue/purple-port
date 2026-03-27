@@ -6,7 +6,8 @@ import { format } from 'date-fns';
 import { Loader2, AlertCircle, Facebook, BarChart3, Users, Calendar } from 'lucide-react';
 import { MetaLeads } from './MetaLeads';
 import { MetaAdsDashboard } from './MetaAdsDashboard';
-import { Sparkles } from 'lucide-react';
+import { MetaAdsManager } from './MetaAdsManager';
+import { Sparkles, LayoutDashboard } from 'lucide-react';
 
 const GoogleIcon = () => (
     <svg viewBox="0 0 24 24" className="w-full h-full" fill="currentColor">
@@ -21,7 +22,7 @@ export const MarketingDashboard: React.FC = () => {
     const [metrics, setMetrics] = useState<any[]>([]);
     const [summary, setSummary] = useState<any>(null);
     const [loading, setLoading] = useState(false);
-    const [view, setView] = useState<'performance' | 'leads' | 'meta-dashboard'>('performance');
+    const [view, setView] = useState<'performance' | 'leads' | 'meta-dashboard' | 'meta-manager'>('performance');
     const [platform, setPlatform] = useState<string>('all');
     const [error, setError] = useState<string | null>(null);
     const [selectedClientId, setSelectedClientId] = useState<string>('');
@@ -206,7 +207,17 @@ export const MarketingDashboard: React.FC = () => {
                         }`}
                 >
                     <Sparkles className={`w-4 h-4 mr-2 ${view === 'meta-dashboard' ? 'animate-pulse text-purple-500' : ''}`} />
-                    Meta Ads Performance Dashboard
+                    Performance Dashboard
+                </button>
+                <button
+                    onClick={() => setView('meta-manager')}
+                    className={`py-3 px-6 text-sm font-medium flex items-center border-b-2 transition-all whitespace-nowrap ${view === 'meta-manager'
+                            ? 'border-purple-600 text-purple-600 dark:text-purple-400 bg-purple-50/30 dark:bg-purple-900/10'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                        }`}
+                >
+                    <LayoutDashboard className="w-4 h-4 mr-2" />
+                    Meta Ads Manager
                 </button>
                 <button
                     onClick={() => setView('performance')}
@@ -230,6 +241,10 @@ export const MarketingDashboard: React.FC = () => {
                 </button>
             </div>
 
+            {view === 'meta-manager' && (
+                <MetaAdsManager clientId={selectedClientId} />
+            )}
+
             {view === 'meta-dashboard' && (
                 <MetaAdsDashboard 
                     clientId={selectedClientId} 
@@ -244,8 +259,8 @@ export const MarketingDashboard: React.FC = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
                         <div className="p-5 bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 rounded-xl transition-all hover:shadow-md">
                             <p className="text-sm text-gray-500 dark:text-gray-400 mb-1 font-medium">Total Spend</p>
-                            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                                ₹{summary?.spend?.toLocaleString(undefined, { maximumFractionDigits: 0 }) || 0}
+                             <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                                {"\u20B9"}{summary?.spend?.toLocaleString(undefined, { maximumFractionDigits: 0 }) || 0}
                             </p>
                         </div>
                         <div className="p-5 bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 rounded-xl transition-all hover:shadow-md">
@@ -462,10 +477,10 @@ export const MarketingDashboard: React.FC = () => {
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-4 text-right font-semibold text-purple-600">{camp.results.toLocaleString()}</td>
-                                                    <td className="px-6 py-4 text-right font-medium text-gray-900 dark:text-white">
-                                                        ₹{costPerResult.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                                     <td className="px-6 py-4 text-right font-medium text-gray-900 dark:text-white">
+                                                        {"\u20B9"}{costPerResult.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                                                     </td>
-                                                    <td className="px-6 py-4 text-right font-medium">₹{camp.spend.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                                                     <td className="px-6 py-4 text-right font-medium">{"\u20B9"}{camp.spend.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
                                                     <td className="px-6 py-4 text-right text-gray-500">{camp.impressions.toLocaleString()}</td>
                                                     <td className="px-6 py-4 text-right text-gray-500">{camp.reach.toLocaleString()}</td>
                                                     <td className="px-6 py-4 text-right">

@@ -93,7 +93,7 @@ const GoogleAdsView = () => {
                 <Card>
                     <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-gray-500">Total Spend</CardTitle></CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">₹{totalSpend.toLocaleString()}</div>
+                        <div className="text-2xl font-bold">{"\u20B9"}{totalSpend.toLocaleString()}</div>
                     </CardContent>
                 </Card>
                 <Card>
@@ -111,7 +111,7 @@ const GoogleAdsView = () => {
                 <Card>
                     <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-gray-500">Avg CPA</CardTitle></CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">₹{avgCpa.toFixed(2)}</div>
+                        <div className="text-2xl font-bold">{"\u20B9"}{avgCpa.toFixed(2)}</div>
                     </CardContent>
                 </Card>
             </div>
@@ -144,11 +144,11 @@ const GoogleAdsView = () => {
                                             <TableCell>{new Date(log.date).toLocaleDateString()}</TableCell>
                                             <TableCell className="font-medium">{log.campaign_name}</TableCell>
                                             <TableCell>{log.campaign_type}</TableCell>
-                                            <TableCell className="text-right font-mono">₹{log.spend?.toLocaleString()}</TableCell>
+                                             <TableCell className="text-right font-mono">{"\u20B9"}{log.spend?.toLocaleString()}</TableCell>
                                             <TableCell className="text-right">{log.clicks}</TableCell>
                                             <TableCell className="text-right">{log.impressions}</TableCell>
                                             <TableCell className="text-right">{log.conversions}</TableCell>
-                                            <TableCell className="text-right">₹{log.cpa}</TableCell>
+                                             <TableCell className="text-right">{"\u20B9"}{log.cpa}</TableCell>
                                             <TableCell className="max-w-[150px] truncate" title={log.notes}>{log.notes || '-'}</TableCell>
                                         </TableRow>
                                     )) : (

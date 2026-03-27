@@ -125,7 +125,7 @@ export const MetaAdsDashboard: React.FC<MetaAdsDashboardProps> = ({ clientId, fr
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
                 <MetricCard 
                     title="Ad Spend" 
-                    value={`₹${summary.spend.toLocaleString()}`} 
+                    value={`\u20B9${summary.spend.toLocaleString()}`} 
                     icon={<Wallet className="w-5 h-5" />}
                     color="bg-purple-50 text-purple-600 border-purple-100"
                     description="Total budget spent"
@@ -153,7 +153,7 @@ export const MetaAdsDashboard: React.FC<MetaAdsDashboardProps> = ({ clientId, fr
                 />
                 <MetricCard 
                     title="CPM" 
-                    value={`₹${cpm.toFixed(0)}`} 
+                    value={`\u20B9${cpm.toFixed(0)}`} 
                     icon={<Target className="w-5 h-5" />}
                     color="bg-pink-50 text-pink-600 border-pink-100"
                     description="Cost per 1k views"
@@ -258,7 +258,7 @@ export const MetaAdsDashboard: React.FC<MetaAdsDashboardProps> = ({ clientId, fr
                                             <span className="text-[10px] text-gray-400 font-medium uppercase mt-0.5">{camp.status}</span>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 text-right font-bold text-gray-800 dark:text-gray-200 text-sm">₹{camp.spend.toLocaleString()}</td>
+                                    <td className="px-6 py-4 text-right font-bold text-gray-800 dark:text-gray-200 text-sm">{"\u20B9"}{camp.spend.toLocaleString()}</td>
                                     <td className="px-6 py-4 text-right text-gray-500 dark:text-gray-400 text-sm">{camp.impressions.toLocaleString()}</td>
                                     <td className="px-6 py-4 text-right text-gray-500 dark:text-gray-400 text-sm">{camp.clicks.toLocaleString()}</td>
                                     <td className="px-6 py-4 text-right text-sm">

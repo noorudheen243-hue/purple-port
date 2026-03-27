@@ -183,16 +183,154 @@ export class MetaAdsService {
                     totalConversions = totalResults;
                 }
 
-                return {
-                    ...day,
-                    results: totalResults,
-                    conversions: totalConversions,
-                    conversations: maxMessages
-                };
-            });
+                    return {
+                        ...day,
+                        results: totalResults,
+                        conversions: totalConversions,
+                        conversations: maxMessages
+                    };
+                });
         } catch (error: any) {
             console.error(`Meta API fetchMetrics error for campaign ${campaignId}:`, error.response?.data || error.message);
             return [];
         }
     }
+
+    // ==========================================
+    // META ADS MANAGER EXTENSIONS
+    // ==========================================
+
+    /**
+     * Fetch deep campaign details (including daily budgets, spend)
+     */
+    async fetchCampaignsDetailed(accountId: string): Promise<any[]> {
+        const token = await this.getValidToken(accountId);
+        const formattedAccountId = this.ensureActPrefix(accountId);
+        
+        if (token.startsWith('mock')) {
+            return [
+                { id: 'camp_meta_1', name: 'IG Awareness Q1', status: 'ACTIVE', objective: 'OUTCOME_AWARENESS', daily_budget: 100000, start_time: new Date().toISOString() },
+                { id: 'camp_meta_2', name: 'FB Lead Gen - Real Estate', status: 'PAUSED', objective: 'OUTCOME_LEADS', daily_budget: 500000, start_time: new Date().toISOString() }
+            ];
+        }
+
+        try {
+            const response = await axios.get(`${META_GRAPH_URL}/${formattedAccountId}/campaigns`, {
+                params: {
+                    access_token: token,
+                    fields: 'id,name,status,objective,daily_budget,lifetime_budget,start_time,stop_time'
+                }
+            });
+            return response.data?.data || [];
+        } catch (error: any) {
+            console.error(`fetchCampaignsDetailed error:`, error.response?.data || error.message);
+            throw new Error(`Failed to fetch campaigns: ${error.response?.data?.error?.message || error.message}`);
+        }
+    }
+
+    /**
+     * Fetch Ad Sets for a campaign
+     */
+    async fetchAdSets(campaignId: string, accountId: string): Promise<any[]> {
+        const token = await this.getValidToken(accountId);
+        if (token.startsWith('mock')) return [{ id: 'adset_1', name: 'Broad Audience 18-65', status: 'ACTIVE', daily_budget: 50000, targeting: {} }];
+
+        try {
+            const response = await axios.get(`${META_GRAPH_URL}/${campaignId}/adsets`, {
+                params: {
+                    access_token: token,
+                    fields: 'id,name,status,daily_budget,lifetime_budget,start_time,end_time,targeting,promoted_object,billing_event,optimization_goal'
+                }
+            });
+            return response.data?.data || [];
+        } catch (error: any) {
+            console.error(`fetchAdSets error:`, error.response?.data || error.message);
+            throw error;
+        }
+    }
+
+    /**
+     * Fetch Ads for an Ad Set
+     */
+    async fetchAds(adSetId: string, accountId: string): Promise<any[]> {
+        const token = await this.getValidToken(accountId);
+        if (token.startsWith('mock')) return [{ id: 'ad_1', name: 'Static Image Ad - House 1', status: 'ACTIVE', creative: { id: 'creative_1' } }];
+
+        try {
+            const response = await axios.get(`${META_GRAPH_URL}/${adSetId}/ads`, {
+                params: {
+                    access_token: token,
+                    fields: 'id,name,status,creative{id,name,thumbnail_url}'
+                }
+            });
+            return response.data?.data || [];
+        } catch (error: any) {
+            console.error(`fetchAds error:`, error.response?.data || error.message);
+            throw error;
+        }
+    }
+
+    /**
+     * Create a new Campaign
+     */
+    async createCampaign(accountId: string, data: { name: string, objective: string, status?: string }): Promise<any> {
+        const token = await this.getValidToken(accountId);
+        const formattedAccountId = this.ensureActPrefix(accountId);
+        if (token.startsWith('mock')) return { id: `camp_mock_${Date.now()}`, ...data };
+
+        try {
+            const response = await axios.post(`${META_GRAPH_URL}/${formattedAccountId}/campaigns`, {
+                name: data.name,
+                objective: data.objective,
+                status: data.status || 'PAUSED',
+                special_ad_categories: [], // Empty for regular ads
+                access_token: token
+            });
+            return response.data;
+        } catch (error: any) {
+            console.error(`createCampaign error:`, error.response?.data || error.message);
+            throw new Error(`Campaign Creation Failed: ${error.response?.data?.error?.message || error.message}`);
+        }
+    }
+
+    /**
+     * Create a new Ad Set
+     */
+    async createAdSet(accountId: string, data: any): Promise<any> {
+        const token = await this.getValidToken(accountId);
+        const formattedAccountId = this.ensureActPrefix(accountId);
+        if (token.startsWith('mock')) return { id: `adset_mock_${Date.now()}`, ...data };
+
+        try {
+            const payload = {
+                ...data,
+                access_token: token
+            };
+            const response = await axios.post(`${META_GRAPH_URL}/${formattedAccountId}/adsets`, payload);
+            return response.data;
+        } catch (error: any) {
+            console.error(`createAdSet error:`, error.response?.data?.error || error.message);
+            throw new Error(`Ad Set Creation Failed: ${error.response?.data?.error?.message || error.message}`);
+        }
+    }
+
+    /**
+     * Update Object Status (Pause/Activate)
+     */
+    async updateStatus(objectId: string, accountId: string, status: 'ACTIVE' | 'PAUSED'): Promise<any> {
+        const token = await this.getValidToken(accountId);
+        if (token.startsWith('mock')) return { success: true };
+
+        try {
+            const response = await axios.post(`${META_GRAPH_URL}/${objectId}`, {
+                status,
+                access_token: token
+            });
+            return response.data;
+        } catch (error: any) {
+            console.error(`updateStatus error:`, error.response?.data || error.message);
+            throw new Error(`Status Update Failed: ${error.response?.data?.error?.message || error.message}`);
+        }
+    }
 }
+

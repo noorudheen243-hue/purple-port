@@ -742,3 +742,73 @@ export async function syncLeads(req: Request, res: Response) {
         res.status(500).json({ message: 'Failed to sync leads', error: e.message });
     }
 }
+
+// ==========================================
+// META ADS MANAGER EXTENSIONS
+// ==========================================
+
+export async function getMetaCampaignsDetailed(req: Request, res: Response) {
+    try {
+        const { accountId } = req.query;
+        if (!accountId) return res.status(400).json({ message: 'accountId is required' });
+        const campaigns = await metaService.fetchCampaignsDetailed(accountId as string);
+        res.json(campaigns);
+    } catch (error: any) {
+        res.status(500).json({ message: 'Error fetching campaigns', error: error.message });
+    }
+}
+
+export async function getMetaAdSets(req: Request, res: Response) {
+    try {
+        const { campaignId, accountId } = req.query;
+        if (!campaignId || !accountId) return res.status(400).json({ message: 'campaignId and accountId are required' });
+        const adSets = await metaService.fetchAdSets(campaignId as string, accountId as string);
+        res.json(adSets);
+    } catch (error: any) {
+        res.status(500).json({ message: 'Error fetching adsets', error: error.message });
+    }
+}
+
+export async function getMetaAds(req: Request, res: Response) {
+    try {
+        const { adSetId, accountId } = req.query;
+        if (!adSetId || !accountId) return res.status(400).json({ message: 'adSetId and accountId are required' });
+        const ads = await metaService.fetchAds(adSetId as string, accountId as string);
+        res.json(ads);
+    } catch (error: any) {
+        res.status(500).json({ message: 'Error fetching ads', error: error.message });
+    }
+}
+
+export async function createMetaCampaign(req: Request, res: Response) {
+    try {
+        const { accountId, name, objective, status } = req.body;
+        if (!accountId || !name || !objective) return res.status(400).json({ message: 'accountId, name, and objective are required' });
+        const result = await metaService.createCampaign(accountId, { name, objective, status });
+        res.json(result);
+    } catch (error: any) {
+        res.status(500).json({ message: 'Error creating campaign', error: error.message });
+    }
+}
+
+export async function createMetaAdSet(req: Request, res: Response) {
+    try {
+        const { accountId, payload } = req.body;
+        if (!accountId || !payload) return res.status(400).json({ message: 'accountId and payload are required' });
+        const result = await metaService.createAdSet(accountId, payload);
+        res.json(result);
+    } catch (error: any) {
+        res.status(500).json({ message: 'Error creating ad set', error: error.message });
+    }
+}
+
+export async function updateMetaStatus(req: Request, res: Response) {
+    try {
+        const { objectId, accountId, status } = req.body;
+        if (!objectId || !accountId || !status) return res.status(400).json({ message: 'objectId, accountId, and status are required' });
+        const result = await metaService.updateStatus(objectId, accountId, status);
+        res.json(result);
+    } catch (error: any) {
+        res.status(500).json({ message: 'Error updating status', error: error.message });
+    }
+}

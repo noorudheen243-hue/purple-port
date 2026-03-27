@@ -7,7 +7,7 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { DollarSign, Save, AlertCircle, Settings } from 'lucide-react';
+import { IndianRupee, Save, AlertCircle, Settings } from 'lucide-react';
 import PayrollSettings from './PayrollSettings';
 import { useAuthStore } from '../../store/authStore';
 
@@ -234,7 +234,7 @@ const SalaryCalculator = () => {
                     onClick={() => setViewMode('CALCULATOR')}
                     className={viewMode === 'CALCULATOR' ? "bg-purple-700 text-white hover:bg-purple-800 shadow-md" : "bg-purple-100 text-purple-700 hover:bg-purple-200 border-purple-200 variant='outline'"}
                 >
-                    <DollarSign className="w-4 h-4 mr-2" />
+                    <span className="font-bold mr-2 text-lg">{"\u20B9"}</span>
                     Salary Calculator
                 </Button>
                 <Button
@@ -337,7 +337,7 @@ const SalaryCalculator = () => {
                             <Card className="border-green-200 dark:border-green-900">
                                 <CardHeader className="bg-green-50 dark:bg-green-950/20">
                                     <CardTitle className="text-green-700 dark:text-green-400 flex items-center gap-2">
-                                        <DollarSign className="w-5 h-5" /> Earnings
+                                        <span className="font-bold text-xl">{"\u20B9"}</span> Earnings
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-4 pt-6">
@@ -374,14 +374,14 @@ const SalaryCalculator = () => {
                             <Card className="border-purple-200 dark:border-purple-900 md:col-span-2">
                                 <CardHeader className="bg-purple-50 dark:bg-purple-950/20">
                                     <CardTitle className="text-purple-700 dark:text-purple-400 flex items-center gap-2">
-                                        <DollarSign className="w-5 h-5" /> Gross Total (Before Deductions)
+                                        <span className="font-bold text-xl">{"\u20B9"}</span> Gross Total (Before Deductions)
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="pt-6">
                                     <div className="bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-800 rounded-lg p-6 text-center">
                                         <p className="text-sm text-purple-700 dark:text-purple-300 mb-2 font-semibold">GROSS TOTAL</p>
-                                        <p className="text-4xl font-bold text-purple-900 dark:text-purple-50">
-                                            ₹{(watch('gross_total') || 0).toLocaleString('en-IN')}
+                                         <p className="text-4xl font-bold text-purple-900 dark:text-purple-50">
+                                            {"\u20B9"}{(watch('gross_total') || 0).toLocaleString('en-IN')}
                                         </p>
                                         <p className="text-xs text-purple-700 dark:text-purple-300 mt-2">
                                             Auto-calculated based on salary structure and days worked
@@ -450,8 +450,8 @@ const SalaryCalculator = () => {
                                         <h3 className="text-lg font-medium text-slate-300">Net Payable</h3>
                                         <p className="text-sm text-slate-400">Earnings - Deductions</p>
                                     </div>
-                                    <div className="text-4xl font-bold text-white">
-                                        ₹ {Math.max(0, Number(watch('net_pay'))).toLocaleString('en-IN')}
+                                     <div className="text-4xl font-bold text-white">
+                                        {"\u20B9"} {Math.max(0, Number(watch('net_pay'))).toLocaleString('en-IN')}
                                     </div>
                                     <Button size="lg" className="bg-green-500 hover:bg-green-600 text-white" disabled={saveMutation.isPending}>
                                         <Save className="w-5 h-5 mr-2" />

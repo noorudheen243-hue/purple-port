@@ -30,11 +30,11 @@ const PayrollManager = () => {
                 <div className="bg-muted/40 p-2 rounded-lg border overflow-x-auto">
                     <TabsList className="bg-transparent gap-2 h-auto p-0 min-w-max justify-start">
                         {isAdminOrManager && (
-                            <TabsTrigger
+                             <TabsTrigger
                                 value="calculator"
                                 className="data-[state=active]:bg-purple-900 data-[state=active]:text-yellow-400 data-[state=inactive]:bg-white data-[state=inactive]:text-gray-600 px-4 py-2 rounded-md font-bold transition-all shadow-sm border border-transparent data-[state=active]:border-yellow-400 data-[state=inactive]:border-gray-200"
                             >
-                                <Calculator className="w-4 h-4 mr-2" />
+                                <span className="font-bold mr-2">{"\u20B9"}</span>
                                 Salary Calculator
                             </TabsTrigger>
                         )}

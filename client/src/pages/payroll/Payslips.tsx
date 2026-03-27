@@ -75,7 +75,7 @@ const SalarySlipModal = ({ slip, onClose }: { slip: any; onClose: () => void }) 
 
     const handleShareWhatsApp = async () => {
         setIsSharing(true);
-        const text = `Here is my payslip for ${slip.run.month}/${slip.run.year}.\nNet Pay: ₹${slip.net_pay.toLocaleString('en-IN')}`;
+        const text = `Here is my payslip for ${slip.run.month}/${slip.run.year}.\nNet Pay: \u20B9${slip.net_pay.toLocaleString('en-IN')}`;
         const filename = `Payslip_${slip.run.month}_${slip.run.year}.pdf`;
 
         try {
@@ -117,7 +117,7 @@ const SalarySlipModal = ({ slip, onClose }: { slip: any; onClose: () => void }) 
     const handleShareMail = async () => {
         setIsSharing(true);
         const subject = `Payslip - ${slip.run.month}/${slip.run.year} - ${slip.user?.full_name}`;
-        const body = `Please find attached the payslip for ${slip.run.month}/${slip.run.year}.\n\nNet Pay: ₹${slip.net_pay.toLocaleString('en-IN')}`;
+        const body = `Please find attached the payslip for ${slip.run.month}/${slip.run.year}.\n\nNet Pay: \u20B9${slip.net_pay.toLocaleString('en-IN')}`;
         const filename = `Payslip_${slip.run.month}_${slip.run.year}.pdf`;
 
         try {
@@ -156,7 +156,7 @@ const SalarySlipModal = ({ slip, onClose }: { slip: any; onClose: () => void }) 
 
     const handleShareWhatsAppWeb = async () => {
         setIsSharing(true);
-        const text = `Here is my payslip for ${slip.run.month}/${slip.run.year}.\nNet Pay: ₹${slip.net_pay.toLocaleString('en-IN')}`;
+        const text = `Here is my payslip for ${slip.run.month}/${slip.run.year}.\nNet Pay: \u20B9${slip.net_pay.toLocaleString('en-IN')}`;
         const filename = `Payslip_${slip.run.month}_${slip.run.year}.pdf`;
 
         try {
@@ -197,7 +197,7 @@ const SalarySlipModal = ({ slip, onClose }: { slip: any; onClose: () => void }) 
     const handleShareGmail = async () => {
         setIsSharing(true);
         const subject = `Payslip - ${slip.run.month}/${slip.run.year} - ${slip.user?.full_name}`;
-        const body = `Please find attached the payslip for ${slip.run.month}/${slip.run.year}.\n\nNet Pay: ₹${slip.net_pay.toLocaleString('en-IN')}`;
+        const body = `Please find attached the payslip for ${slip.run.month}/${slip.run.year}.\n\nNet Pay: \u20B9${slip.net_pay.toLocaleString('en-IN')}`;
         const filename = `Payslip_${slip.run.month}_${slip.run.year}.pdf`;
 
         try {
@@ -376,7 +376,7 @@ const SalarySlipModal = ({ slip, onClose }: { slip: any; onClose: () => void }) 
 
                                         <div className="p-4 flex justify-between font-bold border-t border-gray-300 bg-gray-50 mt-auto items-end print:p-2">
                                             <span>Total Earnings</span>
-                                            <span>₹ {calculateTotalEarnings(slip).toLocaleString('en-IN')}</span>
+                                             <span>{"\u20B9"} {calculateTotalEarnings(slip).toLocaleString('en-IN')}</span>
                                         </div>
                                     </div>
                                     {/* Deductions Column */}
@@ -389,7 +389,7 @@ const SalarySlipModal = ({ slip, onClose }: { slip: any; onClose: () => void }) 
 
                                         <div className="p-4 flex justify-between font-bold border-t border-gray-300 bg-gray-50 mt-auto items-end print:p-2">
                                             <span>Total Deductions</span>
-                                            <span className="text-red-600">₹ {calculateTotalDeductions(slip).toLocaleString('en-IN')}</span>
+                                             <span className="text-red-600">{"\u20B9"} {calculateTotalDeductions(slip).toLocaleString('en-IN')}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -402,7 +402,7 @@ const SalarySlipModal = ({ slip, onClose }: { slip: any; onClose: () => void }) 
                                     <p className="text-xs opacity-60 print:opacity-100 hidden print:block">(Earnings - Deductions)</p>
                                 </div>
                                 <div className="text-4xl font-bold tracking-tight print:text-3xl">
-                                    ₹ {slip.net_pay.toLocaleString('en-IN')}
+                                     {"\u20B9"} {slip.net_pay.toLocaleString('en-IN')}
                                 </div>
                             </div>
                         </div> {/* End Padding 8 */}
@@ -433,7 +433,7 @@ const Row = ({ label, value, isDeduction }: any) => {
         <div className="flex justify-between p-3 border-b last:border-0 hover:bg-gray-50/50 print:p-0.5 print-table-row">
             <span className="text-gray-600">{label}</span>
             <span className={`font-medium ${isDeduction ? 'text-red-600' : 'text-gray-900'}`}>
-                {value !== undefined ? `₹ ${value.toLocaleString('en-IN')}` : '-'}
+                 {value !== undefined ? `\u20B9 ${value.toLocaleString('en-IN')}` : '-'}
             </span>
         </div>
     );
@@ -577,7 +577,7 @@ const Payslips = () => {
                                     <div className="mt-2 sm:flex sm:justify-between items-center">
                                         <div className="sm:flex">
                                             <p className="flex items-center text-sm text-gray-500">
-                                                Net Pay: <span className="font-medium text-gray-900 ml-1">₹{slip.net_pay.toLocaleString('en-IN')}</span>
+                                                 Net Pay: <span className="font-medium text-gray-900 ml-1">{"\u20B9"}{slip.net_pay.toLocaleString('en-IN')}</span>
                                             </p>
                                         </div>
                                         <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0 gap-4">

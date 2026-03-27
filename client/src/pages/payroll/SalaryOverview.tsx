@@ -135,11 +135,11 @@ const EditSalaryModal = ({ isOpen, onClose, staff, month, year, onSave }: any) =
                         <div className="mt-8 pt-4 border-t space-y-2">
                             <div className="flex justify-between text-sm">
                                 <span>Total Gross Earnings:</span>
-                                <span className="font-semibold">₹{calculateTotals().gross.toLocaleString()}</span>
+                                 <span className="font-semibold">{"\u20B9"}{calculateTotals().gross.toLocaleString()}</span>
                             </div>
                             <div className="flex justify-between text-lg font-bold text-indigo-700 bg-indigo-50 p-2 rounded">
                                 <span>Net Payable:</span>
-                                <span>₹{calculateTotals().net.toLocaleString()}</span>
+                                 <span>{"\u20B9"}{calculateTotals().net.toLocaleString()}</span>
                             </div>
                         </div>
                     </div>
@@ -290,7 +290,7 @@ const SalaryOverview: React.FC = () => {
                                         {person.advance > 0 && <span className="text-red-500">Adv: {person.advance.toLocaleString()}</span>}
                                     </div>
                                 </td>
-                                <td className="whitespace-nowrap px-3 py-4 text-sm font-bold text-gray-900">₹{person.netPay.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</td>
+                                 <td className="whitespace-nowrap px-3 py-4 text-sm font-bold text-gray-900">{"\u20B9"}{person.netPay.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</td>
                                 <td className="whitespace-nowrap px-3 py-4 text-sm text-right">
                                     <button
                                         onClick={() => setEditingStaff(person)}

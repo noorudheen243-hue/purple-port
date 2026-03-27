@@ -207,10 +207,10 @@ const PayrollSettings = () => {
                                                 />
                                             </TableCell>
                                             <TableCell className="text-right font-bold text-green-700">
-                                                ₹{calculateTotal(staff).toLocaleString('en-IN')}
+                                                {"\u20B9"}{calculateTotal(staff).toLocaleString('en-IN')}
                                             </TableCell>
                                             <TableCell className="text-right font-bold text-blue-700">
-                                                ₹{(calculateTotal(staff) / 30).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                                                {"\u20B9"}{(calculateTotal(staff) / 30).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                                             </TableCell>
                                         </TableRow>
                                     ))

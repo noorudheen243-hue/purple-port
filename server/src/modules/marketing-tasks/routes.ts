@@ -3,7 +3,7 @@ import {
     manualSync, getMetrics, authMeta, metaCallback, authGoogle, googleCallback,
     getAvailableAccounts, getIntegrationStatus, selectAccount, disconnectAccount,
     middleware, getLeads, syncLeads, createLead, updateLead, deleteLead, addFollowUp,
-    getMetaProfiles, linkAccountToProfile, getAiTips
+    getMetaProfiles, linkAccountToProfile, getAiTips, getMetaCampaignsDetailed, getMetaAdSets, getMetaAds, createMetaCampaign, createMetaAdSet, updateMetaStatus
 } from './controller';
 import { protect } from '../auth/middleware';
 
@@ -47,5 +47,14 @@ router.post('/accounts/disconnect', disconnectAccount);
 // Meta Profile Management (NEW)
 router.get('/meta/profiles', getMetaProfiles);
 router.post('/meta/link-profile', linkAccountToProfile);
+
+// Meta Ads Manager Operations (NEW)
+router.get('/meta/manager/campaigns', getMetaCampaignsDetailed);
+router.get('/meta/manager/adsets', getMetaAdSets);
+router.get('/meta/manager/ads', getMetaAds);
+
+router.post('/meta/manager/campaigns', createMetaCampaign);
+router.post('/meta/manager/adsets', createMetaAdSet);
+router.patch('/meta/manager/status', updateMetaStatus);
 
 export default router;

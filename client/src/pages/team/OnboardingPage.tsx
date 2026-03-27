@@ -559,7 +559,7 @@ const OnboardingPage = () => {
                                             <div>
                                                 <label className="label text-gray-500">Base Salary (Monthly)</label>
                                                 <div className="relative">
-                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">₹</span>
+                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">{"\u20B9"}</span>
                                                     <input disabled className="input-field pl-8 bg-gray-100 text-gray-400 cursor-not-allowed" value="0 (Manage in Payroll)" />
                                                     {/* Hidden input to satisfy form if needed, or update schema to optional */}
                                                     <input type="hidden" {...register('base_salary')} value={0} />
@@ -737,7 +737,7 @@ const OnboardingPage = () => {
                                             <li><span className="font-medium text-gray-900">Role:</span> {formData.designation} ({formData.department})</li>
                                             <li><span className="font-medium text-gray-900">Email:</span> {formData.email}</li>
                                             {isSuperUser && (
-                                                <li><span className="font-medium text-gray-900">Salary:</span> ₹{formData.base_salary} / {formData.salary_type}</li>
+                                                 <li><span className="font-medium text-gray-900">Salary:</span> {"\u20B9"}{formData.base_salary} / {formData.salary_type}</li>
                                             )}
                                             {formData.payment_method && <li><span className="font-medium text-gray-900">Payment:</span> {formData.payment_method}</li>}
                                             {formData.pan_number && <li><span className="font-medium text-gray-900">PAN:</span> {formData.pan_number}</li>}

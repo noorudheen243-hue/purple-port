@@ -123,7 +123,7 @@ const PortalDashboard = () => {
                     <div className="grid grid-cols-2 gap-2 mt-2 text-xs">
                         <div className="bg-white/50 p-1.5 rounded border border-blue-100">
                             <div className="text-muted-foreground scale-90 origin-left">Total Spend</div>
-                            <div className="font-bold text-blue-700">₹{m.total_spend?.toLocaleString() || 0}</div>
+                            <div className="font-bold text-blue-700">{"\u20B9"}{m.total_spend?.toLocaleString() || 0}</div>
                         </div>
                         <div className="bg-white/50 p-1.5 rounded border border-purple-100">
                             <div className="text-muted-foreground scale-90 origin-left">Last Campaign</div>
@@ -138,7 +138,7 @@ const PortalDashboard = () => {
                     <div className="grid grid-cols-2 gap-2 mt-2 text-xs">
                         <div className="bg-white/50 p-1.5 rounded border border-orange-100">
                             <div className="text-muted-foreground scale-90 origin-left">Total Spend</div>
-                            <div className="font-bold text-orange-700">₹{g.total_spend?.toLocaleString() || 0}</div>
+                            <div className="font-bold text-orange-700">{"\u20B9"}{g.total_spend?.toLocaleString() || 0}</div>
                         </div>
                         <div className="bg-white/50 p-1.5 rounded border border-yellow-100">
                             <div className="text-muted-foreground scale-90 origin-left">Conversions</div>

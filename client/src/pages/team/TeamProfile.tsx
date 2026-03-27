@@ -186,11 +186,11 @@ const TeamProfile = () => {
                         <div className="space-y-3">
                             <div className="flex justify-between text-sm p-3 bg-gray-50 rounded">
                                 <span className="text-gray-600">Base Salary</span>
-                                <span className="font-mono font-medium">₹{profile.base_salary?.toLocaleString()}</span>
+                                 <span className="font-mono font-medium">{"\u20B9"}{profile.base_salary?.toLocaleString()}</span>
                             </div>
                             <div className="flex justify-between text-sm p-3 bg-gray-50 rounded">
                                 <span className="text-gray-600">HRA</span>
-                                <span className="font-mono font-medium">₹{profile.hra?.toLocaleString()}</span>
+                                 <span className="font-mono font-medium">{"\u20B9"}{profile.hra?.toLocaleString()}</span>
                             </div>
                         </div>
                         <div className="space-y-3 text-sm">

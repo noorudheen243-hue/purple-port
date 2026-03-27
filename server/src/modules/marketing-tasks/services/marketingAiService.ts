@@ -71,7 +71,7 @@ export class MarketingAIService {
                 tips.push({
                     type: 'CRITICAL',
                     title: `High Cost per Result: ${camp.name}`,
-                    message: `You are spending ₹${costPerResult.toFixed(0)} per result. This may impact your overall ROI.`,
+                    message: `You are spending \u20B9${costPerResult.toFixed(0)} per result. This may impact your overall ROI.`,
                     actionable: 'Analyze which ad sets are underperforming and consider reallocating budget to the top-performing variations.'
                 });
             }

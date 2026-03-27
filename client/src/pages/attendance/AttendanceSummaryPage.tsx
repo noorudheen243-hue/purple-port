@@ -50,7 +50,7 @@ const AttendanceSummaryPage = () => {
         if (!window.confirm("This will recalculate attendance status for ALL staff based on current shift assignments. Continue?")) return;
         setIsRecalculating(true);
         try {
-            const { data } = await api.post('/attendance/recalculate-all');
+            const { data } = await api.post('/attendance/admin/recalculate-all');
             alert(data.message || "Recalculation complete");
             fetchAttendance();
         } catch (error: any) {

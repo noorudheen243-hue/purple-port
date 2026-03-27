@@ -127,7 +127,7 @@ const MetaAdsView = () => {
                     <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-gray-500">Total Spend</CardTitle></CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">
-                            ₹{logs?.reduce((acc: number, curr: any) => acc + (curr.spend || 0), 0).toLocaleString()}
+                            {"\u20B9"}{logs?.reduce((acc: number, curr: any) => acc + (curr.spend || 0), 0).toLocaleString()}
                         </div>
                     </CardContent>
                 </Card>
@@ -172,7 +172,7 @@ const MetaAdsView = () => {
                                                 <TableCell className="font-medium">{log.campaign_name}</TableCell>
                                                 <TableCell>{log.platform}</TableCell>
                                                 <TableCell>{log.objective}</TableCell>
-                                                <TableCell className="text-right font-mono">₹{log.spend?.toLocaleString()}</TableCell>
+                                                 <TableCell className="text-right font-mono">{"\u20B9"}{log.spend?.toLocaleString()}</TableCell>
                                                 <TableCell className="text-right text-xs text-muted-foreground">
                                                     {Object.entries(results || {}).map(([k, v]) => (
                                                         <div key={k}>{k}: <b>{v as any}</b></div>

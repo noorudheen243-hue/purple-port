@@ -51,3 +51,8 @@ deploy_key
 deploy_key.pub 
 
 server/uploads/
+# Database
+*.db
+*.db-journal
+*.db-wal
+*.db-shm

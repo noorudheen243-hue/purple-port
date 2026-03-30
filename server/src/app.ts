@@ -94,6 +94,7 @@ import backupRoutes from './modules/backup/routes';
 import clientPortalRoutes from './modules/client_portal/routes';
 import marketingRoutes from './modules/marketing-tasks/routes';
 import settingsRoutes from './modules/settings/routes';
+import whatsappRoutes from './modules/whatsapp/routes';
 
 import path from 'path';
 
@@ -142,6 +143,7 @@ app.use('/api/attendance/biometric', biometricControlRoutes); // Specific route 
 app.use('/api/attendance', attendanceRoutes); // Generic route second
 app.use('/api/leave', leaveRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/whatsapp', whatsappRoutes);
 
 import chatRoutes from './modules/chat/routes';
 import launcherRoutes from './modules/launcher/routes';

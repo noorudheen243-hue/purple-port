@@ -3,6 +3,7 @@ import app from './app';
 // import cors from 'cors'; // cors handled in app.ts
 import { syncBiometrics, BiometricDaemon } from './modules/attendance/biometric.service';
 import { initAIEngine } from './cron/aiNotificationEngine';
+import { waEngine } from './modules/whatsapp/WhatsAppEngine';
 
 const PORT = process.env.PORT || 4001;
 
@@ -27,11 +28,21 @@ SocketService.initialize(server, [
 
 const runningServer = server.listen(PORT, async () => {
     console.log(`Server running on port ${PORT}`);
+    
+    // 1. Initialize WhatsApp Engine immediately (High Priority)
+    console.log('[Server] Auto-starting WhatsApp Engine...');
+    waEngine.initialize().catch(err => {
+        console.warn('[Server] WhatsApp Engine auto-init failed (non-critical):', err?.message);
+    });
 
-    // Start Biometric Management Service (Heartbeat + Auto-Sync)
-    BiometricDaemon.start();
+    // 2. Initialize Biometrics (May be slow/long-running)
+    try {
+        await BiometricDaemon.start();
+    } catch (err: any) {
+        console.warn('[Server] BiometricDaemon failed to start:', err.message);
+    }
 
-    // Start AI Smart Notification Engine
+    // 3. Initialize AI Engine
     initAIEngine();
 });
 

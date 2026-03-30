@@ -68,7 +68,7 @@ export class GoogleAdsService {
             const query = `
                 SELECT campaign.id, campaign.name, campaign.status
                 FROM campaign
-                WHERE campaign.status = 'ENABLED'
+                WHERE campaign.status IN ('ENABLED', 'PAUSED')
             `;
             const response = await axios.post(`${GOOGLE_ADS_API_URL}/${customerId}/googleAds:search`, {
                 query

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import axios from 'axios';
+import { format } from 'date-fns';
 import prisma from '../../utils/prisma';
 import { MetaAdsService } from './services/metaAdsService';
 import { GoogleAdsService } from './services/googleAdsService';
@@ -32,7 +33,7 @@ export async function manualSync(req: Request, res: Response) {
 
 export async function getMetrics(req: Request, res: Response) {
     try {
-        const { clientId, platform, from, to } = req.query;
+        const { clientId, platform, from, to, status } = req.query;
 
         if (!from || !to) {
             return res.status(400).json({ message: 'from and to dates are required.' });
@@ -61,6 +62,15 @@ export async function getMetrics(req: Request, res: Response) {
         if (platform) {
             if (!whereClause.campaign) whereClause.campaign = {};
             whereClause.campaign.platform = platform as string;
+        }
+
+        if (status === 'active') {
+            if (!whereClause.campaign) whereClause.campaign = {};
+            whereClause.campaign.status = { in: ['ACTIVE', 'ENABLED'] };
+        } else if (status === 'all') {
+            if (!whereClause.campaign) whereClause.campaign = {};
+            // Include everything that isn't deleted/unknown
+            whereClause.campaign.status = { in: ['ACTIVE', 'PAUSED', 'ARCHIVED', 'ENABLED'] };
         }
 
         const metrics = await (prisma as any).marketingMetric.findMany({
@@ -92,9 +102,31 @@ export async function getMetrics(req: Request, res: Response) {
             return acc;
         }, { impressions: 0, clicks: 0, spend: 0, conversions: 0, reach: 0, results: 0, conversations: 0 });
 
+        // NEW: Fetch ALL relevant campaigns to return to UI (Ensures 66+ show up even with 0 metrics)
+        const campaignWhere: any = { clientId: clientId as string };
+        if (platform) campaignWhere.platform = platform as string;
+        
+        if (status === 'active') {
+            campaignWhere.status = { in: ['ACTIVE', 'ENABLED'] };
+        } else if (status === 'all') {
+            campaignWhere.status = { in: ['ACTIVE', 'PAUSED', 'ARCHIVED', 'ENABLED'] };
+        }
+
+        const allCampaigns = await (prisma as any).marketingCampaign.findMany({
+            where: campaignWhere,
+            select: {
+                id: true,
+                name: true,
+                platform: true,
+                objective: true,
+                status: true
+            }
+        });
+
         res.json({
             summary,
-            data: metrics
+            data: metrics,
+            campaigns: allCampaigns
         });
     } catch (error) {
         console.error('Error fetching marketing metrics:', error);
@@ -812,3 +844,52 @@ export async function updateMetaStatus(req: Request, res: Response) {
         res.status(500).json({ message: 'Error updating status', error: error.message });
     }
 }
+
+export async function sendReport(req: Request, res: Response) {
+    const file = (req as any).file as Express.Multer.File | undefined;
+    if (!file) {
+        return res.status(400).json({ message: 'No PDF file uploaded.' });
+    }
+
+    const { clientId } = req.body;
+    if (!clientId) {
+        return res.status(400).json({ message: 'clientId is required.' });
+    }
+
+    try {
+        const client = await (prisma as any).client.findUnique({
+            where: { id: clientId },
+            select: { name: true, contact_number: true }
+        });
+
+        if (!client || !client.contact_number) {
+            return res.status(404).json({ message: 'Client not found or has no contact number registered.' });
+        }
+
+        const { waEngine } = await import('../whatsapp/WhatsAppEngine');
+
+        if (waEngine.status !== 'CONNECTED') {
+            return res.status(503).json({ message: `WhatsApp engine is not connected (status: ${waEngine.status}). Please connect in Settings > WhatsApp.` });
+        }
+
+        const filename = `Qixads Report ${format(new Date(), 'dd-MM-yyyy')}.pdf`;
+        const sent = await waEngine.sendDocument(client.contact_number, file.path, filename);
+
+        const fsPromises = await import('fs/promises');
+        await fsPromises.unlink(file.path).catch(() => {});
+
+        if (sent) {
+            res.json({ message: `Report sent to ${client.name} via WhatsApp.` });
+        } else {
+            res.status(500).json({ message: 'WhatsApp dispatch failed. Please check the connection.' });
+        }
+    } catch (error: any) {
+        try {
+            const fsPromises = await import('fs/promises');
+            if (file?.path) await fsPromises.unlink(file.path).catch(() => {});
+        } catch (_) {}
+        console.error('[sendReport] Error:', error);
+        res.status(500).json({ message: 'Failed to send report.', error: error.message });
+    }
+}
+

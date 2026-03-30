@@ -1,11 +1,21 @@
 import { Router } from 'express';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 import {
     manualSync, getMetrics, authMeta, metaCallback, authGoogle, googleCallback,
     getAvailableAccounts, getIntegrationStatus, selectAccount, disconnectAccount,
     middleware, getLeads, syncLeads, createLead, updateLead, deleteLead, addFollowUp,
-    getMetaProfiles, linkAccountToProfile, getAiTips, getMetaCampaignsDetailed, getMetaAdSets, getMetaAds, createMetaCampaign, createMetaAdSet, updateMetaStatus
+    getMetaProfiles, linkAccountToProfile, getAiTips, getMetaCampaignsDetailed, getMetaAdSets, getMetaAds, createMetaCampaign, createMetaAdSet, updateMetaStatus, sendReport
 } from './controller';
 import { protect } from '../auth/middleware';
+
+// Ensure temp upload dir exists
+const uploadDir = path.join(process.cwd(), 'uploads', 'reports');
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+const reportUpload = multer({ dest: uploadDir });
+
 
 const router = Router();
 
@@ -56,5 +66,8 @@ router.get('/meta/manager/ads', getMetaAds);
 router.post('/meta/manager/campaigns', createMetaCampaign);
 router.post('/meta/manager/adsets', createMetaAdSet);
 router.patch('/meta/manager/status', updateMetaStatus);
+
+// Report Generation & WhatsApp Dispatch
+router.post('/report/send', reportUpload.single('pdf'), sendReport);
 
 export default router;

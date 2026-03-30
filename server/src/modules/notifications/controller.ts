@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import * as notificationService from './service';
 import prisma from '../../utils/prisma';
 import axios from 'axios';
+import { waEngine } from '../whatsapp/WhatsAppEngine';
 
 export const getMyNotifications = async (req: Request, res: Response) => {
     try {
@@ -126,7 +127,29 @@ export const sendTestWhatsApp = async (req: Request, res: Response) => {
     try {
         const { phoneNumber, message } = req.body;
         
-        // Fetch real gateway config from DB
+        const trackingId = `WA-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+
+        // ── PRIORITY 1: Use in-house WhatsApp Engine if connected ─────────────
+        if (waEngine.status === 'CONNECTED') {
+            console.log(`[WA ENGINE DISPATCH] Sending test to ${phoneNumber} via in-house engine`);
+            const sent = await waEngine.sendText(phoneNumber, message);
+            if (sent) {
+                return res.json({
+                    success: true,
+                    tracking_id: trackingId,
+                    status: 'DELIVERED',
+                    gateway: 'QIX_INTERNAL_ENGINE',
+                    message: 'Test message dispatched via in-house WhatsApp Engine.'
+                });
+            } else {
+                return res.status(500).json({
+                    success: false,
+                    message: 'Engine is connected but failed to dispatch. Check server logs.'
+                });
+            }
+        }
+
+        // ── PRIORITY 2: Third-party Gateway API ───────────────────────────────
         const settings = await prisma.systemSetting.findMany({
             where: { key: { in: ['WHATSAPP_API_URL', 'WHATSAPP_API_TOKEN', 'WHATSAPP_ENABLED'] } }
         });
@@ -140,8 +163,6 @@ export const sendTestWhatsApp = async (req: Request, res: Response) => {
         if (apiEndpoint.includes('ultramsg.com') && !apiEndpoint.endsWith('/messages/chat')) {
              apiEndpoint = apiEndpoint.replace(/\/+$/, '') + '/messages/chat';
         }
-
-        const trackingId = `WA-LIVE-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
 
         if (config.WHATSAPP_ENABLED === 'true' && apiEndpoint && config.WHATSAPP_API_TOKEN) {
             console.log(`[WA LIVE GATEWAY] Attempting real dispatch via ${apiEndpoint}`);
@@ -210,15 +231,14 @@ export const sendTestWhatsApp = async (req: Request, res: Response) => {
             }
         }
 
-
-        // Fallback to Mock
-        console.log(`[WA MOCK LAYER] [${trackingId}] Target: ${phoneNumber} | Msg: ${message}`);
+        // ── PRIORITY 3: Simulated (no engine, no gateway config) ─────────────
+        console.log(`[WA MOCK LAYER] [${trackingId}] Engine: ${waEngine.status} | Target: ${phoneNumber}`);
         res.json({ 
             success: true, 
             tracking_id: trackingId,
             status: 'SIMULATED',
             gateway: 'INTERNAL_MOCK_ENGINE',
-            message: "Missing Gateway API URL or Token in Settings. Please provide them to receive real messages." 
+            message: "Engine not connected and no Gateway API configured. Connect the WhatsApp Engine or add API credentials to dispatch real messages." 
         });
         
     } catch (err: any) {

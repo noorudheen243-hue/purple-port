@@ -31,6 +31,32 @@ export class MetaAdsService {
     }
 
     /**
+     * Internal helper to fetch all pages from a Meta Graph API endpoint.
+     */
+    private async fetchAll(url: string, params: any): Promise<any[]> {
+        let results: any[] = [];
+        let currentUrl: string | null = url;
+        let currentParams: any = { ...params, limit: 100 };
+
+        try {
+            while (currentUrl) {
+                const response: any = await axios.get(currentUrl, { params: currentParams });
+                const data = response.data?.data || [];
+                results = [...results, ...data];
+                
+                currentUrl = response.data?.paging?.next || null;
+                // Meta's nextUrl is a full URL with params already encoded
+                currentParams = {}; 
+            }
+            return results;
+        } catch (error: any) {
+             console.error(`[MetaAds] fetchAll error for ${url}:`, error.response?.data || error.message);
+             if (results.length > 0) return results;
+             throw error;
+        }
+    }
+
+    /**
      * Fetch all Business Manager accounts/Ad Accounts the user has access to.
      */
     async fetchAccounts(systemUserId: string, clientId?: string): Promise<any[]> {
@@ -96,16 +122,12 @@ export class MetaAdsService {
         }
 
         try {
-            const response = await axios.get(`${META_GRAPH_URL}/${formattedAccountId}/campaigns`, {
-                params: {
-                    access_token: token,
-                    fields: 'id,name,status,objective',
-                    // Use proper JSON array — single-quoted string was invalid and caused empty results
-                    effective_status: JSON.stringify(['ACTIVE', 'PAUSED'])
-                }
+            const campaigns = await this.fetchAll(`${META_GRAPH_URL}/${formattedAccountId}/campaigns`, {
+                access_token: token,
+                fields: 'id,name,status,objective',
+                effective_status: JSON.stringify(['ACTIVE', 'PAUSED', 'ARCHIVED'])
             });
-            const campaigns = response.data?.data || [];
-            console.log(`[MetaAds] fetchCampaigns result for ${formattedAccountId}: ${campaigns.length} campaigns.`, campaigns.map((c: any) => `${c.name}(${c.status})`));
+            console.log(`[MetaAds] fetchCampaigns result for ${formattedAccountId}: ${campaigns.length} campaigns.`);
             return campaigns;
         } catch (error: any) {
             console.error(`[MetaAds] fetchCampaigns error for ${formattedAccountId}:`, error.response?.data || error.message);
@@ -146,18 +168,15 @@ export class MetaAdsService {
         }
 
         try {
-            const response = await axios.get(`${META_GRAPH_URL}/${campaignId}/insights`, {
-                params: {
-                    access_token: token,
-                    time_range: timeRange,
-                    time_increment: 1, // Daily breakdown
-                    fields: 'impressions,reach,clicks,spend,actions,cpc,cpm,ctr'
-                }
+            const rawData = await this.fetchAll(`${META_GRAPH_URL}/${campaignId}/insights`, {
+                access_token: token,
+                time_range: timeRange,
+                time_increment: 1, // Daily breakdown
+                fields: 'impressions,reach,clicks,spend,actions,cpc,cpm,ctr'
             });
 
             // Map actions array to flat results/conversions
-            const data = response.data.data || [];
-            return data.map((day: any) => {
+            return rawData.map((day: any) => {
                 let totalResults = 0;
                 let totalConversions = 0;
 
@@ -166,30 +185,29 @@ export class MetaAdsService {
                 let maxPurchases = 0;
 
                 if (day.actions && Array.isArray(day.actions)) {
-                    // Find the most relevant resulting action for this campaign.
-                    // Meta often returns both generic ("lead") and specific ("onsite_conversion.lead_grouped").
-                    // To prevent double counting, we will take the max value of these primary conversion types.
                     for (const action of day.actions) {
                         const val = parseInt(action.value || '0', 10);
                         const type = action.action_type;
 
                         if (type.includes('lead')) maxLeads = Math.max(maxLeads, val);
-                        if (type.includes('messaging_conversation_started')) maxMessages = Math.max(maxMessages, val);
+                        if (type.includes('messaging_conversation_started') || type.includes('onsite_conversion.messaging_conversation_started_7d')) {
+                            maxMessages = Math.max(maxMessages, val);
+                        }
                         if (type.includes('purchase')) maxPurchases = Math.max(maxPurchases, val);
                     }
 
-                    // The total results is the sum of unique maxed primary events
+                    // Combined results
                     totalResults = maxLeads + maxMessages + maxPurchases;
                     totalConversions = totalResults;
                 }
 
-                    return {
-                        ...day,
-                        results: totalResults,
-                        conversions: totalConversions,
-                        conversations: maxMessages
-                    };
-                });
+                return {
+                    ...day,
+                    results: totalResults,
+                    conversions: totalConversions,
+                    conversations: maxMessages
+                };
+            });
         } catch (error: any) {
             console.error(`Meta API fetchMetrics error for campaign ${campaignId}:`, error.response?.data || error.message);
             return [];
@@ -215,13 +233,11 @@ export class MetaAdsService {
         }
 
         try {
-            const response = await axios.get(`${META_GRAPH_URL}/${formattedAccountId}/campaigns`, {
-                params: {
-                    access_token: token,
-                    fields: 'id,name,status,objective,daily_budget,lifetime_budget,start_time,stop_time'
-                }
+            return await this.fetchAll(`${META_GRAPH_URL}/${formattedAccountId}/campaigns`, {
+                access_token: token,
+                fields: 'id,name,status,objective,daily_budget,lifetime_budget,start_time,stop_time',
+                effective_status: JSON.stringify(['ACTIVE', 'PAUSED', 'ARCHIVED'])
             });
-            return response.data?.data || [];
         } catch (error: any) {
             console.error(`fetchCampaignsDetailed error:`, error.response?.data || error.message);
             throw new Error(`Failed to fetch campaigns: ${error.response?.data?.error?.message || error.message}`);

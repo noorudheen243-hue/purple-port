@@ -7,7 +7,8 @@ import { Loader2, AlertCircle, Facebook, BarChart3, Users, Calendar } from 'luci
 import { MetaLeads } from './MetaLeads';
 import { MetaAdsDashboard } from './MetaAdsDashboard';
 import { MetaAdsManager } from './MetaAdsManager';
-import { Sparkles, LayoutDashboard } from 'lucide-react';
+import MetaReportsTab from './MetaReportsTab';
+import { Sparkles, LayoutDashboard, FileText } from 'lucide-react';
 
 const GoogleIcon = () => (
     <svg viewBox="0 0 24 24" className="w-full h-full" fill="currentColor">
@@ -22,14 +23,18 @@ export const MarketingDashboard: React.FC = () => {
     const [metrics, setMetrics] = useState<any[]>([]);
     const [summary, setSummary] = useState<any>(null);
     const [loading, setLoading] = useState(false);
-    const [view, setView] = useState<'performance' | 'leads' | 'meta-dashboard' | 'meta-manager'>('performance');
+    const [view, setView] = useState<'performance' | 'leads' | 'meta-dashboard' | 'meta-manager' | 'meta-reports'>('performance');
     const [platform, setPlatform] = useState<string>('all');
     const [error, setError] = useState<string | null>(null);
     const [selectedClientId, setSelectedClientId] = useState<string>('');
+    const [statusFilter, setStatusFilter] = useState<'active' | 'all'>('active');
+    const [syncing, setSyncing] = useState(false);
+    const [syncSuccess, setSyncSuccess] = useState<string | null>(null);
 
-    // Default: Jan 1, 2026 to today
+    // Default: Current month 
     const todayStr = format(new Date(), 'yyyy-MM-dd');
-    const [fromDate, setFromDate] = useState<string>('2026-01-01');
+    const firstDayOfMonthStr = format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'yyyy-MM-dd');
+    const [fromDate, setFromDate] = useState<string>(firstDayOfMonthStr);
     const [toDate, setToDate] = useState<string>(todayStr);
 
     // Fetch available clients
@@ -54,8 +59,9 @@ export const MarketingDashboard: React.FC = () => {
             const platformParam = platform !== 'all' ? `&platform=${platform}` : '';
             const clientParam = selectedClientId ? `clientId=${selectedClientId}` : '';
 
+            const statusParam = `&status=${statusFilter}`;
             const response = await api.get(
-                `/marketing/metrics?${clientParam}&from=${fromDt.toISOString()}&to=${toDt.toISOString()}${platformParam}`
+                `/marketing/metrics?${clientParam}&from=${fromDt.toISOString()}&to=${toDt.toISOString()}${platformParam}${statusParam}`
             );
 
             // Format dates for chart
@@ -65,7 +71,7 @@ export const MarketingDashboard: React.FC = () => {
             }));
 
             setMetrics(chartData);
-            setSummary(response.data.summary);
+            setSummary({ ...response.data.summary, allCampaigns: response.data.campaigns });
         } catch (err: any) {
             console.error('Error fetching marketing metrics:', err);
             if (err.response?.status === 403) {
@@ -81,11 +87,20 @@ export const MarketingDashboard: React.FC = () => {
     };
 
     const handleSync = async () => {
+        setSyncing(true);
+        setSyncSuccess(null);
+        setError(null);
         try {
             await api.post('/marketing/sync');
+            setSyncSuccess('Data sync completed');
             fetchMetrics(fromDate, toDate);
+            // Hide notification after 5 seconds
+            setTimeout(() => setSyncSuccess(null), 5000);
         } catch (err) {
             console.error('Manual sync failed:', err);
+            setError('Sync failed. Please check your connection.');
+        } finally {
+            setSyncing(false);
         }
     };
 
@@ -93,8 +108,8 @@ export const MarketingDashboard: React.FC = () => {
         fetchMetrics(fromDate, toDate);
     };
 
-    const handleResetYTD = () => {
-        const newFrom = '2026-01-01';
+    const handleResetToCurrentMonth = () => {
+        const newFrom = format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'yyyy-MM-dd');
         const newTo = todayStr;
         setFromDate(newFrom);
         setToDate(newTo);
@@ -103,12 +118,12 @@ export const MarketingDashboard: React.FC = () => {
 
     useEffect(() => {
         fetchMetrics(fromDate, toDate);
-    }, [platform, selectedClientId, fromDate, toDate]);
+    }, [platform, selectedClientId, fromDate, toDate, statusFilter]);
 
 
     const dateRangeLabel = fromDate && toDate
         ? `${format(new Date(fromDate), 'MMM d, yyyy')} – ${format(new Date(toDate), 'MMM d, yyyy')}`
-        : 'This Year (2026)';
+        : 'This Month';
 
     return (
         <div className="p-4 md:p-6 w-full space-y-6">
@@ -142,10 +157,18 @@ export const MarketingDashboard: React.FC = () => {
                         <option value="google">Google Ads</option>
                     </select>
                     <button
-                        className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors whitespace-nowrap"
+                        className={`px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors whitespace-nowrap flex items-center gap-2 ${syncing ? 'opacity-70 cursor-not-allowed' : ''}`}
                         onClick={handleSync}
+                        disabled={syncing}
                     >
-                        Force Sync Data
+                        {syncing ? (
+                            <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Syncing...
+                            </>
+                        ) : (
+                            'Force Sync Data'
+                        )}
                     </button>
                 </div>
             </div>
@@ -182,18 +205,47 @@ export const MarketingDashboard: React.FC = () => {
                         Apply Filter
                     </button>
                     <button
-                        onClick={handleResetYTD}
+                        onClick={handleResetToCurrentMonth}
                         className="px-4 py-2 text-sm text-purple-600 dark:text-purple-400 font-semibold border border-purple-200 dark:border-purple-800 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
                     >
-                        Reset to YTD
+                        Current Month
                     </button>
+
+                    <div className="h-4 w-px bg-gray-200 dark:bg-gray-700 mx-1 hidden md:block"></div>
+
+                    {/* Status Toggle Buttons */}
+                    <div className="flex bg-gray-100 dark:bg-gray-900 p-1 rounded-lg">
+                        <button
+                            onClick={() => setStatusFilter('active')}
+                            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${statusFilter === 'active' 
+                                ? 'bg-white dark:bg-gray-800 text-purple-600 shadow-sm' 
+                                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+                        >
+                            Active
+                        </button>
+                        <button
+                            onClick={() => setStatusFilter('all')}
+                            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${statusFilter === 'all' 
+                                ? 'bg-white dark:bg-gray-800 text-purple-600 shadow-sm' 
+                                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+                        >
+                            All
+                        </button>
+                    </div>
                 </div>
             </div>
 
             {error && (
-                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-md flex items-start shadow-sm">
+                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-md flex items-start shadow-sm animate-in fade-in slide-in-from-top-2">
                     <AlertCircle className="h-5 w-5 text-yellow-400 mr-3 flex-shrink-0" />
                     <p className="text-sm text-yellow-700 font-medium">{error}</p>
+                </div>
+            )}
+
+            {syncSuccess && (
+                <div className="bg-green-50 border-l-4 border-green-400 p-4 mb-6 rounded-md flex items-start shadow-sm animate-in fade-in slide-in-from-top-2">
+                    <BarChart3 className="h-5 w-5 text-green-400 mr-3 flex-shrink-0" />
+                    <p className="text-sm text-green-700 font-medium">{syncSuccess}</p>
                 </div>
             )}
 
@@ -239,6 +291,16 @@ export const MarketingDashboard: React.FC = () => {
                     <Users className="w-4 h-4 mr-2" />
                     Generated Leads
                 </button>
+                <button
+                    onClick={() => setView('meta-reports')}
+                    className={`py-3 px-6 text-sm font-medium flex items-center border-b-2 transition-colors whitespace-nowrap ${view === 'meta-reports'
+                            ? 'border-purple-600 text-purple-600 dark:text-purple-400'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                        }`}
+                >
+                    <FileText className="w-4 h-4 mr-2" />
+                    Meta Reports
+                </button>
             </div>
 
             {view === 'meta-manager' && (
@@ -251,6 +313,10 @@ export const MarketingDashboard: React.FC = () => {
                     fromDate={fromDate} 
                     toDate={toDate} 
                 />
+            )}
+
+            {view === 'meta-reports' && (
+                <MetaReportsTab />
             )}
 
             {view === 'performance' ? (
@@ -409,6 +475,23 @@ export const MarketingDashboard: React.FC = () => {
                                     {(() => {
                                         // Group and aggregate data by campaign
                                         const campaignMap: { [key: string]: any } = {};
+                                        
+                                        // Initialize all fetched campaigns regardless of metrics
+                                        (summary?.allCampaigns || []).forEach((c: any) => {
+                                            campaignMap[c.id] = {
+                                                id: c.id,
+                                                name: c.name || 'Unknown Campaign',
+                                                status: c.status || 'Active',
+                                                platform: c.platform,
+                                                objective: c.objective || '',
+                                                results: 0,
+                                                spend: 0,
+                                                impressions: 0,
+                                                reach: 0,
+                                                leads: c.leads?.length || 0
+                                            };
+                                        });
+
                                         metrics.forEach(m => {
                                             const id = m.campaignId;
                                             if (!campaignMap[id]) {

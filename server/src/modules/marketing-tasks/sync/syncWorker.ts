@@ -175,14 +175,14 @@ export class MarketingSyncWorker {
                 }
             }
 
-            // Step 2: Sync Metrics for active campaigns
-            const activeCampaigns = await (prisma as any).marketingCampaign.findMany({
-                where: { status: { in: ['ACTIVE', 'ENABLED'] } }
+            // Step 2: Sync Metrics for active, paused, and archived campaigns
+            const targetCampaigns = await (prisma as any).marketingCampaign.findMany({
+                where: { status: { in: ['ACTIVE', 'ENABLED', 'PAUSED', 'ARCHIVED'] } }
             });
 
             let successCount = 0;
 
-            for (const camp of activeCampaigns) {
+            for (const camp of targetCampaigns) {
                 try {
                     // Find the associated Marketing Account to get the externalAccountId
                     const account = await (prisma as any).marketingAccount.findFirst({
@@ -220,7 +220,7 @@ export class MarketingSyncWorker {
                 data: {
                     status: 'SUCCESS',
                     finishedAt: new Date(),
-                    details: `Successfully synced ${successCount} out of ${activeCampaigns.length} campaigns after discovery.`
+                    details: `Successfully synced ${successCount} out of ${targetCampaigns.length} campaigns after discovery.`
                 }
             });
         } catch (overallError) {

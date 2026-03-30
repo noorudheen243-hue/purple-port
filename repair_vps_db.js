@@ -12,26 +12,21 @@ conn.on('ready', () => {
     const cmd = `
         pm2 stop all
         fuser -k 4001/tcp || true
-        
         cd /var/www/purple-port/server/prisma
         echo "-> Attempting Database Repair..."
-        sqlite3 dev.db ".recover" | sqlite3 dev_repaired.db
+        sqlite3 dev.db ".dump" > /tmp/db_dump.sql
         
-        if [ -f dev_repaired.db ]; then
-            echo "-> Repair successful. Swapping databases..."
+        if [ -s /tmp/db_dump.sql ]; then
+            echo "-> Dump successful. Rebuilding database..."
             mv dev.db dev.db.corrupted_$(date +%s)
-            mv dev_repaired.db dev.db
+            sqlite3 dev.db < /tmp/db_dump.sql
         else
-            echo "-> Repair tool failed or produced no output. Trying integrity check..."
-            sqlite3 dev.db "PRAGMA integrity_check;"
+            echo "-> Dump failed or produced no output."
         fi
         
         echo "-> Consolidating PM2 processes..."
         pm2 delete qix-api || true
-        
-        echo "-> Ensuring correct .env path..."
-        sed -i 's|DATABASE_URL="file:./dev.db"|DATABASE_URL="file:./prisma/dev.db"|' /var/www/purple-port/server/.env
-    `;
+    \`;
 
     conn.exec(cmd, (err, stream) => {
         if (err) throw err;

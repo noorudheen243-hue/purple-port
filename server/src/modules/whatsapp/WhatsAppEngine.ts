@@ -91,12 +91,12 @@ export class WhatsAppEngine {
                 console.log('[WhatsApp Engine] Authentication successful.');
             });
 
-            this.client.on('auth_failure', (msg) => {
+            this.client.on('auth_failure', (msg: any) => {
                 console.error('[WhatsApp Engine] Auth failure:', msg);
                 this.hardReset();
             });
 
-            this.client.on('disconnected', (reason) => {
+            this.client.on('disconnected', (reason: any) => {
                 console.warn('[WhatsApp Engine] Client disconnected:', reason);
                 this.status = 'DISCONNECTED';
             });

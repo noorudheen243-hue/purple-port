@@ -2,7 +2,7 @@ Import-Module Posh-SSH -Force
 
 $vpsIp = "66.116.224.221"
 $remoteUser = "root"
-$remotePath = "/var/www/antigravity"
+$remotePath = "/var/www/purple-port"
 $Pass = "EzdanAdam@243"
 $SecPass = ConvertTo-SecureString $Pass -AsPlainText -Force
 $Cred = New-Object System.Management.Automation.PSCredential($remoteUser, $SecPass)
@@ -30,11 +30,12 @@ Write-Output "Step 5: Extracting on VPS..."
 $r1 = Invoke-SSHCommand -SSHSession $session -Command "cd ${remotePath}/server && unzip -o server_dist.zip -d ./ && rm server_dist.zip && echo 'server_ok'"
 Write-Output "  Server: $($r1.Output)"
 
-$r2 = Invoke-SSHCommand -SSHSession $session -Command "cd ${remotePath} && unzip -o client_dist.zip -d public/ && rm client_dist.zip && echo 'client_ok'"
+# Deploy client to the correct Nginx-served directory
+$r2 = Invoke-SSHCommand -SSHSession $session -Command "cd ${remotePath} && unzip -o client_dist.zip -d /var/www/purple-port/client/dist/ && rm client_dist.zip && echo 'client_ok'"
 Write-Output "  Client: $($r2.Output)"
 
 Write-Output "Step 6: Restarting PM2..."
-$r3 = Invoke-SSHCommand -SSHSession $session -Command "pm2 restart qix-ads-v2.6 && echo 'PM2_OK'"
+$r3 = Invoke-SSHCommand -SSHSession $session -Command "pm2 restart qix-ads-v2.7 && pm2 delete qix-backend 2>/dev/null; echo 'PM2_OK'"
 Write-Output "  PM2: $($r3.Output -join ' ')"
 
 if (-not ($r3.Output -join '' -match "PM2_OK")) {

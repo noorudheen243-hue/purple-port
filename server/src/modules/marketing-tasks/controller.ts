@@ -21,9 +21,12 @@ function featureEnabled(req: Request, res: Response, next: NextFunction) {
 
 export async function manualSync(req: Request, res: Response) {
     try {
-        // Sync the last 90 days when manually triggered (covers YTD 2026)
-        await MarketingSyncWorker.syncAllActiveCampaigns(90);
-        res.json({ message: 'Sync completed successfully (90 days history + leads)' });
+        // Sync the last 2 years (730 days) of history asynchronously to avoid browser timeout
+        MarketingSyncWorker.syncAllActiveCampaigns(730).catch(err => {
+            console.error('Background Marketing Sync Error:', err);
+        });
+        
+        res.json({ message: 'Sync started successfully. Fetching 2 years of history in the background, this may take a few minutes.' });
     } catch (error) {
         console.error('Marketing Sync Error:', error);
         res.status(500).json({ message: 'Sync failed', error: (error as Error).message });

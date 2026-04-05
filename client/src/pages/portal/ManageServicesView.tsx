@@ -293,8 +293,8 @@ const ManageServicesView = () => {
                 date: log.date,
                 service: 'Meta Ads',
                 title: log.campaign_name,
-                description: `${log.objective} campaign on ${log.platform}. Spend: Γé╣${log.spend?.toLocaleString()} ${metrics.length > 0 ? '| ' + metrics.join(', ') : ''}`,
-                badge: `Γé╣${log.spend?.toLocaleString()}`,
+                description: `${log.objective} campaign on ${log.platform}. Spend: ₹${log.spend?.toLocaleString()} ${metrics.length > 0 ? '| ' + metrics.join(', ') : ''}`,
+                badge: `₹${log.spend?.toLocaleString()}`,
                 status: log.status,
                 type: 'META',
                 originalData: log,
@@ -314,8 +314,8 @@ const ManageServicesView = () => {
                 date: log.date,
                 service: 'Google Ads',
                 title: log.campaign_name,
-                description: `${log.campaign_type} campaign. Spend: Γé╣${log.spend?.toLocaleString()} ${metrics.length > 0 ? '| ' + metrics.join(', ') : ''}`,
-                badge: `Γé╣${log.spend?.toLocaleString()}`,
+                description: `${log.campaign_type} campaign. Spend: ₹${log.spend?.toLocaleString()} ${metrics.length > 0 ? '| ' + metrics.join(', ') : ''}`,
+                badge: `₹${log.spend?.toLocaleString()}`,
                 status: log.status,
                 type: 'GOOGLE',
                 originalData: log,
@@ -973,7 +973,7 @@ const ManageServicesView = () => {
                             </Card>
                             <Card className="bg-green-50/50 border-green-100 flex flex-col items-center justify-center p-4 rounded-xl shadow-sm">
                                 <span className="text-sm font-bold text-green-600 mb-1">Total Spend Logged</span>
-                                <span className="text-3xl font-extrabold text-green-900">Γé╣{campaignSummary.totalSpend.toLocaleString()}</span>
+                                <span className="text-3xl font-extrabold text-green-900">₹{campaignSummary.totalSpend.toLocaleString()}</span>
                             </Card>
                             <Card className="bg-purple-50/50 border-purple-100 flex flex-col items-center justify-center p-4 rounded-xl shadow-sm">
                                 <span className="text-sm font-bold text-purple-600 mb-1">Total Leads Recorded</span>
@@ -1379,7 +1379,7 @@ const ManageServicesView = () => {
                                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                             {/* GST Spend Widget - Google Ads */}
                                             <div>
-                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Amount (Γé╣)</label>
+                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Amount (₹)</label>
                                                 <Input
                                                     type="number"
                                                     step="0.01"
@@ -1412,13 +1412,13 @@ const ManageServicesView = () => {
                                                 </label>
                                             </div>
                                             <div>
-                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Gross Amount (Γé╣)</label>
+                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Gross Amount (₹)</label>
                                                 <div className={`flex h-10 w-full items-center rounded-md border px-3 py-2 text-sm font-semibold ${campaignForm._includeGst ? 'bg-orange-50 border-orange-300 text-orange-800' : 'bg-gray-50 border-gray-200 text-gray-700'
                                                     }`}>
-                                                    {campaignForm.spend ? `Γé╣ ${parseFloat(campaignForm.spend).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : 'ΓÇö'}
+                                                    {campaignForm.spend ? `₹ ${parseFloat(campaignForm.spend).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '—'}
                                                     {campaignForm._includeGst && campaignForm._rawAmount && (
                                                         <span className="ml-auto text-[10px] text-orange-500 font-normal">
-                                                            +Γé╣{(parseFloat(campaignForm._rawAmount) * 0.18).toFixed(2)} GST
+                                                            +₹{(parseFloat(campaignForm._rawAmount) * 0.18).toFixed(2)} GST
                                                         </span>
                                                     )}
                                                 </div>

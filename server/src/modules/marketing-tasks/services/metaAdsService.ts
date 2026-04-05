@@ -1,7 +1,7 @@
 import prisma from '../../../utils/prisma';
 import axios from 'axios';
 import { format } from 'date-fns';
-const META_GRAPH_URL = 'https://graph.facebook.com/v19.0';
+const META_GRAPH_URL = 'https://graph.facebook.com/v21.0';
 
 export class MetaAdsService {
 
@@ -9,8 +9,14 @@ export class MetaAdsService {
      * Helper to fetch the valid access token for a given marketing account.
      */
     private async getValidToken(accountId: string): Promise<string> {
+        const idWithoutPrefix = accountId.trim().replace('act_', '');
+        const idWithPrefix = `act_${idWithoutPrefix}`;
+
         const account = await prisma.marketingAccount.findFirst({
-            where: { externalAccountId: accountId, platform: 'meta' },
+            where: { 
+                externalAccountId: { in: [idWithoutPrefix, idWithPrefix] }, 
+                platform: 'meta' 
+            },
             include: { metaToken: true }
         });
 
@@ -107,6 +113,62 @@ export class MetaAdsService {
     }
 
     /**
+     * Helper to map raw Meta insights actions to normalized metrics.
+     */
+    private mapMetaInsights(rawData: any[]): any[] {
+        return rawData.map((day: any) => {
+            let totalResults = 0;
+            let totalConversions = 0;
+
+            let maxMessages = 0;
+            let maxLeads = 0;
+            let maxPurchases = 0;
+            
+            // Results Cost calculation: If cost_per_result isn't explicitly provided, use spend / totalResults
+            let resultsCost = parseFloat(day.cost_per_result?.[0]?.value || '0');
+
+            if (day.actions && Array.isArray(day.actions)) {
+                for (const action of day.actions) {
+                    const val = parseInt(action.value || '0', 10);
+                    const type = action.action_type;
+
+                    if (type.includes('lead')) maxLeads = Math.max(maxLeads, val);
+                    if (type.includes('messaging_conversation_started') || type.includes('onsite_conversion.messaging_conversation_started_7d')) {
+                        maxMessages = Math.max(maxMessages, val);
+                    }
+                    if (type.includes('purchase')) maxPurchases = Math.max(maxPurchases, val);
+                }
+
+                totalResults = maxLeads + maxMessages + maxPurchases;
+                totalConversions = totalResults;
+            }
+            
+            // Extract purchase cost specifically if it exists in cost_per_action_type
+            let purchaseCost = 0;
+            if (day.cost_per_action_type && Array.isArray(day.cost_per_action_type)) {
+                const purchaseAction = day.cost_per_action_type.find((a: any) => a.action_type.includes('purchase'));
+                if (purchaseAction) purchaseCost = parseFloat(purchaseAction.value || '0');
+            }
+
+            if (totalResults > 0 && resultsCost === 0) {
+                resultsCost = (parseFloat(day.spend || '0')) / totalResults;
+            }
+
+            return {
+                ...day,
+                results: totalResults,
+                results_cost: resultsCost,
+                conversions: totalConversions,
+                conversations: maxMessages,
+                messaging_conversations: maxMessages,
+                new_messaging_contacts: maxMessages, // Meta often equates these for simple reporting
+                purchases: maxPurchases,
+                cost_per_purchase: purchaseCost
+            };
+        });
+    }
+
+    /**
      * Fetch all campaigns under a specific Ad Account.
      */
     async fetchCampaigns(accountId: string): Promise<any[]> {
@@ -116,22 +178,22 @@ export class MetaAdsService {
 
         if (token.startsWith('mock')) {
             return [
-                { id: 'camp_meta_1', name: 'IG Awareness Q1', status: 'ACTIVE', objective: 'BRAND_AWARENESS' },
-                { id: 'camp_meta_2', name: 'FB Lead Gen - Real Estate', status: 'ACTIVE', objective: 'LEAD_GENERATION' }
+                { id: 'camp_meta_1', name: 'IG Awareness Q1', status: 'ACTIVE', effective_status: 'ACTIVE', objective: 'BRAND_AWARENESS', start_time: '2024-01-01T10:00:00+0000' },
+                { id: 'camp_meta_2', name: 'FB Lead Gen - Real Estate', status: 'ACTIVE', effective_status: 'ACTIVE', objective: 'LEAD_GENERATION', start_time: '2024-02-15T08:00:00+0000' }
             ];
         }
 
         try {
             const campaigns = await this.fetchAll(`${META_GRAPH_URL}/${formattedAccountId}/campaigns`, {
                 access_token: token,
-                fields: 'id,name,status,objective',
-                effective_status: JSON.stringify(['ACTIVE', 'PAUSED', 'ARCHIVED'])
+                fields: 'id,name,status,effective_status,objective,bid_strategy,daily_budget,lifetime_budget,start_time,stop_time,pacing_type',
+                effective_status: JSON.stringify(['ACTIVE', 'PAUSED', 'PENDING_REVIEW', 'DISAPPROVED', 'PREAPPROVED', 'PENDING_BILLING_INFO', 'CAMPAIGN_PAUSED', 'ARCHIVED', 'ADSET_PAUSED', 'IN_PROCESS', 'WITH_ISSUES'])
             });
             console.log(`[MetaAds] fetchCampaigns result for ${formattedAccountId}: ${campaigns.length} campaigns.`);
             return campaigns;
         } catch (error: any) {
             console.error(`[MetaAds] fetchCampaigns error for ${formattedAccountId}:`, error.response?.data || error.message);
-            return [];
+            throw error;
         }
     }
 
@@ -160,7 +222,15 @@ export class MetaAdsService {
                     clicks: Math.floor(Math.random() * 200),
                     spend: (Math.random() * 1000).toFixed(2),
                     results: Math.floor(Math.random() * 20), // Mock results
-                    actions: [{ action_type: 'lead', value: Math.floor(Math.random() * 10) }]
+                    cost_per_result: (Math.random() * 50).toFixed(2),
+                    actions: [
+                        { action_type: 'lead', value: Math.floor(Math.random() * 10) },
+                        { action_type: 'onsite_conversion.messaging_conversation_started_7d', value: Math.floor(Math.random() * 5) },
+                        { action_type: 'purchase', value: Math.floor(Math.random() * 2) }
+                    ],
+                    cost_per_action_type: [
+                        { action_type: 'purchase', value: (Math.random() * 100).toFixed(2) }
+                    ]
                 });
                 currentDate.setDate(currentDate.getDate() + 1);
             }
@@ -172,47 +242,53 @@ export class MetaAdsService {
                 access_token: token,
                 time_range: timeRange,
                 time_increment: 1, // Daily breakdown
-                fields: 'impressions,reach,clicks,spend,actions,cpc,cpm,ctr'
+                fields: 'impressions,reach,clicks,spend,actions,cpc,cpm,ctr,cost_per_result,cost_per_action_type',
+                use_unified_attribution_setting: true
             });
 
-            // Map actions array to flat results/conversions
-            return rawData.map((day: any) => {
-                let totalResults = 0;
-                let totalConversions = 0;
-
-                let maxMessages = 0;
-                let maxLeads = 0;
-                let maxPurchases = 0;
-
-                if (day.actions && Array.isArray(day.actions)) {
-                    for (const action of day.actions) {
-                        const val = parseInt(action.value || '0', 10);
-                        const type = action.action_type;
-
-                        if (type.includes('lead')) maxLeads = Math.max(maxLeads, val);
-                        if (type.includes('messaging_conversation_started') || type.includes('onsite_conversion.messaging_conversation_started_7d')) {
-                            maxMessages = Math.max(maxMessages, val);
-                        }
-                        if (type.includes('purchase')) maxPurchases = Math.max(maxPurchases, val);
-                    }
-
-                    // Combined results
-                    totalResults = maxLeads + maxMessages + maxPurchases;
-                    totalConversions = totalResults;
-                }
-
-                return {
-                    ...day,
-                    results: totalResults,
-                    conversions: totalConversions,
-                    conversations: maxMessages
-                };
-            });
+            return this.mapMetaInsights(rawData);
         } catch (error: any) {
             console.error(`Meta API fetchMetrics error for campaign ${campaignId}:`, error.response?.data || error.message);
             return [];
         }
     }
+
+    /**
+     * Fetch daily insights (metrics) for an entire account broken down by campaign over a date range.
+     * This avoids making N API calls for N campaigns.
+     */
+    async fetchAccountMetricsByCampaign(accountId: string, from: Date, to: Date): Promise<any[]> {
+        const token = await this.getValidToken(accountId);
+        const formattedAccountId = this.ensureActPrefix(accountId);
+
+        // Format dates as YYYY-MM-DD required by Meta Ads API
+        const timeRange = JSON.stringify({
+            since: format(from, 'yyyy-MM-dd'),
+            until: format(to, 'yyyy-MM-dd')
+        });
+
+        if (token.startsWith('mock')) {
+            // Wait, we can generate a mock list, but mostly keeping it empty or a single entry for sandbox since it's already tested
+            return [];
+        }
+
+        try {
+            const rawData = await this.fetchAll(`${META_GRAPH_URL}/${formattedAccountId}/insights`, {
+                access_token: token,
+                level: 'campaign',
+                time_range: timeRange,
+                time_increment: 1, // Daily breakdown
+                fields: 'campaign_id,campaign_name,impressions,reach,clicks,spend,actions,cpc,cpm,ctr,cost_per_result,cost_per_action_type',
+                use_unified_attribution_setting: true
+            });
+
+            return this.mapMetaInsights(rawData);
+        } catch (error: any) {
+            console.error(`Meta API fetchAccountMetricsByCampaign error for account ${formattedAccountId}:`, error.response?.data || error.message);
+            throw error;
+        }
+    }
+
 
     // ==========================================
     // META ADS MANAGER EXTENSIONS
@@ -235,8 +311,8 @@ export class MetaAdsService {
         try {
             return await this.fetchAll(`${META_GRAPH_URL}/${formattedAccountId}/campaigns`, {
                 access_token: token,
-                fields: 'id,name,status,objective,daily_budget,lifetime_budget,start_time,stop_time',
-                effective_status: JSON.stringify(['ACTIVE', 'PAUSED', 'ARCHIVED'])
+                fields: 'id,name,status,effective_status,objective,daily_budget,lifetime_budget,start_time,stop_time',
+                effective_status: JSON.stringify(['ACTIVE', 'PAUSED', 'DELETED', 'ARCHIVED'])
             });
         } catch (error: any) {
             console.error(`fetchCampaignsDetailed error:`, error.response?.data || error.message);

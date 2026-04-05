@@ -36,8 +36,13 @@ import {
     LineChart,
     PlusCircle,
     ExternalLink,
-    ChevronRight
+    Loader2,
+    Check,
+    BarChart3,
+    Facebook,
+    RefreshCw
 } from 'lucide-react';
+
 import { format } from 'date-fns';
 import Swal from 'sweetalert2';
 import NewTaskModal from '../tasks/TaskFormModal';
@@ -173,7 +178,19 @@ const ManageServicesView = () => {
     const [webEntryMode, setWebEntryMode] = useState<'NEW' | 'UPDATE'>('NEW');
     const [campaignForm, setCampaignForm] = useState<any>({
         date: new Date().toISOString(),
-        status: 'ACTIVE'
+        status: 'ACTIVE',
+        campaign_label: ''
+    });
+
+    const [isAddingMetaCampaign, setIsAddingMetaCampaign] = useState(false);
+    const [isSyncingCampaign, setIsSyncingCampaign] = useState(false);
+    const [campaignSynced, setCampaignSynced] = useState(false);
+
+    // --- META SYNC STATUS ---
+    const { data: metaAccountStatus, refetch: refetchMetaStatus } = useQuery({
+        queryKey: ['meta-account-status', clientId],
+        queryFn: async () => (await api.get(`/marketing/meta/status?clientId=${clientId}`)).data,
+        enabled: !!clientId && activeServiceTab === 'meta'
     });
 
     // --- CREATIVE TASK MODAL STATE ---
@@ -274,8 +291,8 @@ const ManageServicesView = () => {
                 date: log.date,
                 service: 'Meta Ads',
                 title: log.campaign_name,
-                description: `${log.objective} campaign on ${log.platform}. Spend: ₹${log.spend?.toLocaleString()} ${metrics.length > 0 ? '| ' + metrics.join(', ') : ''}`,
-                badge: `₹${log.spend?.toLocaleString()}`,
+                description: `${log.objective} campaign on ${log.platform}. Spend: Γé╣${log.spend?.toLocaleString()} ${metrics.length > 0 ? '| ' + metrics.join(', ') : ''}`,
+                badge: `Γé╣${log.spend?.toLocaleString()}`,
                 status: log.status,
                 type: 'META',
                 originalData: log
@@ -293,8 +310,8 @@ const ManageServicesView = () => {
                 date: log.date,
                 service: 'Google Ads',
                 title: log.campaign_name,
-                description: `${log.campaign_type} campaign. Spend: ₹${log.spend?.toLocaleString()} ${metrics.length > 0 ? '| ' + metrics.join(', ') : ''}`,
-                badge: `₹${log.spend?.toLocaleString()}`,
+                description: `${log.campaign_type} campaign. Spend: Γé╣${log.spend?.toLocaleString()} ${metrics.length > 0 ? '| ' + metrics.join(', ') : ''}`,
+                badge: `Γé╣${log.spend?.toLocaleString()}`,
                 status: log.status,
                 type: 'GOOGLE',
                 originalData: log
@@ -632,12 +649,102 @@ const ManageServicesView = () => {
     };
 
     const resetCampaignForm = () => {
+        setCampaignForm({ date: new Date().toISOString(), status: 'ACTIVE', campaign_label: '' });
         setEditingCampaignId(null);
-        setCampaignForm({ date: new Date().toISOString(), status: 'ACTIVE' });
+        setCampaignSynced(false);
+        setIsAddingMetaCampaign(false);
         setMetaEntryMode('NEW');
         setGoogleEntryMode('NEW');
         setSeoEntryMode('NEW');
         setWebEntryMode('NEW');
+    };
+
+    const handleSyncCampaign = async () => {
+        if (!campaignForm.marketing_campaign_id) return;
+        setIsSyncingCampaign(true);
+        try {
+            const isPreview = metaEntryMode === 'NEW';
+            const externalAccountId = metaAccountStatus?.externalAccountId;
+            
+            const reqData: any = { 
+                campaignId: campaignForm.marketing_campaign_id 
+            };
+            
+            if (isPreview) {
+                reqData.isPreview = true;
+                reqData.externalAccountId = externalAccountId;
+                reqData.platform = activeServiceTab; // 'meta' or 'google'
+            }
+            
+            const res = await api.post('/marketing/sync/campaign', reqData);
+            if (res.data.success && res.data.latestMetric) {
+                const latest = res.data.latestMetric;
+                console.log('[DEBUG MetaSync] Response Received:', latest);
+                
+                const updatedForm = {
+                    ...campaignForm,
+                    spend: latest.spend || 0,
+                    results: latest.results || latest.conversions || 0,
+                    impressions: latest.impressions || 0,
+                    reach: latest.reach || 0,
+                    messaging_conversations: latest.messaging_conversations || 0,
+                    new_messaging_contacts: latest.new_messaging_contacts || 0,
+                    purchases: latest.purchases || 0,
+                    results_cost: latest.results_cost || 0
+                };
+
+                // If label is empty, fill it with the campaign name we just synced
+                if (!updatedForm.campaign_label && latest.name) {
+                    updatedForm.campaign_label = latest.name;
+                }
+
+                if (latest.startDate) {
+                    try {
+                        const dateObj = new Date(latest.startDate);
+                        if (!isNaN(dateObj.getTime())) {
+                            updatedForm.date = dateObj.toISOString();
+                        }
+                    } catch (e) {
+                        console.error('Date parsing error:', e);
+                    }
+                }
+
+                if (latest.status) {
+                    updatedForm.status = latest.status;
+                }
+
+                setCampaignForm(updatedForm);
+                setCampaignSynced(true);
+                Swal.fire({ 
+                    title: 'Sync Complete', 
+                    text: `Captured ${updatedForm.results} results and ₹${updatedForm.spend} spend from lifetime metrics.`, 
+                    icon: 'success', 
+                    toast: true, 
+                    position: 'top-end', 
+                    showConfirmButton: false, 
+                    timer: 3000 
+                });
+            }
+        } catch (err: any) {
+            Swal.fire('Sync Failed', err.response?.data?.message || 'Could not fetch data from Meta', 'error');
+        } finally {
+            setIsSyncingCampaign(false);
+        }
+    };
+
+    const saveMetaCampaign = () => {
+        if (metaEntryMode === 'NEW' && !campaignForm.marketing_campaign_id) {
+            Swal.fire('Error', 'Please select a Meta campaign', 'warning');
+            return;
+        }
+        
+        // Use manual label as campaign_name if provided
+        const finalData = {
+            ...campaignForm,
+            campaign_name: campaignForm.campaign_label || campaignForm.campaign_name
+        };
+        
+        metaMutation.mutate(finalData);
     };
 
     const startEditCampaign = (item: HistoryItem) => {
@@ -852,7 +959,7 @@ const ManageServicesView = () => {
                             </Card>
                             <Card className="bg-green-50/50 border-green-100 flex flex-col items-center justify-center p-4 rounded-xl shadow-sm">
                                 <span className="text-sm font-bold text-green-600 mb-1">Total Spend Logged</span>
-                                <span className="text-3xl font-extrabold text-green-900">₹{campaignSummary.totalSpend.toLocaleString()}</span>
+                                <span className="text-3xl font-extrabold text-green-900">Γé╣{campaignSummary.totalSpend.toLocaleString()}</span>
                             </Card>
                             <Card className="bg-purple-50/50 border-purple-100 flex flex-col items-center justify-center p-4 rounded-xl shadow-sm">
                                 <span className="text-sm font-bold text-purple-600 mb-1">Total Leads Recorded</span>
@@ -986,9 +1093,56 @@ const ManageServicesView = () => {
                                     {/* Sub-Tabs for Different Services */}
 
                                     <TabsContent value="meta" className="space-y-4">
-                                        <div className="flex bg-gray-100 p-1 rounded-lg w-full max-w-sm mb-4">
+                                        <div className="flex items-center justify-between mb-6">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-3 h-3 rounded-full animate-pulse ${metaAccountStatus?.status === 'ACTIVE' ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.6)]' : 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.6)]'}`} />
+                                                <h2 className="text-xl font-black text-gray-800 tracking-tight uppercase flex items-center gap-2">
+                                                    Meta Ads Manager
+                                                    <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md">
+                                                        {metaAccountStatus?.status === 'ACTIVE' ? 'CONNECTED' : (metaAccountStatus?.status || 'NOT LINKED')}
+                                                    </span>
+                                                </h2>
+                                            </div>
+
+                                            {metaAccountStatus?.status === 'ACTIVE' && !isAddingMetaCampaign && metaEntryMode === 'NEW' && (
+                                                <Button 
+                                                    size="sm" 
+                                                    className="bg-blue-600 hover:bg-blue-700 font-bold uppercase tracking-wider text-[10px]"
+                                                    onClick={() => setIsAddingMetaCampaign(true)}
+                                                >
+                                                    <Plus size={14} className="mr-1.5" />
+                                                    Add the Campaign Data
+                                                </Button>
+                                            )}
+                                        </div>
+
+                                        {(metaAccountStatus?.status === 'EXPIRED' || metaAccountStatus?.status === 'PERMISSION_ERROR') && (
+                                            <div className="mb-6 p-6 bg-red-50/50 rounded-2xl border-2 border-dashed border-red-100 flex flex-col md:flex-row items-center justify-between gap-4">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center shrink-0">
+                                                        <AlertCircle size={24} className="text-red-600" />
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="font-black text-gray-900">
+                                                            {metaAccountStatus.status === 'PERMISSION_ERROR' ? 'Meta Permissions Missing' : 'Meta Session Expired'}
+                                                        </h3>
+                                                        <p className="text-sm text-red-600/80 font-bold leading-relaxed whitespace-pre-wrap">
+                                                            {metaAccountStatus.errorMessage || 'Your Facebook session has been invalidated or permissions are missing. The connection needs to be refreshed.'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <Button 
+                                                    onClick={() => navigate('/dashboard/marketing-integrations')}
+                                                    className="bg-red-600 hover:bg-red-700 text-white font-black px-6 py-5 rounded-xl shadow-lg shadow-red-200 uppercase tracking-widest text-[10px] shrink-0"
+                                                >
+                                                    <RefreshCw size={14} className="mr-2" /> Re-link Meta Account
+                                                </Button>
+                                            </div>
+                                        )}
+
+                                        <div className="flex bg-gray-100 p-1 rounded-lg w-full max-w-sm mb-6">
                                             <button
-                                                onClick={() => { setMetaEntryMode('NEW'); setEditingCampaignId(null); setCampaignForm({ date: new Date().toISOString(), status: 'ACTIVE' }); }}
+                                                onClick={() => { setMetaEntryMode('NEW'); setEditingCampaignId(null); setCampaignForm({ date: new Date().toISOString(), status: 'ACTIVE' }); setIsAddingMetaCampaign(false); }}
                                                 className={`flex-1 py-1.5 text-sm font-bold rounded-md transition-all ${metaEntryMode === 'NEW' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                                             >
                                                 New Entry
@@ -1002,7 +1156,7 @@ const ManageServicesView = () => {
                                         </div>
 
                                         {metaEntryMode === 'UPDATE' && (
-                                            <div className="mb-4 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                                            <div className="mb-6 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
                                                 <label className="text-xs font-bold text-gray-500 mb-2 block">Select Campaign to Update</label>
                                                 <select
                                                     className="w-full px-3 py-2.5 rounded-lg border border-blue-200 bg-white shadow-sm focus:ring-2 focus:ring-blue-500 text-sm font-semibold"
@@ -1020,97 +1174,121 @@ const ManageServicesView = () => {
                                                 </select>
                                             </div>
                                         )}
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                            <div>
-                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Date</label>
-                                                <Input type="date" value={campaignForm.date ? new Date(campaignForm.date).toISOString().split('T')[0] : ''} onChange={(e) => setCampaignForm({ ...campaignForm, date: new Date(e.target.value).toISOString() })} />
-                                            </div>
-                                            <div>
-                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Status</label>
-                                                <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={campaignForm.status} onChange={(e) => setCampaignForm({ ...campaignForm, status: e.target.value })}>
-                                                    <option value="ACTIVE">Active</option>
-                                                    <option value="CLOSED">Closed</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Campaign Name *</label>
-                                                <Input value={campaignForm.campaign_name || ''} onChange={(e) => setCampaignForm({ ...campaignForm, campaign_name: e.target.value })} />
-                                            </div>
-                                            <div>
-                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Objective *</label>
-                                                <Input placeholder="e.g. Engagement" value={campaignForm.objective || ''} onChange={(e) => setCampaignForm({ ...campaignForm, objective: e.target.value })} />
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                            <div>
-                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Platform *</label>
-                                                <Input placeholder="e.g. Facebook" value={campaignForm.platform || ''} onChange={(e) => setCampaignForm({ ...campaignForm, platform: e.target.value })} />
-                                            </div>
-                                            {/* GST Spend Widget */}
-                                            <div>
-                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Amount (₹)</label>
-                                                <Input
-                                                    type="number"
-                                                    step="0.01"
-                                                    min="0"
-                                                    placeholder="Enter amount"
-                                                    value={campaignForm._rawAmount || ''}
-                                                    onChange={(e) => {
-                                                        const raw = e.target.value;
-                                                        const gst = campaignForm._includeGst;
-                                                        const gross = raw ? (gst ? (parseFloat(raw) * 1.18).toFixed(2) : parseFloat(raw).toFixed(2)) : '';
-                                                        setCampaignForm({ ...campaignForm, _rawAmount: raw, spend: gross ? parseFloat(gross) : 0 });
-                                                    }}
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="text-xs font-bold text-gray-500 mb-1 block invisible">GST</label>
-                                                <label className="flex items-center gap-2 h-10 px-3 border rounded-md bg-orange-50 border-orange-200 cursor-pointer hover:bg-orange-100 transition-colors">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={!!campaignForm._includeGst}
-                                                        onChange={(e) => {
-                                                            const gst = e.target.checked;
-                                                            const raw = campaignForm._rawAmount || '';
-                                                            const gross = raw ? (gst ? (parseFloat(raw) * 1.18).toFixed(2) : parseFloat(raw).toFixed(2)) : '';
-                                                            setCampaignForm({ ...campaignForm, _includeGst: gst, spend: gross ? parseFloat(gross) : 0 });
-                                                        }}
-                                                        className="w-4 h-4 accent-orange-500"
-                                                    />
-                                                    <span className="text-sm font-medium text-orange-700">+ GST 18%</span>
-                                                </label>
-                                            </div>
-                                            <div>
-                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Gross Amount (₹)</label>
-                                                <div className={`flex h-10 w-full items-center rounded-md border px-3 py-2 text-sm font-semibold ${campaignForm._includeGst ? 'bg-orange-50 border-orange-300 text-orange-800' : 'bg-gray-50 border-gray-200 text-gray-700'
-                                                    }`}>
-                                                    {campaignForm.spend ? `₹ ${parseFloat(campaignForm.spend).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '—'}
-                                                    {campaignForm._includeGst && campaignForm._rawAmount && (
-                                                        <span className="ml-auto text-[10px] text-orange-500 font-normal">
-                                                            +₹{(parseFloat(campaignForm._rawAmount) * 0.18).toFixed(2)} GST
-                                                        </span>
-                                                    )}
+
+                                        {isAddingMetaCampaign && (
+                                            <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-300">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-blue-50/30 p-6 rounded-2xl border border-blue-100/50">
+                                                    <div className="space-y-4">
+                                                        <div>
+                                                            <label className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1.5 block">1. Label the Campaign (Manual Entry)</label>
+                                                            <Input 
+                                                                placeholder="e.g. Summer Sale 2024 - Brand Awareness"
+                                                                className="rounded-xl border-2 border-blue-100 bg-white font-bold"
+                                                                value={campaignForm.campaign_label || ''}
+                                                                onChange={(e) => setCampaignForm({ ...campaignForm, campaign_label: e.target.value })}
+                                                            />
+                                                        </div>
+
+                                                        <div>
+                                                            <label className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1.5 block">2. Select Meta Campaign</label>
+                                                            {metaAccountStatus?.externalAccountId === 'meta-account-linked' || metaAccountStatus?.externalAccountId === 'pending-selection' ? (
+                                                                <div className="p-4 bg-amber-50 border-2 border-dashed border-amber-200 rounded-xl text-center">
+                                                                    <p className="text-xs font-bold text-amber-700 mb-2">Ad Account Not Selected</p>
+                                                                    <Button 
+                                                                        variant="outline" 
+                                                                        size="sm" 
+                                                                        className="h-8 text-[10px] uppercase font-black border-amber-300 text-amber-800 hover:bg-amber-100"
+                                                                        onClick={() => navigate('/dashboard/marketing-integrations')}
+                                                                    >
+                                                                        Go to Integrations
+                                                                    </Button>
+                                                                </div>
+                                                            ) : (
+                                                                <select
+                                                                    className="w-full px-4 py-3 rounded-xl border-2 border-blue-100 bg-white shadow-sm focus:border-blue-500 focus:ring-0 transition-all font-bold text-gray-700"
+                                                                    value={campaignForm.marketing_campaign_id || ''}
+                                                                    onChange={(e) => {
+                                                                        const selected = metaAccountStatus?.campaigns?.find((c: any) => String(c.id) === String(e.target.value));
+                                                                        setCampaignForm({ 
+                                                                            ...campaignForm, 
+                                                                            marketing_campaign_id: String(e.target.value),
+                                                                            campaign_label: selected?.name || '', // Auto-fill the manual label field
+                                                                            campaign_name: selected?.name || '',
+                                                                            objective: selected?.objective || ''
+                                                                        });
+                                                                        setCampaignSynced(false);
+                                                                    }}
+                                                                >
+                                                                    <option value="">{metaAccountStatus?.campaigns?.length ? 'Choose Campaign from Meta...' : 'No Campaigns Found'}</option>
+                                                                    {metaAccountStatus?.campaigns?.map((c: any) => (
+                                                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                                                    ))}
+                                                                </select>
+                                                            )}
+                                                        </div>
+
+
+                                                        <Button 
+                                                            onClick={handleSyncCampaign}
+                                                            disabled={!campaignForm.marketing_campaign_id || isSyncingCampaign}
+                                                            className={`w-full py-6 rounded-xl font-black uppercase tracking-widest transition-all ${campaignSynced ? 'bg-green-500 hover:bg-green-600' : 'bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200'}`}
+                                                        >
+                                                            {isSyncingCampaign ? (
+                                                                <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Fetching Live Data...</>
+                                                            ) : campaignSynced ? (
+                                                                <><Check className="mr-2 h-5 w-5" /> Data Synced Successfully</>
+                                                            ) : (
+                                                                <><Activity className="mr-2 h-5 w-5" /> Sync Campaign Data</>
+                                                            )}
+                                                        </Button>
+                                                    </div>
+
+                                                    <div className="bg-white rounded-2xl border-2 border-blue-50 p-6 shadow-inner">
+                                                        <div className="flex items-center gap-2 mb-4">
+                                                            <div className={`w-2 h-2 rounded-full ${campaignSynced ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} />
+                                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Live Performance Preview</span>
+                                                        </div>
+
+                                                        {campaignSynced ? (
+                                                            <div className="grid grid-cols-2 gap-4">
+                                                                <div className="p-3 bg-gray-50 rounded-xl">
+                                                                    <div className="text-[9px] font-bold text-gray-400 uppercase mb-1">Results</div>
+                                                                    <div className="text-xl font-black text-blue-600">{campaignForm.results || 0}</div>
+                                                                </div>
+                                                                <div className="p-3 bg-gray-50 rounded-xl">
+                                                                    <div className="text-[9px] font-bold text-gray-400 uppercase mb-1">Spent</div>
+                                                                    <div className="text-xl font-black text-gray-800">₹{parseFloat(campaignForm.spend || 0).toLocaleString()}</div>
+                                                                </div>
+                                                                <div className="p-3 bg-gray-50 rounded-xl">
+                                                                    <div className="text-[9px] font-bold text-gray-400 uppercase mb-1">Reach</div>
+                                                                    <div className="text-lg font-bold text-gray-600">{campaignForm.reach?.toLocaleString() || 0}</div>
+                                                                </div>
+                                                                <div className="p-3 bg-gray-50 rounded-xl">
+                                                                    <div className="text-[9px] font-bold text-gray-400 uppercase mb-1">Impressions</div>
+                                                                    <div className="text-lg font-bold text-gray-600">{campaignForm.impressions?.toLocaleString() || 0}</div>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="h-full flex flex-col items-center justify-center text-center py-8 opacity-40">
+                                                                <BarChart3 size={40} className="text-gray-300 mb-2" />
+                                                                <p className="text-xs font-bold text-gray-400 px-8">Select a campaign and sync to see performance metrics</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex justify-end pt-4 border-t border-gray-100">
+                                                    <Button 
+                                                        disabled={!campaignSynced}
+                                                        onClick={saveMetaCampaign}
+                                                        className="bg-gray-900 hover:bg-black text-white px-8 py-6 rounded-xl font-black uppercase tracking-widest disabled:opacity-30 shadow-xl"
+                                                    >
+                                                        <Save size={18} className="mr-2" />
+                                                        Save Campaign Data
+                                                    </Button>
                                                 </div>
                                             </div>
-                                        </div>
-                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                            <div>
-                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Engagement</label>
-                                                <Input type="number" value={(campaignForm.results_json as any)?.engagement || ''} onChange={(e) => setCampaignForm({ ...campaignForm, results_json: { ...(campaignForm.results_json as any || {}), engagement: e.target.value } })} />
-                                            </div>
-                                            <div>
-                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Reach</label>
-                                                <Input type="number" value={(campaignForm.results_json as any)?.reach || ''} onChange={(e) => setCampaignForm({ ...campaignForm, results_json: { ...(campaignForm.results_json as any || {}), reach: e.target.value } })} />
-                                            </div>
-                                            <div>
-                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Impressions</label>
-                                                <Input type="number" value={(campaignForm.results_json as any)?.impressions || ''} onChange={(e) => setCampaignForm({ ...campaignForm, results_json: { ...(campaignForm.results_json as any || {}), impressions: e.target.value } })} />
-                                            </div>
-                                            <div>
-                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Leads</label>
-                                                <Input type="number" value={(campaignForm.results_json as any)?.leads || ''} onChange={(e) => setCampaignForm({ ...campaignForm, results_json: { ...(campaignForm.results_json as any || {}), leads: e.target.value } })} />
-                                            </div>
-                                        </div>
+                                        )}
                                     </TabsContent>
 
                                     <TabsContent value="google" className="space-y-4">
@@ -1150,17 +1328,6 @@ const ManageServicesView = () => {
                                         )}
                                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                             <div>
-                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Date</label>
-                                                <Input type="date" value={campaignForm.date ? new Date(campaignForm.date).toISOString().split('T')[0] : ''} onChange={(e) => setCampaignForm({ ...campaignForm, date: new Date(e.target.value).toISOString() })} />
-                                            </div>
-                                            <div>
-                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Status</label>
-                                                <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={campaignForm.status} onChange={(e) => setCampaignForm({ ...campaignForm, status: e.target.value })}>
-                                                    <option value="ACTIVE">Active</option>
-                                                    <option value="CLOSED">Closed</option>
-                                                </select>
-                                            </div>
-                                            <div>
                                                 <label className="text-xs font-bold text-gray-500 mb-1 block">Campaign Name *</label>
                                                 <Input value={campaignForm.campaign_name || ''} onChange={(e) => setCampaignForm({ ...campaignForm, campaign_name: e.target.value })} />
                                             </div>
@@ -1172,7 +1339,7 @@ const ManageServicesView = () => {
                                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                             {/* GST Spend Widget - Google Ads */}
                                             <div>
-                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Amount (₹)</label>
+                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Amount (Γé╣)</label>
                                                 <Input
                                                     type="number"
                                                     step="0.01"
@@ -1205,13 +1372,13 @@ const ManageServicesView = () => {
                                                 </label>
                                             </div>
                                             <div>
-                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Gross Amount (₹)</label>
+                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Gross Amount (Γé╣)</label>
                                                 <div className={`flex h-10 w-full items-center rounded-md border px-3 py-2 text-sm font-semibold ${campaignForm._includeGst ? 'bg-orange-50 border-orange-300 text-orange-800' : 'bg-gray-50 border-gray-200 text-gray-700'
                                                     }`}>
-                                                    {campaignForm.spend ? `₹ ${parseFloat(campaignForm.spend).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '—'}
+                                                    {campaignForm.spend ? `Γé╣ ${parseFloat(campaignForm.spend).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : 'ΓÇö'}
                                                     {campaignForm._includeGst && campaignForm._rawAmount && (
                                                         <span className="ml-auto text-[10px] text-orange-500 font-normal">
-                                                            +₹{(parseFloat(campaignForm._rawAmount) * 0.18).toFixed(2)} GST
+                                                            +Γé╣{(parseFloat(campaignForm._rawAmount) * 0.18).toFixed(2)} GST
                                                         </span>
                                                     )}
                                                 </div>
@@ -1406,7 +1573,7 @@ const ManageServicesView = () => {
                                                                             <div className="font-semibold text-gray-900 truncate max-w-[200px]">{task.title}</div>
                                                                             <div className="text-xs text-gray-400">{task.type}</div>
                                                                         </td>
-                                                                        <td className="px-4 py-3 text-gray-600">{task.assignee?.full_name || '—'}</td>
+                                                                        <td className="px-4 py-3 text-gray-600">{task.assignee?.full_name || 'ΓÇö'}</td>
                                                                         <td className={`px-4 py-3 font-semibold text-xs ${priorityColor[task.priority] || ''}`}>{task.priority}</td>
                                                                         <td className="px-4 py-3">
                                                                             <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${statusColor[task.status] || 'bg-gray-100 text-gray-600'}`}>
@@ -1414,7 +1581,7 @@ const ManageServicesView = () => {
                                                                             </span>
                                                                         </td>
                                                                         <td className="px-4 py-3 text-gray-500 text-xs">
-                                                                            {task.due_date ? format(new Date(task.due_date), 'dd MMM yyyy') : '—'}
+                                                                            {task.due_date ? format(new Date(task.due_date), 'dd MMM yyyy') : 'ΓÇö'}
                                                                         </td>
                                                                         <td className="px-4 py-3 text-right">
                                                                             <div className="inline-flex items-center gap-1">
@@ -1456,7 +1623,7 @@ const ManageServicesView = () => {
                                             )}
                                         </div>
                                     </TabsContent>
-                                    {activeServiceTab !== 'content' && (
+                                    {activeServiceTab !== 'content' && activeServiceTab !== 'meta' && (
                                         <div className="mt-8 flex justify-end">
                                             <Button
                                                 onClick={saveCampaignData}
@@ -1473,7 +1640,7 @@ const ManageServicesView = () => {
                     </TabsContent>
                 )}
 
-                {/* Creative Task Assign Modal — rendered once at page level */}
+                {/* Creative Task Assign Modal ΓÇö rendered once at page level */}
                 <NewTaskModal
                     isOpen={isCreativeTaskModalOpen}
                     onClose={() => {
@@ -1775,7 +1942,7 @@ const ManageServicesView = () => {
                                                                         <div key={f.id} className="flex flex-col bg-gray-50 p-2 rounded-lg border border-gray-100 relative group">
                                                                             <div className="flex items-center justify-between mb-0.5">
                                                                                 <span className="text-[10px] font-extrabold text-indigo-500 uppercase">
-                                                                                    {f.follow_up_number === 1 ? '1st' : f.follow_up_number === 2 ? '2nd' : f.follow_up_number === 3 ? '3rd' : `${f.follow_up_number}th`} Follow Up ΓÇó <span className="text-gray-500">{f.channel || 'Phone Call'}</span>
+                                                                                    {f.follow_up_number === 1 ? '1st' : f.follow_up_number === 2 ? '2nd' : f.follow_up_number === 3 ? '3rd' : `${f.follow_up_number}th`} Follow Up ╬ô├ç├│ <span className="text-gray-500">{f.channel || 'Phone Call'}</span>
                                                                                 </span>
                                                                                 <span className="text-[9px] text-gray-400">{format(new Date(f.date), 'dd/MM/yy')}</span>
                                                                             </div>

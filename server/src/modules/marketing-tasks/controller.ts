@@ -21,15 +21,172 @@ function featureEnabled(req: Request, res: Response, next: NextFunction) {
 
 export async function manualSync(req: Request, res: Response) {
     try {
-        // Sync the last 2 years (730 days) of history asynchronously to avoid browser timeout
-        MarketingSyncWorker.syncAllActiveCampaigns(730).catch(err => {
-            console.error('Background Marketing Sync Error:', err);
+        // Explicitly calculate days back to January 1st of the current year
+        const currentYear = new Date().getFullYear();
+        const startOfYear = new Date(currentYear, 0, 1);
+        const today = new Date();
+        const daysToCurrentYear = Math.ceil((today.getTime() - startOfYear.getTime()) / (1000 * 3600 * 24)) + 1; // +1 to be inclusive
+
+        // Trigger sync asynchronously for the current year
+        MarketingSyncWorker.syncAllActiveCampaigns(daysToCurrentYear).catch(err => {
+            console.error('Background Marketing Sync Error 2026/Current Year:', err);
         });
         
-        res.json({ message: 'Sync started successfully. Fetching 2 years of history in the background, this may take a few minutes.' });
+        res.json({ message: `Sync started successfully. Fetching ${daysToCurrentYear} days of history for the current year in the background. This may take a few minutes.` });
     } catch (error) {
         console.error('Marketing Sync Error:', error);
         res.status(500).json({ message: 'Sync failed', error: (error as Error).message });
+    }
+}
+
+export async function syncCampaign(req: Request, res: Response) {
+    try {
+        const { campaignId, daysBack, isPreview, externalAccountId, platform } = req.body;
+        if (!campaignId) return res.status(400).json({ message: 'campaignId is required' });
+
+        if (isPreview && externalAccountId && platform) {
+            const today = new Date();
+            
+            // 1. Fetch metadata first to find the true campaign start date
+            let campaignMetadata: any = null;
+            if (platform === 'meta') {
+                const metaCampaigns = await metaService.fetchCampaigns(externalAccountId);
+                // Use robust string comparison to avoid large-number precision issues
+                campaignMetadata = metaCampaigns.find(c => String(c.id) === String(campaignId));
+            } else if (platform === 'google') {
+                const googleCampaigns = await googleService.fetchCampaigns(externalAccountId);
+                campaignMetadata = googleCampaigns.find(c => String(c.id) === String(campaignId));
+            }
+
+            // Determine Start Date (Lifetime)
+            let startDate = new Date();
+            const rawStart = campaignMetadata?.start_time || campaignMetadata?.start_date;
+            if (rawStart) {
+                startDate = new Date(rawStart);
+            } else {
+                // Fallback to 2 years ago for true "Lifetime" if start unknown
+                startDate.setFullYear(today.getFullYear() - 2);
+            }
+            startDate.setHours(0, 0, 0, 0);
+
+            console.log(`[SyncController] Syncing Meta Campaign: ${campaignId} from ${startDate.toISOString()}`);
+            
+            let externalMetrics: any[] = [];
+            if (platform === 'meta') {
+                externalMetrics = await metaService.fetchMetrics(campaignId, externalAccountId, startDate, today);
+            } else if (platform === 'google') {
+                externalMetrics = await googleService.fetchMetrics(campaignId, externalAccountId, startDate, today);
+            }
+
+            console.log(`[SyncController] Fetched ${externalMetrics.length} metric rows.`);
+
+            // 2. Aggregate Metrics (Sum everything for a Lifetime total)
+            const totals = externalMetrics.reduce((acc, curr) => {
+                acc.spend += parseFloat(curr.spend || 0);
+                acc.results += parseInt(curr.results || curr.conversions || 0);
+                acc.impressions += parseInt(curr.impressions || 0);
+                acc.reach += parseInt(curr.reach || 0);
+                acc.messaging_conversations += parseInt(curr.messaging_conversations || 0);
+                acc.new_messaging_contacts += parseInt(curr.new_messaging_contacts || 0);
+                acc.purchases += parseInt(curr.purchases || 0);
+                return acc;
+            }, {
+                spend: 0, results: 0, impressions: 0, reach: 0,
+                messaging_conversations: 0, new_messaging_contacts: 0, purchases: 0
+            });
+
+            const latestMetric = {
+                ...totals,
+                results_cost: totals.results > 0 ? totals.spend / totals.results : 0,
+                // Automated fields
+                startDate: campaignMetadata?.start_time || campaignMetadata?.start_date,
+                status: campaignMetadata?.effective_status || campaignMetadata?.status
+            };
+
+            return res.json({ success: true, latestMetric });
+        }
+
+        const latestMetric = await MarketingSyncWorker.syncSingleCampaign(campaignId, daysBack || 7);
+        res.json({ success: true, latestMetric });
+    } catch (error: any) {
+        console.error('Single Campaign Sync Error:', error.message);
+        res.status(500).json({ message: 'Sync failed', error: error.message });
+    }
+}
+
+export async function getMetaAccountStatus(req: Request, res: Response) {
+    try {
+        const { clientId } = req.query;
+        if (!clientId) return res.status(400).json({ message: 'clientId is required' });
+
+        const account = await (prisma as any).marketingAccount.findFirst({
+            where: { clientId: clientId as string, platform: 'meta' },
+            include: { metaToken: true }
+        });
+
+        if (!account) {
+            return res.json({ connected: false, status: 'NOT_CONNECTED' });
+        }
+
+        // AUTO-FIX: If the ID has leading/trailing spaces, fix it in the DB immediately
+        if (account.externalAccountId && account.externalAccountId !== account.externalAccountId.trim()) {
+            const trimmed = account.externalAccountId.trim();
+            console.log(`[FIX] Trimming whitespace for Meta ID: "${account.externalAccountId}" -> "${trimmed}"`);
+            await (prisma as any).marketingAccount.update({
+                where: { id: account.id },
+                data: { externalAccountId: trimmed }
+            });
+            account.externalAccountId = trimmed;
+        }
+
+        // Check token health
+        const now = new Date();
+        const isExpired = account.tokenExpiry && new Date(account.tokenExpiry) < now;
+        const profileExpired = account.metaToken?.expires_at && new Date(account.metaToken.expires_at) < now;
+
+        if (isExpired || profileExpired) {
+            return res.json({ connected: true, status: 'EXPIRED', accountName: account.metaToken?.account_name });
+        }
+
+        // Fetch campaigns if active
+        let campaigns: any[] = [];
+        let status = 'ACTIVE';
+        let errorMessage = '';
+
+        console.log(`[DEBUG getMetaAccountStatus] Client: ${clientId}, AdAccount: ${account.externalAccountId}`);
+        
+        try {
+            if (account.externalAccountId && account.externalAccountId !== 'meta-account-linked' && account.externalAccountId !== 'pending-selection') {
+                campaigns = await metaService.fetchCampaigns(account.externalAccountId);
+                console.log(`[DEBUG getMetaAccountStatus] Fetched ${campaigns.length} campaigns for ${account.externalAccountId}`);
+            } else {
+                console.log(`[DEBUG getMetaAccountStatus] Skipping fetch: externalAccountId is placeholder (${account.externalAccountId})`);
+            }
+        } catch (err: any) {
+            console.error('[DEBUG getMetaAccountStatus] Error fetching Meta campaigns:', err.message);
+            // Handle Meta API errors specifically
+            const fbError = err.response?.data?.error;
+            if (fbError) {
+                if (fbError.code === 190 || fbError.type === 'OAuthException') {
+                    status = 'EXPIRED';
+                    errorMessage = fbError.message;
+                } else if (fbError.code === 200) {
+                    status = 'PERMISSION_ERROR';
+                    errorMessage = fbError.message;
+                }
+            }
+        }
+
+        res.json({ 
+            connected: true, 
+            status, 
+            errorMessage,
+            accountName: account.metaToken?.account_name,
+            externalAccountId: account.externalAccountId,
+            campaigns // Return campaigns to populate dropdown
+        });
+    } catch (error: any) {
+        res.status(500).json({ connected: false, status: 'ERROR', error: error.message });
     }
 }
 
@@ -175,7 +332,7 @@ export async function authMeta(req: Request, res: Response) {
     }
 
     // Redirect to Facebook Dialog with reauthenticate to allow switching accounts easily
-    const authUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&state=${state}&scope=ads_management,ads_read,business_management,leads_retrieval,pages_manage_ads,pages_read_engagement&auth_type=reauthenticate`;
+    const authUrl = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&state=${state}&scope=ads_management,ads_read,business_management,leads_retrieval,pages_manage_ads,pages_read_engagement&auth_type=reauthenticate`;
     res.redirect(authUrl);
 }
 
@@ -211,7 +368,7 @@ export async function metaCallback(req: Request, res: Response) {
         const redirectUri = `${process.env.API_URL || 'http://localhost:4001'}/api/marketing/auth/meta/callback`;
 
         // Exchange code for short-lived token
-        const tokenRes = await axios.get(`https://graph.facebook.com/v19.0/oauth/access_token`, {
+        const tokenRes = await axios.get(`https://graph.facebook.com/v21.0/oauth/access_token`, {
             params: {
                 client_id: appId,
                 redirect_uri: redirectUri,
@@ -222,7 +379,7 @@ export async function metaCallback(req: Request, res: Response) {
         const shortToken = tokenRes.data.access_token;
 
         // Exchange for long-lived token
-        const longTokenRes = await axios.get(`https://graph.facebook.com/v19.0/oauth/access_token`, {
+        const longTokenRes = await axios.get(`https://graph.facebook.com/v21.0/oauth/access_token`, {
             params: {
                 grant_type: 'fb_exchange_token',
                 client_id: appId,
@@ -233,7 +390,7 @@ export async function metaCallback(req: Request, res: Response) {
         const longToken = longTokenRes.data.access_token;
 
         // Fetch Meta user info (Name and ID)
-        const meRes = await axios.get(`https://graph.facebook.com/v19.0/me`, {
+        const meRes = await axios.get(`https://graph.facebook.com/v21.0/me`, {
             params: { access_token: longToken, fields: 'id,name' }
         });
         const metaUserName = meRes.data.name;
@@ -312,6 +469,7 @@ export async function getMetaProfiles(req: Request, res: Response) {
                 account_name: true,
                 meta_user_id: true,
                 updatedAt: true,
+                expires_at: true,
                 marketingAccounts: {
                     select: {
                         id: true,
@@ -328,7 +486,15 @@ export async function getMetaProfiles(req: Request, res: Response) {
                 }
             }
         });
-        res.json(profiles);
+
+        // Compute token health status for each profile
+        const now = Date.now();
+        const enriched = profiles.map((p: any) => ({
+            ...p,
+            tokenStatus: p.expires_at && new Date(p.expires_at).getTime() < now ? 'EXPIRED' : 'ACTIVE'
+        }));
+
+        res.json(enriched);
     } catch (e: any) {
         res.status(500).json({ error: e.message });
     }

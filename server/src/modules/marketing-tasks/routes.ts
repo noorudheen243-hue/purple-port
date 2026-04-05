@@ -6,7 +6,8 @@ import {
     manualSync, getMetrics, authMeta, metaCallback, authGoogle, googleCallback,
     getAvailableAccounts, getIntegrationStatus, selectAccount, disconnectAccount,
     middleware, getLeads, syncLeads, createLead, updateLead, deleteLead, addFollowUp,
-    getMetaProfiles, linkAccountToProfile, getAiTips, getMetaCampaignsDetailed, getMetaAdSets, getMetaAds, createMetaCampaign, createMetaAdSet, updateMetaStatus, sendReport
+    getMetaProfiles, linkAccountToProfile, getAiTips, getMetaCampaignsDetailed, getMetaAdSets, getMetaAds, createMetaCampaign, createMetaAdSet, updateMetaStatus, sendReport,
+    syncCampaign, getMetaAccountStatus
 } from './controller';
 import { protect } from '../auth/middleware';
 
@@ -31,8 +32,12 @@ router.get('/auth/google/callback', googleCallback);
 // Apply protection to all subsequent data routes
 router.use(protect);
 
-// Manual sync endpoint (POST)
+// Manual sync endpoints (POST)
 router.post('/sync', manualSync);
+router.post('/sync/campaign', syncCampaign);
+
+// Status endpoints
+router.get('/meta/status', getMetaAccountStatus);
 
 // Get metrics endpoint (GET)
 router.get('/metrics', getMetrics);

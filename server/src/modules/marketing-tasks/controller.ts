@@ -620,7 +620,12 @@ export async function authGoogle(req: Request, res: Response) {
     if (!clientId) return res.status(400).send('clientId is required');
 
     const googleClientId = process.env.GOOGLE_CLIENT_ID;
-    const redirectUri = `${process.env.API_URL || 'http://localhost:4001'}/api/marketing/auth/google/callback`;
+    
+    // Dynamically match the request's exact host for Google OAuth compatibility
+    const reqHost = req.get('host');
+    const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+    const baseUrl = `${protocol}://${reqHost}`;
+    const redirectUri = `${baseUrl}/api/marketing/auth/google/callback`;
 
     // Sandbox Bypass: If Client ID is a placeholder, perform a mock redirect to our own callback
     if (!googleClientId || googleClientId.includes('placeholder')) {
@@ -654,13 +659,22 @@ export async function googleCallback(req: Request, res: Response) {
                 tokenExpiry: new Date(Date.now() + 3600 * 1000)
             }
         });
-        return res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/dashboard/marketing-integrations?success=google`);
+        // Use dynamic baseUrl for final redirect to frontend
+        const reqHost = req.get('host');
+        const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+        const baseUrl = `${protocol}://${reqHost}`;
+        return res.redirect(`${baseUrl}/dashboard/marketing-integrations?success=google`);
     }
 
     try {
         const googleClientId = process.env.GOOGLE_CLIENT_ID;
         const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
-        const redirectUri = `${process.env.API_URL || 'http://localhost:4001'}/api/marketing/auth/google/callback`;
+        
+        // Dynamically match the request's exact host for Google OAuth callback matching
+        const reqHost = req.get('host');
+        const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+        const baseUrl = `${protocol}://${reqHost}`;
+        const redirectUri = `${baseUrl}/api/marketing/auth/google/callback`;
 
         const tokenRes = await axios.post('https://oauth2.googleapis.com/token', {
             code,

@@ -667,7 +667,8 @@ const ManageServicesView = () => {
             const externalAccountId = metaAccountStatus?.externalAccountId;
             
             const reqData: any = { 
-                campaignId: campaignForm.marketing_campaign_id 
+                campaignId: campaignForm.marketing_campaign_id,
+                clientId: client?.id
             };
             
             if (isPreview) {

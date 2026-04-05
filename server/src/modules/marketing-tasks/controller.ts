@@ -96,30 +96,38 @@ export async function syncCampaign(req: Request, res: Response) {
             });
 
             // Ensure the campaign is registered in our system for tracking
-            const campRecord = await (prisma as any).marketingCampaign.upsert({
+            const clientId = campaignMetadata?.clientId || (req as any).query.clientId || (req as any).body.clientId || '';
+            let campRecord = await (prisma as any).marketingCampaign.findFirst({
                 where: { 
-                    externalCampaignId_platform_clientId: {
-                        externalCampaignId: String(campaignId),
-                        platform: platform.toLowerCase(),
-                        clientId: campaignMetadata?.clientId || (req as any).query.clientId || (req as any).body.clientId || '' 
-                    }
-                },
-                update: {
-                    name: campaignMetadata?.name || campaignMetadata?.title,
-                    status: campaignMetadata?.effective_status || campaignMetadata?.status,
-                    objective: campaignMetadata?.objective,
-                    budget: parseFloat(campaignMetadata?.daily_budget || campaignMetadata?.lifetime_budget || '0') / 100
-                },
-                create: {
-                    clientId: campaignMetadata?.clientId || (req as any).query.clientId || (req as any).body.clientId || '',
-                    platform: platform.toLowerCase(),
                     externalCampaignId: String(campaignId),
-                    name: campaignMetadata?.name || campaignMetadata?.title,
-                    status: campaignMetadata?.effective_status || campaignMetadata?.status,
-                    objective: campaignMetadata?.objective,
-                    budget: parseFloat(campaignMetadata?.daily_budget || campaignMetadata?.lifetime_budget || '0') / 100
+                    platform: platform.toLowerCase(),
+                    clientId: clientId
                 }
             });
+
+            if (campRecord) {
+                campRecord = await (prisma as any).marketingCampaign.update({
+                    where: { id: campRecord.id },
+                    data: {
+                        name: campaignMetadata?.name || campaignMetadata?.title,
+                        status: campaignMetadata?.effective_status || campaignMetadata?.status,
+                        objective: campaignMetadata?.objective,
+                        budget: parseFloat(campaignMetadata?.daily_budget || campaignMetadata?.lifetime_budget || '0') / 100
+                    }
+                });
+            } else {
+                campRecord = await (prisma as any).marketingCampaign.create({
+                    data: {
+                        clientId: clientId,
+                        platform: platform.toLowerCase(),
+                        externalCampaignId: String(campaignId),
+                        name: campaignMetadata?.name || campaignMetadata?.title,
+                        status: campaignMetadata?.effective_status || campaignMetadata?.status,
+                        objective: campaignMetadata?.objective,
+                        budget: parseFloat(campaignMetadata?.daily_budget || campaignMetadata?.lifetime_budget || '0') / 100
+                    }
+                });
+            }
 
             // Aggregate and update metrics
             const latestMetric = {

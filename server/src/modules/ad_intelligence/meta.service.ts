@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Prisma } from '@prisma/client';
 import prisma from '../../utils/prisma';
 
-const META_API_VERSION = 'v19.0';
+const META_API_VERSION = 'v21.0';
 const META_GRAPH_URL = `https://graph.facebook.com/${META_API_VERSION}`;
 
 /**

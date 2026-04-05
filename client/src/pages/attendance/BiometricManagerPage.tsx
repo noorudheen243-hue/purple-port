@@ -77,6 +77,7 @@ const BiometricManagerPage = () => {
     }, [deviceInfo?.device_info]);
 
     const isOnline = deviceInfo?.status === 'ONLINE';
+    const isBridge = parsedDeviceInfo?.isBridge;
 
     // 2. Fetch Users
     const { data: deviceUsers, isLoading: usersLoading, refetch: refetchUsers } = useQuery({
@@ -116,27 +117,57 @@ const BiometricManagerPage = () => {
     // Mutations
     const restartMutation = useMutation({
         mutationFn: restartDevice,
-        onSuccess: (data) => addToLog(`Success: ${data.message}`),
+        onSuccess: (data) => {
+            if (data.queued) {
+                addToLog(`Queued: ${data.message}`);
+                Swal.fire('Queued', data.message, 'info');
+            } else {
+                addToLog(`Success: ${data.message}`);
+                Swal.fire('Success', data.message, 'success');
+            }
+        },
         onError: (err: any) => addToLog(`Error: ${err.response?.data?.error || err.message}`)
     });
 
     const syncTimeMutation = useMutation({
         mutationFn: syncTime,
-        onSuccess: (data) => addToLog(`Success: ${data.message}`),
+        onSuccess: (data) => {
+            if (data.queued) {
+                addToLog(`Queued: ${data.message}`);
+                Swal.fire('Queued', data.message, 'info');
+            } else {
+                addToLog(`Success: ${data.message}`);
+                Swal.fire('Success', data.message, 'success');
+            }
+        },
         onError: (err: any) => addToLog(`Error: ${err.response?.data?.error || err.message}`)
     });
 
     const clearLogsMutation = useMutation({
         mutationFn: clearLogs,
-        onSuccess: (data) => addToLog(`Success: ${data.message}`),
+        onSuccess: (data) => {
+            if (data.queued) {
+                addToLog(`Queued: ${data.message}`);
+                Swal.fire('Queued', data.message, 'info');
+            } else {
+                addToLog(`Success: ${data.message}`);
+                Swal.fire('Success', data.message, 'success');
+            }
+        },
         onError: (err: any) => addToLog(`Error: ${err.response?.data?.error || err.message}`)
     });
 
     const addUserMutation = useMutation({
         mutationFn: addUser,
         onSuccess: (data) => {
-            addToLog(`Success: ${data.message}`);
-            refetchUsers();
+            if (data.queued) {
+                addToLog(`Queued: ${data.message}`);
+                Swal.fire('Queued', data.message, 'info');
+            } else {
+                addToLog(`Success: ${data.message}`);
+                Swal.fire('Success', data.message, 'success');
+                refetchUsers();
+            }
         },
         onError: (err: any) => addToLog(`Error: ${err.response?.data?.error || err.message}`)
     });
@@ -144,10 +175,16 @@ const BiometricManagerPage = () => {
     const deleteUserMutation = useMutation({
         mutationFn: deleteUser,
         onSuccess: (data) => {
-            addToLog(`Success: ${data.message}`);
-            refetchUsers();
-            refetchAudit();
-            refetchUnlinked();
+            if (data.queued) {
+                addToLog(`Queued: ${data.message}`);
+                Swal.fire('Queued', data.message, 'info');
+            } else {
+                addToLog(`Success: ${data.message}`);
+                Swal.fire('Success', data.message, 'success');
+                refetchUsers();
+                refetchAudit();
+                refetchUnlinked();
+            }
         },
         onError: (err: any) => addToLog(`Error: ${err.response?.data?.error || err.message}`)
     });
@@ -223,8 +260,8 @@ const BiometricManagerPage = () => {
                         ))}
                     </div>
 
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${isOnline ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                        {isOnline ? 'ONLINE' : 'OFFLINE'}
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${isOnline ? (isBridge ? 'bg-blue-100 text-blue-700 border border-blue-200' : 'bg-green-100 text-green-700 border border-green-200') : 'bg-red-100 text-red-700 border border-red-200'}`}>
+                        {isOnline ? (isBridge ? 'ONLINE (BRIDGE)' : 'ONLINE') : 'OFFLINE'}
                     </span>
                     <Button variant="outline" size="sm" onClick={() => refetchInfo()} disabled={infoLoading || isRefetching}>
                         <RefreshCw className={`w-4 h-4 ${infoLoading || isRefetching ? 'animate-spin' : ''}`} />
@@ -244,20 +281,64 @@ const BiometricManagerPage = () => {
                                 <div className="flex justify-between">
                                     <span>Name:</span>
                                     <span className="font-medium text-gray-900">
-                                        {parsedDeviceInfo.deviceName || '-'}
+                                        {(deviceInfo as any)?.deviceName || '-'}
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span>Serial:</span>
                                     <span className="font-medium text-gray-900">
-                                        {parsedDeviceInfo.serialNumber || '-'}
+                                        {(deviceInfo as any)?.serialNumber || '-'}
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span>Platform:</span>
                                     <span className="font-medium text-gray-900">
-                                        {parsedDeviceInfo.platform || '-'}
+                                        {(deviceInfo as any)?.platform || '-'}
                                     </span>
+                                </div>
+                                <div className="pt-2 border-t mt-2">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs text-blue-600 font-semibold">OFFICE NETWORK:</span>
+                                        <Button 
+                                            variant="ghost" 
+                                            size="sm" 
+                                            className="h-6 px-2 text-[10px] text-blue-500 hover:text-blue-700"
+                                            onClick={() => {
+                                                Swal.fire({
+                                                    title: 'Register Office Public IP',
+                                                    input: 'text',
+                                                    inputPlaceholder: 'e.g. 122.164.x.x',
+                                                    showCancelButton: true,
+                                                    confirmButtonText: 'Register',
+                                                    showLoaderOnConfirm: true,
+                                                    preConfirm: async (ip) => {
+                                                        try {
+                                                            await api.post('/attendance/biometric/register-office-ip', { ip });
+                                                            return ip;
+                                                        } catch (e: any) {
+                                                            Swal.showValidationMessage(`Request failed: ${e.response?.data?.error || e.message}`);
+                                                        }
+                                                    }
+                                                }).then((result) => {
+                                                    if (result.isConfirmed) {
+                                                        Swal.fire('Registered', `Office IP set to ${result.value}`, 'success');
+                                                        refetchInfo();
+                                                    }
+                                                });
+                                            }}
+                                        >
+                                            SET MANUALLY
+                                        </Button>
+                                    </div>
+                                    <div className="flex justify-between text-xs mt-1">
+                                        <span className="text-gray-400">Current Tracking:</span>
+                                        <span className="font-mono text-blue-700">
+                                            {(deviceInfo as any)?.lastOfficeIp || 'Not Registered'}
+                                        </span>
+                                    </div>
+                                    <div className="text-[10px] text-gray-400 text-right">
+                                        {(deviceInfo as any)?.lastOfficeRegistration ? `Last updated: ${new Date((deviceInfo as any).lastOfficeRegistration).toLocaleString()}` : 'Never registered'}
+                                    </div>
                                 </div>
                             </div>
                         </Card>
@@ -304,7 +385,7 @@ const BiometricManagerPage = () => {
                                     }}
                                 >
                                     <RefreshCw className="w-5 h-5 mr-2 group-hover:animate-spin" />
-                                    IMPORT ALL LOGS (Direct)
+                                    {isBridge ? 'IMPORT LOGS (via Bridge)' : 'IMPORT ALL LOGS (Direct)'}
                                 </Button>
 
                                 <div className="grid grid-cols-2 gap-2">

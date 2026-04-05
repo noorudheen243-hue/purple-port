@@ -38,59 +38,7 @@ export const calculateAutoLOP = async (userId: string, month: number, year: numb
         where: { date: { gte: startDate, lte: endDate } }
     });
 
-    const holidayDates = new Set(holidays.map(h => h.date.toDateString()));
-    const attendanceDates = new Set(attendance.map((a: any) => a.date.toDateString()));
-
-    let lopDays = 0;
-
-    // 4. Count LOP based on Attendance Records (Source of Truth)
-    for (const record of attendance) {
-        if (record.status === 'ABSENT') {
-            // Check covering leave (redundancy check, usually ABSENT implies LOP unless regularized)
-            const coveringLeave = await prisma.leaveRequest.findFirst({
-                where: {
-                    user_id: userId,
-                    status: 'APPROVED',
-                    start_date: { lte: record.date },
-                    end_date: { gte: record.date }
-                }
-            });
-
-            if (!coveringLeave) {
-                lopDays += 1;
-            }
-        } else if (record.status === 'HALF_DAY') {
-            lopDays += 0.5;
-        }
-        // REGULARIZED, PRESENT, LATE = 0 LOP
-    }
-
-    // 5. Add Explicit LOP Leaves (Leave Type = UNPAID or LOP)
-    const unpaidLeaves = await prisma.leaveRequest.findMany({
-        where: {
-            user_id: userId,
-            status: 'APPROVED',
-            type: { in: ['UNPAID', 'LOP'] }, // Specific LOP types
-            start_date: { lte: endDate },
-            end_date: { gte: startDate }
-        }
-    });
-
-    unpaidLeaves.forEach(leave => {
-        let start = leave.start_date < startDate ? startDate : leave.start_date;
-        let end = leave.end_date > endDate ? endDate : leave.end_date;
-        const diffTime = Math.abs(end.getTime() - start.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-        lopDays += diffDays;
-    });
-
-    // 6. Count Missing Attendance Records (Days with no record = Absent)
-    const now = new Date();
-    const IST_OFFSET = 330 * 60 * 1000;
-    const istNow = new Date(now.getTime() + IST_OFFSET);
-    istNow.setUTCHours(0, 0, 0, 0);
-    const today = new Date(istNow.getTime() - IST_OFFSET); // IST Midnight
-
+    // 3. Fetch Approved Leaves
     const approvedLeaves = await prisma.leaveRequest.findMany({
         where: {
             user_id: userId,
@@ -100,28 +48,77 @@ export const calculateAutoLOP = async (userId: string, month: number, year: numb
         }
     });
 
-    let missingDays = 0;
-    const scanEnd = endDate > today ? today : endDate;
+    // 4. Fetch Approved Regularizations
+    const approvedRegs = await prisma.regularisationRequest.findMany({
+        where: {
+            user_id: userId,
+            status: 'APPROVED',
+            date: { gte: startDate, lte: endDate }
+        }
+    });
 
-    for (let d = new Date(startDate); d <= scanEnd; d.setDate(d.getDate() + 1)) {
-        const dateStr = d.toDateString();
-        const isSunday = d.getDay() === 0;
-        const isHoliday = holidayDates.has(dateStr);
+    const IST_OFFSET = 330 * 60 * 1000;
 
-        const hasLeave = approvedLeaves.some(leave => {
-            const leaveStart = new Date(leave.start_date);
-            const leaveEnd = new Date(leave.end_date);
-            leaveStart.setHours(0, 0, 0, 0);
-            leaveEnd.setHours(23, 59, 59, 999);
-            return d >= leaveStart && d <= leaveEnd;
+    // Build Maps using IST YYYY-MM-DD keys
+    const attendanceMap: Record<string, any> = {};
+    attendance.forEach((a: any) => {
+        const istDate = new Date(a.date.getTime() + IST_OFFSET);
+        attendanceMap[istDate.toISOString().split('T')[0]] = a;
+    });
+
+    const holidaySet = new Set(holidays.map(h => {
+        const istDate = new Date(h.date.getTime() + IST_OFFSET);
+        return istDate.toISOString().split('T')[0];
+    }));
+
+    const regSet = new Set(approvedRegs.map(r => {
+        const istDate = new Date(r.date.getTime() + IST_OFFSET);
+        return istDate.toISOString().split('T')[0];
+    }));
+
+    let lopDays = 0;
+
+    // Determine 'today' in IST to stop counting missing days for future or un-logged current day
+    const now = new Date();
+    const istNow = new Date(now.getTime() + IST_OFFSET);
+    const todayKey = istNow.toISOString().split('T')[0];
+
+    const scanEnd = endDate; 
+    let current = new Date(startDate);
+
+    // Single Pass Scan perfectly mirroring AttendanceSummaryPage logic
+    while (current <= scanEnd) {
+        const y = current.getFullYear();
+        const m = String(current.getMonth() + 1).padStart(2, '0');
+        const d = String(current.getDate()).padStart(2, '0');
+        const dateKey = `${y}-${m}-${d}`;
+
+        const isSunday = current.getDay() === 0;
+
+        const hasLeave = approvedLeaves.some(l => {
+            const lStart = new Date(l.start_date.getTime() + IST_OFFSET).toISOString().split('T')[0];
+            const lEnd = new Date(l.end_date.getTime() + IST_OFFSET).toISOString().split('T')[0];
+            return dateKey >= lStart && dateKey <= lEnd;
         });
 
-        if (!attendanceDates.has(dateStr) && !isSunday && !isHoliday && !hasLeave) {
-            missingDays++;
+        const record = attendanceMap[dateKey];
+        if (record) {
+            // Evaluated if record exists
+            if (record.status === 'ABSENT' || record.status === 'HALF_DAY') {
+                if (!regSet.has(dateKey) && !hasLeave) {
+                    lopDays += record.status === 'HALF_DAY' ? 0.5 : 1.0;
+                }
+            }
+        } else {
+            // Missing Day Penalty Penalty
+            if (dateKey < todayKey && !isSunday && !holidaySet.has(dateKey) && !hasLeave && !regSet.has(dateKey)) {
+                lopDays += 1.0;
+            }
         }
+
+        current.setDate(current.getDate() + 1);
     }
 
-    lopDays += missingDays;
     return lopDays;
 };
 
@@ -224,12 +221,14 @@ export const getSalaryDraft = async (userId: string, month: number, year: number
 
     if (String(requestedType).trim() === 'MONTHLY') {
         // Strategy A: Standard Monthly
+        // Daily wage always based on 30 days (Indian payroll standard)
+        // Total days displayed = actual calendar days in month (31/30/29/28)
         grossTotal = monthlyGrossComponents;
-        dailyWage = monthlyGrossComponents / 30;
-        totalWorkingDays = 30;
+        dailyWage = monthlyGrossComponents / 30; // Always 30 — standard Indian payroll
+        totalWorkingDays = totalDaysInMonth;     // Display: actual calendar days
     } else {
         // Strategy B: Till Date
-        dailyWage = monthlyGrossComponents / 30; // Strict Actual Days
+        dailyWage = monthlyGrossComponents / 30; // Always 30 — Indian payroll standard
 
         const daysTillDate = calculationDate.getDate(); // 1-indexed day of month (calendar days)
 
@@ -272,11 +271,6 @@ export const getSalaryDraft = async (userId: string, month: number, year: number
             });
         }
         if (staffLedger && staffLedger.balance > 0) salaryAdvanceBalance += staffLedger.balance;
-
-        const expenseLedger = await prisma.ledger.findFirst({
-            where: { entity_id: userId, head: { code: '6000' } }
-        });
-        if (expenseLedger && expenseLedger.balance > 0) salaryAdvanceBalance += expenseLedger.balance;
     } catch (error) {
         console.error("Failed to fetch ledger balances:", error);
     }
@@ -366,7 +360,15 @@ export const getPayrollRunDetails = async (month: number, year: number) => {
         where: { month, year },
         include: {
             slips: {
-                include: { user: true }
+                include: {
+                    user: {
+                        include: {
+                            staffProfile: {
+                                select: { designation: true, staff_number: true, department: true }
+                            }
+                        }
+                    }
+                }
             }
         }
     });
@@ -375,7 +377,8 @@ export const getPayrollRunDetails = async (month: number, year: number) => {
 
     const slips = run.slips.map((s: any) => ({
         ...s,
-        name: s.user?.full_name || 'Unknown'
+        name: s.user?.full_name || 'Unknown',
+        designation: s.user?.staffProfile?.designation || 'Staff'
     }));
 
     const total_payout = slips.reduce((sum: number, s: any) => sum + s.net_pay, 0);
@@ -418,11 +421,10 @@ export const savePayrollSlip = async (month: number, year: number, userId: strin
         advance_salary: Number(data.advance_salary),
         other_deductions: Number(data.other_deductions),
 
-        total_working_days: Number(data.total_working_days) || 30,
+        total_working_days: Math.round(Number(data.total_working_days) || 30),
         net_pay: Number(data.net_pay),
-        status: 'PENDING',
-        payroll_type: data.payroll_type || 'MONTHLY',
-        gross_total: Number(data.gross_total)
+        status: 'IN_PROGRESS',
+        payroll_type: data.payroll_type || 'MONTHLY'
     };
 
     if (existing) {

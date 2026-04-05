@@ -233,7 +233,8 @@ export class MarketingSyncWorker {
                                     budget: parseFloat(ext.daily_budget || ext.lifetime_budget || '0') / 100,
                                     bid_strategy: ext.bid_strategy,
                                     attribution_setting: ext.attribution_spec?.[0]?.attribution_window || ext.pacing_type?.[0] || null,
-                                    ends: ext.stop_time ? new Date(ext.stop_time) : null
+                                    startDate: (ext.start_time || ext.startDate) ? new Date(ext.start_time || ext.startDate) : null,
+                                    ends: (ext.stop_time || ext.end_date || ext.endDate) ? new Date(ext.stop_time || ext.end_date || ext.endDate) : null
                                 }
                             });
                             console.log(`[SyncWorker] Created new campaign: ${ext.name} (${campId})`);
@@ -247,7 +248,8 @@ export class MarketingSyncWorker {
                                     budget: parseFloat(ext.daily_budget || ext.lifetime_budget || '0') / 100,
                                     bid_strategy: ext.bid_strategy,
                                     attribution_setting: ext.attribution_spec?.[0]?.attribution_window || ext.pacing_type?.[0] || null,
-                                    ends: ext.stop_time ? new Date(ext.stop_time) : null
+                                    startDate: (ext.start_time || ext.startDate) ? new Date(ext.start_time || ext.startDate) : null,
+                                    ends: (ext.stop_time || ext.end_date || ext.endDate) ? new Date(ext.stop_time || ext.end_date || ext.endDate) : null
                                 }
                             });
                             console.log(`[SyncWorker] Updated metadata for campaign: ${ext.name} (${campId})`);

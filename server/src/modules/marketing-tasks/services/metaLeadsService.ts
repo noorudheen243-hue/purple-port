@@ -1,6 +1,6 @@
 import prisma from '../../../utils/prisma';
 import axios from 'axios';
-const META_GRAPH_URL = 'https://graph.facebook.com/v19.0';
+const META_GRAPH_URL = 'https://graph.facebook.com/v21.0';
 
 export class MetaLeadsService {
 

@@ -8,7 +8,13 @@ export class BiometricController {
     static async getDeviceInfo(req: Request, res: Response) {
         try {
             const info = await biometricControl.getDeviceInfo();
-            res.json(info);
+            const status = await prisma.biometricDeviceStatus.findUnique({ where: { id: 'CURRENT' } });
+            
+            res.json({
+                ...info,
+                lastOfficeIp: status?.last_office_ip,
+                lastOfficeRegistration: status?.last_office_registration
+            });
         } catch (error: any) {
             res.status(500).json({ error: error.message });
         }
@@ -170,6 +176,79 @@ export class BiometricController {
 
             const result = await biometricControl.cacheDeviceUsers(users);
             res.json(result);
+        } catch (error: any) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+
+    // Register Office IP (Called from Client when in Office)
+    static async registerOfficeIP(req: Request, res: Response) {
+        try {
+            // req.ip usually captures Public IP if proxy is configured
+            const publicIp = req.ip || req.socket.remoteAddress || 'unknown';
+            const cleanIp = publicIp.replace(/^.*:/, '');
+
+            await prisma.biometricDeviceStatus.upsert({
+                where: { id: 'CURRENT' },
+                create: { 
+                    id: 'CURRENT', 
+                    status: 'ONLINE', 
+                    last_heartbeat: new Date(), 
+                    last_office_ip: cleanIp,
+                    last_office_registration: new Date()
+                },
+                update: { 
+                    last_office_ip: cleanIp,
+                    last_office_registration: new Date()
+                }
+            });
+
+            res.json({ message: 'Office IP registered successfully', ip: cleanIp });
+        } catch (error: any) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+
+    // --- Bridge Bidirectional Endpoints ---
+
+    static async bridgeHeartbeat(req: Request, res: Response) {
+        try {
+            const publicIp = req.ip || req.socket.remoteAddress || 'unknown';
+            const cleanIp = publicIp.replace(/^.*:/, '');
+
+            // Update Status with Heartbeat and IP
+            await prisma.biometricDeviceStatus.upsert({
+                where: { id: 'CURRENT' },
+                create: { 
+                    id: 'CURRENT', 
+                    status: 'ONLINE', 
+                    last_heartbeat: new Date(), 
+                    last_office_ip: cleanIp,
+                    last_office_registration: new Date(),
+                    last_bridge_heartbeat: new Date()
+                },
+                update: { 
+                    last_office_ip: cleanIp,
+                    last_office_registration: new Date(),
+                    last_bridge_heartbeat: new Date()
+                }
+            });
+
+            // Fetch Pending Commands
+            const commands = await biometricControl.getPendingCommands();
+            res.json({ commands });
+        } catch (error: any) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+
+    static async updateCommandResult(req: Request, res: Response) {
+        try {
+            const { id, status, result } = req.body;
+            if (!id || !status) throw new Error("Missing ID or Status");
+
+            const updated = await biometricControl.updateCommandStatus(id, status, result);
+            res.json(updated);
         } catch (error: any) {
             res.status(500).json({ error: error.message });
         }

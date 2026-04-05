@@ -1172,6 +1172,8 @@ model MetaAdsLog {
   marketingCampaign     MarketingCampaign? @relation(fields: [marketing_campaign_id], references: [id])
 
   notes     String?
+  startDate DateTime?
+  endDate   DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -1197,6 +1199,8 @@ model GoogleAdsLog {
   cpa         Float @default(0.0) // Cost Per Acquisition
 
   notes     String?
+  startDate DateTime?
+  endDate   DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -1478,6 +1482,7 @@ model MarketingCampaign {
   budget             Float?
   bid_strategy       String?
   attribution_setting String?
+  startDate          DateTime?
   ends               DateTime?
   marketingAds       MarketingAd[]
   marketingMetrics   MarketingMetric[]

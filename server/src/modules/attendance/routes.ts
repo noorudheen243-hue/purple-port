@@ -15,6 +15,10 @@ router.get('/calendar', authenticate, AttendanceController.getMonthlyCalendar);
 router.post('/admin/update', authenticate, AttendanceController.adminUpdateAttendance);
 router.post('/admin/recalculate-all', authenticate, AttendanceController.bulkRecalculateAll);
 
+// Attendance Criteria Config
+router.get('/admin/criteria/configs', authenticate, AttendanceController.getCriteriaConfigs);
+router.patch('/admin/criteria/configs/:id', authenticate, AttendanceController.updateCriteriaConfig);
+
 router.get('/regularisation/requests', authenticate, AttendanceController.getRegularisationRequests);
 router.patch('/regularisation/:id/status', authenticate, AttendanceController.updateRegularisationStatus);
 router.put('/regularisation/:id', authenticate, AttendanceController.updateRegularisationRequest);

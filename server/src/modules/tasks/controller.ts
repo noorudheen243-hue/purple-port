@@ -9,6 +9,7 @@ const createTaskSchema = z.object({
     campaign_id: z.string().optional(),
     assignee_id: z.string().optional(),
     client_id: z.string().optional(), // Added
+    marketing_campaign_id: z.string().optional(), // Added for Meta/Google Ads link
     category: z.string().optional(),  // Added
     content_type: z.string().optional(), // Added: Link to Client Content Strategy
     priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).default('MEDIUM'),
@@ -39,7 +40,7 @@ export const createTask = async (req: Request, res: Response) => {
 
         const validatedData = createTaskSchema.parse(req.body);
 
-        const { assignee_id, campaign_id, client_id, due_date, ...otherData } = validatedData;
+        const { assignee_id, campaign_id, client_id, marketing_campaign_id, due_date, ...otherData } = validatedData;
 
         const task = await taskService.createTask({
             ...otherData,
@@ -48,6 +49,7 @@ export const createTask = async (req: Request, res: Response) => {
             ...(assignee_id ? { assignee: { connect: { id: assignee_id } } } : {}),
             ...(campaign_id ? { campaign: { connect: { id: campaign_id } } } : {}),
             ...(client_id ? { client: { connect: { id: client_id } } } : {}),
+            ...(marketing_campaign_id ? { marketingCampaign: { connect: { id: marketing_campaign_id } } } : {}),
             due_date: due_date ? new Date(due_date) : undefined,
         });
 
@@ -101,7 +103,7 @@ export const updateTask = async (req: Request, res: Response) => {
         console.log("Validated Data:", JSON.stringify(validatedData, null, 2));
 
         // Transform relations to Prisma Connect syntax
-        const { assignee_id, campaign_id, client_id, due_date, ...rest } = validatedData;
+        const { assignee_id, campaign_id, client_id, marketing_campaign_id, due_date, ...rest } = validatedData;
         let updateData: any = { ...rest };
 
         // Access Control: Removed Creative Team Restriction
@@ -109,6 +111,7 @@ export const updateTask = async (req: Request, res: Response) => {
         if (assignee_id) updateData.assignee = { connect: { id: assignee_id } };
         if (campaign_id) updateData.campaign = { connect: { id: campaign_id } };
         if (client_id) updateData.client = { connect: { id: client_id } };
+        if (marketing_campaign_id) updateData.marketingCampaign = { connect: { id: marketing_campaign_id } };
         if (due_date) updateData.due_date = new Date(due_date);
 
         console.log("Final Update Payload sent to Service:", JSON.stringify(updateData, null, 2));

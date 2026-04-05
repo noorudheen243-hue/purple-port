@@ -128,21 +128,121 @@ async function sync() {
     }
 }
 
+async function executeRemoteCommand(cmd: any) {
+    const { id, command, params: paramsStr } = cmd;
+    console.log(`[${ts()}] 🤖 Executing Remote Command: ${command}...`);
+    
+    const zk = new ZKLib(DEVICE_IP, DEVICE_PORT, 20000, 4000);
+    let status = 'SUCCESS';
+    let resultJson: any = {};
+
+    try {
+        await (zk as any).ztcp.createSocket();
+        await (zk as any).ztcp.connect();
+        (zk as any).connectionType = 'tcp';
+
+        const params = paramsStr ? JSON.parse(paramsStr) : {};
+
+        switch (command) {
+            case 'RESTART':
+                await zk.executeCmd(8); // CMD_RESTART
+                resultJson = { message: 'Restart command sent.' };
+                break;
+            case 'SYNC_TIME':
+                await zk.setTime(new Date());
+                resultJson = { message: 'Device time synchronized.' };
+                break;
+            case 'CLEAR_LOGS':
+                await zk.clearAttendanceLog();
+                resultJson = { message: 'Logs cleared successfully.' };
+                break;
+            case 'SET_USER':
+                const uid = params.uid || (params.userId ? parseInt(params.userId.replace(/\D/g, '')) : 0);
+                if (!uid) throw new Error('Missing UID for SET_USER');
+                await zk.setUser(uid, params.userId, params.name, params.password || '', params.role || 0, params.cardno || 0);
+                resultJson = { message: `User ${params.userId} set/updated.` };
+                break;
+            case 'DELETE_USER':
+                const deleteUid = parseInt(params.userId.replace(/\D/g, ''));
+                if (!deleteUid) throw new Error('Missing UID for DELETE_USER');
+                await zk.deleteUser(deleteUid);
+                resultJson = { message: `User ${params.userId} deleted.` };
+                break;
+            default:
+                throw new Error(`Command "${command}" not implemented in bridge.`);
+        }
+        console.log(`[${ts()}] ✅ Command Success: ${command}`);
+    } catch (e: any) {
+        status = 'FAILED';
+        resultJson = { error: e.message || 'Unknown device error' };
+        console.error(`[${ts()}] ❌ Command Failed: ${command}`, e.message);
+    } finally {
+        try { await zk.disconnect(); } catch (_) { }
+        
+        // Report result back to server
+        try {
+            await axios.post(
+                `${SERVER_URL}/attendance/biometric/bridge/command-result`,
+                { id, status, result: JSON.stringify(resultJson) },
+                {
+                    headers: { 'x-api-key': BRIDGE_API_KEY },
+                    timeout: 10000
+                }
+            );
+        } catch (reportErr: any) {
+            console.error(`[${ts()}] ❌ Failed to report result to server:`, reportErr.message);
+        }
+    }
+}
+
+async function heartbeat() {
+    try {
+        const resp = await axios.post(
+            `${SERVER_URL}/attendance/biometric/bridge/heartbeat`,
+            {},
+            {
+                headers: {
+                    'x-api-key': BRIDGE_API_KEY,
+                    'Content-Type': 'application/json'
+                },
+                timeout: 10000
+            }
+        );
+
+        const commands = resp.data?.commands || [];
+        if (commands.length > 0) {
+            console.log(`[${ts()}] 📥 Heartbeat: Found ${commands.length} pending commands.`);
+            for (const cmd of commands) {
+                await executeRemoteCommand(cmd);
+            }
+        } else {
+            // console.log(`[${ts()}] 💓 Heartbeat: Alive.`);
+        }
+    } catch (e: any) {
+        console.error(`[${ts()}] 💔 Heartbeat failed:`, e.message);
+    }
+}
+
 function ts() {
     return new Date().toLocaleTimeString('en-IN');
 }
 
 async function main() {
     console.log('\n===================================================');
-    console.log('  Antigravity Biometric Bridge Agent');
-    console.log(`  Device: ${DEVICE_IP}:${DEVICE_PORT} → ${SERVER_URL}`);
-    console.log('  Sync Interval: Every 5 seconds');
-    console.log('  Keep this window OPEN all day for live sync.');
+    console.log('  Antigravity Biometric Bridge Agent (v2.0)');
+    console.log(`  Target Device: ${DEVICE_IP}:${DEVICE_PORT}`);
+    console.log(`  Source Server: ${SERVER_URL}`);
+    console.log('  Mode: Bidirectional (Sync + Remote Management)');
     console.log('===================================================\n');
 
     while (true) {
+        // 1. Send Heartbeat and Process Remote Commands
+        await heartbeat();
+
+        // 2. Sync Logs
         await sync();
-        // Wait 30 seconds before next cycle to reduce device load
+
+        // Wait 30 seconds before next cycle
         await sleep(30000);
     }
 }

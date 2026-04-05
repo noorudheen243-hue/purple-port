@@ -108,13 +108,37 @@ async function restoreFromZip(zipPath: string): Promise<void> {
     if (fs.existsSync(backupDb)) {
         const targetDb = resolveDbPath();
         if (targetDb) {
-            // Disconnect Prisma so we can overwrite the file
+            console.log(`[Backup] Target database located at: ${targetDb}. Prepararing for swap...`);
+            
+            // 1. Disconnect Prisma to release file locks
             await prisma.$disconnect();
-            fs.copyFileSync(backupDb, targetDb);
-            console.log('[Backup] Database file restored from backup.');
-            // Reconnect (Prisma will reconnect lazily on next query)
+
+            // 2. CRITICAL: Clean up SQLite WAL/SHM side-files before overwriting.
+            // If the restored DB doesn't match the existing logs, SQLite will report corruption or crash.
+            const sideFiles = [`${targetDb}-wal`, `${targetDb}-shm`];
+            sideFiles.forEach(file => {
+                if (fs.existsSync(file)) {
+                    console.log(`[Backup] Removing local transaction log side-file: ${file}`);
+                    try {
+                        fs.unlinkSync(file);
+                    } catch (e: any) {
+                        console.warn(`[Backup] Could not delete ${file}. This may cause a 'Network Error' if the file is locked.`, e.message);
+                    }
+                }
+            });
+
+            // 3. Perform the database file swap
+            try {
+                fs.copyFileSync(backupDb, targetDb);
+                console.log('[Backup] Database file successfully restored and local transaction logs cleared.');
+            } catch (err: any) {
+                console.error('[Backup] Failed to overwrite database file:', err.message);
+                throw new Error(`Database file operation failed: ${err.message}. Check if another process is using dev.db.`);
+            }
+
+            // 4. Reconnect will happen lazily on the next query
         } else {
-            console.warn('[Backup] Could not locate target DB path — database not restored from file.');
+            console.warn('[Backup] Could not locate target database path — database not restored from file.');
         }
     }
 
@@ -637,6 +661,9 @@ class TableStream extends Readable {
 // Legacy browser-download backup (used by old Data Sync tab)
 export const exportFullBackupZip = async (req: Request, res: Response) => {
     try {
+        // Ensure WAL is checkpointed before starting
+        try { await prisma.$executeRawUnsafe('PRAGMA wal_checkpoint(TRUNCATE);'); } catch { }
+
         const archive = archiver('zip', { zlib: { level: 9 } });
         const filename = `purple-port-backup-${new Date().toISOString().split('T')[0]}.zip`;
         res.setHeader('Content-Type', 'application/zip');

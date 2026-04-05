@@ -25,7 +25,7 @@ const PayrollProcess = () => {
     });
 
     const slips = runData?.slips || [];
-    const pendingSlips = slips.filter((s: any) => s.status === 'PENDING' || s.status === 'DRAFT');
+    const pendingSlips = slips.filter((s: any) => s.status === 'PENDING' || s.status === 'DRAFT' || s.status === 'IN_PROGRESS');
 
     // Mutations
     const processMutation = useMutation({

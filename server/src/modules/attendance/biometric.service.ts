@@ -29,12 +29,31 @@ export class BiometricControlService {
     private readonly timeout: number = 20000;
     private readonly inport: number = 4000;
 
-    constructor() {
-        // Initialize ZKLib
-        this.zk = new ZKLib(this.ip, this.port, this.timeout, this.inport);
+    constructor() { }
+
+    private async resolveTargetIp(): Promise<string> {
+        // Try to reach the device on the local network first
+        const localIp = '192.168.1.201';
+        const isLocalReachable = await this.probeDevice(localIp, 200);
+
+        if (isLocalReachable) return localIp;
+
+        // Fallback: Get the last known absolute/public IP from the DB
+        const status = await prisma.biometricDeviceStatus.findUnique({ where: { id: 'CURRENT' } });
+        if (status && status.last_office_ip && status.last_office_ip !== 'unknown') {
+            console.log(`[Biometric] Resolving to last known Office Public IP: ${status.last_office_ip} (Registered: ${status.last_office_registration})`);
+            return status.last_office_ip;
+        }
+
+        return localIp; // Default fallback
     }
 
-    private async connect(retries = 2): Promise<boolean> {
+    private async connect(targetIp?: string, retries = 2): Promise<boolean> {
+        const ip = targetIp || await this.resolveTargetIp();
+        
+        // Re-initialize ZKLib with the correct IP if needed
+        this.zk = new ZKLib(ip, this.port, this.timeout, this.inport);
+
         for (let attempt = 1; attempt <= retries; attempt++) {
             try {
                 // Ensure socket is theoretically clean
@@ -71,7 +90,9 @@ export class BiometricControlService {
 
     // --- Device Info & Status ---
 
-    async probeDevice(timeout = 200): Promise<boolean> {
+    async probeDevice(host?: string, timeout = 200): Promise<boolean> {
+        const ip = host || await this.resolveTargetIp();
+
         return new Promise(resolve => {
             const { Socket } = require('net');
             const socket = new Socket();
@@ -88,7 +109,7 @@ export class BiometricControlService {
                 socket.destroy();
                 resolve(false);
             });
-            socket.connect(this.port, this.ip);
+            socket.connect(this.port, ip);
         });
     }
 
@@ -98,7 +119,7 @@ export class BiometricControlService {
         return this.mutex.run(async () => {
             try {
                 // AUTO-DETECT: Try to reach device physically first (Fast Probe)
-                const isReachable = await this.probeDevice(500);
+                const isReachable = await this.probeDevice(undefined, 500);
 
                 let info: any;
 
@@ -107,45 +128,74 @@ export class BiometricControlService {
                     if (!await this.connect()) throw new Error('Device reachable but refused connection');
                     info = await this.fetchStartDeviceInfo();
                 } else {
-                    // 1. FALLBACK TO SMART CHECK (Bridge Mode / VPS)
-                    // If the bridge pushed data in the last 24 hours, assume ONLINE.
-                    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
-                    const recentLog = await prisma.attendanceRecord.findFirst({
-                        where: {
-                            method: 'BIOMETRIC',
-                            updatedAt: { gte: yesterday }
-                        },
-                        orderBy: { updatedAt: 'desc' }
-                    });
+                    // 1. Check for Active Bridge Heartbeat (Real-time)
+                    const status = await prisma.biometricDeviceStatus.findUnique({ where: { id: 'CURRENT' } });
+                    const lastBridge = status?.last_bridge_heartbeat;
+                    const isBridgeActive = lastBridge && (Date.now() - new Date(lastBridge).getTime() < 120000); // 2 mins
 
-                    if (recentLog) {
+                    if (isBridgeActive) {
                         const dbUserCount = await prisma.staffProfile.count();
                         const dbLogCount = await prisma.attendanceRecord.count({ where: { method: 'BIOMETRIC' } });
-
+                        
                         info = {
                             status: 'ONLINE',
-                            deviceName: 'Bridge Device (VPS Mode)',
-                            serialNumber: 'SYNCED-VIA-BRIDGE',
-                            firmware: 'N/A',
-                            platform: 'Bridge',
+                            deviceName: 'Office Device (Bridge Mode)',
+                            serialNumber: 'CONNECTED-VIA-BRIDGE',
+                            platform: 'Bridge Agent',
                             deviceTime: new Date(),
-                            lastSyncTime: recentLog.updatedAt,
+                            lastSyncTime: status.last_heartbeat,
                             userCount: dbUserCount,
-                            logCount: dbLogCount
+                            logCount: dbLogCount,
+                            isBridge: true
                         };
                     } else {
-                        info = {
-                            status: 'OFFLINE',
-                            error: 'Device unreachable and no recent bridge data.'
-                        };
+                        // 2. FALLBACK TO SMART CHECK (Last 24h logs)
+                        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+                        const recentLog = await prisma.attendanceRecord.findFirst({
+                            where: {
+                                method: 'BIOMETRIC',
+                                updatedAt: { gte: yesterday }
+                            },
+                            orderBy: { updatedAt: 'desc' }
+                        });
+
+                        if (recentLog) {
+                            const dbUserCount = await prisma.staffProfile.count();
+                            const dbLogCount = await prisma.attendanceRecord.count({ where: { method: 'BIOMETRIC' } });
+
+                            info = {
+                                status: 'ONLINE',
+                                deviceName: 'Bridge Device (Cached)',
+                                serialNumber: 'SYNCED-VIA-BRIDGE',
+                                platform: 'Bridge',
+                                deviceTime: new Date(),
+                                lastSyncTime: recentLog.updatedAt,
+                                userCount: dbUserCount,
+                                logCount: dbLogCount
+                            };
+                        } else {
+                            info = {
+                                status: 'OFFLINE',
+                                error: 'Device unreachable and no active bridge agent seen recently.'
+                            };
+                        }
                     }
                 }
 
                 // Update Status Table
                 await prisma.biometricDeviceStatus.upsert({
                     where: { id: 'CURRENT' },
-                    create: { id: 'CURRENT', status: info.status, last_heartbeat: new Date(), device_info: JSON.stringify(info) },
-                    update: { status: info.status, last_heartbeat: new Date(), device_info: JSON.stringify(info) }
+                    create: { 
+                        id: 'CURRENT', 
+                        status: info.status, 
+                        last_heartbeat: new Date(), 
+                        device_info: JSON.stringify(info) 
+                    },
+                    update: { 
+                        status: info.status, 
+                        last_heartbeat: new Date(), 
+                        device_info: JSON.stringify(info) 
+                    }
                 }).catch(() => { });
 
                 return info;
@@ -157,8 +207,17 @@ export class BiometricControlService {
                 };
                 await prisma.biometricDeviceStatus.upsert({
                     where: { id: 'CURRENT' },
-                    create: { id: 'CURRENT', status: 'OFFLINE', last_heartbeat: new Date(), device_info: JSON.stringify(errInfo) },
-                    update: { status: 'OFFLINE', last_heartbeat: new Date(), device_info: JSON.stringify(errInfo) }
+                    create: { 
+                        id: 'CURRENT', 
+                        status: 'OFFLINE', 
+                        last_heartbeat: new Date(), 
+                        device_info: JSON.stringify(errInfo) 
+                    },
+                    update: { 
+                        status: 'OFFLINE', 
+                        last_heartbeat: new Date(), 
+                        device_info: JSON.stringify(errInfo) 
+                    }
                 }).catch(() => { });
                 return errInfo;
             } finally {
@@ -274,44 +333,23 @@ export class BiometricControlService {
     }
 
     async restartDevice() {
-        return this.mutex.run(async () => {
-            try {
-                if (!await this.connect()) throw new Error('Device offline');
-                await this.zk.executeCmd(8); // CMD_RESTART = 8
-                return { message: 'Device restarting...' };
-            } catch (error: any) {
-                throw new Error(`Restart failed: ${getErrMsg(error)}`);
-            } finally {
-                await this.disconnect();
-            }
+        return this.runCommandOrEnqueue('RESTART', null, async () => {
+            await this.zk.executeCmd(8); // CMD_RESTART = 8
+            return { message: 'Device restarting...' };
         });
     }
 
     async syncDeviceTime() {
-        return this.mutex.run(async () => {
-            try {
-                if (!await this.connect()) throw new Error('Device offline');
-                await this.zk.setTime(new Date());
-                return { message: 'Device time synchronized with server.' };
-            } catch (error: any) {
-                throw new Error(`Time sync failed: ${getErrMsg(error)}`);
-            } finally {
-                await this.disconnect();
-            }
+        return this.runCommandOrEnqueue('SYNC_TIME', null, async () => {
+            await this.zk.setTime(new Date());
+            return { message: 'Device time synchronized.' };
         });
     }
 
     async clearAttendanceLogs() {
-        return this.mutex.run(async () => {
-            try {
-                if (!await this.connect()) throw new Error('Device offline');
-                await this.zk.clearAttendanceLog();
-                return { message: 'All attendance logs cleared from device.' };
-            } catch (error: any) {
-                throw new Error(`Clear logs failed: ${getErrMsg(error)}`);
-            } finally {
-                await this.disconnect();
-            }
+        return this.runCommandOrEnqueue('CLEAR_LOGS', null, async () => {
+            await this.zk.clearAttendanceLog();
+            return { message: 'Attendance logs cleared.' };
         });
     }
 
@@ -323,42 +361,86 @@ export class BiometricControlService {
     }
 
     async setUserOnDevice(data: { uid?: number, userId: string, name: string, role?: number, password?: string, cardno?: number }) {
-        return this.mutex.run(async () => {
-            try {
-                if (!await this.connect()) throw new Error('Device offline');
-
-                const uid = data.uid || this.getNumericUid(data.userId);
-                if (uid === 0) throw new Error('Invalid User ID format. Must contain numbers.');
-
-                await this.zk.setUser(
-                    uid,
-                    data.userId,
-                    data.name,
-                    data.password || '',
-                    data.role || 0,
-                    data.cardno || 0
-                );
-                return { message: `User ${data.userId} added/updated.` };
-            } catch (error: any) {
-                throw new Error(`Set user failed: ${getErrMsg(error)}`);
-            } finally {
-                await this.disconnect();
-            }
+        return this.runCommandOrEnqueue('SET_USER', data, async () => {
+            const uid = data.uid || this.getNumericUid(data.userId);
+            if (uid === 0) throw new Error('Invalid User ID');
+            await this.zk.setUser(uid, data.userId, data.name, data.password || '', data.role || 0, data.cardno || 0);
+            return { message: `User ${data.userId} synced.` };
         });
     }
 
     async deleteUserFromDevice(userId: string) {
+        return this.runCommandOrEnqueue('DELETE_USER', { userId }, async () => {
+            const uid = this.getNumericUid(userId);
+            await this.zk.deleteUser(uid);
+            return { message: `User ${userId} deleted.` };
+        });
+    }
+
+    // --- Internal Command Helpers ---
+
+    private async runCommandOrEnqueue(command: string, params: any, directAction: () => Promise<any>): Promise<any> {
         return this.mutex.run(async () => {
             try {
-                if (!await this.connect()) throw new Error('Device offline');
-                const uid = this.getNumericUid(userId);
-                await this.zk.deleteUser(uid);
-                return { message: `User ${userId} deleted.` };
-            } catch (error: any) {
-                throw new Error(`Delete user failed: ${getErrMsg(error)}`);
-            } finally {
-                await this.disconnect();
+                // 1. Try Direct Connect (Local Network or Port Forwarded)
+                if (await this.connect()) {
+                    try {
+                        const result = await directAction();
+                        return result;
+                    } finally {
+                        await this.disconnect();
+                    }
+                }
+            } catch (e) {
+                console.log(`[Biometric] Direct connection failed for ${command}, checking bridge...`);
             }
+
+            // 2. Fallback to Bridge Queue
+            const status = await prisma.biometricDeviceStatus.findUnique({ where: { id: 'CURRENT' } });
+            const lastBridge = status?.last_bridge_heartbeat;
+            const isBridgeActive = lastBridge && (Date.now() - new Date(lastBridge).getTime() < 120000); // 2 mins
+
+            if (isBridgeActive) {
+                await prisma.biometricCommand.create({
+                    data: {
+                        command,
+                        params: params ? JSON.stringify(params) : null,
+                        status: 'PENDING'
+                    }
+                });
+                return { 
+                    message: `Device is remote. Action "${command}" queued for Bridge Agent.`,
+                    queued: true 
+                };
+            }
+
+            throw new Error(`Device unreachable and no active Bridge Agent detected (Last seen: ${lastBridge ? new Date(lastBridge).toLocaleString() : 'Never'}).`);
+        });
+    }
+
+    // --- Bridge Management Endpoints ---
+
+    async getPendingCommands() {
+        const commands = await prisma.biometricCommand.findMany({
+            where: { status: 'PENDING' },
+            orderBy: { createdAt: 'asc' }
+        });
+
+        // Mark as SENT
+        if (commands.length > 0) {
+            await prisma.biometricCommand.updateMany({
+                where: { id: { in: commands.map(c => c.id) } },
+                data: { status: 'SENT' }
+            });
+        }
+
+        return commands;
+    }
+
+    async updateCommandStatus(id: string, status: 'SUCCESS' | 'FAILED', result?: string) {
+        return await prisma.biometricCommand.update({
+            where: { id },
+            data: { status, result, updatedAt: new Date() }
         });
     }
 
@@ -487,7 +569,7 @@ export class BiometricControlService {
                 let deviceUsers: any[] = [];
 
                 // 1. Check if device is physically reachable FIRST (Fail-Fast)
-                const isReachable = await this.probeDevice(500);
+                const isReachable = await this.probeDevice(undefined, 500);
 
                 if (isReachable) {
                     try {
@@ -627,15 +709,27 @@ export class BiometricDaemon {
         // 1. Start Heartbeat
         biometricControl.startHeartbeat(60000); // 1 min status updates
 
-        // 2. Set up Auto-Sync (Every 15 mins)
-        setInterval(async () => {
+        // 2. Start Sync Daemon
+        this.startAttendanceSyncDaemon();
+    }
+
+    static startAttendanceSyncDaemon() {
+        console.log("Biometric Attendance Sync Daemon Started.");
+
+        const runSync = async () => {
             try {
                 console.log("[BiometricDaemon] Running Auto-Sync...");
                 await syncBiometrics('AUTO');
-            } catch (e) {
-                console.error("[BiometricDaemon] Auto-Sync failed:", e);
+            } catch (error) {
+                console.error("[BiometricDaemon] Sync failed:", error);
             }
-        }, 15 * 60 * 1000);
+        };
+
+        // Run immediately on startup
+        runSync();
+
+        // Run every 15 minutes
+        setInterval(runSync, 15 * 60 * 1000);
     }
 }
 
@@ -696,7 +790,7 @@ export const syncBiometrics = async (method: 'MANUAL' | 'AUTO' = 'MANUAL') => {
         console.log(`Starting Biometric Sync (${method})...`);
 
         // AUTO-DETECT: Try to reach device physically first (Fast Probe)
-        const isReachable = await biometricControl.probeDevice(500);
+        const isReachable = await biometricControl.probeDevice(undefined, 500);
 
         if (isReachable) {
             console.log("Device reachable. Using DIRECT connection.");
@@ -725,7 +819,12 @@ export const syncBiometrics = async (method: 'MANUAL' | 'AUTO' = 'MANUAL') => {
             return { message: 'Sync managed by Bridge Agent. Status: ACTIVE.' };
         }
 
-        return { message: 'Device unreachable and no Bridge active.' };
+        const status = await prisma.biometricDeviceStatus.findUnique({ where: { id: 'CURRENT' } });
+        if (!status?.last_office_ip) {
+            return { message: 'OFFLINE: Office IP not yet registered today. Someone must login from office once.' };
+        }
+
+        return { message: `OFFLINE: Device unreachable at ${status.last_office_ip}. Check Port Forwarding (4370).` };
 
     } catch (error: any) {
         console.error('Biometric Sync Failed:', error);

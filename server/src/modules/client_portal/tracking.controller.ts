@@ -151,7 +151,9 @@ export const createMetaAdsLog = async (req: Request, res: Response) => {
                 status: campaign.status || 'ACTIVE',
                 results_json: JSON.stringify(results_json),
                 notes,
-                date: date ? new Date(date) : undefined
+                date: date ? new Date(date) : undefined,
+                startDate: campaign.startDate,
+                endDate: campaign.ends
             }
         });
         res.json(log);
@@ -222,7 +224,7 @@ export const getGoogleAdsLogs = async (req: Request, res: Response) => {
 export const createGoogleAdsLog = async (req: Request, res: Response) => {
     try {
         const user = req.user as any;
-        const { client_id, campaign_name, campaign_type, spend, status, clicks, impressions, conversions, cpa, notes, date } = req.body;
+        const { client_id, campaign_name, campaign_type, spend, status, clicks, impressions, conversions, cpa, notes, date, startDate, endDate } = req.body;
 
         const log = await prisma.googleAdsLog.create({
             data: {
@@ -237,7 +239,9 @@ export const createGoogleAdsLog = async (req: Request, res: Response) => {
                 conversions: parseInt(conversions || 0),
                 cpa: parseFloat(cpa || 0),
                 notes,
-                date: date ? new Date(date) : undefined
+                date: date ? new Date(date) : undefined,
+                startDate: startDate ? new Date(startDate) : undefined,
+                endDate: endDate ? new Date(endDate) : undefined
             }
         });
         res.json(log);

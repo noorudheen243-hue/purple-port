@@ -6,7 +6,12 @@ export interface ExternalMarketingMetric {
     conversions?: number | string;
     reach?: number | string;      // New
     results?: number | string;    // New
+    results_cost?: number | string; // New: Cost per result
     conversations?: number | string; // New
+    messaging_conversations?: number | string; // New
+    new_messaging_contacts?: number | string; // New
+    purchases?: number | string; // New
+    cost_per_purchase?: number | string; // New
     ctr?: number | string;
     cpc?: number | string;
     cpm?: number | string;
@@ -20,7 +25,12 @@ export interface NormalizedMarketingMetric {
     conversions: number;
     reach: number;
     results: number;
+    results_cost: number;
     conversations: number;
+    messaging_conversations: number;
+    new_messaging_contacts: number;
+    purchases: number;
+    cost_per_purchase: number;
     ctr: number;
     cpc: number;
     cpm: number;
@@ -50,7 +60,12 @@ export class MarketingDataNormalizer {
             conversions: this.parseNumber(data.conversions),
             reach: this.parseNumber(data.reach),
             results: this.parseNumber(data.results),
+            results_cost: this.parseFloatNumber(data.results_cost || (data as any).cost_per_result),
             conversations: this.parseNumber(data.conversations),
+            messaging_conversations: this.parseNumber(data.messaging_conversations || (data as any).conversations),
+            new_messaging_contacts: this.parseNumber(data.new_messaging_contacts),
+            purchases: this.parseNumber(data.purchases),
+            cost_per_purchase: this.parseFloatNumber(data.cost_per_purchase),
             ctr: this.parseFloatNumber(data.ctr),
             cpc: this.parseFloatNumber(data.cpc),
             cpm: this.parseFloatNumber(data.cpm),

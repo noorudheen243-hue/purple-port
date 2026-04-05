@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Facebook, Link2, CheckCircle2, Edit, Save, X, Settings } from 'lucide-react';
+import { Facebook, Link2, CheckCircle2, Edit, Save, X, Settings, RefreshCw, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
@@ -228,8 +228,10 @@ export const MarketingIntegrations: React.FC = () => {
 
                                 const isFullyMapped = !!(currentProfile && displayAccountId);
 
+                                const isExpired = currentProfile?.tokenStatus === 'EXPIRED';
+
                                 return (
-                                    <tr key={client.id} className={`hover:bg-blue-50/30 dark:hover:bg-gray-800/30 transition-colors ${isEditing ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}`}>
+                                    <tr key={client.id} className={`hover:bg-blue-50/30 dark:hover:bg-gray-800/30 transition-colors ${isEditing ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''} ${isExpired ? 'bg-red-50/30 dark:bg-red-900/10' : ''}`}>
                                         {/* Client Name Col */}
                                         <td className="px-6 py-5">
                                             <div className="flex items-center gap-3">
@@ -254,7 +256,7 @@ export const MarketingIntegrations: React.FC = () => {
                                                     >
                                                         <option value="">-- Select Profile --</option>
                                                         {metaProfiles.map(p => (
-                                                            <option key={p.id} value={p.id}>{p.account_name}</option>
+                                                            <option key={p.id} value={p.id}>{p.account_name} {p.tokenStatus === 'EXPIRED' ? '⚠️ Expired' : '✓'}</option>
                                                         ))}
                                                     </select>
                                                     <button 
@@ -266,9 +268,26 @@ export const MarketingIntegrations: React.FC = () => {
                                                 </div>
                                             ) : (
                                                 currentProfile ? (
-                                                    <div className="flex items-center gap-2">
-                                                        <Facebook className="w-4 h-4 text-[#1877F2]" />
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <Facebook className="w-4 h-4 text-[#1877F2] shrink-0" />
                                                         <span className="font-bold text-gray-800 dark:text-gray-200">{currentProfile.account_name}</span>
+                                                        {currentProfile.tokenStatus === 'EXPIRED' ? (
+                                                            <span className="inline-flex items-center gap-1 bg-red-50 text-red-600 border border-red-200 px-2 py-0.5 rounded-md text-[10px] font-black">
+                                                                <WifiOff className="w-3 h-3" /> Token Expired
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1 bg-green-50 text-green-600 border border-green-200 px-2 py-0.5 rounded-md text-[10px] font-black">
+                                                                <Wifi className="w-3 h-3" /> Active
+                                                            </span>
+                                                        )}
+                                                        {currentProfile.tokenStatus === 'EXPIRED' && (
+                                                            <button
+                                                                onClick={() => handleMetaConnect(client.id)}
+                                                                className="inline-flex items-center gap-1 bg-red-600 text-white px-2.5 py-1 rounded-lg text-[10px] font-black hover:bg-red-700 transition-colors shadow-sm"
+                                                            >
+                                                                <RefreshCw className="w-3 h-3" /> Reconnect
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 ) : (
                                                     <button 
@@ -303,9 +322,15 @@ export const MarketingIntegrations: React.FC = () => {
                                         {/* Status Col */}
                                         <td className="px-6 py-5">
                                             {isFullyMapped ? (
-                                                <span className="inline-flex items-center gap-1.5 bg-green-50 text-green-700 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest border border-green-200 shadow-sm">
-                                                    <CheckCircle2 className="w-3.5 h-3.5" /> Connected
-                                                </span>
+                                                isExpired ? (
+                                                    <span className="inline-flex items-center gap-1.5 bg-red-50 text-red-600 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest border border-red-200">
+                                                        <AlertTriangle className="w-3.5 h-3.5" /> Token Expired
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1.5 bg-green-50 text-green-700 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest border border-green-200 shadow-sm">
+                                                        <CheckCircle2 className="w-3.5 h-3.5" /> Connected
+                                                    </span>
+                                                )
                                             ) : (
                                                 <span className="bg-gray-100 text-gray-500 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest">
                                                     Pending

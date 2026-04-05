@@ -13,7 +13,7 @@ import FormErrorAlert from '../../components/ui/FormErrorAlert';
 const updateSchema = z.object({
     title: z.string().min(3, "Title is required"),
     description: z.string().optional(),
-    type: z.enum(['GENERIC', 'GRAPHIC', 'VIDEO', 'COPY', 'STRATEGY', 'DEV']),
+    type: z.enum(['GRAPHIC', 'VIDEO', 'COPY', 'STRATEGY', 'DEV']),
     priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']),
     status: z.enum(['PLANNED', 'ASSIGNED', 'IN_PROGRESS', 'REVIEW', 'REVISION_REQUESTED', 'COMPLETED']),
     due_date: z.string().optional(),
@@ -42,7 +42,7 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({ isOpen, onClose, task }) 
             title: '',
             priority: 'MEDIUM',
             status: 'PLANNED',
-            type: 'GENERIC'
+            type: 'GRAPHIC'
         }
     });
 

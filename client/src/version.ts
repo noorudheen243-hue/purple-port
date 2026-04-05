@@ -1,2 +1,2 @@
-export const APP_VERSION = "1.5.0-DEV-ADMIN-FIX";
+export const APP_VERSION = 'v1.6.7';
 export const BUILD_TIMESTAMP = new Date().toISOString();

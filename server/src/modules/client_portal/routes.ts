@@ -37,6 +37,7 @@ router.get('/reports', reportsController.getReports);
 router.post('/reports/generate', authorize('ADMIN', 'MANAGER', 'DM_EXECUTIVE', 'WEB_SEO_EXECUTIVE'), reportsController.generateReport);
 
 // Service Tracking Logs (Manual Data Entry)
+router.get('/tracking/meta-ads/campaigns', trackingController.getIntegratedCampaigns); // NEW: Fetch integrated Meta campaigns
 router.get('/tracking/meta-ads', trackingController.getMetaAdsLogs);
 router.post('/tracking/meta-ads', authorize('ADMIN', 'MANAGER', 'DM_EXECUTIVE', 'WEB_SEO_EXECUTIVE', 'MARKETING_EXEC', 'CREATIVE_DESIGNER', 'OPERATIONS_EXECUTIVE'), trackingController.createMetaAdsLog);
 router.patch('/tracking/meta-ads/:id', authorize('ADMIN', 'MANAGER', 'DM_EXECUTIVE', 'WEB_SEO_EXECUTIVE', 'MARKETING_EXEC', 'CREATIVE_DESIGNER', 'OPERATIONS_EXECUTIVE'), trackingController.updateMetaAdsLog);

@@ -261,14 +261,16 @@ export const ensureLedger = async (entityType: string, entityId: string, headCod
         existing = await prisma.ledger.findFirst({
             where: {
                 entity_type: entityType,
-                entity_id: entityId
+                entity_id: entityId,
+                head_id: head.id // FIX: Must match both entity AND head
             }
         });
     } else {
         existing = await prisma.ledger.findFirst({
             where: {
                 entity_type: entityType,
-                name: entityName
+                name: entityName,
+                head_id: head.id // FIX: Must match both entity AND head
             }
         });
     }
@@ -396,30 +398,76 @@ export const getAccountStatement = async (ledgerId: string, startDate: Date, end
     };
 };
 
-export const getFinancialOverview = async () => {
-    const ledgers = await prisma.ledger.findMany({ include: { head: true } });
+export const getFinancialOverview = async (month?: number, year?: number) => {
+    const now = new Date();
+    const targetMonth = month !== undefined ? month - 1 : now.getMonth();
+    const targetYear = year !== undefined ? year : now.getFullYear();
+
+    const startDate = new Date(targetYear, targetMonth, 1);
+    const endDate = new Date(targetYear, targetMonth + 1, 0, 23, 59, 59, 999);
+
+    // 1. Performance Data (Income/Expense for the period)
+    const journalLines = await prisma.journalLine.findMany({
+        where: {
+            entry: {
+                date: { gte: startDate, lte: endDate }
+            }
+        },
+        include: {
+            ledger: {
+                include: { head: true }
+            }
+        }
+    });
 
     let income = 0;
     let expense = 0;
-    let bank = 0;
     const expenseBreakdown: any = {};
 
-    ledgers.forEach(l => {
-        if (l.head.type === 'INCOME') income += Math.abs(l.balance);
-        else if (l.head.type === 'EXPENSE') {
-            expense += l.balance;
-            if (l.balance > 0) expenseBreakdown[l.name] = (expenseBreakdown[l.name] || 0) + l.balance;
-        } else if (l.entity_type && ['BANK', 'CASH'].includes(l.entity_type)) {
-            bank += l.balance;
+    journalLines.forEach(line => {
+        const { head } = line.ledger;
+        const impact = line.debit - line.credit;
+
+        if (head.type === 'INCOME') {
+            // Income: Credit increases balance (negative in our logic, so subtract impact)
+            income -= impact; 
+        } else if (head.type === 'EXPENSE') {
+            // Expense: Debit increases balance
+            expense += impact;
+            if (impact > 0) {
+                expenseBreakdown[line.ledger.name] = (expenseBreakdown[line.ledger.name] || 0) + impact;
+            }
         }
     });
+
+    // 2. Cash & Bank Balance (Cumulative up to endDate)
+    const bankLeads = await prisma.ledger.findMany({
+        where: {
+            OR: [
+                { entity_type: 'BANK' },
+                { entity_type: 'CASH' }
+            ]
+        }
+    });
+
+    let bankBalance = 0;
+    for (const l of bankLeads) {
+        const agg = await prisma.journalLine.aggregate({
+            where: {
+                ledger_id: l.id,
+                entry: { date: { lte: endDate } }
+            },
+            _sum: { debit: true, credit: true }
+        });
+        bankBalance += (agg._sum.debit || 0) - (agg._sum.credit || 0);
+    }
 
     return {
         income,
         expense,
         net_profit: income - expense,
-        cash_bank_balance: bank,
-        expense_pie_data: Object.entries(expenseBreakdown).map(([name, value]) => ({ name, value }))
+        cash_bank_balance: bankBalance,
+        expense_pie_data: Object.entries(expenseBreakdown).map(([name, value]) => ({ name, value: value as number }))
     };
 };
 
@@ -434,7 +482,7 @@ export const syncEntityLedgers = async () => {
     const staff = await prisma.user.findMany();
     for (const u of staff) {
         if (!u.id) continue;
-        const l = await ensureLedger('USER', u.id, '6000');
+        const l = await ensureLedger('USER', u.id, '2000'); // FIX: Sync Staff to Salary Payable ledger
         if (l.createdAt > new Date(Date.now() - 5000)) count++;
     }
     return { message: "Sync Complete", new_ledgers: count };

@@ -43,6 +43,7 @@ app.use(cors({
     origin: [
         'http://localhost:5173',
         'http://localhost:5174',
+        'http://localhost:5175', // Added to cover more Vite default ports
         'http://localhost:4001', // Allow backend-to-backend calls
         'http://72.61.246.22', // Old VPS IP
         'http://72.61.246.22:4001',

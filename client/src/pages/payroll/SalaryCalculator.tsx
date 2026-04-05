@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { IndianRupee, Save, AlertCircle, Settings } from 'lucide-react';
 import PayrollSettings from './PayrollSettings';
 import { useAuthStore } from '../../store/authStore';
+import Swal from 'sweetalert2';
 
 const SalaryCalculator = () => {
     const { user } = useAuthStore();
@@ -215,14 +216,47 @@ const SalaryCalculator = () => {
     const saveMutation = useMutation({
         mutationFn: (data: any) => backend.post('/payroll/slip', { month, year, userId: selectedStaff, data: { ...data, payroll_type: payrollType } }),
         onSuccess: () => {
-            alert("Payroll Stub Saved");
+            Swal.fire({
+                title: 'Saved!',
+                text: 'Payroll stub saved with status "In Progress". Go to Payroll Process to submit.',
+                icon: 'success',
+                confirmButtonColor: '#7c3aed',
+                timer: 3000,
+                timerProgressBar: true
+            });
             queryClient.invalidateQueries({ queryKey: ['payroll-draft'] });
         },
-        onError: (err: any) => alert(err.response?.data?.message || "Failed to save")
+        onError: (err: any) => Swal.fire({ title: 'Error', text: err.response?.data?.message || 'Failed to save', icon: 'error' })
     });
 
-    const onSubmit = (data: any) => {
-        saveMutation.mutate(data);
+    const onSubmit = async (data: any) => {
+        const staffName = staffList?.find((s: any) => s.user_id === selectedStaff)?.user?.full_name || 'this staff';
+        const netPay = Number(data.net_pay).toLocaleString('en-IN');
+        const monthName = new Date(0, month - 1).toLocaleString('default', { month: 'long' });
+
+        const result = await Swal.fire({
+            title: 'Confirm Payroll Save',
+            html: `
+                <div style="text-align:left;padding:8px 0">
+                    <p><strong>Staff:</strong> ${staffName}</p>
+                    <p><strong>Month:</strong> ${monthName} ${year}</p>
+                    <p><strong>Net Payable:</strong> ₹${netPay}</p>
+                    <p><strong>LOP Days:</strong> ${Number(data.lop_days)}</p>
+                    <hr style="margin:12px 0"/>
+                    <p style="color:#6b7280;font-size:13px">Status will be set to <strong>In Progress</strong> until submitted from Payroll Process window.</p>
+                </div>
+            `,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#16a34a',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: '✓ Yes, Save Stub',
+            cancelButtonText: '✗ Cancel',
+        });
+
+        if (result.isConfirmed) {
+            saveMutation.mutate(data);
+        }
     };
 
     return (
@@ -413,8 +447,8 @@ const SalaryCalculator = () => {
 
                                         <div className="p-4 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex justify-between items-center">
                                             <div>
-                                                <span className="block font-semibold text-blue-900 dark:text-blue-200">Total Working Days</span>
-                                                <span className="text-xs text-blue-700 dark:text-blue-300">Days - Sundays - Holidays</span>
+                                                <span className="block font-semibold text-blue-900 dark:text-blue-200">Total Days in Month</span>
+                                                <span className="text-xs text-blue-700 dark:text-blue-300">Calendar days (Jan=31, Feb=28/29…)</span>
                                             </div>
                                             <div className="text-2xl font-bold text-blue-700 dark:text-blue-400">
                                                 {Number(watch('total_working_days')) || 30}

@@ -120,7 +120,9 @@ export const getStatement = async (req: Request, res: Response) => {
 
 export const getOverview = async (req: Request, res: Response) => {
     try {
-        const data = await AccountingService.getFinancialOverview();
+        const month = req.query.month ? parseInt(req.query.month as string) : undefined;
+        const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+        const data = await AccountingService.getFinancialOverview(month, year);
         res.json(data);
     } catch (error) {
         res.status(500).json({ message: (error as Error).message });

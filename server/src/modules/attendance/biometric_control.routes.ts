@@ -9,6 +9,7 @@ const router = Router();
 // Info
 router.get('/info', authenticate, authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'), BiometricController.getDeviceInfo);
 router.get('/status', authenticate, authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'), BiometricController.getDeviceStatus);
+router.post('/register-office-ip', authenticate, BiometricController.registerOfficeIP);
 router.get('/audit', authenticate, authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'), BiometricController.auditUserSync);
 router.get('/sync-history', authenticate, authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'), BiometricController.getSyncHistory);
 
@@ -43,6 +44,8 @@ const requireApiKey = (req: any, res: any, next: any) => {
 // Bridge Agent Routes (API Key Protected)
 router.post('/bridge/upload', requireApiKey, BiometricController.uploadLogs);
 router.post('/bridge/upload-users', requireApiKey, BiometricController.uploadUsersFromBridge);
+router.post('/bridge/heartbeat', requireApiKey, BiometricController.bridgeHeartbeat);
+router.post('/bridge/command-result', requireApiKey, BiometricController.updateCommandResult);
 
 // One-time cleanup: deactivate orphaned StaffShiftAssignments (shift was deleted but assignment still exists)
 router.post('/bridge/clean-orphans', requireApiKey, async (req: any, res: any) => {

@@ -81,6 +81,8 @@ interface HistoryItem {
     status?: string;
     type: 'META' | 'GOOGLE' | 'SEO' | 'WEB' | 'CONTENT';
     originalData?: any; // To populate form on Edit
+    startDate?: string | Date | null;
+    endDate?: string | Date | null;
 }
 
 // --- CONSTANTS ---
@@ -295,7 +297,9 @@ const ManageServicesView = () => {
                 badge: `Γé╣${log.spend?.toLocaleString()}`,
                 status: log.status,
                 type: 'META',
-                originalData: log
+                originalData: log,
+                startDate: log.startDate,
+                endDate: log.endDate
             });
         });
 
@@ -314,7 +318,9 @@ const ManageServicesView = () => {
                 badge: `Γé╣${log.spend?.toLocaleString()}`,
                 status: log.status,
                 type: 'GOOGLE',
-                originalData: log
+                originalData: log,
+                startDate: log.startDate,
+                endDate: log.endDate
             });
         });
 
@@ -691,7 +697,9 @@ const ManageServicesView = () => {
                     messaging_conversations: latest.messaging_conversations || 0,
                     new_messaging_contacts: latest.new_messaging_contacts || 0,
                     purchases: latest.purchases || 0,
-                    results_cost: latest.results_cost || 0
+                    results_cost: latest.results_cost || 0,
+                    startDate: latest.startDate,
+                    endDate: latest.ends
                 };
 
                 // Use the internal platform ID returned by the sync for reliable saving
@@ -1019,8 +1027,18 @@ const ManageServicesView = () => {
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        <h3 className="font-bold text-gray-900 truncate">{item.title}</h3>
-                                                        <p className="text-sm text-gray-500 line-clamp-1">{item.description}</p>
+                                                        <h3 className="font-bold text-gray-900 truncate uppercase tracking-tight">{item.title}</h3>
+                                                        <p className="text-sm text-gray-500 line-clamp-1 mb-2">{item.description}</p>
+                                                        {(item.startDate || item.endDate) && (
+                                                            <div className="flex items-center gap-2 text-[10px] font-bold">
+                                                                <span className="text-gray-400 uppercase tracking-widest">Duration:</span>
+                                                                <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-100 flex items-center gap-1.5">
+                                                                    {item.startDate ? format(new Date(item.startDate), 'dd MMM yyyy') : '...'}
+                                                                    <Activity size={10} className="text-blue-300" />
+                                                                    {item.endDate ? format(new Date(item.endDate), 'dd MMM yyyy') : <span className="text-green-600 animate-pulse">Running</span>}
+                                                                </span>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                     {item.badge && (
                                                         <div className="ml-4 px-4 py-1 bg-gray-50 border rounded-full text-sm font-bold text-gray-700">
@@ -1256,6 +1274,20 @@ const ManageServicesView = () => {
                                                             <div className={`w-2 h-2 rounded-full ${campaignSynced ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} />
                                                             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Live Performance Preview</span>
                                                         </div>
+
+                                                        {campaignSynced && (campaignForm.startDate || campaignForm.endDate) && (
+                                                            <div className="mb-4 px-3 py-2 bg-blue-50/50 rounded-xl border border-blue-100 flex items-center justify-between">
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-[9px] font-black text-blue-400 uppercase tracking-tighter leading-none mb-1">Duration</span>
+                                                                    <span className="text-xs font-bold text-blue-900">
+                                                                        {campaignForm.startDate ? format(new Date(campaignForm.startDate), 'dd MMM yyyy') : '...'} 
+                                                                        <span className="mx-1.5 text-blue-400">ΓåÆ</span>
+                                                                        {campaignForm.endDate ? format(new Date(campaignForm.endDate), 'dd MMM yyyy') : <span className="text-green-600 animate-pulse uppercase tracking-widest text-[10px]">Running</span>}
+                                                                    </span>
+                                                                </div>
+                                                                <Clock size={20} className="text-blue-300 opacity-50" />
+                                                            </div>
+                                                        )}
 
                                                         {campaignSynced ? (
                                                             <div className="grid grid-cols-2 gap-4">

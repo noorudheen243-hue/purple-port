@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Check, X, Calendar, ClipboardList, CheckSquare, ScrollText, Download, FileSpreadsheet, FileJson } from 'lucide-react';
+import { Check, X, Calendar, ClipboardList, CheckSquare, ScrollText, Download, FileSpreadsheet, FileJson, Settings } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -12,6 +12,7 @@ import { Input } from '../../components/ui/input';
 import api from '../../lib/api';
 import RegularisationPage from './RegularisationPage';
 import BiometricDetailsPage from './BiometricDetailsPage';
+import AttendanceCriteriaPanel from './AttendanceCriteriaPanel';
 
 const AttendanceSummaryPage = () => {
     // Default to Current Month and Year (Live)
@@ -22,7 +23,7 @@ const AttendanceSummaryPage = () => {
     const [daysInMonth, setDaysInMonth] = useState<number[]>([]);
     const [attendanceData, setAttendanceData] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [viewMode, setViewMode] = useState<'REGISTER' | 'SUMMARY' | 'REGULARIZATION' | 'LOGS'>('REGISTER');
+    const [viewMode, setViewMode] = useState<'REGISTER' | 'SUMMARY' | 'REGULARIZATION' | 'LOGS' | 'CRITERIA'>('REGISTER');
     const [nameFilter, setNameFilter] = useState('');
     const [deptFilter, setDeptFilter] = useState('ALL');
     const [isRecalculating, setIsRecalculating] = useState(false);
@@ -386,9 +387,19 @@ const AttendanceSummaryPage = () => {
                             <CheckSquare className="w-4 h-4 mr-2 inline-block" />
                             Attendance Regularization
                         </button>
+                        <button
+                            onClick={() => setViewMode('CRITERIA')}
+                            className={`px-4 py-2 text-sm font-bold rounded-md transition-all border ${viewMode === 'CRITERIA'
+                                ? 'bg-indigo-700 text-white border-indigo-800 shadow-md'
+                                : 'bg-white text-gray-600 border-gray-200 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200'
+                                }`}
+                        >
+                            <Settings className="w-4 h-4 mr-2 inline-block" />
+                            Attendance Criteria
+                        </button>
                     </div>
 
-                    {viewMode !== 'LOGS' && viewMode !== 'REGULARIZATION' && (
+                    {viewMode !== 'LOGS' && viewMode !== 'REGULARIZATION' && viewMode !== 'CRITERIA' && (
                         <div className="flex flex-wrap items-center gap-2">
                             <div className="w-[150px]">
                                 <Input
@@ -606,6 +617,10 @@ const AttendanceSummaryPage = () => {
 
             {viewMode === 'LOGS' && (
                 <BiometricDetailsPage />
+            )}
+
+            {viewMode === 'CRITERIA' && (
+                <AttendanceCriteriaPanel />
             )}
         </div>
     );

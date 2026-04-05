@@ -41,8 +41,14 @@ export async function manualSync(req: Request, res: Response) {
 
 export async function syncCampaign(req: Request, res: Response) {
     try {
-        const { campaignId, daysBack, isPreview, externalAccountId, platform } = req.body;
+        const { campaignId, daysBack, isPreview, externalAccountId, platform, clientId: bodyClientId } = req.body;
         if (!campaignId) return res.status(400).json({ message: 'campaignId is required' });
+
+        // Ensure we have a valid clientId
+        const clientId = bodyClientId || (req as any).query.clientId;
+        if (!clientId) {
+            return res.status(400).json({ message: 'clientId is required for synchronization' });
+        }
 
         if (isPreview && externalAccountId && platform) {
             const today = new Date();
@@ -60,7 +66,7 @@ export async function syncCampaign(req: Request, res: Response) {
 
             // Determine Start Date (Lifetime)
             let startDate = new Date();
-            const rawStart = campaignMetadata?.start_time || campaignMetadata?.start_date;
+            const rawStart = campaignMetadata?.start_time || campaignMetadata?.start_date || campaignMetadata?.startDate;
             if (rawStart) {
                 startDate = new Date(rawStart);
             } else {
@@ -69,7 +75,14 @@ export async function syncCampaign(req: Request, res: Response) {
             }
             startDate.setHours(0, 0, 0, 0);
 
-            console.log(`[SyncController] Syncing Meta Campaign: ${campaignId} from ${startDate.toISOString()}`);
+            // Determine End Date
+            let endDate = null;
+            const rawEnd = campaignMetadata?.stop_time || campaignMetadata?.end_date || campaignMetadata?.endDate;
+            if (rawEnd) {
+                endDate = new Date(rawEnd);
+            }
+
+            console.log(`[SyncController] Syncing ${platform} Campaign: ${campaignId} (Client: ${clientId}) from ${startDate.toISOString()}`);
             
             let externalMetrics: any[] = [];
             if (platform === 'meta') {
@@ -96,7 +109,6 @@ export async function syncCampaign(req: Request, res: Response) {
             });
 
             // Ensure the campaign is registered in our system for tracking
-            const clientId = campaignMetadata?.clientId || (req as any).query.clientId || (req as any).body.clientId || '';
             let campRecord = await (prisma as any).marketingCampaign.findFirst({
                 where: { 
                     externalCampaignId: String(campaignId),
@@ -112,7 +124,9 @@ export async function syncCampaign(req: Request, res: Response) {
                         name: campaignMetadata?.name || campaignMetadata?.title,
                         status: campaignMetadata?.effective_status || campaignMetadata?.status,
                         objective: campaignMetadata?.objective,
-                        budget: parseFloat(campaignMetadata?.daily_budget || campaignMetadata?.lifetime_budget || '0') / 100
+                        budget: parseFloat(campaignMetadata?.daily_budget || campaignMetadata?.lifetime_budget || '0') / 100,
+                        startDate: startDate,
+                        ends: endDate
                     }
                 });
             } else {
@@ -124,7 +138,9 @@ export async function syncCampaign(req: Request, res: Response) {
                         name: campaignMetadata?.name || campaignMetadata?.title,
                         status: campaignMetadata?.effective_status || campaignMetadata?.status,
                         objective: campaignMetadata?.objective,
-                        budget: parseFloat(campaignMetadata?.daily_budget || campaignMetadata?.lifetime_budget || '0') / 100
+                        budget: parseFloat(campaignMetadata?.daily_budget || campaignMetadata?.lifetime_budget || '0') / 100,
+                        startDate: startDate,
+                        ends: endDate
                     }
                 });
             }
@@ -135,7 +151,8 @@ export async function syncCampaign(req: Request, res: Response) {
                 results_cost: totals.results > 0 ? totals.spend / totals.results : 0,
                 // Automated fields
                 name: campaignMetadata?.name || campaignMetadata?.title,
-                startDate: campaignMetadata?.start_time || campaignMetadata?.start_date,
+                startDate: startDate,
+                ends: endDate,
                 status: campaignMetadata?.effective_status || campaignMetadata?.status,
                 id: campRecord.id // Include our internal ID for saving
             };

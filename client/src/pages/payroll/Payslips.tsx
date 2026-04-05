@@ -344,9 +344,9 @@ const SalarySlipModal = ({ slip, onClose }: { slip: any; onClose: () => void }) 
 
                             <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg mb-8 grid grid-cols-3 gap-6 text-center print:bg-gray-50 print:border-gray-300 print:p-2 print:mb-4 print:gap-4">
                                 <div>
-                                    <p className="text-xs text-gray-500 uppercase mb-1">Total Working Days</p>
+                                    <p className="text-xs text-gray-500 uppercase mb-1">Total Days in Month</p>
                                     <p className="font-bold text-gray-900 text-lg">{slip.total_working_days || 30}</p>
-                                    <p className="text-[10px] text-gray-400">(Excl. Sundays & Holidays)</p>
+                                    <p className="text-[10px] text-gray-400">(Calendar Days)</p>
                                 </div>
                                 <div>
                                     <p className="text-xs text-gray-500 uppercase mb-1">LOP Days</p>
@@ -569,9 +569,15 @@ const Payslips = () => {
                                             <p className="text-xs text-gray-500">{slip.user?.full_name}</p>
                                         </div>
                                         <div className="ml-2 flex-shrink-0 flex">
-                                            <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                                Paid
-                                            </p>
+                                            {slip.status === 'PAID' ? (
+                                                <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                    Paid
+                                                </p>
+                                            ) : (
+                                                <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                                    In Progress
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="mt-2 sm:flex sm:justify-between items-center">

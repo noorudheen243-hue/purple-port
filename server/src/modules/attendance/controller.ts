@@ -536,4 +536,31 @@ export class AttendanceController {
             res.status(500).json({ message: error.message });
         }
     }
+
+    // --- CRITERIA CONFIG ---
+    static async getCriteriaConfigs(req: Request, res: Response) {
+        try {
+            if (req.user?.role !== 'ADMIN' && req.user?.role !== 'MANAGER' && req.user?.role !== 'DEVELOPER_ADMIN') {
+                return res.status(403).json({ message: 'Forbidden' });
+            }
+            const configs = await AttendanceService.getCriteriaConfigs();
+            res.status(200).json(configs);
+        } catch (error: any) {
+            res.status(500).json({ message: error.message });
+        }
+    }
+
+    static async updateCriteriaConfig(req: Request, res: Response) {
+        try {
+            if (req.user?.role !== 'ADMIN' && req.user?.role !== 'MANAGER' && req.user?.role !== 'DEVELOPER_ADMIN') {
+                return res.status(403).json({ message: 'Forbidden' });
+            }
+            const { id } = req.params;
+            const { is_enabled, parameters } = req.body;
+            const updated = await AttendanceService.updateCriteriaConfig(id, { is_enabled, parameters });
+            res.status(200).json(updated);
+        } catch (error: any) {
+            res.status(400).json({ message: error.message });
+        }
+    }
 }

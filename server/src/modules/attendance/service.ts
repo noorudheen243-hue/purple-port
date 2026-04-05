@@ -78,89 +78,58 @@ export class AttendanceService {
         });
     }
 
-    // Unified Status Engine (Refactored - Deterministic Rebuild)
+    // Unified Status Engine (Powered by Centralized Criteria)
     static async computeStatus(staff: any, checkIn: Date, checkOut: Date | null, isPastDay: boolean): Promise<{ status: string; shift: any; criteria: string }> {
-        if (!staff) return { status: 'PRESENT', shift: {}, criteria: 'GRACE_TIME' };
+        if (!staff) return { status: 'PRESENT', shift: {}, criteria: 'NO_STAFF' };
 
         // 1. Get Shift for this Date (Using ShiftService)
         const { ShiftService } = require('./shift.service');
         const shift = await ShiftService.getShiftForDate(staff.user_id, checkIn);
 
-        const graceTime = shift.default_grace_time;
-        const criteria = 'GRACE_TIME';
+        // 2. Prepare Context for Criteria Engine
+        const IST_OFFSET = 330 * 60 * 1000;
+        const istNow = new Date(checkIn.getTime() + IST_OFFSET);
+        istNow.setUTCHours(0, 0, 0, 0);
+        const startOfDay = new Date(istNow.getTime() - IST_OFFSET);
+        const endOfDay = new Date(startOfDay.getTime() + (24 * 60 * 60 * 1000) - 1);
 
-        const isNoBreak = (shift.name || '').toUpperCase().includes('NO BREAK');
+        const [holiday, approvedLeave, approvedRegularization] = await Promise.all([
+            db.holiday.findUnique({ where: { date: startOfDay } }),
+            db.leaveRequest.findFirst({
+                where: {
+                    user_id: staff.user_id,
+                    status: 'APPROVED',
+                    start_date: { lte: checkIn },
+                    end_date: { gte: checkIn }
+                }
+            }),
+            db.regularisationRequest.findFirst({
+                where: {
+                    user_id: staff.user_id,
+                    status: 'APPROVED',
+                    date: { gte: startOfDay, lte: endOfDay }
+                }
+            })
+        ]);
 
-        // Calculate Shift duration for dynamic thresholds
-        let shiftDuration = 9; // Default 9h (09-18)
-        if (shift.start_time && shift.end_time) {
-            const [sh, sm] = shift.start_time.split(':').map(Number);
-            const [eh, em] = shift.end_time.split(':').map(Number);
-            let start = sh + sm / 60;
-            let end = eh + em / 60;
-            if (end < start) end += 24; // Handle overnight
-            shiftDuration = end - start;
-        }
-
-        // Thresholds
-        let fullDayThreshold = isNoBreak ? 7.0 : 7.75;
-        if (shiftDuration < fullDayThreshold) {
-            fullDayThreshold = Math.max(4.0, shiftDuration - 0.25); // 15 min buffer
-        }
-        const halfDayThreshold = 4.0;
-
-        const isLate = this.isLate(shift.start_time, checkIn, graceTime);
-        const isEarlyExit = checkOut ? this.isEarlyDeparture(shift.end_time, checkOut, shift.start_time) : false;
-
-        let status = 'PRESENT';
-
-        // --- HALF-DAY LEAVE OVERRIDE ---
-        const approvedHalfDayLeave = await db.leaveRequest.findFirst({
-            where: {
-                user_id: staff.user_id,
-                status: 'APPROVED',
-                is_half_day: true,
-                start_date: { lte: checkIn },
-                end_date: { gte: checkIn }
-            }
+        const { CriteriaService } = require('./criteria.service');
+        const result = await CriteriaService.evaluateStatus({
+            userId: staff.user_id,
+            date: checkIn,
+            checkIn,
+            checkOut,
+            isPastDay,
+            shift,
+            holiday,
+            approvedLeave,
+            approvedRegularization
         });
 
-        if (approvedHalfDayLeave) {
-            return { status: 'PRESENT', shift, criteria };
-        }
-
-        // --- DETERMINISTIC DECISION TREE ---
-
-        if (isLate) {
-            // Rule 1: Late Punch -> HALF_DAY
-            status = 'HALF_DAY';
-        }
-        else if (isEarlyExit) {
-            // Rule 2: Early Departure -> HALF_DAY
-            status = 'HALF_DAY';
-        }
-        else if (!checkOut || checkIn.getTime() === checkOut.getTime()) {
-            // Rule 3: Single Punch
-            if (isPastDay) {
-                status = 'HALF_DAY'; // Past day without checkout = HALF_DAY
-            } else {
-                status = 'PRESENT'; // Current day, might still checkout
-            }
-        }
-        else {
-            // Rule 4: Full Day check based on work hours
-            const workHours = (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60);
-
-            if (workHours < halfDayThreshold) {
-                status = 'ABSENT';
-            } else if (workHours < fullDayThreshold) {
-                status = 'HALF_DAY';
-            } else {
-                status = 'PRESENT';
-            }
-        }
-
-        return { status, shift, criteria };
+        return { 
+            status: result.status, 
+            shift, 
+            criteria: result.rule_applied 
+        };
     }
 
     // Get My Attendance
@@ -1255,5 +1224,25 @@ export class AttendanceService {
 
         // Sort by Date Descending, then Name
         return fullLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }
+
+    // --- ATTENDANCE CRITERIA CONFIG ---
+    static async getCriteriaConfigs() {
+        return await (db as any).attendanceCriteriaConfig.findMany({
+            orderBy: { rule_code: 'asc' }
+        });
+    }
+
+    static async updateCriteriaConfig(id: string, data: { is_enabled?: boolean, parameters?: any }) {
+        const updateData: any = {};
+        if (data.is_enabled !== undefined) updateData.is_enabled = data.is_enabled;
+        if (data.parameters !== undefined) {
+            updateData.parameters = typeof data.parameters === 'string' ? data.parameters : JSON.stringify(data.parameters);
+        }
+
+        return await (db as any).attendanceCriteriaConfig.update({
+            where: { id },
+            data: updateData
+        });
     }
 }

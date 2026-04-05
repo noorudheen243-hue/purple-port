@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom
 import { useAuthStore } from './store/authStore'
 import ErrorBoundary from './components/ErrorBoundary';
 import AutoLogoutHandler from './components/auth/AutoLogoutHandler';
+import { BiometricProbe } from './components/attendance/BiometricProbe';
 
 // Lazy Load Pages
 const Login = lazy(() => import('./pages/auth/Login'));
@@ -61,6 +62,7 @@ function App() {
                 <BrowserRouter>
                     <AutoLogoutHandler>
                         <div className="min-h-screen bg-background text-foreground font-sans antialiased relative">
+                            <BiometricProbe />
                             <Suspense fallback={<LoadingFallback />}>
                                 <Routes>
                                     <Route path="/login" element={<Login />} />

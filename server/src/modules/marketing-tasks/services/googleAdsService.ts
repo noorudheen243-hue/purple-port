@@ -59,14 +59,14 @@ export class GoogleAdsService {
 
         if (token.startsWith('mock')) {
             return [
-                { id: 'camp_gads_1', name: 'Search - IT Services - Exact', status: 'ENABLED' },
-                { id: 'camp_gads_2', name: 'PMax - Corporate Video Prod', status: 'ENABLED' }
+                { id: 'camp_gads_1', name: 'Search - IT Services - Exact', status: 'ENABLED', start_date: '2024-01-10' },
+                { id: 'camp_gads_2', name: 'PMax - Corporate Video Prod', status: 'ENABLED', start_date: '2024-03-05' }
             ];
         }
 
         try {
             const query = `
-                SELECT campaign.id, campaign.name, campaign.status
+                SELECT campaign.id, campaign.name, campaign.status, campaign.start_date
                 FROM campaign
                 WHERE campaign.status IN ('ENABLED', 'PAUSED')
             `;

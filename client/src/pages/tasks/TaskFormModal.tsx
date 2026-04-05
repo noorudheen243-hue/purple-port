@@ -14,11 +14,12 @@ import FormErrorAlert from '../../components/ui/FormErrorAlert';
 const schema = z.object({
     title: z.string().min(3, "Title is required"),
     description: z.string().optional(),
-    type: z.enum(['GENERIC', 'GRAPHIC', 'VIDEO', 'COPY', 'STRATEGY', 'DEV', 'CONTENT_SHOOTING']),
+    type: z.enum(['GRAPHIC', 'VIDEO', 'COPY', 'STRATEGY', 'DEV', 'CONTENT_SHOOTING']),
     priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']),
     category: z.enum(['CAMPAIGN', 'INTERNAL']),
     nature: z.enum(['NEW', 'REWORK']),
     campaign_id: z.string().optional(),
+    marketing_campaign_id: z.string().optional(),
     content_type: z.string().optional(), // Added
     client_id: z.string().optional(), // Now Optional for "General" tasks
     assignee_id: z.string().min(1, "Assigned To is required"), // Mandatory for ALL
@@ -56,7 +57,7 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
         mode: 'onChange',
         defaultValues: {
             priority: 'MEDIUM',
-            type: 'GENERIC',
+            type: 'GRAPHIC',
             category: 'CAMPAIGN',
             nature: 'NEW',
             description: '',
@@ -87,7 +88,7 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
         } else if (isOpen && !initialData) {
             reset({
                 priority: 'MEDIUM',
-                type: 'GENERIC',
+                type: 'GRAPHIC',
                 category: 'CAMPAIGN',
                 nature: 'NEW',
                 description: '',
@@ -107,6 +108,21 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
 
     // Filter campaigns by selected client
     const filteredCampaigns = campaigns?.filter((c: any) => c.client_id === selectedClientId) || [];
+
+    // Fetch Meta Campaigns connected via Ad Intelligence
+    const { data: integratedMetaCampaigns, isLoading: isLoadingMeta } = useQuery({
+        queryKey: ['integrated-meta-campaigns', selectedClientId],
+        queryFn: async () => {
+            if (!selectedClientId) return [];
+            const { data } = await api.get(`/client-portal/tracking/meta-ads/campaigns?clientId=${selectedClientId}`);
+            return data;
+        },
+        enabled: !!selectedClientId && watch('campaign_type') === 'META_ADS',
+    });
+
+    const selectedMarketingCampaignId = watch('marketing_campaign_id');
+    const selectedMetaObj = integratedMetaCampaigns?.find((c: any) => c.id === selectedMarketingCampaignId);
+    const latestMetaMetric = selectedMetaObj?.marketingMetrics?.[0];
 
     const mutation = useMutation({
         mutationFn: async (data: TaskFormData) => {
@@ -296,19 +312,54 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                             </div>
 
                             {departmentStr === 'DIGITAL_MARKETING' && (
-                                <div className="space-y-2 animate-in fade-in slide-in-from-right-2">
-                                    <label className="text-sm font-semibold text-foreground">Campaign Type</label>
-                                    <select
-                                        {...register('campaign_type')}
-                                        className="w-full px-4 py-2.5 border border-input rounded-lg bg-background text-foreground focus:ring-2 focus:ring-indigo-200 outline-none"
-                                    >
-                                        <option value="">-- Optional: Specific Campaign Type --</option>
-                                        <option value="META_ADS">Meta Ads</option>
-                                        <option value="GOOGLE_ADS">Google Ads</option>
-                                        <option value="SEO">SEO</option>
-                                        <option value="CONTENT_PLANNING">Content Planning</option>
-                                        <option value="WEB_DEVELOPMENT">Web Development</option>
-                                    </select>
+                                <div className="space-y-4 animate-in fade-in slide-in-from-right-2">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-semibold text-foreground">Campaign Type</label>
+                                        <select
+                                            {...register('campaign_type')}
+                                            className="w-full px-4 py-2.5 border border-input rounded-lg bg-background text-foreground focus:ring-2 focus:ring-indigo-200 outline-none"
+                                        >
+                                            <option value="">-- Optional: Specific Campaign Type --</option>
+                                            <option value="META_ADS">Meta Ads</option>
+                                            <option value="GOOGLE_ADS">Google Ads</option>
+                                            <option value="SEO">SEO</option>
+                                            <option value="CONTENT_PLANNING">Content Planning</option>
+                                            <option value="WEB_DEVELOPMENT">Web Development</option>
+                                        </select>
+                                    </div>
+
+                                    {watch('campaign_type') === 'META_ADS' && selectedClientId && (
+                                        <div className="space-y-2 pt-2 border-t">
+                                            <label className="text-sm font-semibold text-foreground">Link Meta Campaign</label>
+                                            <select
+                                                {...register('marketing_campaign_id')}
+                                                className="w-full px-4 py-2.5 border border-input rounded-lg bg-background text-foreground focus:ring-2 focus:ring-indigo-200 outline-none"
+                                            >
+                                                <option value="">-- Select Synced Campaign --</option>
+                                                {integratedMetaCampaigns?.map((c: any) => (
+                                                    <option key={c.id} value={c.id}>{c.name} ({c.status})</option>
+                                                ))}
+                                            </select>
+                                            {isLoadingMeta && <p className="text-xs text-muted-foreground">Loading campaigns...</p>}
+                                            {integratedMetaCampaigns?.length === 0 && !isLoadingMeta && (
+                                                <p className="text-xs text-orange-500">No active Meta campaigns synced for this client.</p>
+                                            )}
+
+                                            {selectedMetaObj && (
+                                                <div className="mt-3 p-3 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-900 shadow-inner">
+                                                    <div className="font-semibold mb-1 truncate">{selectedMetaObj.name}</div>
+                                                    {latestMetaMetric ? (
+                                                        <div className="grid grid-cols-2 gap-2 text-xs">
+                                                            <div>Spend: <span className="font-bold">₹{latestMetaMetric.spend}</span></div>
+                                                            <div>Results: <span className="font-bold">{latestMetaMetric.results}</span></div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-xs text-muted-foreground">No recent metrics.</div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -439,13 +490,12 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                             <div className="space-y-1">
                                 <label className="text-sm font-medium text-foreground">Task Type</label>
                                 <select {...register('type')} className="w-full px-4 py-2.5 border border-input rounded-lg bg-background text-foreground focus:ring-2 focus:ring-purple-200 outline-none">
-                                    <option value="GENERIC">Generic</option>
                                     <option value="GRAPHIC">Graphic Design</option>
                                     <option value="VIDEO">Video Editing</option>
                                     <option value="COPY">Copywriting</option>
                                     <option value="STRATEGY">Strategy</option>
                                     <option value="DEV">Development</option>
-                                    <option value="CONTENT_SHOOTING">Content Shooting</option> {/* Added */}
+                                    <option value="CONTENT_SHOOTING">Content Shooting</option>
                                 </select>
                             </div>
                             <div className="space-y-1">
@@ -458,6 +508,31 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                                 </select>
                             </div>
                         </div>
+
+                        {/* Sub-type selection for VIDEO or GRAPHIC */}
+                        {(watch('type') === 'VIDEO' || watch('type') === 'GRAPHIC') && (
+                            <div className="space-y-1 animate-in fade-in slide-in-from-top-2">
+                                <label className="text-sm font-medium text-foreground">
+                                    {watch('type') === 'VIDEO' ? 'Video Sub-Type' : 'Graphic Sub-Type'} <span className="text-red-500">*</span>
+                                </label>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                                    {(watch('type') === 'VIDEO' 
+                                        ? ["Reel Edit", "Motion Graphic", "AI Video Making", "Edu projects"] 
+                                        : ["Poster Design", "Branding- Printable Assets", "Branding - Logo", "Brochure Design", "Web Images"]
+                                    ).map((subType) => (
+                                        <button
+                                            key={subType}
+                                            type="button"
+                                            onClick={() => setValue('content_type', subType)}
+                                            className={`px-3 py-2 text-xs font-medium rounded-lg border transition-all ${watch('content_type') === subType ? 'bg-purple-600 border-purple-600 text-white shadow-md' : 'bg-background border-border text-muted-foreground hover:border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/10'}`}
+                                        >
+                                            {subType}
+                                        </button>
+                                    ))}
+                                </div>
+                                <input type="hidden" {...register('content_type')} />
+                            </div>
+                        )}
 
                         {/* Client & Campaign Section */}
                         <div className="p-4 bg-muted/30 rounded-xl border border-border space-y-4">

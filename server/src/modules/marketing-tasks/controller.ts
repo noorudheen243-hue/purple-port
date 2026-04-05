@@ -379,7 +379,10 @@ export async function authMeta(req: Request, res: Response) {
     }, {});
 
     const appId = settingsMap['META_APP_ID'] || process.env.META_APP_ID;
-    const redirectUri = `${process.env.API_URL || 'http://localhost:4001'}/api/marketing/auth/meta/callback`;
+    const baseUrl = process.env.NODE_ENV === 'production' 
+        ? 'https://qixport.com' 
+        : (process.env.API_URL || 'http://localhost:4001');
+    const redirectUri = `${baseUrl}/api/marketing/auth/meta/callback`;
 
     if (!appId) {
         return res.status(400).send('Meta App ID is not configured. Please set it in Settings first.');

@@ -381,6 +381,7 @@ export const MarketingIntegrations: React.FC = () => {
                             )}
                         </tbody>
                     </table>
+                </div>
             </div>
             
             {/* Connected Facebook Profiles Section */}

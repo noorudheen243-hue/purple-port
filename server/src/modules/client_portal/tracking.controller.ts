@@ -23,6 +23,48 @@ const getValidatedClientId = (req: Request): string | null => {
 
 // --- META ADS ---
 
+export const getIntegratedCampaigns = async (req: Request, res: Response) => {
+    try {
+        const clientId = getValidatedClientId(req);
+        if (!clientId) return res.status(403).json({ message: "Access Denied: Invalid Client Context" });
+
+        const campaigns = await prisma.marketingCampaign.findMany({
+            where: { clientId, platform: { in: ['meta', 'META'] } },
+            include: {
+                marketingMetrics: {
+                    orderBy: { date: 'desc' },
+                    take: 1
+                }
+            }
+        });
+
+        // Find the latest sync failure for this client to inform the UI
+        // We look for any sync log (even if overall SUCCESS) that mentions permission errors (Code 200 / OAuthException)
+        const syncError = await (prisma as any).marketingSyncLog.findFirst({
+            where: { 
+                platform: { in: ['ALL', 'meta', 'META'] },
+                OR: [
+                    { details: { contains: '200' } },
+                    { details: { contains: 'OAuthException' } },
+                    { details: { contains: 'permission' } }
+                ]
+            },
+            orderBy: { startedAt: 'desc' }
+        });
+
+        res.json({
+            campaigns,
+            syncStatus: syncError ? {
+                isError: true,
+                message: syncError.details,
+                type: 'PERMISSION_DENIED'
+            } : { isError: false }
+        });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 export const getMetaAdsLogs = async (req: Request, res: Response) => {
     try {
         const clientId = getValidatedClientId(req);
@@ -52,17 +94,56 @@ export const getMetaAdsLogs = async (req: Request, res: Response) => {
 export const createMetaAdsLog = async (req: Request, res: Response) => {
     try {
         const user = req.user as any;
-        const { client_id, campaign_name, objective, platform, spend, status, results_json, notes, date } = req.body;
+        const { client_id, marketing_campaign_id, notes, date, spend, results, reach, impressions } = req.body;
+
+        if (!marketing_campaign_id) {
+            return res.status(400).json({ message: "Marketing Campaign ID is required to fetch real-time data." });
+        }
+
+        const campaign = await prisma.marketingCampaign.findUnique({
+            where: { id: marketing_campaign_id },
+            include: {
+                marketingMetrics: { orderBy: { date: 'desc' }, take: 1 }
+            }
+        });
+
+        if (!campaign) {
+            return res.status(404).json({ message: "Campaign not found" });
+        }
+
+        const latestMetric = campaign.marketingMetrics[0];
+
+        // Format snapshot - prefer manual/form results if provided
+        const finalResults = results !== undefined ? parseInt(results) : (latestMetric?.results || latestMetric?.conversions || 0);
+        const finalReach = reach !== undefined ? parseInt(reach) : (latestMetric?.reach || 0);
+        const finalImpressions = impressions !== undefined ? parseInt(impressions) : (latestMetric?.impressions || 0);
+        const finalSpend = spend !== undefined ? parseFloat(spend) : (latestMetric?.spend || 0);
+        
+        const results_json = {
+            impressions: finalImpressions,
+            reach: finalReach,
+            clicks: latestMetric?.clicks || 0,
+            cpc: latestMetric?.cpc || 0,
+            results: finalResults,
+            results_cost: finalResults > 0 ? (finalSpend / finalResults) : 0,
+            messaging_conversations: latestMetric?.messaging_conversations || 0,
+            new_messaging_contacts: latestMetric?.new_messaging_contacts || 0,
+            purchases: latestMetric?.purchases || 0,
+            cost_per_purchase: latestMetric?.cost_per_purchase || 0,
+            is_manual: (results !== undefined || reach !== undefined || impressions !== undefined || spend !== undefined)
+        };
 
         const log = await prisma.metaAdsLog.create({
             data: {
                 client_id,
                 user_id: user.id,
-                campaign_name,
-                objective,
-                platform,
-                spend: parseFloat(spend || 0),
-                results_json: typeof results_json === 'object' ? JSON.stringify(results_json) : results_json,
+                campaign_name: campaign.name,
+                marketing_campaign_id: campaign.id,
+                objective: campaign.objective || 'Unknown',
+                platform: 'META',
+                spend: finalSpend,
+                status: campaign.status || 'ACTIVE',
+                results_json: JSON.stringify(results_json),
                 notes,
                 date: date ? new Date(date) : undefined
             }
@@ -77,20 +158,15 @@ export const updateMetaAdsLog = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const user = req.user as any;
-        const { campaign_name, objective, platform, spend, status, results_json, notes, date } = req.body;
+        const { notes, date, spend, results_json } = req.body;
 
         const log = await prisma.metaAdsLog.update({
             where: { id },
             data: {
-                user_id: user.id,
-                campaign_name,
-                objective,
-                platform,
-                spend: parseFloat(spend || 0),
-                status: status || 'ACTIVE',
-                results_json: typeof results_json === 'object' ? JSON.stringify(results_json) : results_json,
                 notes,
-                date: date ? new Date(date) : undefined
+                date: date ? new Date(date) : undefined,
+                spend: spend !== undefined ? parseFloat(spend) : undefined,
+                results_json: results_json ? (typeof results_json === 'string' ? results_json : JSON.stringify(results_json)) : undefined
             }
         });
         res.json(log);

@@ -379,9 +379,12 @@ export async function authMeta(req: Request, res: Response) {
     }, {});
 
     const appId = settingsMap['META_APP_ID'] || process.env.META_APP_ID;
-    const baseUrl = process.env.NODE_ENV === 'production' 
-        ? 'https://qixport.com' 
-        : (process.env.API_URL || 'http://localhost:4001');
+    
+    // Dynamically match the request's exact host (e.g. www vs non-www) to satisfy Meta's strict domain matching
+    const reqHost = req.get('host');
+    const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+    const baseUrl = `${protocol}://${reqHost}`;
+    
     const redirectUri = `${baseUrl}/api/marketing/auth/meta/callback`;
 
     if (!appId) {

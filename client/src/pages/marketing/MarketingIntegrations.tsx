@@ -79,7 +79,8 @@ export const MarketingIntegrations: React.FC = () => {
     };
 
     const handleMetaConnect = (clientId?: string) => {
-        const url = clientId ? `/api/marketing/auth/meta?clientId=${clientId}` : `/api/marketing/auth/meta`;
+        const timestamp = new Date().getTime();
+        const url = clientId ? `/api/marketing/auth/meta?clientId=${clientId}&t=${timestamp}` : `/api/marketing/auth/meta?t=${timestamp}`;
         window.location.href = url;
     };
 

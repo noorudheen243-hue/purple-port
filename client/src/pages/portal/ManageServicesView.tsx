@@ -693,6 +693,11 @@ const ManageServicesView = () => {
                     results_cost: latest.results_cost || 0
                 };
 
+                // Use the internal platform ID returned by the sync for reliable saving
+                if (latest.id) {
+                    updatedForm.marketing_campaign_id = String(latest.id);
+                }
+
                 // If label is empty, fill it with the campaign name we just synced
                 if (!updatedForm.campaign_label && latest.name) {
                     updatedForm.campaign_label = latest.name;

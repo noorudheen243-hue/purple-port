@@ -95,13 +95,41 @@ export async function syncCampaign(req: Request, res: Response) {
                 messaging_conversations: 0, new_messaging_contacts: 0, purchases: 0
             });
 
+            // Ensure the campaign is registered in our system for tracking
+            const campRecord = await (prisma as any).marketingCampaign.upsert({
+                where: { 
+                    externalCampaignId_platform_clientId: {
+                        externalCampaignId: String(campaignId),
+                        platform: platform.toLowerCase(),
+                        clientId: campaignMetadata?.clientId || (req as any).query.clientId || (req as any).body.clientId || '' 
+                    }
+                },
+                update: {
+                    name: campaignMetadata?.name || campaignMetadata?.title,
+                    status: campaignMetadata?.effective_status || campaignMetadata?.status,
+                    objective: campaignMetadata?.objective,
+                    budget: parseFloat(campaignMetadata?.daily_budget || campaignMetadata?.lifetime_budget || '0') / 100
+                },
+                create: {
+                    clientId: campaignMetadata?.clientId || (req as any).query.clientId || (req as any).body.clientId || '',
+                    platform: platform.toLowerCase(),
+                    externalCampaignId: String(campaignId),
+                    name: campaignMetadata?.name || campaignMetadata?.title,
+                    status: campaignMetadata?.effective_status || campaignMetadata?.status,
+                    objective: campaignMetadata?.objective,
+                    budget: parseFloat(campaignMetadata?.daily_budget || campaignMetadata?.lifetime_budget || '0') / 100
+                }
+            });
+
+            // Aggregate and update metrics
             const latestMetric = {
                 ...totals,
                 results_cost: totals.results > 0 ? totals.spend / totals.results : 0,
                 // Automated fields
                 name: campaignMetadata?.name || campaignMetadata?.title,
                 startDate: campaignMetadata?.start_time || campaignMetadata?.start_date,
-                status: campaignMetadata?.effective_status || campaignMetadata?.status
+                status: campaignMetadata?.effective_status || campaignMetadata?.status,
+                id: campRecord.id // Include our internal ID for saving
             };
 
             return res.json({ success: true, latestMetric });

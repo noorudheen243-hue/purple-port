@@ -100,15 +100,21 @@ export const createMetaAdsLog = async (req: Request, res: Response) => {
             return res.status(400).json({ message: "Marketing Campaign ID is required to fetch real-time data." });
         }
 
-        const campaign = await prisma.marketingCampaign.findUnique({
-            where: { id: marketing_campaign_id },
+        // Try finding by internal ID or External ID
+        const campaign = await prisma.marketingCampaign.findFirst({
+            where: { 
+                OR: [
+                    { id: marketing_campaign_id },
+                    { externalCampaignId: String(marketing_campaign_id), clientId: client_id }
+                ]
+            },
             include: {
                 marketingMetrics: { orderBy: { date: 'desc' }, take: 1 }
             }
         });
 
         if (!campaign) {
-            return res.status(404).json({ message: "Campaign not found" });
+            return res.status(404).json({ message: "Campaign not found. Please sync data first to ensure campaign is registered." });
         }
 
         const latestMetric = campaign.marketingMetrics[0];

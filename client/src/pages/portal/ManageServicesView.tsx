@@ -1208,12 +1208,14 @@ const ManageServicesView = () => {
                                                                     className="w-full px-4 py-3 rounded-xl border-2 border-blue-100 bg-white shadow-sm focus:border-blue-500 focus:ring-0 transition-all font-bold text-gray-700"
                                                                     value={campaignForm.marketing_campaign_id || ''}
                                                                     onChange={(e) => {
-                                                                        const selected = metaAccountStatus?.campaigns?.find((c: any) => String(c.id) === String(e.target.value));
+                                                                        const val = String(e.target.value);
+                                                                        const selected = metaAccountStatus?.campaigns?.find((c: any) => String(c.id) === val);
+                                                                        console.log('[DEBUG MetaSelect] Selected:', selected?.name);
                                                                         setCampaignForm({ 
                                                                             ...campaignForm, 
-                                                                            marketing_campaign_id: String(e.target.value),
-                                                                            campaign_label: selected?.name || '', // Auto-fill the manual label field
-                                                                            campaign_name: selected?.name || '',
+                                                                            marketing_campaign_id: val,
+                                                                            campaign_label: selected?.name || campaignForm.campaign_label || '', 
+                                                                            campaign_name: selected?.name || campaignForm.campaign_name || '',
                                                                             objective: selected?.objective || ''
                                                                         });
                                                                         setCampaignSynced(false);

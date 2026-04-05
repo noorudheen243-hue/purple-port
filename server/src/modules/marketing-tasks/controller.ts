@@ -99,6 +99,7 @@ export async function syncCampaign(req: Request, res: Response) {
                 ...totals,
                 results_cost: totals.results > 0 ? totals.spend / totals.results : 0,
                 // Automated fields
+                name: campaignMetadata?.name || campaignMetadata?.title,
                 startDate: campaignMetadata?.start_time || campaignMetadata?.start_date,
                 status: campaignMetadata?.effective_status || campaignMetadata?.status
             };

@@ -381,6 +381,79 @@ export const MarketingIntegrations: React.FC = () => {
                             )}
                         </tbody>
                     </table>
+            </div>
+            
+            {/* Connected Facebook Profiles Section */}
+            <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-3xl overflow-hidden shadow-xl mt-8">
+                <div className="p-6 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/20 flex flex-col md:flex-row justify-between items-center gap-4">
+                    <h2 className="text-lg font-black text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                        <Facebook className="w-5 h-5 text-[#1877F2]" />
+                        Connected Facebook Profiles
+                    </h2>
+                    <button 
+                        onClick={() => handleMetaConnect()}
+                        className="text-sm font-bold text-[#1877F2] hover:underline flex items-center gap-1"
+                    >
+                        + Add new facebook profile
+                    </button>
+                </div>
+                <div className="p-6">
+                    {loadingProfiles ? (
+                        <div className="text-center text-gray-500 py-8 flex flex-col items-center gap-3">
+                            <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                            <span className="font-bold text-sm">Loading profiles...</span>
+                        </div>
+                    ) : metaProfiles.length === 0 ? (
+                        <div className="text-center text-gray-500 py-12 flex flex-col items-center">
+                            <div className="w-16 h-16 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4 text-gray-400">
+                                <Facebook className="w-8 h-8" />
+                            </div>
+                            <h3 className="text-lg font-bold text-gray-700 dark:text-gray-300 mb-1">No Profiles Connected</h3>
+                            <p className="text-sm">Link your agency's Meta accounts to start mapping them to clients.</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                            {metaProfiles.map(profile => {
+                                const isConnected = profile.tokenStatus !== 'EXPIRED';
+                                return (
+                                    <div key={profile.id} className="border border-gray-200 dark:border-gray-700 rounded-2xl p-5 flex flex-col justify-between hover:shadow-md transition-all bg-gray-50/30 dark:bg-gray-800/20 group">
+                                        <div className="flex justify-between items-start mb-6">
+                                            <div className="flex items-center gap-4">
+                                                <div className={`w-12 h-12 rounded-full flex flex-shrink-0 items-center justify-center text-white font-bold text-lg shadow-sm ${isConnected ? 'bg-gradient-to-br from-blue-500 to-blue-600' : 'bg-gray-300 dark:bg-gray-700'}`}>
+                                                    {profile.account_name?.[0] || <Facebook className="w-5 h-5" />}
+                                                </div>
+                                                <div>
+                                                    <h3 className="font-extrabold text-gray-900 dark:text-gray-100 line-clamp-1 group-hover:text-blue-600 transition-colors">
+                                                        {profile.account_name}
+                                                    </h3>
+                                                    <div className="flex items-center gap-1.5 mt-1.5">
+                                                        <div className="relative flex items-center justify-center">
+                                                            <div className={`absolute w-full h-full rounded-full opacity-30 animate-ping ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                                            <div className={`w-2.5 h-2.5 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                                        </div>
+                                                        <span className={`text-[10px] font-black uppercase tracking-wider ${isConnected ? 'text-green-600' : 'text-red-500'}`}>
+                                                            {isConnected ? 'Connected' : 'Not Connected'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button 
+                                            onClick={() => handleMetaConnect()}
+                                            className={`w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold transition-all border ${
+                                                isConnected 
+                                                ? 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-blue-300 hover:text-blue-600 text-gray-600 dark:text-gray-300'
+                                                : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-100 hover:border-red-300'
+                                            }`}
+                                        >
+                                            <RefreshCw className={`w-4 h-4 ${isConnected ? '' : 'animate-spin-slow'}`} /> 
+                                            {isConnected ? 'Reconnect Profile' : 'Fix Connection'}
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

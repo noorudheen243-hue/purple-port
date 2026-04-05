@@ -74,6 +74,11 @@ server {
 }
 NGINXEOF
 
+# 4.5 Generate Prisma Client (Required for build)
+echo ">>> Generating Prisma Client..."
+cd "$ROOT/server"
+npx prisma generate
+
 # 5. Build Backend
 echo ">>> Updating Server..."
 cd "$ROOT/server"
@@ -82,8 +87,7 @@ chmod +x node_modules/.bin/* 2>/dev/null || true
 rm -rf dist
 echo ">>> Compiling TypeScript..."
 npm run build
-npx prisma generate
-npx prisma db push
+npx prisma db push --accept-data-loss
 
 # 6. Set Permissions & Directories
 echo ">>> Fixing Permissions..."

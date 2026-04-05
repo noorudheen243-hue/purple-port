@@ -668,7 +668,7 @@ const ManageServicesView = () => {
             
             const reqData: any = { 
                 campaignId: campaignForm.marketing_campaign_id,
-                clientId: client?.id
+                clientId: clientId
             };
             
             if (isPreview) {

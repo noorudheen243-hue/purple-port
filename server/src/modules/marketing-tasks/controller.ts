@@ -425,7 +425,12 @@ export async function metaCallback(req: Request, res: Response) {
 
         const appId = settingsMap['META_APP_ID'] || process.env.META_APP_ID;
         const appSecret = settingsMap['META_APP_SECRET'] || process.env.META_APP_SECRET;
-        const redirectUri = `${process.env.API_URL || 'http://localhost:4001'}/api/marketing/auth/meta/callback`;
+        
+        // Dynamically match the request's exact host to satisfy Meta's strict redirect_uri matching during token exchange
+        const reqHost = req.get('host');
+        const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+        const baseUrl = `${protocol}://${reqHost}`;
+        const redirectUri = `${baseUrl}/api/marketing/auth/meta/callback`;
 
         // Exchange code for short-lived token
         const tokenRes = await axios.get(`https://graph.facebook.com/v21.0/oauth/access_token`, {
@@ -513,7 +518,7 @@ export async function metaCallback(req: Request, res: Response) {
             }
         }
 
-        res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/dashboard/marketing-integrations?success=meta`);
+        res.redirect(`${baseUrl}/dashboard/marketing-integrations?success=meta`);
     } catch (e: any) {
         console.error('Meta OAuth Error:', e.response?.data || e.message);
         res.status(500).send('Callback Failed: ' + (e.response?.data?.error?.message || e.message));

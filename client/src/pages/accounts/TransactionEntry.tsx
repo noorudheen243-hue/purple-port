@@ -134,9 +134,17 @@ const TransactionEntry = () => {
                 // Important: We store the staff ID in the reference field so the Payroll module knows who received this!
                 data.reference = final_entity_id;
             } else if (data.nature === 'META_RECHARGE_EXPENSE') {
-                const clientLedger = ledgers?.find((l: any) => l.entity_type === 'CLIENT' && l.entity_id === data.entity_id);
-                if (!clientLedger) return Swal.fire('Error', 'Ledger not found for selected Client.', 'error');
-                to_ledger_id = clientLedger.id;
+                // Try to find a client-specific meta expense ledger first, otherwise fallback to the generic 'Meta Ads Spend'
+                const clientObj = clients?.find((c: any) => c.id === data.entity_id);
+                let metaExpenseLedger = ledgers?.find((l: any) => l.name.toLowerCase().includes((clientObj?.name || '').toLowerCase() + ' meta') && l.head?.type === 'EXPENSE');
+                if (!metaExpenseLedger) {
+                    metaExpenseLedger = ledgers?.find((l: any) => l.name.toLowerCase().includes('meta ads spend') && l.head?.type === 'EXPENSE');
+                }
+                
+                if (!metaExpenseLedger) return Swal.fire('Error', 'Meta Ads Spend Expense Ledger not found. Please create one in Chart of Accounts.', 'error');
+                
+                to_ledger_id = metaExpenseLedger.id;
+                data.reference = final_entity_id; // Still record the client ID in case needed for tracking
             } else if (data.nature === 'PETTY_EXPENSE' || data.nature === 'RENT') {
                 // Find ledger by name matching the sub_category
                 const targetName = data.sub_category;

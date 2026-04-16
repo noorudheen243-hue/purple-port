@@ -212,7 +212,7 @@ const PayrollProcess = () => {
                                                 <TableCell>{slip.designation}</TableCell>
                                                 <TableCell>{"\u20B9"}{slip.basic_salary.toLocaleString()}</TableCell>
                                                 <TableCell>{"\u20B9"}{(slip.allowances + slip.conveyance_allowance + slip.accommodation_allowance + slip.incentives).toLocaleString()}</TableCell>
-                                                <TableCell className="text-red-500">-{"\u20B9"}{(slip.lop_deduction + slip.advance_salary + slip.other_deductions).toLocaleString()}</TableCell>
+                                                <TableCell className="text-red-500">-{"\u20B9"}{(slip.lop_deduction + slip.advance_salary + slip.other_deductions + slip.advance_incentives).toLocaleString()}</TableCell>
                                                 <TableCell className="text-right font-bold text-green-700">{"\u20B9"}{slip.net_pay.toLocaleString()}</TableCell>
                                                 <TableCell className="flex justify-center gap-2">
                                                     <Button

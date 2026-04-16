@@ -383,6 +383,7 @@ const SalarySlipModal = ({ slip, onClose }: { slip: any; onClose: () => void }) 
                                     <div className="flex flex-col">
                                         <Row label="LOP Deduction" value={slip.lop_deduction} isDeduction />
                                         <Row label="Salary Advance Recovery" value={slip.advance_salary} isDeduction />
+                                        <Row label="Incentives Already Paid" value={slip.advance_incentives} isDeduction />
                                         <Row label="Other Deductions" value={slip.other_deductions} isDeduction />
 
                                         <div className="flex-1"></div>
@@ -440,7 +441,7 @@ const Row = ({ label, value, isDeduction }: any) => {
 }
 
 const calculateTotalEarnings = (s: any) => (s.basic_salary || 0) + (s.hra || 0) + (s.conveyance_allowance || 0) + (s.accommodation_allowance || 0) + (s.allowances || 0) + (s.incentives || 0);
-const calculateTotalDeductions = (s: any) => (s.lop_deduction || 0) + (s.advance_salary || 0) + (s.other_deductions || 0);
+const calculateTotalDeductions = (s: any) => (s.lop_deduction || 0) + (s.advance_salary || 0) + (s.other_deductions || 0) + (s.advance_incentives || 0);
 
 
 

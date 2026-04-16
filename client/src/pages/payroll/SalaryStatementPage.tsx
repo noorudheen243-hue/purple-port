@@ -53,6 +53,7 @@ const SalaryStatementPage = () => {
             LOP_Days: s.lop_days,
             LOP_Ded: s.lop_deduction,
             Advance: s.advance_salary,
+            Adv_Inc: s.advance_incentives,
             Other_Ded: s.other_deductions,
             Net_Pay: s.net_pay
         })));
@@ -123,6 +124,7 @@ const SalaryStatementPage = () => {
                                 <TableHead className="text-right text-red-600">LOP ({slips.length > 0 ? 'Days' : ''})</TableHead>
                                 <TableHead className="text-right text-red-600">LOP Amt</TableHead>
                                 <TableHead className="text-right text-red-600">Adv.</TableHead>
+                                <TableHead className="text-right text-red-600">Adv. Inc.</TableHead>
                                 <TableHead className="text-right text-red-600">Other</TableHead>
                                 <TableHead className="text-right font-bold bg-gray-50">NET PAY</TableHead>
                             </TableRow>
@@ -157,6 +159,9 @@ const SalaryStatementPage = () => {
                                         </TableCell>
                                         <TableCell className="text-right text-red-600">
                                             {slip.advance_salary > 0 ? slip.advance_salary : '-'}
+                                        </TableCell>
+                                        <TableCell className="text-right text-red-600">
+                                            {slip.advance_incentives > 0 ? slip.advance_incentives : '-'}
                                         </TableCell>
                                         <TableCell className="text-right text-red-600">
                                             {slip.other_deductions > 0 ? slip.other_deductions : '-'}

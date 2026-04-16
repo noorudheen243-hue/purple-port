@@ -46,6 +46,7 @@ const SalaryCalculator = () => {
             incentives: 0,
             advance_salary: 0,
             other_deductions: 0,
+            advance_incentives: 0,
             lop_days: 0,
             lop_deduction: 0,
             total_working_days: 30,
@@ -83,6 +84,7 @@ const SalaryCalculator = () => {
                             incentives: data.incentives || 0,
                             advance_salary: data.advance_salary || 0,
                             other_deductions: data.other_deductions || 0,
+                            advance_incentives: data.advance_incentives || 0,
                             lop_days: data.lop_days || 0,
                             lop_deduction: data.lop_deduction || 0,
                             total_working_days: data.total_working_days || 30,
@@ -161,7 +163,8 @@ const SalaryCalculator = () => {
         const deductions =
             (Number(values.lop_deduction) || 0) +
             (Number(values.advance_salary) || 0) +
-            (Number(values.other_deductions) || 0);
+            (Number(values.other_deductions) || 0) +
+            (Number(values.advance_incentives) || 0);
 
         // If we want to support client-side updates:
         let currentGross = Number(values.gross_total) || 0;
@@ -211,6 +214,7 @@ const SalaryCalculator = () => {
     }, [
         values.basic_salary, values.hra, values.conveyance_allowance, values.accommodation_allowance,
         values.allowances, values.incentives, values.lop_deduction, values.advance_salary, values.other_deductions,
+        values.advance_incentives,
         values.gross_total, payrollType,
         setValue
     ]);
@@ -488,6 +492,11 @@ const SalaryCalculator = () => {
                                             <Label>Salary Advance (Ledger)</Label>
                                             <Input type="number" {...register('advance_salary')} readOnly className="bg-muted" />
                                             <p className="text-[10px] text-muted-foreground">Fetched from Accounting Ledger</p>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Incentives Already Paid</Label>
+                                            <Input type="number" {...register('advance_incentives')} readOnly className="bg-muted" />
+                                            <p className="text-[10px] text-muted-foreground">Auto-deducted from payouts</p>
                                         </div>
                                         <div className="space-y-2">
                                             <Label>Other Deductions</Label>

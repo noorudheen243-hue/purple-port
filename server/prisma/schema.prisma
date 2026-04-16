@@ -364,7 +364,8 @@ model PayrollSlip {
   lop_days      Float @default(0.0) // Auto-calculated
   lop_deduction Float @default(0.0) // lop_days * daily_wage
 
-  other_deductions Float @default(0.0) // Tax, PF, etc.
+  other_deductions   Float @default(0.0) // Tax, PF, etc.
+  advance_incentives Float @default(0.0) // Mid-month incentive payouts
 
   total_working_days Int @default(0)
 

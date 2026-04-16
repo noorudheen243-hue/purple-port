@@ -281,7 +281,7 @@ export const getSalaryDraft = async (userId: string, month: number, year: number
         const currentAdvance = salaryAdvanceBalance;
 
         // Correct Net Pay Formula: Gross Total (Fresh Calc) - Deductions
-        const updatedNetPay = grossTotal - lopDeduction - currentAdvance - (existingSlip.other_deductions || 0);
+        const updatedNetPay = grossTotal - lopDeduction - currentAdvance - (existingSlip.other_deductions || 0) - incentives;
 
         return {
             ...existingSlip,
@@ -308,6 +308,7 @@ export const getSalaryDraft = async (userId: string, month: number, year: number
             accommodation_allowance: accommodation,
             allowances: allowances,
             incentives: incentives,
+            advance_incentives: incentives,
 
             // Metadata
             calculation_date: calculationDate,
@@ -339,7 +340,8 @@ export const getSalaryDraft = async (userId: string, month: number, year: number
         lop_days: lopDays,
         lop_deduction: lopDeduction,
         advance_salary: salaryAdvanceBalance,
-        other_deductions: incentives, // Auto-deduct advance incentives paid mid-month
+        other_deductions: 0,
+        advance_incentives: incentives, // Auto-deduct advance incentives paid mid-month
 
         total_working_days: totalWorkingDays,
         net_pay: Math.max(0, Math.round(netPay - incentives)), // Adjust net pay correctly
@@ -382,7 +384,7 @@ export const getPayrollRunDetails = async (month: number, year: number) => {
     }));
 
     const total_payout = slips.reduce((sum: number, s: any) => sum + s.net_pay, 0);
-    const total_deductions = slips.reduce((sum: number, s: any) => sum + s.lop_deduction + (s.advance_salary || 0) + (s.other_deductions || 0), 0);
+    const total_deductions = slips.reduce((sum: number, s: any) => sum + s.lop_deduction + (s.advance_salary || 0) + (s.other_deductions || 0) + (s.advance_incentives || 0), 0);
 
     return {
         run,
@@ -420,6 +422,7 @@ export const savePayrollSlip = async (month: number, year: number, userId: strin
         lop_deduction: Number(data.lop_deduction),
         advance_salary: Number(data.advance_salary),
         other_deductions: Number(data.other_deductions),
+        advance_incentives: Number(data.advance_incentives),
 
         total_working_days: Math.round(Number(data.total_working_days) || 30),
         net_pay: Number(data.net_pay),

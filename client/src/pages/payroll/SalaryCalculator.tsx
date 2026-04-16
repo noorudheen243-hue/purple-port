@@ -55,7 +55,8 @@ const SalaryCalculator = () => {
             is_prorated: false,
             gross_total: 0,
             daily_wage: 0,
-            payroll_type: 'MONTHLY'
+            payroll_type: 'MONTHLY',
+            id: undefined as string | undefined
         }
     });
 
@@ -91,7 +92,8 @@ const SalaryCalculator = () => {
                             is_prorated: data.is_prorated || false,
                             gross_total: data.gross_total || 0,
                             daily_wage: data.daily_wage || 0,
-                            payroll_type: data.payroll_type || payrollType
+                            payroll_type: data.payroll_type || payrollType,
+                            id: data.id || undefined
                         });
                     }
 
@@ -227,6 +229,24 @@ const SalaryCalculator = () => {
             queryClient.invalidateQueries({ queryKey: ['payroll-draft'] });
         },
         onError: (err: any) => Swal.fire({ title: 'Error', text: err.response?.data?.message || 'Failed to save', icon: 'error' })
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: (id: string) => backend.delete(`/payroll/slip/${id}`),
+        onSuccess: () => {
+            Swal.fire({
+                title: 'Deleted!',
+                text: 'Payroll stub removed.',
+                icon: 'success',
+                timer: 2000
+            });
+            reset(); // Clear form
+            setSelectedStaff(''); // Clear selection to force reload
+            queryClient.invalidateQueries({ queryKey: ['payroll-draft'] });
+            queryClient.invalidateQueries({ queryKey: ['payroll-run'] });
+            queryClient.invalidateQueries({ queryKey: ['payslips'] });
+        },
+        onError: (err: any) => Swal.fire({ title: 'Error', text: err.response?.data?.message || 'Failed to delete', icon: 'error' })
     });
 
     const onSubmit = async (data: any) => {
@@ -487,10 +507,34 @@ const SalaryCalculator = () => {
                                      <div className="text-4xl font-bold text-white">
                                         {"\u20B9"} {Math.max(0, Number(watch('net_pay'))).toLocaleString('en-IN')}
                                     </div>
-                                    <Button size="lg" className="bg-green-500 hover:bg-green-600 text-white" disabled={saveMutation.isPending}>
-                                        <Save className="w-5 h-5 mr-2" />
-                                        {saveMutation.isPending ? 'Saving...' : 'Save Payroll Stub'}
-                                    </Button>
+                                    <div className="flex gap-3">
+                                        {values.id && (
+                                            <Button 
+                                                type="button" 
+                                                variant="outline" 
+                                                size="lg" 
+                                                className="border-red-500 text-red-500 hover:bg-red-50"
+                                                onClick={async () => {
+                                                    const result = await Swal.fire({
+                                                        title: 'Delete Stub?',
+                                                        text: 'Are you sure you want to delete this payroll stub?',
+                                                        icon: 'warning',
+                                                        showCancelButton: true,
+                                                        confirmButtonColor: '#d33',
+                                                        confirmButtonText: 'Yes, Delete'
+                                                    });
+                                                    if (result.isConfirmed && values.id) deleteMutation.mutate(values.id);
+                                                }}
+                                                disabled={deleteMutation.isPending}
+                                            >
+                                                {deleteMutation.isPending ? 'Deleting...' : 'Delete Payroll Stub'}
+                                            </Button>
+                                        )}
+                                        <Button size="lg" className="bg-green-500 hover:bg-green-600 text-white" disabled={saveMutation.isPending}>
+                                            <Save className="w-5 h-5 mr-2" />
+                                            {saveMutation.isPending ? 'Saving...' : 'Save Payroll Stub'}
+                                        </Button>
+                                    </div>
                                 </CardContent>
                             </Card>
                         </form>

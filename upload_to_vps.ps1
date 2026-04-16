@@ -3,7 +3,7 @@
 
 $SERVER_IP = "66.116.224.221"
 $SSH_USER = "root"
-$REMOTE_PATH = "/var/www/antigravity"
+$REMOTE_PATH = "/var/www/purple-port"
 $KEY_PATH = "f:\Antigravity\deploy_key"
 
 Clear-Host
@@ -45,6 +45,11 @@ if (Test-Path "server/src") {
     Write-Host "-> Copying Backend Source (src)..."
     New-Item -ItemType Directory -Path "$PACKAGE_DIR/server_dist/src" -Force | Out-Null
     Copy-Item -Path "server/src\*" -Destination "$PACKAGE_DIR/server_dist/src" -Recurse -Force
+}
+if (Test-Path "server/scripts") {
+    Write-Host "-> Copying Backend Scripts..."
+    New-Item -ItemType Directory -Path "$PACKAGE_DIR/server_dist/scripts" -Force | Out-Null
+    Copy-Item -Path "server/scripts\*" -Destination "$PACKAGE_DIR/server_dist/scripts" -Recurse -Force
 }
 if (Test-Path "server/package.json") {
     Copy-Item -Path "server/package.json" -Destination "$PACKAGE_DIR/server_dist" -Force
@@ -93,6 +98,13 @@ if [ -d $REMOTE_PATH/updated_files/server_dist/src ]; then
     cp -r $REMOTE_PATH/updated_files/server_dist/src/* $REMOTE_PATH/server/src/
 fi
 
+if [ -d $REMOTE_PATH/updated_files/server_dist/scripts ]; then
+    echo "-> Updating Backend Scripts..."
+    mkdir -p $REMOTE_PATH/server/scripts
+    rm -rf $REMOTE_PATH/server/scripts/*
+    cp -r $REMOTE_PATH/updated_files/server_dist/scripts/* $REMOTE_PATH/server/scripts/
+fi
+
 # Move prisma folder
 if [ -d $REMOTE_PATH/updated_files/server_dist/prisma ]; then
     echo "-> Updating Prisma Schema..."
@@ -112,8 +124,11 @@ echo "-> Applying Database Schema Changes..."
 cd $REMOTE_PATH/server
 npx prisma db push --accept-data-loss
 
+echo "-> Running Content Management Migration..."
+npx ts-node scripts/migrate-content-types.ts
+
 echo "-> Restarting PM2..."
-pm2 restart qix-ads-v2.6 || pm2 start dist/server.js --name qix-ads-v2.6
+pm2 restart qix-ads-v2.7 || pm2 start dist/server.js --name qix-ads-v2.7
 "@
 
 # Fix CRLF to LF for Linux

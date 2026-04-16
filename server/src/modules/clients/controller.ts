@@ -48,8 +48,9 @@ const createClientSchema = z.object({
     })).optional(),
 
     content_strategies: z.array(z.object({
-        type: z.string(),
-        quantity: z.number().min(0)
+        content_type_id: z.string(),
+        monthly_target: z.number().min(0),
+        notes: z.string().optional()
     })).optional(),
 
     // Ledger Options

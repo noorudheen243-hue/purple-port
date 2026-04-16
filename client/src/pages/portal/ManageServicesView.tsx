@@ -40,7 +40,8 @@ import {
     Check,
     BarChart3,
     Facebook,
-    RefreshCw
+    RefreshCw,
+    Filter
 } from 'lucide-react';
 
 import { format } from 'date-fns';
@@ -178,6 +179,7 @@ const ManageServicesView = () => {
     const [googleEntryMode, setGoogleEntryMode] = useState<'NEW' | 'UPDATE'>('NEW');
     const [seoEntryMode, setSeoEntryMode] = useState<'NEW' | 'UPDATE'>('NEW');
     const [webEntryMode, setWebEntryMode] = useState<'NEW' | 'UPDATE'>('NEW');
+    const [contentEntryMode, setContentEntryMode] = useState<'NEW' | 'UPDATE'>('NEW');
     const [campaignForm, setCampaignForm] = useState<any>({
         date: new Date().toISOString(),
         status: 'ACTIVE',
@@ -202,6 +204,14 @@ const ManageServicesView = () => {
     // --- HISTORY FILTERS ---
     const [historyStartDate, setHistoryStartDate] = useState<string>('');
     const [historyEndDate, setHistoryEndDate] = useState<string>('');
+
+    // --- TASK FILTERS ---
+    const [taskStatusFilter, setTaskStatusFilter] = useState<string>('');
+    const [taskStaffFilter, setTaskStaffFilter] = useState<string>('');
+    const [taskTypeFilter, setTaskTypeFilter] = useState<string>('');
+    const [taskMonthFilter, setTaskMonthFilter] = useState<string>('');
+    const [taskStartDateFilter, setTaskStartDateFilter] = useState<string>('');
+    const [taskEndDateFilter, setTaskEndDateFilter] = useState<string>('');
     // --- QUERIES ---
 
     // 1. Campaign History queries
@@ -260,11 +270,17 @@ const ManageServicesView = () => {
         enabled: !!clientId
     });
 
-    // Creative Team Tasks assigned to this client
-    const { data: creativeTasks } = useQuery({
-        queryKey: ['creative-tasks-for-client', clientId],
-        queryFn: async () => (await api.get(`/tasks?client_id=${clientId}&department=CREATIVE`)).data,
+    // All Tasks assigned to this client
+    const { data: clientTasks } = useQuery({
+        queryKey: ['client-all-tasks', clientId],
+        queryFn: async () => (await api.get(`/tasks?client_id=${clientId}`)).data,
         enabled: !!clientId
+    });
+
+    const { data: staff } = useQuery({
+        queryKey: ['users-staff'],
+        queryFn: async () => (await api.get('/users')).data,
+        enabled: isInternal
     });
 
     // 2. Leads query
@@ -373,6 +389,41 @@ const ManageServicesView = () => {
         }).slice(0, 20); // Limit to 20 campaigns
     }, [metaLogs, googleLogs, seoLogs, webLogs, contentLogs]);
 
+    const filteredClientTasks = useMemo(() => {
+        if (!clientTasks) return [];
+        let filtered = [...clientTasks];
+
+        if (taskStatusFilter) {
+            filtered = filtered.filter(t => t.status === taskStatusFilter);
+        }
+        if (taskStaffFilter) {
+            filtered = filtered.filter(t => t.assignee_id === taskStaffFilter);
+        }
+        if (taskTypeFilter) {
+            filtered = filtered.filter(t => t.type === taskTypeFilter);
+        }
+        if (taskMonthFilter) {
+            filtered = filtered.filter(t => {
+                const date = t.due_date || t.createdAt;
+                return date && date.startsWith(taskMonthFilter);
+            });
+        }
+        if (taskStartDateFilter) {
+            filtered = filtered.filter(t => {
+                const date = t.due_date || t.createdAt;
+                return date && date >= taskStartDateFilter;
+            });
+        }
+        if (taskEndDateFilter) {
+            filtered = filtered.filter(t => {
+                const date = t.due_date || t.createdAt;
+                return date && date <= taskEndDateFilter;
+            });
+        }
+
+        return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }, [clientTasks, taskStatusFilter, taskStaffFilter, taskTypeFilter, taskMonthFilter, taskStartDateFilter, taskEndDateFilter]);
+
     const campaignSummary = useMemo(() => {
         const activeCount = aggregatedHistory.filter(i => i.status === 'ACTIVE').length;
         let totalSpend = 0;
@@ -458,15 +509,21 @@ const ManageServicesView = () => {
     const metaMutation = useMutation({
         mutationFn: async (data: any) => {
             const payload = { ...data, client_id: clientId };
+            const id = editingCampaignId;
             delete payload.id;
             delete payload.createdAt;
             delete payload.updatedAt;
+
+            if (metaEntryMode === 'UPDATE' && id) {
+                return await api.patch(`/client-portal/tracking/meta-ads/${id}?clientId=${clientId}`, payload);
+            }
             return await api.post(`/client-portal/tracking/meta-ads?clientId=${clientId}`, payload);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['tracking-meta', clientId] });
             resetCampaignForm();
-            Swal.fire({ title: 'Success', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+            setCampaignSynced(false); // Reset for next use
+            Swal.fire({ title: metaEntryMode === 'UPDATE' ? 'Updated Successfully' : 'Created Successfully', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
         },
         onError: (err: any) => Swal.fire('Error', err.response?.data?.message || 'Failed to save Meta Ads log', 'error')
     });
@@ -474,60 +531,80 @@ const ManageServicesView = () => {
     const googleMutation = useMutation({
         mutationFn: async (data: any) => {
             const payload = { ...data, client_id: clientId };
+            const id = editingCampaignId;
             delete payload.id;
             delete payload.createdAt;
             delete payload.updatedAt;
+
+            if (googleEntryMode === 'UPDATE' && id) {
+                return await api.patch(`/client-portal/tracking/google-ads/${id}?clientId=${clientId}`, payload);
+            }
             return await api.post(`/client-portal/tracking/google-ads?clientId=${clientId}`, payload);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['tracking-google', clientId] });
             resetCampaignForm();
-            Swal.fire({ title: 'Success', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+            Swal.fire({ title: googleEntryMode === 'UPDATE' ? 'Updated Successfully' : 'Created Successfully', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
         }
     });
 
     const seoMutation = useMutation({
         mutationFn: async (data: any) => {
             const payload = { ...data, client_id: clientId };
+            const id = editingCampaignId;
             delete payload.id;
             delete payload.createdAt;
             delete payload.updatedAt;
+
+            if (seoEntryMode === 'UPDATE' && id) {
+                return await api.patch(`/client-portal/tracking/seo/${id}?clientId=${clientId}`, payload);
+            }
             return await api.post(`/client-portal/tracking/seo?clientId=${clientId}`, payload);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['tracking-seo', clientId] });
             resetCampaignForm();
-            Swal.fire({ title: 'Success', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+            Swal.fire({ title: seoEntryMode === 'UPDATE' ? 'Updated Successfully' : 'Created Successfully', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
         }
     });
 
     const webMutation = useMutation({
         mutationFn: async (data: any) => {
             const payload = { ...data, client_id: clientId };
+            const id = editingCampaignId;
             delete payload.id;
             delete payload.createdAt;
             delete payload.updatedAt;
+
+            if (webEntryMode === 'UPDATE' && id) {
+                return await api.patch(`/client-portal/tracking/web-dev/${id}?clientId=${clientId}`, payload);
+            }
             return await api.post(`/client-portal/tracking/web-dev?clientId=${clientId}`, payload);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['tracking-web', clientId] });
             resetCampaignForm();
-            Swal.fire({ title: 'Success', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+            Swal.fire({ title: webEntryMode === 'UPDATE' ? 'Updated Successfully' : 'Created Successfully', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
         }
     });
 
     const contentMutation = useMutation({
         mutationFn: async (data: any) => {
             const payload = { ...data, client_id: clientId };
+            const id = editingCampaignId;
             delete payload.id;
             delete payload.createdAt;
             delete payload.updatedAt;
+
+            if (contentEntryMode === 'UPDATE' && id) {
+                return await api.patch(`/client-portal/tracking/content/${id}?clientId=${clientId}`, payload);
+            }
             return await api.post(`/client-portal/tracking/content?clientId=${clientId}`, payload);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['tracking-content', clientId] });
             resetCampaignForm();
-            Swal.fire({ title: 'Success', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+            Swal.fire({ title: contentEntryMode === 'UPDATE' ? 'Updated Successfully' : 'Created Successfully', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
         }
     });
 
@@ -730,13 +807,11 @@ const ManageServicesView = () => {
                 setCampaignForm(updatedForm);
                 setCampaignSynced(true);
                 Swal.fire({ 
-                    title: 'Sync Complete', 
-                    text: `Captured ${updatedForm.results} results and ₹${updatedForm.spend} spend from lifetime metrics.`, 
+                    title: 'Updated successfully', 
+                    text: 'Latest metrics fetched from Meta. You can now save the campaign data.', 
                     icon: 'success', 
-                    toast: true, 
-                    position: 'top-end', 
-                    showConfirmButton: false, 
-                    timer: 3000 
+                    timer: 3000, 
+                    showConfirmButton: false 
                 });
             }
         } catch (err: any) {
@@ -766,14 +841,15 @@ const ManageServicesView = () => {
         setActiveTab('campaignData');
 
         let targetType = 'meta';
-        if (item.type === 'META') { targetType = 'meta'; setMetaEntryMode('UPDATE'); }
+        if (item.type === 'META') { targetType = 'meta'; setMetaEntryMode('UPDATE'); setIsAddingMetaCampaign(true); }
         if (item.type === 'GOOGLE') { targetType = 'google'; setGoogleEntryMode('UPDATE'); }
         if (item.type === 'SEO') { targetType = 'seo'; setSeoEntryMode('UPDATE'); }
         if (item.type === 'WEB') { targetType = 'web'; setWebEntryMode('UPDATE'); }
-        if (item.type === 'CONTENT') { targetType = 'content'; }
+        if (item.type === 'CONTENT') { targetType = 'content'; setContentEntryMode('UPDATE'); }
 
         setActiveServiceTab(targetType);
         setCampaignForm({ ...item.originalData });
+        setCampaignSynced(false); // Force re-sync when editing
     };
 
     // Auto-open a specific entry when `entry_id` is passed in the URL (from activity log deep-link)
@@ -1172,7 +1248,7 @@ const ManageServicesView = () => {
                                                 New Entry
                                             </button>
                                             <button
-                                                onClick={() => setMetaEntryMode('UPDATE')}
+                                                onClick={() => { setMetaEntryMode('UPDATE'); setCampaignSynced(false); }}
                                                 className={`flex-1 py-1.5 text-sm font-bold rounded-md transition-all ${metaEntryMode === 'UPDATE' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                                             >
                                                 Update Existing
@@ -1187,8 +1263,14 @@ const ManageServicesView = () => {
                                                     value={editingCampaignId || ''}
                                                     onChange={(e) => {
                                                         const item = aggregatedHistory.find(i => i.id === e.target.value);
-                                                        if (item) startEditCampaign(item);
-                                                        else { setEditingCampaignId(null); setCampaignForm({ date: new Date().toISOString(), status: 'ACTIVE' }); }
+                                                        if (item) {
+                                                            startEditCampaign(item);
+                                                        }
+                                                        else { 
+                                                            setEditingCampaignId(null); 
+                                                            setCampaignForm({ date: new Date().toISOString(), status: 'ACTIVE' }); 
+                                                            setIsAddingMetaCampaign(false);
+                                                        }
                                                     }}
                                                 >
                                                     <option value="">-- Select a Meta Campaign --</option>
@@ -1264,7 +1346,7 @@ const ManageServicesView = () => {
                                                             ) : campaignSynced ? (
                                                                 <><Check className="mr-2 h-5 w-5" /> Data Synced Successfully</>
                                                             ) : (
-                                                                <><Activity className="mr-2 h-5 w-5" /> Sync Campaign Data</>
+                                                                <><Activity className="mr-2 h-5 w-5" /> {metaEntryMode === 'UPDATE' ? 'Sync Updated Meta Data' : 'Sync Campaign Data'}</>
                                                             )}
                                                         </Button>
                                                     </div>
@@ -1319,9 +1401,18 @@ const ManageServicesView = () => {
 
                                                 <div className="flex justify-end pt-4 border-t border-gray-100">
                                                     <Button 
-                                                        disabled={!campaignSynced}
-                                                        onClick={saveMetaCampaign}
-                                                        className="bg-gray-900 hover:bg-black text-white px-8 py-6 rounded-xl font-black uppercase tracking-widest disabled:opacity-30 shadow-xl"
+                                                        onClick={() => {
+                                                            if (!campaignSynced) {
+                                                                Swal.fire({
+                                                                    title: 'Sync Required',
+                                                                    text: 'Please click \"Sync Updated Meta Data\" to fetch the latest metrics before saving.',
+                                                                    icon: 'warning'
+                                                                });
+                                                                return;
+                                                            }
+                                                            saveMetaCampaign();
+                                                        }}
+                                                        className={`px-8 py-6 rounded-xl font-black uppercase tracking-widest transition-all shadow-xl ${campaignSynced ? 'bg-gray-900 hover:bg-black text-white' : 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50'}`}
                                                     >
                                                         <Save size={18} className="mr-2" />
                                                         Save Campaign Data
@@ -1340,7 +1431,7 @@ const ManageServicesView = () => {
                                                 New Entry
                                             </button>
                                             <button
-                                                onClick={() => setGoogleEntryMode('UPDATE')}
+                                                onClick={() => { setGoogleEntryMode('UPDATE'); setCampaignSynced(false); }}
                                                 className={`flex-1 py-1.5 text-sm font-bold rounded-md transition-all ${googleEntryMode === 'UPDATE' ? 'bg-white text-red-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                                             >
                                                 Update Existing
@@ -1415,7 +1506,7 @@ const ManageServicesView = () => {
                                                 <label className="text-xs font-bold text-gray-500 mb-1 block">Gross Amount (₹)</label>
                                                 <div className={`flex h-10 w-full items-center rounded-md border px-3 py-2 text-sm font-semibold ${campaignForm._includeGst ? 'bg-orange-50 border-orange-300 text-orange-800' : 'bg-gray-50 border-gray-200 text-gray-700'
                                                     }`}>
-                                                    {campaignForm.spend ? `₹ ${parseFloat(campaignForm.spend).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '—'}
+                                                    {campaignForm.spend ? `₹ ${parseFloat(campaignForm.spend).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '-'}
                                                     {campaignForm._includeGst && campaignForm._rawAmount && (
                                                         <span className="ml-auto text-[10px] text-orange-500 font-normal">
                                                             +₹{(parseFloat(campaignForm._rawAmount) * 0.18).toFixed(2)} GST
@@ -1566,7 +1657,7 @@ const ManageServicesView = () => {
                                         {/* Hero assign button */}
                                         <div className="flex flex-col items-center justify-center py-6 gap-2">
                                             <button
-                                                onClick={() => { setEditingCreativeTask({ client_id: clientId, department: 'CREATIVE', category: 'CAMPAIGN' }); setIsCreativeTaskModalOpen(true); }}
+                                                onClick={() => { setEditingCreativeTask({ client_id: clientId, department: 'DIGITAL_MARKETING', campaign_type: 'META_ADS', category: 'CAMPAIGN', nature: 'NEW' }); setIsCreativeTaskModalOpen(true); }}
                                                 className="flex items-center gap-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold px-10 py-4 rounded-2xl shadow-xl shadow-purple-300/40 transition-all active:scale-95 text-lg"
                                             >
                                                 <PlusCircle size={24} /> Assign Task to Creative Team
@@ -1574,18 +1665,120 @@ const ManageServicesView = () => {
                                             <p className="text-xs text-gray-400 mt-1">Tasks assigned here will appear in the Creative Task Manager.</p>
                                         </div>
 
-                                        {/* Task history */}
-                                        <div>
+                                        {/* Task filtering and history */}
+                                        <div className="space-y-4">
+                                            <div className="flex flex-wrap items-center gap-4 bg-white p-4 rounded-xl border border-purple-50 shadow-sm">
+                                                <div className="flex items-center gap-2">
+                                                    <Filter size={16} className="text-purple-600" />
+                                                    <span className="text-sm font-bold text-gray-700">Filters:</span>
+                                                </div>
+
+                                                <div className="flex flex-wrap gap-3 flex-1">
+                                                    <div className="flex flex-col gap-1 min-w-[120px]">
+                                                        <label className="text-[10px] font-bold text-gray-400 uppercase">Month</label>
+                                                        <Input 
+                                                            type="month" 
+                                                            className="h-9 text-xs" 
+                                                            value={taskMonthFilter} 
+                                                            onChange={(e) => {
+                                                                setTaskMonthFilter(e.target.value);
+                                                                setTaskStartDateFilter('');
+                                                                setTaskEndDateFilter('');
+                                                            }} 
+                                                        />
+                                                    </div>
+
+                                                    <div className="flex flex-col gap-1 min-w-[140px]">
+                                                        <label className="text-[10px] font-bold text-gray-400 uppercase">Date Range</label>
+                                                        <div className="flex items-center gap-1">
+                                                            <Input type="date" className="h-9 text-[10px] px-2" value={taskStartDateFilter} onChange={(e) => { setTaskStartDateFilter(e.target.value); setTaskMonthFilter(''); }} />
+                                                            <span className="text-gray-300">-</span>
+                                                            <Input type="date" className="h-9 text-[10px] px-2" value={taskEndDateFilter} onChange={(e) => { setTaskEndDateFilter(e.target.value); setTaskMonthFilter(''); }} />
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex flex-col gap-1 min-w-[120px]">
+                                                        <label className="text-[10px] font-bold text-gray-400 uppercase">Status</label>
+                                                        <select
+                                                            className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm outline-none focus:ring-1 focus:ring-purple-500"
+                                                            value={taskStatusFilter}
+                                                            onChange={(e) => setTaskStatusFilter(e.target.value)}
+                                                        >
+                                                            <option value="">All Statuses</option>
+                                                            <option value="PLANNED">Planned</option>
+                                                            <option value="ASSIGNED">Assigned</option>
+                                                            <option value="IN_PROGRESS">In Progress</option>
+                                                            <option value="REVIEW">Review</option>
+                                                            <option value="REVISION_REQUESTED">Revision</option>
+                                                            <option value="COMPLETED">Completed</option>
+                                                            <option value="REWORK">Rework</option>
+                                                        </select>
+                                                    </div>
+
+                                                    <div className="flex flex-col gap-1 min-w-[120px]">
+                                                        <label className="text-[10px] font-bold text-gray-400 uppercase">Assigned To</label>
+                                                        <select
+                                                            className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm outline-none focus:ring-1 focus:ring-purple-500"
+                                                            value={taskStaffFilter}
+                                                            onChange={(e) => setTaskStaffFilter(e.target.value)}
+                                                        >
+                                                            <option value="">All Staff</option>
+                                                            {staff?.filter((u: any) => u.role !== 'CLIENT').map((u: any) => (
+                                                                <option key={u.id} value={u.id}>{u.full_name}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+
+                                                    <div className="flex flex-col gap-1 min-w-[120px]">
+                                                        <label className="text-[10px] font-bold text-gray-400 uppercase">Task Type</label>
+                                                        <select
+                                                            className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm outline-none focus:ring-1 focus:ring-purple-500"
+                                                            value={taskTypeFilter}
+                                                            onChange={(e) => setTaskTypeFilter(e.target.value)}
+                                                        >
+                                                            <option value="">All Types</option>
+                                                            <option value="GRAPHIC">Graphic</option>
+                                                            <option value="VIDEO">Video</option>
+                                                            <option value="COPY">Copy</option>
+                                                            <option value="STRATEGY">Strategy</option>
+                                                            <option value="DEV">Dev</option>
+                                                            <option value="CONTENT_SHOOTING">Shoot</option>
+                                                            <option value="OTHER">Other</option>
+                                                        </select>
+                                                    </div>
+
+                                                    <div className="flex flex-col justify-end">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-9 text-gray-400 hover:text-purple-600 px-2"
+                                                            onClick={() => {
+                                                                setTaskStatusFilter('');
+                                                                setTaskStaffFilter('');
+                                                                setTaskTypeFilter('');
+                                                                setTaskMonthFilter('');
+                                                                setTaskStartDateFilter('');
+                                                                setTaskEndDateFilter('');
+                                                            }}
+                                                        >
+                                                            <X size={14} className="mr-1" /> Clear
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
                                             <h4 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
                                                 <Palette size={16} className="text-purple-500" /> Task History
                                             </h4>
-                                            {creativeTasks && creativeTasks.length > 0 ? (
+
+                                            {filteredClientTasks && filteredClientTasks.length > 0 ? (
                                                 <div className="rounded-xl border border-purple-100 overflow-hidden shadow-sm">
                                                     <table className="w-full text-sm">
                                                         <thead className="bg-purple-50/70">
                                                             <tr>
-                                                                <th className="text-left font-bold text-purple-700 px-4 py-3 text-xs uppercase">Task</th>
+                                                                <th className="text-left font-bold text-purple-700 px-4 py-3 text-xs uppercase">Task Details</th>
                                                                 <th className="text-left font-bold text-purple-700 px-4 py-3 text-xs uppercase">Assigned To</th>
+                                                                <th className="text-left font-bold text-purple-700 px-4 py-3 text-xs uppercase">Meta / Dept</th>
                                                                 <th className="text-left font-bold text-purple-700 px-4 py-3 text-xs uppercase">Priority</th>
                                                                 <th className="text-left font-bold text-purple-700 px-4 py-3 text-xs uppercase">Status</th>
                                                                 <th className="text-left font-bold text-purple-700 px-4 py-3 text-xs uppercase">Due</th>
@@ -1593,7 +1786,7 @@ const ManageServicesView = () => {
                                                             </tr>
                                                         </thead>
                                                         <tbody className="divide-y divide-purple-50">
-                                                            {(creativeTasks as any[]).map((task: any) => {
+                                                            {(filteredClientTasks as any[]).map((task: any) => {
                                                                 const statusColor: Record<string, string> = {
                                                                     'PLANNED': 'bg-gray-100 text-gray-600',
                                                                     'IN_PROGRESS': 'bg-blue-100 text-blue-700',
@@ -1611,9 +1804,23 @@ const ManageServicesView = () => {
                                                                     <tr key={task.id} className="hover:bg-purple-50/40 transition-colors">
                                                                         <td className="px-4 py-3">
                                                                             <div className="font-semibold text-gray-900 truncate max-w-[200px]">{task.title}</div>
-                                                                            <div className="text-xs text-gray-400">{task.type}</div>
+                                                                            <div className="flex items-center gap-1.5 mt-0.5">
+                                                                                <Badge variant="outline" className="text-[9px] py-0 h-4 bg-gray-50 uppercase">{task.type}</Badge>
+                                                                                <Badge variant="outline" className={`text-[9px] py-0 h-4 uppercase ${task.category === 'INTERNAL' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'}`}>{task.category}</Badge>
+                                                                            </div>
                                                                         </td>
-                                                                        <td className="px-4 py-3 text-gray-600">{task.assignee?.full_name || 'ΓÇö'}</td>
+                                                                        <td className="px-4 py-3">
+                                                                            <div className="flex flex-col">
+                                                                                <span className="text-gray-600 font-medium">{task.assignee?.full_name || '-'}</span>
+                                                                                <span className="text-[10px] text-gray-400 capitalize">{task.assignee?.department?.toLowerCase() || ''}</span>
+                                                                            </div>
+                                                                        </td>
+                                                                        <td className="px-4 py-3">
+                                                                            <div className="flex flex-col">
+                                                                                <span className="text-[10px] font-bold text-indigo-600">{task.campaign_type === 'META_ADS' ? 'META' : task.campaign_type || '-'}</span>
+                                                                                <span className="text-[9px] text-gray-400 uppercase italic">{task.department?.replace('_', ' ')}</span>
+                                                                            </div>
+                                                                        </td>
                                                                         <td className={`px-4 py-3 font-semibold text-xs ${priorityColor[task.priority] || ''}`}>{task.priority}</td>
                                                                         <td className="px-4 py-3">
                                                                             <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${statusColor[task.status] || 'bg-gray-100 text-gray-600'}`}>
@@ -1621,7 +1828,7 @@ const ManageServicesView = () => {
                                                                             </span>
                                                                         </td>
                                                                         <td className="px-4 py-3 text-gray-500 text-xs">
-                                                                            {task.due_date ? format(new Date(task.due_date), 'dd MMM yyyy') : 'ΓÇö'}
+                                                                            {task.due_date ? format(new Date(task.due_date), 'dd MMM yyyy') : '-'}
                                                                         </td>
                                                                         <td className="px-4 py-3 text-right">
                                                                             <div className="inline-flex items-center gap-1">
@@ -1637,7 +1844,7 @@ const ManageServicesView = () => {
                                                                                         const result = await Swal.fire({ title: 'Delete Task?', text: 'This cannot be undone.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, delete', confirmButtonColor: '#dc2626' });
                                                                                         if (result.isConfirmed) {
                                                                                             await api.delete(`/tasks/${task.id}`);
-                                                                                            queryClient.invalidateQueries({ queryKey: ['creative-tasks-for-client', clientId] });
+                                                                                            queryClient.invalidateQueries({ queryKey: ['client-all-tasks', clientId] });
                                                                                             Swal.fire({ title: 'Deleted', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
                                                                                         }
                                                                                     }}
@@ -1686,7 +1893,7 @@ const ManageServicesView = () => {
                     onClose={() => {
                         setIsCreativeTaskModalOpen(false);
                         setEditingCreativeTask(null);
-                        queryClient.invalidateQueries({ queryKey: ['creative-tasks-for-client', clientId] });
+                        queryClient.invalidateQueries({ queryKey: ['client-all-tasks', clientId] });
                     }}
                     initialData={editingCreativeTask}
                 />

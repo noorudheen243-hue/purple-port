@@ -276,3 +276,16 @@ export const getTaskClearanceStats = async (req: Request, res: Response) => {
     }
 };
 
+export const generateContentTasks = async (req: Request, res: Response) => {
+    try {
+        if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
+        const { client_id } = req.body;
+        if (!client_id) return res.status(400).json({ message: "Client ID is required" });
+
+        const result = await taskService.generateContentTasks(client_id, req.user.id);
+        res.json(result);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+

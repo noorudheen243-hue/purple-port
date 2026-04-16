@@ -257,11 +257,6 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
         name: "ad_accounts"
     });
 
-    // Content Strategy Array
-    const { fields: contentStrategyFields, append: appendContentStrategy, remove: removeContentStrategy } = useFieldArray({
-        control,
-        name: "content_strategies"
-    });
 
     const { fields: locationFields, append: appendLocation, remove: removeLocation } = useFieldArray({
         control,
@@ -924,48 +919,6 @@ const ClientFormModal = ({ isOpen, onClose, clientToEdit, onSuccess }: ClientFor
                     {/* STRATEGY TAB */}
                     {currentStep === 'strategy' && (
                         <div className="animate-in fade-in space-y-6">
-                            {/* CONTENT STRATEGY SECTION */}
-                            <div>
-                                <h4 className="font-medium text-gray-900 mb-3 border-b pb-2">Content Strategy (Monthly Commitments)</h4>
-                                <div className="space-y-3">
-                                    {contentStrategyFields.map((field, index) => (
-                                        <div key={field.id} className="flex gap-3 items-center bg-gray-50 p-3 rounded-md border border-gray-100">
-                                            <div className="flex-1">
-                                                <label className="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Content Type</label>
-                                                <select {...register(`content_strategies.${index}.type`)} className="input text-sm py-1.5">
-                                                    <option value="Poster Design">Poster Design</option>
-                                                    <option value="Reel Video">Reel Video</option>
-                                                    <option value="Motion Graphic Video">Motion Graphic Video</option>
-                                                    <option value="AI Video">AI Video</option>
-                                                    <option value="Anchor Ads">Anchor Ads</option>
-                                                    <option value="Carousel">Carousel</option>
-                                                    <option value="Logo Design">Logo Design</option>
-                                                    <option value="Brochure Design">Brochure Design</option>
-                                                    <option value="Flyer Design">Flyer Design</option>
-                                                    <option value="Flex / Billboard Design">Flex / Billboard Design</option>
-                                                    <option value="Business Card">Business Card</option>
-                                                    <option value="Letter Head">Letter Head</option>
-                                                </select>
-                                            </div>
-                                            <div className="w-24">
-                                                <label className="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Quantity</label>
-                                                <input
-                                                    type="number"
-                                                    {...register(`content_strategies.${index}.quantity`, { valueAsNumber: true })}
-                                                    className="input text-sm py-1.5"
-                                                    min={0}
-                                                />
-                                            </div>
-                                            <button type="button" onClick={() => removeContentStrategy(index)} className="text-red-500 hover:text-red-700 p-2 mt-4 bg-white rounded border border-gray-200">
-                                                <Trash2 size={16} />
-                                            </button>
-                                        </div>
-                                    ))}
-                                    <button type="button" onClick={() => appendContentStrategy({ type: 'Poster Design', quantity: 0 })} className="text-sm bg-primary/10 text-primary px-3 py-1.5 rounded-md flex items-center gap-1 hover:bg-primary/20 transition-colors">
-                                        <Plus size={14} /> Add Content Type
-                                    </button>
-                                </div>
-                            </div>
 
                             <div className="pt-4 border-t">
                                 <div className="flex justify-between items-center mb-4">

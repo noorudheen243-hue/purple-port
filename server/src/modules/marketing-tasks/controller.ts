@@ -6,6 +6,7 @@ import { MetaAdsService } from './services/metaAdsService';
 import { GoogleAdsService } from './services/googleAdsService';
 import { MetaLeadsService } from './services/metaLeadsService';
 import { MarketingSyncWorker } from './sync/syncWorker';
+import { AiSalesEngineService } from '../ai_sales_engine/services/aiSalesEngine.service';
 
 const metaService = new MetaAdsService();
 const googleService = new GoogleAdsService();
@@ -41,7 +42,7 @@ export async function manualSync(req: Request, res: Response) {
 
 export async function syncCampaign(req: Request, res: Response) {
     try {
-        const { campaignId, daysBack, isPreview, externalAccountId, platform, clientId: bodyClientId } = req.body;
+        const { campaignId, daysBack, isPreview, externalAccountId, platform, clientId: bodyClientId, targetDate } = req.body;
         if (!campaignId) return res.status(400).json({ message: 'campaignId is required' });
 
         // Ensure we have a valid clientId
@@ -64,29 +65,34 @@ export async function syncCampaign(req: Request, res: Response) {
                 campaignMetadata = googleCampaigns.find(c => String(c.id) === String(campaignId));
             }
 
-            // Determine Start Date (Lifetime)
+            // Determine Start Date
             let startDate = new Date();
-            const rawStart = campaignMetadata?.start_time || campaignMetadata?.start_date || campaignMetadata?.startDate;
-            if (rawStart) {
-                startDate = new Date(rawStart);
+            let endDate: Date | null = null;
+            
+            if (targetDate) {
+                const target = new Date(targetDate);
+                startDate = new Date(target.getFullYear(), target.getMonth(), 1);
+                endDate = new Date(target.getFullYear(), target.getMonth() + 1, 0);
+                
+                // Ensure endDate doesn't exceed today to prevent querying future data on active months
+                if (endDate > new Date()) endDate = new Date();
             } else {
-                // Fallback to 2 years ago for true "Lifetime" if start unknown
-                startDate.setFullYear(today.getFullYear() - 2);
+                const rawStart = campaignMetadata?.start_time || campaignMetadata?.start_date || campaignMetadata?.startDate;
+                if (rawStart) {
+                    startDate = new Date(rawStart);
+                } else {
+                    startDate.setFullYear(today.getFullYear() - 2);
+                }
+                const rawEnd = campaignMetadata?.stop_time || campaignMetadata?.end_date || campaignMetadata?.endDate;
+                if (rawEnd) endDate = new Date(rawEnd);
             }
             startDate.setHours(0, 0, 0, 0);
-
-            // Determine End Date
-            let endDate = null;
-            const rawEnd = campaignMetadata?.stop_time || campaignMetadata?.end_date || campaignMetadata?.endDate;
-            if (rawEnd) {
-                endDate = new Date(rawEnd);
-            }
 
             console.log(`[SyncController] Syncing ${platform} Campaign: ${campaignId} (Client: ${clientId}) from ${startDate.toISOString()}`);
             
             let externalMetrics: any[] = [];
             if (platform === 'meta') {
-                externalMetrics = await metaService.fetchMetrics(campaignId, externalAccountId, startDate, today);
+                externalMetrics = await metaService.fetchLifetimeMetrics(campaignId, externalAccountId, startDate, endDate || new Date());
             } else if (platform === 'google') {
                 externalMetrics = await googleService.fetchMetrics(campaignId, externalAccountId, startDate, today);
             }
@@ -102,10 +108,11 @@ export async function syncCampaign(req: Request, res: Response) {
                 acc.messaging_conversations += parseInt(curr.messaging_conversations || 0);
                 acc.new_messaging_contacts += parseInt(curr.new_messaging_contacts || 0);
                 acc.purchases += parseInt(curr.purchases || 0);
+                if (curr.results_type && acc.results_type === 'Results') acc.results_type = curr.results_type;
                 return acc;
             }, {
                 spend: 0, results: 0, impressions: 0, reach: 0,
-                messaging_conversations: 0, new_messaging_contacts: 0, purchases: 0
+                messaging_conversations: 0, new_messaging_contacts: 0, purchases: 0, results_type: 'Results'
             });
 
             // Ensure the campaign is registered in our system for tracking
@@ -380,19 +387,26 @@ export async function authMeta(req: Request, res: Response) {
 
     const appId = settingsMap['META_APP_ID'] || process.env.META_APP_ID;
     
-    // Dynamically match the request's exact host (e.g. www vs non-www) to satisfy Meta's strict domain matching
-    const reqHost = req.get('host');
+    // ULTIMATE FIX: Force HTTPS and use hardcoded production domain if present
+    // Fallback to dynamic host for local development only
     const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
-    const baseUrl = `${protocol}://${reqHost}`;
+    const reqHost = req.get('host');
+    const baseUrl = process.env.PRODUCTION_API_URL || `${protocol}://${reqHost}`;
     
-    const redirectUri = `${baseUrl}/api/marketing/auth/meta/callback`;
-
+    // Ensure baseUrl doesn't have trailing slash for consistency
+    const cleanBaseUrl = baseUrl.replace(/\/$/, '');
+    const redirectUri = `${cleanBaseUrl}/api/marketing/auth/meta/callback`;
+    
+    console.log(`[MetaAuth] Initiating OAuth for App ID: ${appId} (Redirect: ${redirectUri})`);
+    
     if (!appId) {
         return res.status(400).send('Meta App ID is not configured. Please set it in Settings first.');
     }
 
     // Redirect to Facebook Dialog with reauthenticate to allow switching accounts easily
     const authUrl = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&state=${state}&scope=ads_management,ads_read,business_management,leads_retrieval,pages_manage_ads,pages_read_engagement&auth_type=reauthenticate`;
+    
+    console.log(`[MetaAuth] Initiating OAuth for App ID: ${appId} (Redirect: ${redirectUri})`);
     res.redirect(authUrl);
 }
 
@@ -414,11 +428,12 @@ export async function metaCallback(req: Request, res: Response) {
         }
         userId = adminUser.id;
     }
+    let settingsMap: any = {};
     try {
         const settings = await (prisma as any).systemSetting.findMany({
             where: { key: { in: ['META_APP_ID', 'META_APP_SECRET'] } }
         });
-        const settingsMap = settings.reduce((acc: any, curr: any) => {
+        settingsMap = settings.reduce((acc: any, curr: any) => {
             acc[curr.key] = curr.value;
             return acc;
         }, {});
@@ -426,11 +441,15 @@ export async function metaCallback(req: Request, res: Response) {
         const appId = settingsMap['META_APP_ID'] || process.env.META_APP_ID;
         const appSecret = settingsMap['META_APP_SECRET'] || process.env.META_APP_SECRET;
         
-        // Dynamically match the request's exact host to satisfy Meta's strict redirect_uri matching during token exchange
-        const reqHost = req.get('host');
+        // ULTIMATE FIX: Force HTTPS and use hardcoded production domain for callback exchange
         const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
-        const baseUrl = `${protocol}://${reqHost}`;
-        const redirectUri = `${baseUrl}/api/marketing/auth/meta/callback`;
+        const reqHost = req.get('host');
+        const baseUrl = process.env.PRODUCTION_API_URL || `${protocol}://${reqHost}`;
+        
+        const cleanBaseUrl = baseUrl.replace(/\/$/, '');
+        const redirectUri = `${cleanBaseUrl}/api/marketing/auth/meta/callback`;
+        
+        console.log(`[MetaCallback] Exchanging token for App ID: ${appId} (Redirect: ${redirectUri})`);
 
         // Exchange code for short-lived token
         const tokenRes = await axios.get(`https://graph.facebook.com/v21.0/oauth/access_token`, {
@@ -521,7 +540,18 @@ export async function metaCallback(req: Request, res: Response) {
         res.redirect(`${baseUrl}/dashboard/marketing-integrations?success=meta`);
     } catch (e: any) {
         console.error('Meta OAuth Error:', e.response?.data || e.message);
-        res.status(500).send('Callback Failed: ' + (e.response?.data?.error?.message || e.message));
+        const fbError = e.response?.data?.error;
+        let userMessage = e.message;
+        
+        if (fbError) {
+          if (fbError.message?.includes('updating additional details')) {
+              userMessage = `Meta requires your app to complete a "Data Use Checkup" or "App Review" update. Please visit developers.facebook.com for App ID: ${settingsMap['META_APP_ID'] || process.env.META_APP_ID}`;
+          } else {
+              userMessage = fbError.message;
+          }
+        }
+        
+        res.status(500).send('Callback Failed: ' + userMessage);
     }
 }
 
@@ -893,7 +923,8 @@ export async function getLeads(req: Request, res: Response) {
             orderBy: { date: 'desc' },
             include: {
                 marketingCampaign: { select: { name: true } },
-                follow_ups: { orderBy: { date: 'desc' } }
+                follow_ups: { orderBy: { date: 'desc' } },
+                aiScore: true
             }
         });
         res.json(leads);
@@ -923,6 +954,10 @@ export async function createLead(req: Request, res: Response) {
                 date: new Date()
             }
         });
+
+        // Trigger AI Scoring asynchronously
+        AiSalesEngineService.calculateLeadScore(lead.id).catch(err => console.error('AI Lead Scoring Error:', err));
+
         res.json(lead);
     } catch (e: any) {
         console.error('createLead error:', e.message);
@@ -942,6 +977,10 @@ export async function updateLead(req: Request, res: Response) {
                 updatedAt: new Date()
             }
         });
+
+        // Trigger AI Scoring asynchronously
+        AiSalesEngineService.calculateLeadScore(lead.id).catch(err => console.error('AI Lead Scoring Error:', err));
+
         res.json(lead);
     } catch (e: any) {
         console.error('updateLead error:', e.message);
@@ -987,6 +1026,9 @@ export async function addFollowUp(req: Request, res: Response) {
                 data: { status, updatedAt: new Date() }
             });
         }
+
+        // Trigger AI Scoring asynchronously after followup
+        AiSalesEngineService.calculateLeadScore(leadId).catch(err => console.error('AI Lead Scoring Error:', err));
 
         res.json(followUp);
     } catch (e: any) {

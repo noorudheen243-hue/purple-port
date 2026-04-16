@@ -1,24 +1,12 @@
 const { Client } = require('ssh2');
-const conn = new Client();
-const serverIp = '66.116.224.221';
-const username = 'root';
-const password = 'EzdanAdam@243';
 
+const conn = new Client();
 conn.on('ready', () => {
-    console.log('Client :: ready');
-    conn.exec('pm2 logs qix-ads-v2.6 --lines 50', (err, stream) => {
+    const cmd = `pm2 status && echo "---LOGS---" && pm2 logs qix-ads-v2.7 --lines 40 --nostream 2>&1 && echo "---ENV---" && ls /var/www/purple-port/server/ && cat /var/www/purple-port/server/.env | grep -v PASSWORD | grep -v SECRET | head -20`;
+    conn.exec(cmd, (err, stream) => {
         if (err) throw err;
-        stream.on('close', (code, signal) => {
-            conn.end();
-        }).on('data', (data) => {
-            process.stdout.write(data.toString());
-        }).stderr.on('data', (data) => {
-            process.stderr.write(data.toString());
-        });
+        stream.on('close', (code) => { console.log('Code:', code); conn.end(); })
+            .on('data', d => process.stdout.write(d))
+            .stderr.on('data', d => process.stderr.write('ERR: ' + d));
     });
-}).connect({
-    host: serverIp,
-    port: 22,
-    username: username,
-    password: password
-});
+}).connect({ host: '66.116.224.221', port: 22, username: 'root', password: 'EzdanAdam@243' });

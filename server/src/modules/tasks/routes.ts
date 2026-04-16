@@ -1,5 +1,5 @@
 import express from 'express';
-import { getTasks, createTask, getTask, updateTask, deleteTask, getStats, startTaskTimer, stopTaskTimer, resetData, clearActiveTasks, clearAllTasks, getTaskClearanceStats } from './controller';
+import { getTasks, createTask, getTask, updateTask, deleteTask, getStats, startTaskTimer, stopTaskTimer, resetData, clearActiveTasks, clearAllTasks, getTaskClearanceStats, generateContentTasks } from './controller';
 import { debugTasks } from './debug.controller';
 import { protect, authorize } from '../auth/middleware';
 import { ROLES } from '../auth/roles';
@@ -20,6 +20,9 @@ router.delete('/clear-active', authorize(ROLES.DEVELOPER_ADMIN), clearActiveTask
 // Bulk operations
 router.get('/bulk/stats', authorize(ROLES.DEVELOPER_ADMIN), getTaskClearanceStats); // Get deletion stats
 router.post('/bulk/clear-all', authorize(ROLES.DEVELOPER_ADMIN), clearAllTasks); // Clear all tasks
+
+// Auto Generate Tasks based on content strategy
+router.post('/generate-content-tasks', authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DM_EXECUTIVE, ROLES.OPERATIONS_EXECUTIVE), generateContentTasks);
 
 // Timer routes
 router.post('/:id/timer/start', startTaskTimer);

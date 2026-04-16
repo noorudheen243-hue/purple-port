@@ -14,7 +14,7 @@ import FormErrorAlert from '../../components/ui/FormErrorAlert';
 const schema = z.object({
     title: z.string().min(3, "Title is required"),
     description: z.string().optional(),
-    type: z.enum(['GRAPHIC', 'VIDEO', 'COPY', 'STRATEGY', 'DEV', 'CONTENT_SHOOTING']),
+    type: z.enum(['GRAPHIC', 'VIDEO', 'COPY', 'STRATEGY', 'DEV', 'CONTENT_SHOOTING', 'OTHER']),
     priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']),
     category: z.enum(['CAMPAIGN', 'INTERNAL']),
     nature: z.enum(['NEW', 'REWORK']),
@@ -51,6 +51,7 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
     const { data: campaigns } = useQuery({ queryKey: ['campaigns'], queryFn: () => api.get('/campaigns').then(res => res.data) });
     const { data: clients, refetch: refetchClients } = useQuery({ queryKey: ['clients'], queryFn: () => api.get('/clients').then(res => res.data) });
     const { data: staff } = useQuery({ queryKey: ['users'], queryFn: () => api.get('/users').then(res => res.data) });
+    const { data: globalContentTypes } = useQuery({ queryKey: ['content-types'], queryFn: () => api.get('/content-types').then(res => res.data) });
 
     const { register, handleSubmit, watch, setValue, formState: { errors, isValid }, reset } = useForm<TaskFormData>({
         resolver: zodResolver(schema),
@@ -61,8 +62,8 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
             category: 'CAMPAIGN',
             nature: 'NEW',
             description: '',
-            department: 'CREATIVE',
-            campaign_type: ''
+            department: 'DIGITAL_MARKETING',
+            campaign_type: 'META_ADS'
         }
     });
 
@@ -72,7 +73,7 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
             reset({
                 title: initialData.title,
                 description: initialData.description || '',
-                type: initialData.type,
+                type: initialData.type || 'GRAPHIC',
                 priority: initialData.priority,
                 category: initialData.category,
                 nature: initialData.nature,
@@ -80,8 +81,8 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                 assignee_id: initialData.assignee_id,
                 due_date: initialData.due_date ? new Date(initialData.due_date).toISOString().split('T')[0] : '',
                 content_type: initialData.content_type || '',
-                department: initialData.department || 'CREATIVE',
-                campaign_type: initialData.campaign_type || ''
+                department: initialData.department || 'DIGITAL_MARKETING',
+                campaign_type: initialData.campaign_type || 'META_ADS'
             });
             if (initialData.client_id) setValue('client_id', initialData.client_id);
             // Note: Attachments editing in Create Modal not supported yet, rely on Task Detail
@@ -92,8 +93,8 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                 category: 'CAMPAIGN',
                 nature: 'NEW',
                 description: '',
-                department: 'CREATIVE',
-                campaign_type: ''
+                department: 'DIGITAL_MARKETING',
+                campaign_type: 'META_ADS'
             });
             setFiles([]);
             setLinks([]);
@@ -115,7 +116,7 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
         queryFn: async () => {
             if (!selectedClientId) return [];
             const { data } = await api.get(`/client-portal/tracking/meta-ads/campaigns?clientId=${selectedClientId}`);
-            return data;
+            return data.campaigns || [];
         },
         enabled: !!selectedClientId && watch('campaign_type') === 'META_ADS',
     });
@@ -283,17 +284,17 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                                 <div className="flex gap-2">
                                     <button
                                         type="button"
-                                        onClick={() => setValue('department', 'CREATIVE')}
-                                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg border transition-all ${departmentStr === 'CREATIVE' ? 'bg-purple-50 border-purple-500 text-purple-700 ring-1 ring-purple-500' : 'bg-background border-border text-muted-foreground hover:bg-muted/50'}`}
-                                    >
-                                        Creative / Design
-                                    </button>
-                                    <button
-                                        type="button"
                                         onClick={() => setValue('department', 'DIGITAL_MARKETING')}
                                         className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg border transition-all ${departmentStr === 'DIGITAL_MARKETING' ? 'bg-indigo-50 border-indigo-500 text-indigo-700 ring-1 ring-indigo-500' : 'bg-background border-border text-muted-foreground hover:bg-muted/50'}`}
                                     >
                                         Digital Marketing
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setValue('department', 'CREATIVE')}
+                                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg border transition-all ${departmentStr === 'CREATIVE' ? 'bg-purple-50 border-purple-500 text-purple-700 ring-1 ring-purple-500' : 'bg-background border-border text-muted-foreground hover:bg-muted/50'}`}
+                                    >
+                                        Creative / Design
                                     </button>
                                 </div>
                                 <input type="hidden" {...register('department')} />
@@ -320,7 +321,7 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                                             className="w-full px-4 py-2.5 border border-input rounded-lg bg-background text-foreground focus:ring-2 focus:ring-indigo-200 outline-none"
                                         >
                                             <option value="">-- Optional: Specific Campaign Type --</option>
-                                            <option value="META_ADS">Meta Ads</option>
+                                            <option value="META_ADS">Meta</option>
                                             <option value="GOOGLE_ADS">Google Ads</option>
                                             <option value="SEO">SEO</option>
                                             <option value="CONTENT_PLANNING">Content Planning</option>
@@ -328,38 +329,7 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                                         </select>
                                     </div>
 
-                                    {watch('campaign_type') === 'META_ADS' && selectedClientId && (
-                                        <div className="space-y-2 pt-2 border-t">
-                                            <label className="text-sm font-semibold text-foreground">Link Meta Campaign</label>
-                                            <select
-                                                {...register('marketing_campaign_id')}
-                                                className="w-full px-4 py-2.5 border border-input rounded-lg bg-background text-foreground focus:ring-2 focus:ring-indigo-200 outline-none"
-                                            >
-                                                <option value="">-- Select Synced Campaign --</option>
-                                                {integratedMetaCampaigns?.map((c: any) => (
-                                                    <option key={c.id} value={c.id}>{c.name} ({c.status})</option>
-                                                ))}
-                                            </select>
-                                            {isLoadingMeta && <p className="text-xs text-muted-foreground">Loading campaigns...</p>}
-                                            {integratedMetaCampaigns?.length === 0 && !isLoadingMeta && (
-                                                <p className="text-xs text-orange-500">No active Meta campaigns synced for this client.</p>
-                                            )}
 
-                                            {selectedMetaObj && (
-                                                <div className="mt-3 p-3 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-900 shadow-inner">
-                                                    <div className="font-semibold mb-1 truncate">{selectedMetaObj.name}</div>
-                                                    {latestMetaMetric ? (
-                                                        <div className="grid grid-cols-2 gap-2 text-xs">
-                                                            <div>Spend: <span className="font-bold">₹{latestMetaMetric.spend}</span></div>
-                                                            <div>Results: <span className="font-bold">{latestMetaMetric.results}</span></div>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="text-xs text-muted-foreground">No recent metrics.</div>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
                                 </div>
                             )}
                         </div>
@@ -486,18 +456,22 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                             </div>
                         )}
 
+                        {/* Hidden type input to satisfy Zod schema */}
+                        <input type="hidden" {...register('type')} />
+
                         <div className="grid grid-cols-2 gap-5">
-                            <div className="space-y-1">
-                                <label className="text-sm font-medium text-foreground">Task Type</label>
-                                <select {...register('type')} className="w-full px-4 py-2.5 border border-input rounded-lg bg-background text-foreground focus:ring-2 focus:ring-purple-200 outline-none">
-                                    <option value="GRAPHIC">Graphic Design</option>
-                                    <option value="VIDEO">Video Editing</option>
-                                    <option value="COPY">Copywriting</option>
-                                    <option value="STRATEGY">Strategy</option>
-                                    <option value="DEV">Development</option>
-                                    <option value="CONTENT_SHOOTING">Content Shooting</option>
-                                </select>
-                            </div>
+                            {category === 'INTERNAL' && (
+                                <div className="space-y-1 animate-in fade-in slide-in-from-top-1">
+                                    <label className="text-sm font-medium text-foreground">Task Type <span className="text-red-500">*</span></label>
+                                    <select {...register('content_type')} className="w-full px-4 py-2.5 border border-input rounded-lg bg-background text-foreground focus:ring-2 focus:ring-purple-200 outline-none">
+                                        <option value="">-- Select Task Type --</option>
+                                        {globalContentTypes?.map((ct: any) => (
+                                            <option key={ct.id} value={ct.id}>{ct.name}</option>
+                                        ))}
+                                        <option value="General">General / Other</option>
+                                    </select>
+                                </div>
+                            )}
                             <div className="space-y-1">
                                 <label className="text-sm font-medium text-foreground">Priority</label>
                                 <select {...register('priority')} className="w-full px-4 py-2.5 border border-input rounded-lg bg-background text-foreground focus:ring-2 focus:ring-purple-200 outline-none">
@@ -508,31 +482,6 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                                 </select>
                             </div>
                         </div>
-
-                        {/* Sub-type selection for VIDEO or GRAPHIC */}
-                        {(watch('type') === 'VIDEO' || watch('type') === 'GRAPHIC') && (
-                            <div className="space-y-1 animate-in fade-in slide-in-from-top-2">
-                                <label className="text-sm font-medium text-foreground">
-                                    {watch('type') === 'VIDEO' ? 'Video Sub-Type' : 'Graphic Sub-Type'} <span className="text-red-500">*</span>
-                                </label>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                                    {(watch('type') === 'VIDEO' 
-                                        ? ["Reel Edit", "Motion Graphic", "AI Video Making", "Edu projects"] 
-                                        : ["Poster Design", "Branding- Printable Assets", "Branding - Logo", "Brochure Design", "Web Images"]
-                                    ).map((subType) => (
-                                        <button
-                                            key={subType}
-                                            type="button"
-                                            onClick={() => setValue('content_type', subType)}
-                                            className={`px-3 py-2 text-xs font-medium rounded-lg border transition-all ${watch('content_type') === subType ? 'bg-purple-600 border-purple-600 text-white shadow-md' : 'bg-background border-border text-muted-foreground hover:border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/10'}`}
-                                        >
-                                            {subType}
-                                        </button>
-                                    ))}
-                                </div>
-                                <input type="hidden" {...register('content_type')} />
-                            </div>
-                        )}
 
                         {/* Client & Campaign Section */}
                         <div className="p-4 bg-muted/30 rounded-xl border border-border space-y-4">
@@ -572,7 +521,7 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                             </div>
 
                             {/* Content Strategy (Visual Selection of Pending Commitments) */}
-                            {selectedClientId && (
+                            {(selectedClientId && category === 'CAMPAIGN') && (
                                 <div className="space-y-1 animate-in fade-in slide-in-from-top-1">
                                     <label className="text-sm font-medium text-foreground">Content Type (Strategy) <span className="text-red-500">*</span></label>
                                     <div className="relative">
@@ -582,11 +531,22 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                                             className={`w-full pl-10 pr-4 py-2.5 border rounded-lg appearance-none bg-background text-foreground focus:ring-2 focus:ring-purple-200 outline-none border-input`}
                                         >
                                             <option value="">-- Select Content Type --</option>
-                                            {clients?.find((c: any) => c.id === selectedClientId)?.content_strategies?.map((strategy: any) => (
-                                                <option key={strategy.type} value={strategy.type}>
-                                                    {strategy.type} (Qty: {strategy.quantity})
-                                                </option>
-                                            ))}
+                                            {clients?.find((c: any) => c.id === selectedClientId)?.content_strategies?.map((strategy: any) => {
+                                                // Support both old and new schema structure
+                                                const typeId = strategy.content_type_id;
+                                                const matchingType = globalContentTypes?.find((ct: any) => ct.id === typeId);
+                                                const typeName = matchingType ? matchingType.name : strategy.type;
+                                                const valueToSave = typeId || strategy.type;
+                                                const target = strategy.monthly_target !== undefined ? strategy.monthly_target : strategy.quantity;
+
+                                                if (!typeName) return null;
+
+                                                return (
+                                                    <option key={valueToSave} value={valueToSave}>
+                                                        {typeName} (Target: {target})
+                                                    </option>
+                                                );
+                                            })}
                                             <option value="General">General / Other</option>
                                         </select>
                                     </div>
@@ -606,7 +566,7 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                                         className={`w-full pl-10 pr-4 py-2.5 border rounded-lg appearance-none bg-background text-foreground focus:ring-2 focus:ring-purple-200 outline-none ${errors.assignee_id ? 'border-red-300' : 'border-input'}`}
                                     >
                                         <option value="">-- Select Staff --</option>
-                                        {staff?.filter((u: any) => u.role !== 'CLIENT' && !['9c2c3b09-1a4d-4e9f-a00a-fdcae89806a1', '0f602110-d76e-4f21-8bcf-c71959dd4015'].includes(u.id)).map((u: any) => (
+                                        {staff?.filter((u: any) => u.role !== 'CLIENT' && u.department === 'CREATIVE' && !['9c2c3b09-1a4d-4e9f-a00a-fdcae89806a1', '0f602110-d76e-4f21-8bcf-c71959dd4015'].includes(u.id)).map((u: any) => (
                                             <option key={u.id} value={u.id}>{u.full_name} ({u.department || 'General'})</option>
                                         ))}
                                     </select>
@@ -636,7 +596,7 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                                 disabled={mutation.isPending}
                                 className="px-6 py-2.5 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2 shadow-sm transition-all hover:shadow-md"
                             >
-                                {mutation.isPending ? (initialData ? 'Saving...' : 'Creating...') : (initialData ? 'Save Changes' : 'Create Task')}
+                                {mutation.isPending ? (initialData ? 'Saving...' : 'Creating...') : (initialData ? 'Save' : 'Create Task')}
                             </button>
                         </div>
                     </form>

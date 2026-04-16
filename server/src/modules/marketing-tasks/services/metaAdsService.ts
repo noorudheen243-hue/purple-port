@@ -112,9 +112,6 @@ export class MetaAdsService {
         return id.startsWith('act_') ? id : `act_${id}`;
     }
 
-    /**
-     * Helper to map raw Meta insights actions to normalized metrics.
-     */
     private mapMetaInsights(rawData: any[]): any[] {
         return rawData.map((day: any) => {
             let totalResults = 0;
@@ -123,11 +120,27 @@ export class MetaAdsService {
             let maxMessages = 0;
             let maxLeads = 0;
             let maxPurchases = 0;
-            
-            // Results Cost calculation: If cost_per_result isn't explicitly provided, use spend / totalResults
+            let maxLinkClicks = 0;
+            let maxEngagements = 0;
+
+            let primaryResultType = '';
+
+            // Meta usually declares the Primary Action explicitly in cost_per_result
+            if (day.cost_per_result && Array.isArray(day.cost_per_result) && day.cost_per_result.length > 0) {
+                primaryResultType = day.cost_per_result[0].action_type;
+            }
+
             let resultsCost = parseFloat(day.cost_per_result?.[0]?.value || '0');
 
             if (day.actions && Array.isArray(day.actions)) {
+                // If we know the primary result type, fetch it accurately
+                if (primaryResultType) {
+                    const primaryAction = day.actions.find((a: any) => a.action_type === primaryResultType);
+                    if (primaryAction) {
+                        totalResults = parseInt(primaryAction.value || '0', 10);
+                    }
+                }
+
                 for (const action of day.actions) {
                     const val = parseInt(action.value || '0', 10);
                     const type = action.action_type;
@@ -137,13 +150,34 @@ export class MetaAdsService {
                         maxMessages = Math.max(maxMessages, val);
                     }
                     if (type.includes('purchase')) maxPurchases = Math.max(maxPurchases, val);
+                    if (type === 'link_click') maxLinkClicks = Math.max(maxLinkClicks, val);
+                    if (type.includes('engagement') || type === 'post_engagement') maxEngagements = Math.max(maxEngagements, val);
                 }
 
-                totalResults = maxLeads + maxMessages + maxPurchases;
-                totalConversions = totalResults;
+                // If Meta didn't give us a primary result, we use our own heuristic priority
+                if (!primaryResultType && totalResults === 0) {
+                    totalResults = maxPurchases || maxLeads || maxMessages || maxLinkClicks || maxEngagements || 0;
+                    
+                    if (maxPurchases) primaryResultType = 'purchase';
+                    else if (maxLeads) primaryResultType = 'lead';
+                    else if (maxMessages) primaryResultType = 'messaging_conversation_started';
+                    else if (maxLinkClicks) primaryResultType = 'link_click';
+                    else if (maxEngagements) primaryResultType = 'engagement';
+                }
+
+                totalConversions = maxLeads + maxMessages + maxPurchases;
             }
             
-            // Extract purchase cost specifically if it exists in cost_per_action_type
+            let parsedType = 'Results';
+            if (primaryResultType.includes('purchase')) parsedType = 'Purchases';
+            else if (primaryResultType.includes('lead')) parsedType = 'Leads';
+            else if (primaryResultType.includes('message') || primaryResultType.includes('messaging')) parsedType = 'Messaging Conversations';
+            else if (primaryResultType.includes('link_click')) parsedType = 'Link Clicks';
+            else if (primaryResultType.includes('engagement')) parsedType = 'Engagements';
+            else if (primaryResultType.includes('thruplay')) parsedType = 'ThruPlays';
+            else if (primaryResultType.includes('video_view')) parsedType = 'Video Views';
+            else if (primaryResultType) parsedType = primaryResultType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+
             let purchaseCost = 0;
             if (day.cost_per_action_type && Array.isArray(day.cost_per_action_type)) {
                 const purchaseAction = day.cost_per_action_type.find((a: any) => a.action_type.includes('purchase'));
@@ -157,11 +191,12 @@ export class MetaAdsService {
             return {
                 ...day,
                 results: totalResults,
+                results_type: parsedType,
                 results_cost: resultsCost,
                 conversions: totalConversions,
                 conversations: maxMessages,
                 messaging_conversations: maxMessages,
-                new_messaging_contacts: maxMessages, // Meta often equates these for simple reporting
+                new_messaging_contacts: maxMessages,
                 purchases: maxPurchases,
                 cost_per_purchase: purchaseCost
             };
@@ -249,6 +284,48 @@ export class MetaAdsService {
             return this.mapMetaInsights(rawData);
         } catch (error: any) {
             console.error(`Meta API fetchMetrics error for campaign ${campaignId}:`, error.response?.data || error.message);
+            return [];
+        }
+    }
+
+    /**
+     * Fetch true EXACT lifetime metrics from the campaign creation to today without daily chunking precision loss
+     */
+    async fetchLifetimeMetrics(campaignId: string, accountId: string, startDate?: Date, endDate?: Date): Promise<any[]> {
+        const token = await this.getValidToken(accountId);
+        if (token.startsWith('mock')) {
+             return this.mapMetaInsights([
+                {
+                    spend: '180.91',
+                    impressions: 1604,
+                    reach: 1539,
+                    actions: [{ action_type: 'link_click', value: '61' }],
+                    cost_per_result: [{ action_type: 'link_click', value: '2.96' }]
+                }
+             ]);
+        }
+        
+        try {
+            const params: any = {
+                access_token: token,
+                fields: 'impressions,reach,clicks,spend,actions,cpc,cpm,ctr,cost_per_result,cost_per_action_type'
+            };
+
+            if (startDate) {
+                const today = new Date();
+                params.time_range = JSON.stringify({
+                    since: format(startDate, 'yyyy-MM-dd'),
+                    until: format(endDate || today, 'yyyy-MM-dd')
+                });
+            } else {
+                params.date_preset = 'maximum';
+            }
+
+            const rawData = await this.fetchAll(`${META_GRAPH_URL}/${campaignId}/insights`, params);
+
+            return this.mapMetaInsights(rawData);
+        } catch (error: any) {
+            console.error(`Meta API fetchLifetimeMetrics error for campaign ${campaignId}:`, error.response?.data || error.message);
             return [];
         }
     }

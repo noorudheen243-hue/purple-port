@@ -17,6 +17,9 @@ Compress-Archive -Path "$localDist\*" -DestinationPath $localZip
 Write-Host "Creating SSH session..."
 $session = New-SSHSession -ComputerName $SERVER_IP -Credential $Cred -AcceptKey -Force
 
+Write-Host "Cleaning up old remote zip..."
+Invoke-SSHCommand -SSHSession $session -Command "rm -f $remoteZip"
+
 Write-Host "Uploading $localZip to $remoteZip..."
 $sftpSession = New-SFTPSession -ComputerName $SERVER_IP -Credential $Cred -AcceptKey -Force
 Set-SFTPItem -SFTPSession $sftpSession -Path $localZip -Destination "/tmp/"

@@ -118,6 +118,7 @@ const CreativeTaskManager = () => {
             <NewTaskModal
                 isOpen={isTaskModalOpen}
                 onClose={() => setIsTaskModalOpen(false)}
+                initialData={{ category: 'CAMPAIGN', nature: 'NEW', department: 'DIGITAL_MARKETING', campaign_type: 'META_ADS' }}
             />
         </div >
     );

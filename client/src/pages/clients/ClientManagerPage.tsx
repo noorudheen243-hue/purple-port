@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { Users, PlusCircle, BarChart3, Shield, User } from 'lucide-react';
 import ClientList from './ClientList';
-import ClientContentStatus from './ClientContentStatus';
 import ClientCredentialsPage from './ClientCredentialsPage';
 import { useAuthStore } from '../../store/authStore';
 import { ROLES } from '../../utils/roles';
 
 const ClientManagerPage = () => {
-    const [activeTab, setActiveTab] = useState<'LIST' | 'NEW' | 'STATUS' | 'ACCESS'>('LIST');
+    const [activeTab, setActiveTab] = useState<'LIST' | 'NEW' | 'ACCESS'>('LIST');
     const { user } = useAuthStore();
 
     const canManageAccess = user?.role === ROLES.ADMIN || user?.role === ROLES.DEVELOPER_ADMIN || user?.role === ROLES.MANAGER;
@@ -19,8 +18,7 @@ const ClientManagerPage = () => {
             case 'NEW':
                 // Renders ClientList but triggers the modal immediately via prop
                 return <ClientList defaultOpenCreate={true} />;
-            case 'STATUS':
-                return <ClientContentStatus />;
+
             case 'ACCESS':
                 if (!canManageAccess) return <div className="p-4 text-red-500">Access Restricted</div>;
                 return <ClientCredentialsPage />;
@@ -61,18 +59,6 @@ const ClientManagerPage = () => {
                         >
                             <PlusCircle className="w-4 h-4" />
                             Add New Clients
-                        </button>
-
-                        {/* 3. Client Content Status (Yellow) */}
-                        <button
-                            onClick={() => setActiveTab('STATUS')}
-                            className={`px-4 py-2 text-sm font-bold rounded-md transition-all border flex items-center gap-2 ${activeTab === 'STATUS'
-                                ? 'bg-yellow-400 text-black border-yellow-500 shadow-md'
-                                : 'bg-white text-gray-600 border-gray-200 hover:bg-yellow-50 hover:text-yellow-700 hover:border-yellow-200'
-                                }`}
-                        >
-                            <BarChart3 className="w-4 h-4" />
-                            Client Content Status
                         </button>
 
                         {/* 4. Client Access (Purple) - Only for Admins & Managers */}

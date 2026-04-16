@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TrendingUp, Zap } from 'lucide-react';
+import { TrendingUp, Zap, FileText } from 'lucide-react';
 
 const TaskManagerPage = () => {
     const navigate = useNavigate();
@@ -36,6 +36,19 @@ const TaskManagerPage = () => {
                     <div className="text-center">
                         <h3 className="text-2xl font-bold text-gray-900 group-hover:text-blue-900">Creative Tasks</h3>
                         <p className="text-base text-gray-500 mt-2">Manage Design, Video, & Internal Workflows</p>
+                    </div>
+                </button>
+
+                <button
+                    onClick={() => navigate('/dashboard/tasks/content-management')}
+                    className="p-10 rounded-3xl border-2 transition-all flex flex-col items-center gap-6 group border-gray-200 bg-white hover:border-pink-300 hover:bg-pink-50 shadow-sm hover:shadow-xl hover:-translate-y-1 md:col-span-2 max-w-lg mx-auto w-full"
+                >
+                    <div className="p-6 rounded-full bg-pink-100 text-pink-600 group-hover:bg-pink-600 group-hover:text-white transition-colors">
+                        <FileText size={48} />
+                    </div>
+                    <div className="text-center">
+                        <h3 className="text-2xl font-bold text-gray-900 group-hover:text-pink-900">Content Management</h3>
+                        <p className="text-base text-gray-500 mt-2">Manage Content Strategy & Track Client Content Status</p>
                     </div>
                 </button>
             </div>

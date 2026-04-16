@@ -151,11 +151,27 @@ export const createMetaAdsLog = async (req: Request, res: Response) => {
                 status: campaign.status || 'ACTIVE',
                 results_json: JSON.stringify(results_json),
                 notes,
-                date: date ? new Date(date) : undefined,
-                startDate: campaign.startDate,
-                endDate: campaign.ends
+                date: date ? new Date(date) : undefined
             }
         });
+
+        // Log this activity globally as a system 'Task' so it appears natively in the task board
+        await prisma.task.create({
+            data: {
+                title: `Created Campaign Data: ${campaign.name || 'Generic'}`,
+                description: `New campaign tracking metrics saved. Spend: ₹${finalSpend}, Results: ${finalResults}`,
+                status: 'COMPLETED',
+                priority: 'MEDIUM',
+                department: 'DIGITAL_MARKETING',
+                client_id: client_id,
+                marketing_campaign_id: campaign.id,
+                assignee_id: user.id,
+                assigned_by_id: user.id,
+                reporter_id: user.id,
+                completed_date: new Date()
+            }
+        });
+
         res.json(log);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
@@ -166,17 +182,55 @@ export const updateMetaAdsLog = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const user = req.user as any;
-        const { notes, date, spend, results_json } = req.body;
+        const data = req.body;
+
+        // Cleanup payload
+        delete data.id;
+        delete data.createdAt;
+        delete data.updatedAt;
+        delete data.client;
+        delete data.user;
+        delete data.client_id;
+        delete data.user_id;
+        delete data.marketingCampaign;
+
+        // Parse types
+        if (data.date) data.date = new Date(data.date);
+        if (data.startDate) data.startDate = new Date(data.startDate);
+        if (data.endDate) data.endDate = new Date(data.endDate);
+        if (data.spend !== undefined) data.spend = parseFloat(data.spend || 0);
+        if (data.reach !== undefined) data.reach = parseInt(data.reach || 0);
+        if (data.impressions !== undefined) data.impressions = parseInt(data.impressions || 0);
+        if (data.results !== undefined) data.results = parseInt(data.results || 0);
+        if (data.frequency !== undefined) data.frequency = parseFloat(data.frequency || 0);
+        if (data.cpp !== undefined) data.cpp = parseFloat(data.cpp || 0);
+        if (data.results_json && typeof data.results_json === 'object') data.results_json = JSON.stringify(data.results_json);
 
         const log = await prisma.metaAdsLog.update({
             where: { id },
-            data: {
-                notes,
-                date: date ? new Date(date) : undefined,
-                spend: spend !== undefined ? parseFloat(spend) : undefined,
-                results_json: results_json ? (typeof results_json === 'string' ? results_json : JSON.stringify(results_json)) : undefined
+            data: { 
+                ...data,
+                user_id: user.id
             }
         });
+
+        // Log this activity globally as a system 'Task' 
+        await prisma.task.create({
+            data: {
+                title: `Updated Campaign Data: ${log.campaign_name || 'Generic'}`,
+                description: `Campaign tracking metrics updated.`,
+                status: 'COMPLETED',
+                priority: 'MEDIUM',
+                department: 'DIGITAL_MARKETING',
+                client_id: log.client_id,
+                marketing_campaign_id: log.marketing_campaign_id,
+                assignee_id: user.id,
+                assigned_by_id: user.id,
+                reporter_id: user.id,
+                completed_date: new Date()
+            }
+        });
+
         res.json(log);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
@@ -239,11 +293,25 @@ export const createGoogleAdsLog = async (req: Request, res: Response) => {
                 conversions: parseInt(conversions || 0),
                 cpa: parseFloat(cpa || 0),
                 notes,
-                date: date ? new Date(date) : undefined,
-                startDate: startDate ? new Date(startDate) : undefined,
-                endDate: endDate ? new Date(endDate) : undefined
+                date: date ? new Date(date) : undefined
+            } as any
+        });
+
+        await prisma.task.create({
+            data: {
+                title: `Created Google Ads Data: ${campaign_name || 'Generic'}`,
+                description: `New Google Ads tracking metrics saved. Spend: ₹${parseFloat(spend || 0)}`,
+                status: 'COMPLETED',
+                priority: 'MEDIUM',
+                department: 'DIGITAL_MARKETING',
+                client_id: client_id,
+                assignee_id: user.id,
+                assigned_by_id: user.id,
+                reporter_id: user.id,
+                completed_date: new Date()
             }
         });
+
         res.json(log);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
@@ -254,24 +322,49 @@ export const updateGoogleAdsLog = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const user = req.user as any;
-        const { campaign_name, campaign_type, spend, status, clicks, impressions, conversions, cpa, notes, date } = req.body;
+        const data = req.body;
+
+        // Cleanup
+        delete data.id;
+        delete data.createdAt;
+        delete data.updatedAt;
+        delete data.client;
+        delete data.user;
+        delete data.client_id;
+        delete data.user_id;
+
+        // Parse
+        if (data.date) data.date = new Date(data.date);
+        if (data.spend !== undefined) data.spend = parseFloat(data.spend || 0);
+        if (data.clicks !== undefined) data.clicks = parseInt(data.clicks || 0);
+        if (data.impressions !== undefined) data.impressions = parseInt(data.impressions || 0);
+        if (data.conversions !== undefined) data.conversions = parseInt(data.conversions || 0);
+        if (data.cpa !== undefined) data.cpa = parseFloat(data.cpa || 0);
+        if (data.results_json && typeof data.results_json === 'object') data.results_json = JSON.stringify(data.results_json);
 
         const log = await prisma.googleAdsLog.update({
             where: { id },
-            data: {
-                user_id: user.id,
-                campaign_name,
-                campaign_type,
-                spend: parseFloat(spend || 0),
-                status: status || 'ACTIVE',
-                clicks: parseInt(clicks || 0),
-                impressions: parseInt(impressions || 0),
-                conversions: parseInt(conversions || 0),
-                cpa: parseFloat(cpa || 0),
-                notes,
-                date: date ? new Date(date) : undefined
+            data: { 
+                ...data,
+                user_id: user.id
             }
         });
+
+        await prisma.task.create({
+            data: {
+                title: `Updated Google Ads Data: ${log.campaign_name || 'Generic'}`,
+                description: `Google Ads tracking metrics updated.`,
+                status: 'COMPLETED',
+                priority: 'MEDIUM',
+                department: 'DIGITAL_MARKETING',
+                client_id: log.client_id,
+                assignee_id: user.id,
+                assigned_by_id: user.id,
+                reporter_id: user.id,
+                completed_date: new Date()
+            }
+        });
+
         res.json(log);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
@@ -371,6 +464,20 @@ export const createSeoLog = async (req: Request, res: Response) => {
                 summary
             }
         });
+        await prisma.task.create({ 
+            data: { 
+                title: 'Saved SEO Report', 
+                description: 'SEO report metrics saved.', 
+                status: 'COMPLETED', 
+                priority: 'MEDIUM', 
+                department: 'DIGITAL_MARKETING', 
+                client_id: client_id || log.client_id, 
+                assignee_id: user.id, 
+                assigned_by_id: user.id, 
+                reporter_id: user.id, 
+                completed_date: new Date() 
+            } 
+        });
         res.json(log);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
@@ -395,6 +502,20 @@ export const updateSeoLog = async (req: Request, res: Response) => {
                 organic_traffic: parseInt(organic_traffic || 0),
                 summary
             }
+        });
+        await prisma.task.create({ 
+            data: { 
+                title: 'Updated SEO Report', 
+                description: 'SEO report metrics updated.', 
+                status: 'COMPLETED', 
+                priority: 'MEDIUM', 
+                department: 'DIGITAL_MARKETING', 
+                client_id: log.client_id, 
+                assignee_id: user.id, 
+                assigned_by_id: user.id, 
+                reporter_id: user.id, 
+                completed_date: new Date() 
+            } 
         });
         res.json(log);
     } catch (error: any) {
@@ -446,6 +567,7 @@ export const createWebProject = async (req: Request, res: Response) => {
                 live_url
             }
         });
+        await prisma.task.create({ data: { title: 'Saved Web Project: ' + project_name, description: 'Web dev project updated.', status: 'COMPLETED', priority: 'MEDIUM', department: 'DIGITAL_MARKETING', client_id: client_id, assignee_id: user.id, assigned_by_id: user.id, reporter_id: user.id, completed_date: new Date() } });
         res.json(project);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
@@ -473,6 +595,7 @@ export const updateWebProject = async (req: Request, res: Response) => {
                 user_id: user.id
             }
         });
+        await prisma.task.create({ data: { title: 'Updated Web Project', description: 'Web dev project updated.', status: 'COMPLETED', priority: 'MEDIUM', department: 'DIGITAL_MARKETING', client_id: project.client_id, assignee_id: user.id, assigned_by_id: user.id, reporter_id: user.id, completed_date: new Date() } });
         res.json(project);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
@@ -526,7 +649,7 @@ export const createContentDeliverable = async (req: Request, res: Response) => {
                 feedback: notes
             }
         });
-
+        await prisma.task.create({ data: { title: 'Created Deliverable: ' + title, description: 'Content deliverable created.', status: 'COMPLETED', priority: 'MEDIUM', department: 'DIGITAL_MARKETING', client_id: client_id, assignee_id: user.id, assigned_by_id: user.id, reporter_id: user.id, completed_date: new Date() } });
         res.status(201).json(deliverable);
     } catch (error) {
         console.error('Error creating deliverable:', error);
@@ -538,19 +661,19 @@ export const updateContentDeliverable = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const user = req.user as any;
-        const { status, link, notes, title } = req.body;
+        const { status, link, notes, title, file_url, feedback } = req.body;
 
         const deliverable = await prisma.contentDeliverable.update({
             where: { id },
             data: {
                 user_id: user.id,
                 status,
-                file_url: link,
-                feedback: notes,
+                file_url: file_url || link,
+                feedback: feedback || notes,
                 title
             }
         });
-
+        await prisma.task.create({ data: { title: 'Updated Deliverable: ' + title, description: 'Content deliverable updated.', status: 'COMPLETED', priority: 'MEDIUM', department: 'DIGITAL_MARKETING', client_id: deliverable.client_id, assignee_id: user.id, assigned_by_id: user.id, reporter_id: user.id, completed_date: new Date() } });
         res.json(deliverable);
     } catch (error) {
         console.error('Error updating deliverable:', error);

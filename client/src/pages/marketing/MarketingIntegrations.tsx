@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Facebook, Link2, CheckCircle2, Edit, Save, X, Settings, RefreshCw, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
+import { Facebook, Link2, CheckCircle2, Edit, Save, X, Settings, RefreshCw, AlertTriangle, Wifi, WifiOff, Keyboard, List } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
@@ -11,6 +11,11 @@ export const MarketingIntegrations: React.FC = () => {
     // Edit Mode Tracking
     const [editModeIds, setEditModeIds] = useState<Record<string, boolean>>({});
     const [tempData, setTempData] = useState<Record<string, { profileId: string, accountId: string }>>({});
+    
+    // Ad Accounts Cache
+    const [adAccountsByProfile, setAdAccountsByProfile] = useState<Record<string, any[]>>({});
+    const [loadingAccounts, setLoadingAccounts] = useState<Record<string, boolean>>({});
+    const [manualInputModes, setManualInputModes] = useState<Record<string, boolean>>({});
     
     // System Settings State
     const [showSettings, setShowSettings] = useState(false);
@@ -78,6 +83,20 @@ export const MarketingIntegrations: React.FC = () => {
         }
     };
 
+    const fetchAvailableAccounts = async (profileId: string) => {
+        if (!profileId || adAccountsByProfile[profileId]) return;
+        
+        setLoadingAccounts(prev => ({ ...prev, [profileId]: true }));
+        try {
+            const { data } = await api.get(`/marketing/meta/accounts?profileId=${profileId}`);
+            setAdAccountsByProfile(prev => ({ ...prev, [profileId]: data }));
+        } catch (err) {
+            console.error('Error fetching available accounts:', err);
+        } finally {
+            setLoadingAccounts(prev => ({ ...prev, [profileId]: false }));
+        }
+    };
+
     const handleMetaConnect = (clientId?: string) => {
         const timestamp = new Date().getTime();
         const url = clientId ? `/api/marketing/auth/meta?clientId=${clientId}&t=${timestamp}` : `/api/marketing/auth/meta?t=${timestamp}`;
@@ -96,6 +115,10 @@ export const MarketingIntegrations: React.FC = () => {
                 [clientId]: { profileId: currentProfileId || '', accountId: currentAccountId || '' }
             }));
             setEditModeIds(prev => ({ ...prev, [clientId]: true }));
+            
+            if (currentProfileId) {
+                fetchAvailableAccounts(currentProfileId);
+            }
         }
     };
 
@@ -251,9 +274,13 @@ export const MarketingIntegrations: React.FC = () => {
                                             {isEditing ? (
                                                 <div className="flex items-center gap-2">
                                                     <select
-                                                        className="p-2.5 bg-white border border-gray-200 rounded-lg text-sm font-bold shadow-sm focus:ring-2 focus:ring-blue-100 outline-none w-48"
+                                                        className="p-2.5 bg-white font-black border border-gray-200 rounded-lg text-sm shadow-sm focus:ring-2 focus:ring-blue-100 outline-none w-48"
                                                         value={tempData[client.id]?.profileId || ''}
-                                                        onChange={(e) => setTempData(prev => ({ ...prev, [client.id]: { ...prev[client.id], profileId: e.target.value } }))}
+                                                        onChange={(e) => {
+                                                            const newProfileId = e.target.value;
+                                                            setTempData(prev => ({ ...prev, [client.id]: { ...prev[client.id], profileId: newProfileId } }));
+                                                            if (newProfileId) fetchAvailableAccounts(newProfileId);
+                                                        }}
                                                     >
                                                         <option value="">-- Select Profile --</option>
                                                         {metaProfiles.map(p => (
@@ -304,16 +331,59 @@ export const MarketingIntegrations: React.FC = () => {
                                         {/* Ad Account Col */}
                                         <td className="px-6 py-5">
                                             {isEditing ? (
-                                                <input
-                                                    type="text"
-                                                    placeholder="act_xxxxxxxxxxxx"
-                                                    className="w-48 p-2.5 bg-white border border-gray-200 rounded-lg text-sm font-mono shadow-sm focus:ring-2 focus:ring-blue-100 outline-none"
-                                                    value={tempData[client.id]?.accountId || ''}
-                                                    onChange={(e) => setTempData(prev => ({ ...prev, [client.id]: { ...prev[client.id], accountId: e.target.value } }))}
-                                                />
+                                                <div className="flex flex-col gap-2">
+                                                    <div className="flex items-center gap-2">
+                                                        {manualInputModes[client.id] ? (
+                                                            <input
+                                                                type="text"
+                                                                className="w-48 p-2.5 bg-white border border-gray-200 rounded-lg text-sm font-bold shadow-sm focus:ring-2 focus:ring-blue-100 outline-none"
+                                                                value={tempData[client.id]?.accountId || ''}
+                                                                onChange={(e) => setTempData(prev => ({ ...prev, [client.id]: { ...prev[client.id], accountId: e.target.value } }))}
+                                                                placeholder="Enter Account ID"
+                                                            />
+                                                        ) : (
+                                                            <select
+                                                                className="w-48 p-2.5 bg-white border border-gray-200 rounded-lg text-sm font-bold shadow-sm focus:ring-2 focus:ring-blue-100 outline-none"
+                                                                value={tempData[client.id]?.accountId || ''}
+                                                                onChange={(e) => setTempData(prev => ({ ...prev, [client.id]: { ...prev[client.id], accountId: e.target.value } }))}
+                                                                disabled={!tempData[client.id]?.profileId || loadingAccounts[tempData[client.id]?.profileId]}
+                                                            >
+                                                                <option value="">-- Select Account --</option>
+                                                                {(adAccountsByProfile[tempData[client.id]?.profileId] || []).map((acc: any) => (
+                                                                    <option key={acc.id} value={acc.id.replace('act_', '')}>
+                                                                        {acc.name} ({acc.id.replace('act_', '')})
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                        )}
+                                                        <button 
+                                                            onClick={() => setManualInputModes(prev => ({ ...prev, [client.id]: !prev[client.id] }))}
+                                                            className={`p-2 rounded-lg border transition-all ${manualInputModes[client.id] ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-50 text-gray-500 border-gray-200 hover:text-blue-600 hover:border-blue-200'}`}
+                                                            title={manualInputModes[client.id] ? "Switch to Dropdown" : "Switch to Manual Input"}
+                                                        >
+                                                            {manualInputModes[client.id] ? <List className="w-4 h-4" /> : <Keyboard className="w-4 h-4" />}
+                                                        </button>
+                                                    </div>
+                                                    {loadingAccounts[tempData[client.id]?.profileId] && !manualInputModes[client.id] && (
+                                                        <span className="text-[10px] text-blue-500 font-bold animate-pulse">Fetching accounts...</span>
+                                                    )}
+                                                </div>
                                             ) : (
                                                 displayAccountId ? (
-                                                    <span className="font-mono text-xs font-semibold text-gray-700 bg-gray-100 px-2 py-1 rounded-md">{displayAccountId}</span>
+                                                    <div className="flex flex-col gap-1">
+                                                        <span className={`font-mono text-xs font-semibold px-2 py-1 rounded-md w-fit ${
+                                                            currentProfile && adAccountsByProfile[currentProfile.id] && !adAccountsByProfile[currentProfile.id].find((a: any) => a.id.replace('act_', '') === displayAccountId)
+                                                            ? 'bg-red-100 text-red-700 border border-red-200'
+                                                            : 'bg-gray-100 text-gray-700'
+                                                        }`}>
+                                                            {displayAccountId}
+                                                        </span>
+                                                        {currentProfile && adAccountsByProfile[currentProfile.id] && !adAccountsByProfile[currentProfile.id].find((a: any) => a.id.replace('act_', '') === displayAccountId) && (
+                                                            <span className="text-[9px] text-red-600 font-black flex items-center gap-1">
+                                                                <AlertTriangle className="w-2.5 h-2.5" /> UNAUTHORIZED / HIDDEN
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 ) : (
                                                     <span className="text-gray-400 italic text-xs">Not linked</span>
                                                 )

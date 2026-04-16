@@ -789,3 +789,68 @@ export const getDigitalMarketingDashboardStats = async (month?: number, year?: n
     };
 };
 
+export const generateContentTasks = async (clientId: string, userId: string) => {
+    const strategies = await prisma.clientContentStrategy.findMany({
+        where: { client_id: clientId },
+        include: { content_type: true, client: true }
+    });
+
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    
+    const monthStr = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+    let createdCount = 0;
+
+    for (const strat of strategies) {
+        if (!strat.content_type || !strat.content_type_id || strat.monthly_target <= 0) continue;
+
+        const currentTasksCount = await prisma.task.count({
+            where: {
+                client_id: clientId,
+                content_type_id: strat.content_type_id,
+                createdAt: {
+                    gte: startOfMonth,
+                    lte: endOfMonth
+                }
+            }
+        });
+
+        const tasksToGenerate = strat.monthly_target - currentTasksCount;
+
+        if (tasksToGenerate > 0) {
+            const lastTask = await prisma.task.findFirst({
+                orderBy: { sequence_id: 'desc' },
+                select: { sequence_id: true }
+            });
+            let nextSequenceId = (lastTask?.sequence_id || 0) + 1;
+
+            const bulkData = Array.from({ length: tasksToGenerate }).map((_, i) => ({
+                title: `${strat.client.name} - ${strat.content_type!.name} - ${monthStr} #${currentTasksCount + i + 1}`,
+                client_id: clientId,
+                content_type_id: strat.content_type_id!,
+                status: 'PLANNED',
+                priority: 'MEDIUM',
+                type: 'GRAPHIC',
+                department: 'CREATIVE',
+                category: 'CAMPAIGN',
+                nature: 'NEW',
+                reporter_id: userId,
+                assigned_by_id: userId,
+                sequence_id: nextSequenceId++,
+                sla_status: 'ON_TRACK',
+            }));
+
+            await prisma.task.createMany({
+                data: bulkData as any[]
+            });
+
+            createdCount += tasksToGenerate;
+        }
+    }
+
+    return { createdCount };
+};
+
+

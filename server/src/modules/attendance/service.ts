@@ -1,4 +1,6 @@
+import { startOfDay, endOfDay, format, startOfMonth, endOfMonth, eachDayOfInterval, isSunday, subDays, addDays } from 'date-fns';
 import db from '../../utils/prisma';
+import { randomUUID } from 'node:crypto';
 
 export class AttendanceService {
 
@@ -26,6 +28,7 @@ export class AttendanceService {
 
         return await db.attendanceRecord.create({
             data: {
+                id: randomUUID(),
                 user_id: userId,
                 date: startOfDay,
                 check_in: checkInTime,
@@ -34,7 +37,9 @@ export class AttendanceService {
                 shift_id: statusResult.shift.id === 'LEGACY' || statusResult.shift.id === 'DEFAULT' ? null : statusResult.shift.id,
                 criteria_mode: statusResult.criteria,
                 grace_time_applied: statusResult.shift.default_grace_time,
-                method: 'WEB'
+                method: 'WEB',
+                createdAt: new Date(),
+                updatedAt: new Date()
             }
         });
     }
@@ -264,12 +269,15 @@ export class AttendanceService {
 
         const request = await db.regularisationRequest.create({
             data: {
+                id: randomUUID(),
                 user_id: userId,
                 date: date,
                 type,
                 reason: finalReason,
                 status: 'PENDING',
-                exceeds_limit: limitExceeded
+                exceeds_limit: limitExceeded,
+                createdAt: new Date(),
+                updatedAt: new Date()
             },
             include: { user: true }
         });
@@ -1042,15 +1050,21 @@ export class AttendanceService {
         return await db.attendanceRecord.upsert({
             where: { user_id_date: { user_id: userId, date: d } },
             create: {
+                id: randomUUID(),
                 user_id: userId,
                 date: d,
                 status: data.status || 'PRESENT',
                 check_in: updateData.check_in,
                 check_out: updateData.check_out,
                 work_hours: updateData.work_hours,
-                method: 'MANUAL_ADMIN'
+                method: 'MANUAL_ADMIN',
+                createdAt: new Date(),
+                updatedAt: new Date()
             },
-            update: updateData
+            update: {
+                ...updateData,
+                updatedAt: new Date()
+            }
         });
     }
 
@@ -1233,8 +1247,12 @@ export class AttendanceService {
         });
     }
 
-    static async updateCriteriaConfig(id: string, data: { is_enabled?: boolean, parameters?: any }) {
+    static async updateCriteriaConfig(id: string, data: { rule_type?: string, rule_code?: string, name?: string, description?: string, is_enabled?: boolean, parameters?: any }) {
         const updateData: any = {};
+        if (data.rule_type !== undefined) updateData.rule_type = data.rule_type;
+        if (data.rule_code !== undefined) updateData.rule_code = data.rule_code;
+        if (data.name !== undefined) updateData.name = data.name;
+        if (data.description !== undefined) updateData.description = data.description;
         if (data.is_enabled !== undefined) updateData.is_enabled = data.is_enabled;
         if (data.parameters !== undefined) {
             updateData.parameters = typeof data.parameters === 'string' ? data.parameters : JSON.stringify(data.parameters);
@@ -1244,5 +1262,69 @@ export class AttendanceService {
             where: { id },
             data: updateData
         });
+    }
+
+    static async createCriteriaConfig(data: { rule_type: string, rule_code: string, name: string, description?: string, parameters?: any }) {
+        return await (db as any).attendanceCriteriaConfig.create({
+            data: {
+                id: randomUUID(),
+                rule_type: data.rule_type,
+                rule_code: data.rule_code,
+                name: data.name,
+                description: data.description,
+                parameters: typeof data.parameters === 'string' ? data.parameters : JSON.stringify(data.parameters || {}),
+                createdAt: new Date(),
+                updatedAt: new Date()
+            }
+        });
+    }
+
+    static async deleteCriteriaConfig(id: string) {
+        return await (db as any).attendanceCriteriaConfig.delete({
+            where: { id }
+        });
+    }
+
+    static async syncDefaultCriteriaConfigs() {
+        const defaultRules = [
+            { rule_type: 'PRESENT', rule_code: 'A1', name: 'Standard Present', description: 'Punch-In and Punch-Out within shift timing and grace period.', parameters: { grace_minutes: 15 } },
+            { rule_type: 'PRESENT', rule_code: 'A2', name: 'Regularized', description: 'Attendance marked via approved digitalization requests.', parameters: {} },
+            { rule_type: 'PRESENT', rule_code: 'A3', name: 'Approved Leave', description: 'Marked present/leave based on approved non-LOP leave requests.', parameters: {} },
+            { rule_type: 'PRESENT', rule_code: 'A4', name: 'Holiday / Weekly Off', description: 'Sundays or Admin-defined public holidays.', parameters: {} },
+            { rule_type: 'ABSENT', rule_code: 'B1', name: 'No Punch (Absent)', description: 'No attendance activity recorded for a past working day.', parameters: {} },
+            { rule_type: 'ABSENT', rule_code: 'B2', name: 'Loss of Pay (LOP)', description: 'Absent due to approved LOP or Unpaid leave.', parameters: {} },
+            { rule_type: 'HALF_DAY', rule_code: 'C1', name: 'Late In + Missing Out', description: 'Late arrival combined with a missing check-out punch (Min 4 hours).', parameters: { min_hours: 4 } },
+            { rule_type: 'HALF_DAY', rule_code: 'C2', name: 'Missing In + Early Out', description: 'Missing check-in punch combined with early departure (Min 4 hours).', parameters: { min_hours: 4 } },
+            { rule_type: 'HALF_DAY', rule_code: 'C3', name: 'Late In + Early Out', description: 'Late arrival combined with early departure (Min 4 hours).', parameters: { min_hours: 4 } },
+            { rule_type: 'HALF_DAY', rule_code: 'C4', name: 'Single Punch Missing', description: 'Either check-in or check-out is missing on a past day.', parameters: {} },
+            { rule_type: 'HALF_DAY', rule_code: 'C5', name: 'Extreme Late Arrival', description: 'Arrival after the allowed grace time (Processed as Half Day).', parameters: {} },
+            { rule_type: 'HALF_DAY', rule_code: 'C6', name: 'Early Departure', description: 'Leaving before shift end time (Min 4 hours worked).', parameters: { min_hours: 4 } },
+        ];
+
+        let createdCount = 0;
+        let skippedCount = 0;
+
+        for (const rule of defaultRules) {
+            const existing = await (db as any).attendanceCriteriaConfig.findUnique({
+                where: { rule_code: rule.rule_code }
+            });
+
+            if (!existing) {
+                await (db as any).attendanceCriteriaConfig.create({
+                    data: {
+                        id: randomUUID(),
+                        ...rule,
+                        parameters: JSON.stringify(rule.parameters),
+                        createdAt: new Date(),
+                        updatedAt: new Date()
+                    }
+                });
+                createdCount++;
+            } else {
+                skippedCount++;
+            }
+        }
+
+        return { createdCount, skippedCount, message: `Sync complete. Created ${createdCount}, skipped ${skippedCount} existing rules.` };
     }
 }

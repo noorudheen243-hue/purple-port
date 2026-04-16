@@ -123,14 +123,16 @@ const TransactionEntry = () => {
             from_ledger_id = data.payment_mode_id; // Credit Bank
             to_ledger_id = data.category_id || ''; // Debit Expense/Entity
 
-            if (data.nature === 'SALARY_ADVANCE' || data.nature === 'STAFF_INCENTIVE') {
+            if (data.nature === 'SALARY_ADVANCE') {
                 const staffLedger = ledgers?.find((l: any) => l.entity_type === 'USER' && l.entity_id === data.entity_id);
-                if (!staffLedger) return Swal.fire('Error', 'Ledger not found for selected Staff.', 'error');
+                if (!staffLedger) return Swal.fire('Error', 'Ledger not found for selected Staff. Please ensure their profile is synced with accounts.', 'error');
                 to_ledger_id = staffLedger.id;
-                if(data.nature === 'STAFF_INCENTIVE') {
-                    // Change reference to user ID for payroll sync
-                    data.reference = data.entity_id;
-                }
+            } else if (data.nature === 'STAFF_INCENTIVE') {
+                const incentiveLedger = ledgers?.find((l: any) => l.name.toLowerCase().includes('incentive') && l.head?.type === 'EXPENSE');
+                if (!incentiveLedger) return Swal.fire('Error', 'Staff Incentives Expense Ledger not found. Please create one in Chart of Accounts.', 'error');
+                to_ledger_id = incentiveLedger.id;
+                // Important: We store the staff ID in the reference field so the Payroll module knows who received this!
+                data.reference = final_entity_id;
             } else if (data.nature === 'META_RECHARGE_EXPENSE') {
                 const clientLedger = ledgers?.find((l: any) => l.entity_type === 'CLIENT' && l.entity_id === data.entity_id);
                 if (!clientLedger) return Swal.fire('Error', 'Ledger not found for selected Client.', 'error');

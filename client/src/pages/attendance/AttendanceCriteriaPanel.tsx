@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Save, AlertCircle, CheckCircle2, RefreshCw, Pencil, Power, PowerOff } from 'lucide-react';
+import { Settings, Save, AlertCircle, RefreshCw, Pencil, Trash2, Plus, PlayCircle } from 'lucide-react';
+
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Switch } from '../../components/ui/switch';
@@ -22,7 +23,7 @@ const AttendanceCriteriaPanel = () => {
     const [rules, setRules] = useState<AttendanceRule[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState<string | null>(null);
-    const [editingRule, setEditingRule] = useState<AttendanceRule | null>(null);
+    const [editingRule, setEditingRule] = useState<Partial<AttendanceRule> | null>(null);
     const [editParams, setEditParams] = useState<any>({});
 
     useEffect(() => {
@@ -58,21 +59,66 @@ const AttendanceCriteriaPanel = () => {
         setEditParams(JSON.parse(rule.parameters || '{}'));
     };
 
+    const handleAddStart = (type: 'PRESENT' | 'HALF_DAY' | 'ABSENT') => {
+        setEditingRule({
+            rule_type: type,
+            rule_code: '',
+            name: '',
+            description: '',
+            parameters: '{}',
+            is_enabled: true
+        });
+        setEditParams({});
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm("Are you sure you want to delete this rule? This may affect future attendance calculations.")) return;
+        try {
+            await api.delete(`/attendance/admin/criteria/configs/${id}`);
+            setRules(prev => prev.filter(r => r.id !== id));
+        } catch (error) {
+            alert("Failed to delete rule");
+        }
+    };
+
+    const handleSyncDefaults = async () => {
+        if (!confirm("This will add any missing standard rules. Continue?")) return;
+        setIsLoading(true);
+        try {
+            const { data } = await api.post('/attendance/admin/criteria/sync-defaults');
+            alert(data.message);
+            fetchRules();
+        } catch (error) {
+            alert("Failed to sync default rules");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const handleParamChange = (key: string, value: any) => {
         setEditParams((prev: any) => ({ ...prev, [key]: value }));
     };
 
-    const handleSaveParams = async () => {
+    const handleSaveRule = async () => {
         if (!editingRule) return;
-        setIsSaving(editingRule.id);
+        
+        const payload = {
+            ...editingRule,
+            parameters: editParams
+        };
+
         try {
-            const { data } = await api.patch(`/attendance/admin/criteria/configs/${editingRule.id}`, { 
-                parameters: editParams 
-            });
-            setRules(prev => prev.map(r => r.id === editingRule.id ? { ...r, parameters: JSON.stringify(editParams) } : r));
+            if (editingRule.id) {
+                setIsSaving(editingRule.id);
+                await api.patch(`/attendance/admin/criteria/configs/${editingRule.id}`, payload);
+                setRules(prev => prev.map(r => r.id === editingRule.id ? { ...r, ...payload, parameters: JSON.stringify(editParams) } as AttendanceRule : r));
+            } else {
+                const { data } = await api.post('/attendance/admin/criteria/configs', payload);
+                setRules(prev => [...prev, data]);
+            }
             setEditingRule(null);
-        } catch (error) {
-            alert("Failed to save parameters");
+        } catch (error: any) {
+            alert(error.response?.data?.message || "Failed to save rule");
         } finally {
             setIsSaving(null);
         }
@@ -84,7 +130,15 @@ const AttendanceCriteriaPanel = () => {
             <div className="space-y-4">
                 <div className={`flex items-center gap-2 border-l-4 ${colorClass} pl-3 py-1 mb-4`}>
                     <h3 className="text-lg font-bold uppercase tracking-wider">{title}</h3>
-                    <Badge variant="outline" className="ml-auto">{groupRules.length} Rules</Badge>
+                    <Badge variant="outline" className="ml-2">{groupRules.length} Rules</Badge>
+                    <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="ml-auto h-7 gap-1 text-xs hover:bg-primary/5"
+                        onClick={() => handleAddStart(type as any)}
+                    >
+                        <Plus className="h-3 w-3" /> Add Rule
+                    </Button>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
                     {groupRules.map(rule => (
@@ -120,14 +174,24 @@ const AttendanceCriteriaPanel = () => {
                                             <span className="text-primary font-bold">{value as any}</span>
                                         </div>
                                     ))}
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        className="h-6 w-6 ml-auto"
-                                        onClick={() => handleEditStart(rule)}
-                                    >
-                                        <Pencil className="h-3 w-3" />
-                                    </Button>
+                                    <div className="flex items-center gap-1 ml-auto">
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            className="h-7 w-7 text-muted-foreground hover:text-primary"
+                                            onClick={() => handleEditStart(rule)}
+                                        >
+                                            <Pencil className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                            onClick={() => handleDelete(rule.id)}
+                                        >
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>
@@ -159,8 +223,11 @@ const AttendanceCriteriaPanel = () => {
                     </div>
                 </div>
                 <div className="flex gap-2">
+                     <Button variant="outline" size="sm" onClick={handleSyncDefaults} className="gap-2 border-primary/20 text-primary hover:bg-primary/5">
+                        <PlayCircle className="h-4 w-4" /> Sync Default Rules
+                     </Button>
                      <Button variant="outline" size="sm" onClick={fetchRules} className="gap-2">
-                        <RefreshCw className="h-4 w-4" /> Sync
+                        <RefreshCw className="h-4 w-4" /> Refresh
                      </Button>
                 </div>
             </div>
@@ -172,33 +239,92 @@ const AttendanceCriteriaPanel = () => {
             {editingRule && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
                     <Card className="w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
-                        <CardHeader>
+                        <CardHeader className="border-b pb-4 mb-4">
                             <CardTitle className="flex items-center gap-2">
-                                <Pencil className="h-5 w-5 text-purple-600" />
-                                Edit Rule: {editingRule.rule_code}
+                                {editingRule.id ? <Pencil className="h-5 w-5 text-purple-600" /> : <Plus className="h-5 w-5 text-green-600" />}
+                                {editingRule.id ? 'Edit Attendance Rule' : 'Add New Attendance Rule'}
                             </CardTitle>
-                            <CardDescription>{editingRule.name}</CardDescription>
+                            <CardDescription>Configure the criteria logic and parameters.</CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-4">
-                            {Object.entries(editParams).map(([key, value]) => (
-                                <div key={key} className="space-y-2">
-                                    <Label className="capitalize">{key.replace('_', ' ')}</Label>
+                        <CardContent className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Rule Code</Label>
                                     <Input 
-                                        type={typeof value === 'number' ? 'number' : 'text'}
-                                        value={value as any}
-                                        onChange={(e) => handleParamChange(key, typeof value === 'number' ? parseFloat(e.target.value) : e.target.value)}
+                                        placeholder="e.g. A1" 
+                                        value={editingRule.rule_code}
+                                        onChange={(e) => setEditingRule({...editingRule, rule_code: e.target.value.toUpperCase()})}
                                     />
                                 </div>
-                            ))}
-                            {Object.entries(editParams).length === 0 && (
-                                <div className="text-center py-6 text-muted-foreground italic text-sm">
-                                    No configurable parameters for this rule.
+                                <div className="space-y-2">
+                                    <Label>Rule Type</Label>
+                                    <select 
+                                        className="w-full h-10 px-3 rounded-md border border-input bg-background"
+                                        value={editingRule.rule_type}
+                                        onChange={(e) => setEditingRule({...editingRule, rule_type: e.target.value as any})}
+                                    >
+                                        <option value="PRESENT">PRESENT</option>
+                                        <option value="HALF_DAY">HALF_DAY</option>
+                                        <option value="ABSENT">ABSENT</option>
+                                    </select>
                                 </div>
-                            )}
-                            <div className="flex justify-end gap-3 pt-4">
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Rule Name</Label>
+                                <Input 
+                                    placeholder="Brief name for the rule" 
+                                    value={editingRule.name}
+                                    onChange={(e) => setEditingRule({...editingRule, name: e.target.value})}
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Description</Label>
+                                <textarea 
+                                    className="w-full min-h-[80px] p-2 rounded-md border border-input bg-background text-sm"
+                                    placeholder="Explain when this rule applies..."
+                                    value={editingRule.description}
+                                    onChange={(e) => setEditingRule({...editingRule, description: e.target.value})}
+                                />
+                            </div>
+
+                            <div className="pt-2 border-t">
+                                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 block">Parameters (JSON Configuration)</Label>
+                                {Object.entries(editParams).map(([key, value]) => (
+                                    <div key={key} className="space-y-2 mb-3">
+                                        <div className="flex justify-between items-center">
+                                            <Label className="capitalize text-xs">{key.replace('_', ' ')}</Label>
+                                            <Button variant="ghost" size="sm" className="h-5 text-[10px] text-destructive" onClick={() => {
+                                                const newParams = {...editParams};
+                                                delete newParams[key];
+                                                setEditParams(newParams);
+                                            }}>Remove</Button>
+                                        </div>
+                                        <Input 
+                                            type={typeof value === 'number' ? 'number' : 'text'}
+                                            value={value as any}
+                                            onChange={(e) => handleParamChange(key, typeof value === 'number' ? parseFloat(e.target.value) : e.target.value)}
+                                        />
+                                    </div>
+                                ))}
+                                
+                                <div className="flex gap-2 mt-4">
+                                    <Input id="new-param-key" placeholder="New Parameter Key" className="h-8 text-xs" />
+                                    <Button size="sm" variant="secondary" className="h-8" onClick={() => {
+                                        const keyInput = document.getElementById('new-param-key') as HTMLInputElement;
+                                        if (keyInput.value) {
+                                            handleParamChange(keyInput.value, "");
+                                            keyInput.value = "";
+                                        }
+                                    }}>Add Param</Button>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end gap-3 pt-6 border-t mt-6">
                                 <Button variant="outline" onClick={() => setEditingRule(null)}>Cancel</Button>
-                                <Button onClick={handleSaveParams} className="gap-2 bg-purple-700 hover:bg-purple-800">
-                                    <Save className="h-4 w-4" /> Save Configuration
+                                <Button onClick={handleSaveRule} className="gap-2 bg-purple-700 hover:bg-purple-800">
+                                    <Save className="h-4 w-4" /> {editingRule.id ? 'Update Rule' : 'Create Rule'}
                                 </Button>
                             </div>
                         </CardContent>

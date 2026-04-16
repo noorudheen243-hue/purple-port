@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import backend from '../../lib/api';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
@@ -446,6 +446,7 @@ const calculateTotalDeductions = (s: any) => (s.lop_deduction || 0) + (s.advance
 
 const Payslips = () => {
     const { user } = useAuthStore();
+    const queryClient = useQueryClient();
     const isAdmin = user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'DEVELOPER_ADMIN';
 
     const [selectedSlip, setSelectedSlip] = useState<any | null>(null);
@@ -593,6 +594,36 @@ const Payslips = () => {
                                             >
                                                 <Eye className="h-4 w-4" /> View Slip
                                             </button>
+
+                                            {isAdmin && slip.status !== 'PAID' && (
+                                                <button
+                                                    onClick={async () => {
+                                                        const result = await Swal.fire({
+                                                            title: 'Delete Payslip?',
+                                                            text: 'This will remove the payslip draft. You can regenerate it from the Salary Calculator.',
+                                                            icon: 'warning',
+                                                            showCancelButton: true,
+                                                            confirmButtonColor: '#d33',
+                                                            cancelButtonColor: '#3085d6',
+                                                            confirmButtonText: 'Yes, delete it!'
+                                                        });
+                                                        if (result.isConfirmed) {
+                                                            try {
+                                                                await backend.delete(`/payroll/slip/${slip.id}`);
+                                                                Swal.fire('Deleted!', 'Payslip has been removed.', 'success');
+                                                                // Invalidate query to refresh list
+                                                                queryClient.invalidateQueries({ queryKey: ['payslips'] });
+                                                                queryClient.invalidateQueries({ queryKey: ['salary-statement'] });
+                                                            } catch (err) {
+                                                                Swal.fire('Error', 'Failed to delete payslip', 'error');
+                                                            }
+                                                        }
+                                                    }}
+                                                    className="flex items-center gap-1 text-red-600 hover:text-red-800 transition"
+                                                >
+                                                    <X className="h-4 w-4" /> Delete
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

@@ -18,6 +18,7 @@ const ClientAccountsPage = lazy(() => import('../../pages/clients/ClientAccounts
 const TaskDetail = lazy(() => import('../tasks/TaskDetail'));
 const MarketingDashboard = lazy(() => import('../../pages/marketing/MarketingDashboard'));
 const MarketingIntegrations = lazy(() => import('../../pages/marketing/MarketingIntegrations'));
+const SalesIntelligenceManager = lazy(() => import('../../pages/marketing/SalesIntelligenceManager'));
 
 // Client Portal Modules
 const ClientPortalLayout = lazy(() => import('../../pages/portal/ClientPortalLayout'));
@@ -61,6 +62,7 @@ const MeetingReports = lazy(() => import('../meetings/Reports'));
 const TaskManagerPage = lazy(() => import('../tasks/TaskManagerPage'));
 const CreativeTaskManager = lazy(() => import('../tasks/CreativeTaskManager'));
 const DigitalMarketingTaskManager = lazy(() => import('../tasks/DigitalMarketingTaskManager'));
+const ContentManagementPage = lazy(() => import('../tasks/ContentManagementPage'));
 const TaskDashboard = lazy(() => import('../tasks/TaskDashboard'));
 const MyTasks = lazy(() => import('../tasks/MyTasks'));
 const TaskBoard = lazy(() => import('../tasks/TaskBoard'));
@@ -122,6 +124,7 @@ const Dashboard = () => {
                     <Route path="tasks/manager" element={<TaskManagerPage />} /> {/* New Main View */}
                     <Route path="tasks/creative" element={<CreativeTaskManager />} /> {/* New Creative Tasks View */}
                     <Route path="tasks/digital-marketing" element={<DigitalMarketingTaskManager />} /> {/* DM Tasks with Client Selector */}
+                    <Route path="tasks/content-management" element={<ContentManagementPage />} />
                     <Route path="tasks" element={<TaskList />} />
                     <Route path="tasks/dashboard" element={<TaskDashboard />} />
                     <Route path="tasks/my-tasks" element={<MyTasks />} />
@@ -150,6 +153,8 @@ const Dashboard = () => {
                     <Route path="roi" element={<ROIDashboard />} />
                     <Route path="marketing-performance" element={<MarketingDashboard />} />
                     <Route path="marketing-integrations" element={<MarketingIntegrations />} />
+                    <Route path="ai-sales" element={<SalesIntelligenceManager />} />
+                    <Route path="ai-sales/*" element={<SalesIntelligenceManager />} />
 
 
 

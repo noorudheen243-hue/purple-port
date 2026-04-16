@@ -41,6 +41,11 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
         icon: User
     },
     {
+        label: "Marketing Services",
+        path: "/dashboard/client-portal/manage-services",
+        icon: TrendingUp
+    },
+    {
         label: "Financial Management",
         path: "/dashboard/finance",
         icon: Wallet,
@@ -56,6 +61,12 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
         icon: CheckSquare,
         path: "/dashboard/tasks/manager"
     },
+    {
+        label: "Sales Intelligence",
+        icon: Zap,
+        roles: [ROLES.DEVELOPER_ADMIN],
+        path: "/dashboard/ai-sales"
+    },
 ];
 
 export const STAFF_MENU: MenuItem[] = [
@@ -63,6 +74,11 @@ export const STAFF_MENU: MenuItem[] = [
         label: "Client Management",
         path: "/dashboard/client-manager",
         icon: User
+    },
+    {
+        label: "Marketing Services",
+        path: "/dashboard/client-portal/manage-services",
+        icon: TrendingUp
     },
     {
         label: "Task Management",

@@ -3,7 +3,10 @@ $c = New-Object System.Management.Automation.PSCredential('root', (ConvertTo-Sec
 $s = New-SSHSession -ComputerName 66.116.224.221 -Credential $c -AcceptKey -Force
 
 Write-Host "Uploading client zip via SCP..." -ForegroundColor Yellow
-Set-SCPItem -ComputerName 66.116.224.221 -Credential $c -Path "f:\Antigravity\client_dist.zip" -Destination "/tmp/client_dist.zip" -Force
+$sftpSession = New-SFTPSession -ComputerName 66.116.224.221 -Credential $c -AcceptKey -Force
+Invoke-SSHCommand -SSHSession $s -Command "rm -f /tmp/client_dist.zip"
+Set-SFTPItem -SFTPSession $sftpSession -Path "f:\Antigravity\client_dist.zip" -Destination "/tmp/"
+Remove-SFTPSession $sftpSession
 Write-Host "Uploaded." -ForegroundColor Green
 
 # Check what's inside the zip first

@@ -60,31 +60,31 @@ export const cleanupRelievedStaff = async (userId: string, tx?: Prisma.Transacti
         }
     }
 
-    // 7. Team Management Removal (Profile and HR records)
+    // 7. Team Management Removal (Shift records only, PRESERVE profile for Resigned List)
     if (profile) {
         await client.staffShiftAssignment.deleteMany({ where: { staff_id: profile.id } });
-        await client.staffProfile.delete({ where: { id: profile.id } });
+        // await client.staffProfile.delete({ where: { id: profile.id } }); // REMOVED: Preserve profile to show ID and Name
     }
 
     await client.leaveRequest.deleteMany({ where: { user_id: userId } });
     await client.leaveAllocation.deleteMany({ where: { user_id: userId } });
     await client.regularisationRequest.deleteMany({ where: { user_id: userId } });
-    await client.resignationRequest.deleteMany({ where: { employee_id: userId } });
+    // await client.resignationRequest.deleteMany({ where: { employee_id: userId } }); // REMOVED: Preserve for Resigned Date
     await client.timeLog.deleteMany({ where: { user_id: userId } });
 
-    // 8. User Anonymization (To remove "Details" but keep DB integrity for relations like Reporter)
+    // 8. User Status Update (Disable access but PRESERVE identity for history)
     await client.user.update({
         where: { id: userId },
         data: {
-            full_name: "Relieved Staff",
-            email: `relieved_${userId.substring(0, 8)}@qix.internal`,
-            password_hash: crypto.randomBytes(32).toString('hex'),
+            // full_name: "Relieved Staff", // REMOVED: Preserve actual name
+            // email: `relieved_${userId.substring(0, 8)}@qix.internal`, // REMOVED: Preserve email for identification
+            password_hash: crypto.randomBytes(32).toString('hex'), // Invalidate password
             avatar_url: null,
             status: 'RELIEVED'
         }
     });
 
-    return { success: true, message: "Staff details removed and record anonymized." };
+    return { success: true, message: "Staff marked as relieved. Identity preserved for resigned list." };
 };
 
 export const ensureUserLedger = async (userId: string, headId: string) => {
@@ -211,7 +211,21 @@ export const listStaff = async (includeHidden = false, includeRelieved = false) 
             orderBy: { designation: 'asc' },
             where: whereClause,
             include: {
-                user: { select: { id: true, full_name: true, email: true, role: true, avatar_url: true, status: true } },
+                user: {
+                    select: {
+                        id: true,
+                        full_name: true,
+                        email: true,
+                        role: true,
+                        avatar_url: true,
+                        status: true,
+                        resignations: {
+                            where: { status: 'APPROVED' },
+                            orderBy: { requested_relieving_date: 'desc' },
+                            take: 1
+                        }
+                    }
+                },
                 shift_assignments: {
                     include: { shift: true },
                     orderBy: { from_date: 'desc' }

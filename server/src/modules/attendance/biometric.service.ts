@@ -2,6 +2,7 @@
 import ZKLib from 'zkteco-js';
 import prisma from '../../utils/prisma';
 import { AttendanceService } from './service';
+import { randomUUID } from 'node:crypto';
 
 
 const getErrMsg = (e: any) => e.message || JSON.stringify(e) || 'Unknown Error';
@@ -189,12 +190,14 @@ export class BiometricControlService {
                         id: 'CURRENT', 
                         status: info.status, 
                         last_heartbeat: new Date(), 
-                        device_info: JSON.stringify(info) 
+                        device_info: JSON.stringify(info),
+                        updatedAt: new Date()
                     },
                     update: { 
                         status: info.status, 
                         last_heartbeat: new Date(), 
-                        device_info: JSON.stringify(info) 
+                        device_info: JSON.stringify(info),
+                        updatedAt: new Date()
                     }
                 }).catch(() => { });
 
@@ -211,12 +214,14 @@ export class BiometricControlService {
                         id: 'CURRENT', 
                         status: 'OFFLINE', 
                         last_heartbeat: new Date(), 
-                        device_info: JSON.stringify(errInfo) 
+                        device_info: JSON.stringify(errInfo),
+                        updatedAt: new Date()
                     },
                     update: { 
                         status: 'OFFLINE', 
                         last_heartbeat: new Date(), 
-                        device_info: JSON.stringify(errInfo) 
+                        device_info: JSON.stringify(errInfo),
+                        updatedAt: new Date()
                     }
                 }).catch(() => { });
                 return errInfo;
@@ -403,6 +408,7 @@ export class BiometricControlService {
             if (isBridgeActive) {
                 await prisma.biometricCommand.create({
                     data: {
+                        id: randomUUID(),
                         command,
                         params: params ? JSON.stringify(params) : null,
                         status: 'PENDING'
@@ -650,8 +656,18 @@ export class BiometricControlService {
 
         await prisma.biometricDeviceStatus.upsert({
             where: { id: 'CURRENT' },
-            create: { id: 'CURRENT', status: 'ONLINE', last_heartbeat: new Date(), device_info: JSON.stringify(info) },
-            update: { last_heartbeat: new Date(), device_info: JSON.stringify(info) }
+            create: { 
+                id: 'CURRENT', 
+                status: 'ONLINE', 
+                last_heartbeat: new Date(), 
+                device_info: JSON.stringify(info),
+                updatedAt: new Date()
+            },
+            update: { 
+                last_heartbeat: new Date(), 
+                device_info: JSON.stringify(info),
+                updatedAt: new Date()
+            }
         });
         return { message: "Cache updated" };
     }
@@ -743,6 +759,7 @@ export const processBiometricLogs = async (logs: any[], method: 'MANUAL' | 'AUTO
     // Create Sync Log Entry (Initially PENDING/RUNNING)
     const syncLog = await prisma.biometricSyncLog.create({
         data: {
+            id: randomUUID(),
             method,
             status: 'RUNNING',
             logs_fetched: logs.length
@@ -797,7 +814,15 @@ export const syncBiometrics = async (method: 'MANUAL' | 'AUTO' = 'MANUAL') => {
             const logs = await biometricControl.getAttendanceLogs();
             if (logs.length === 0) {
                 // Log empty sync too for history
-                await prisma.biometricSyncLog.create({ data: { method, status: 'SUCCESS', logs_fetched: 0, logs_saved: 0 } });
+                await prisma.biometricSyncLog.create({ 
+                    data: { 
+                        id: randomUUID(),
+                        method, 
+                        status: 'SUCCESS', 
+                        logs_fetched: 0, 
+                        logs_saved: 0 
+                    } 
+                });
                 return { message: 'No logs found on device.' };
             }
 

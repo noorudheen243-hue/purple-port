@@ -122,7 +122,7 @@ export class CriteriaService {
              }
         }
 
-        // Rule C4: Missing any one punch (default case)
+        // 4.5 Rule C4: Missing any one punch (default case for single punch)
         const ruleC4 = findRule('C4');
         if (ruleC4 && ((context.checkIn && !context.checkOut) || (!context.checkIn && context.checkOut))) {
             if (context.isPastDay) {
@@ -138,12 +138,8 @@ export class CriteriaService {
             return { status: 'ABSENT', rule_applied: 'B1' };
         }
 
-        // Final Fallback for past days
-        if (context.isPastDay) {
-            if (workHours < 4) return { status: 'ABSENT', rule_applied: 'MIN_HOURS_NOT_MET' };
-            if (workHours < 7.5) return { status: 'HALF_DAY', rule_applied: 'PARTIAL_DAY' };
-        }
-
+        // Final Default: If no rules matched, it's either Present (if logs exist) or something else.
+        // We'll return PRESENT by default, letting specific rules handle the exceptions.
         return { status: 'PRESENT', rule_applied: 'DEFAULT' };
     }
 

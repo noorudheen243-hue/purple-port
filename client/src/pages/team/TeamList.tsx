@@ -25,6 +25,7 @@ const TeamList = () => {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [editingStaff, setEditingStaff] = useState<any>(null);
+    const [activeTab, setActiveTab] = useState<'active' | 'resigned'>('active');
     const [expandedDepts, setExpandedDepts] = useState<Record<string, boolean>>({
         'MANAGEMENT': true,
         'MARKETING': true,
@@ -72,13 +73,23 @@ const TeamList = () => {
     }, [location.search]);
 
     const { data: staffList, isLoading, error } = useQuery({
-        queryKey: ['staff'],
-        queryFn: async () => (await api.get('/team/staff')).data
+        queryKey: ['staff', activeTab === 'resigned'],
+        queryFn: async () => (await api.get('/team/staff', { params: { include_relieved: activeTab === 'resigned' } })).data
     });
 
-    const filteredStaff = useMemo(() => {
+    const resignedStaff = useMemo(() => {
         if (!Array.isArray(staffList)) return [];
-        return staffList.filter((staff: any) => {
+        return staffList.filter((s: any) => s.user?.status === 'RELIEVED');
+    }, [staffList]);
+
+    const activeStaff = useMemo(() => {
+        if (!Array.isArray(staffList)) return [];
+        return staffList.filter((s: any) => s.user?.status === 'ACTIVE');
+    }, [staffList]);
+
+    const filteredStaff = useMemo(() => {
+        const source = activeTab === 'active' ? activeStaff : resignedStaff;
+        return source.filter((staff: any) => {
             // Safety check for user relation
             const user = staff.user || {};
             const fullName = user.full_name || '';
@@ -91,7 +102,7 @@ const TeamList = () => {
             const matchesDept = filterDept === 'ALL' || filterDept === 'ALL_LIST' || staff.department === filterDept;
             return matchesSearch && matchesDept;
         });
-    }, [staffList, searchTerm, filterDept]);
+    }, [activeStaff, resignedStaff, activeTab, searchTerm, filterDept]);
 
     const groupedStaff = useMemo(() => {
         if (filterDept === 'ALL_LIST') {
@@ -171,6 +182,22 @@ const TeamList = () => {
                 </div>
             </div>
 
+            {/* Tabs */}
+            <div className="flex border-b border-gray-200">
+                <button
+                    onClick={() => setActiveTab('active')}
+                    className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 -mb-[2px] ${activeTab === 'active' ? 'border-primary text-primary bg-primary/5' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                >
+                    Active Team
+                </button>
+                <button
+                    onClick={() => setActiveTab('resigned')}
+                    className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 -mb-[2px] ${activeTab === 'resigned' ? 'border-primary text-primary bg-primary/5' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                >
+                    Resigned team members
+                </button>
+            </div>
+
             {/* Filters */}
             <div className="flex flex-col md:flex-row gap-4 bg-card p-4 rounded-lg border shadow-sm">
                 <div className="relative flex-1">
@@ -206,132 +233,191 @@ const TeamList = () => {
                 <div className="text-center py-12">Loading team...</div>
             ) : (
                 <div className="space-y-8">
-                    {Object.entries(groupedStaff).map(([dept, members]) => {
-                        if (members.length === 0) return null;
-                        const isExpanded = expandedDepts[dept] ?? true;
+                    {activeTab === 'active' ? (
+                        Object.entries(groupedStaff).map(([dept, members]) => {
+                            if (members.length === 0) return null;
+                            const isExpanded = expandedDepts[dept] ?? true;
 
-                        return (
-                            <div key={dept} className="border rounded-lg bg-card overflow-hidden shadow-sm">
-                                <button
-                                    onClick={() => toggleDept(dept)}
-                                    className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors border-b"
-                                >
-                                    <div className="flex items-center gap-2">
-                                        {isExpanded ? <ChevronDown size={20} className="text-gray-500" /> : <ChevronRight size={20} className="text-gray-500" />}
-                                        <h3 className="font-semibold text-lg text-gray-800">{dept.replace('_', ' ')}</h3>
-                                        <span className="bg-white border px-2 py-0.5 rounded-full text-xs text-gray-500 font-medium">{members.length}</span>
-                                    </div>
-                                </button>
+                            return (
+                                <div key={dept} className="border rounded-lg bg-card overflow-hidden shadow-sm">
+                                    <button
+                                        onClick={() => toggleDept(dept)}
+                                        className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors border-b"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            {isExpanded ? <ChevronDown size={20} className="text-gray-500" /> : <ChevronRight size={20} className="text-gray-500" />}
+                                            <h3 className="font-semibold text-lg text-gray-800">{dept.replace('_', ' ')}</h3>
+                                            <span className="bg-white border px-2 py-0.5 rounded-full text-xs text-gray-500 font-medium">{members.length}</span>
+                                        </div>
+                                    </button>
 
-                                {isExpanded && (
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-sm text-left">
-                                            <thead className="bg-gray-50/50 dark:bg-slate-800/50 text-gray-500 dark:text-gray-400 font-medium border-b dark:border-gray-700">
-                                                <tr>
-                                                    <th className="px-4 py-3 pl-6">Name</th>
-                                                    <th className="px-4 py-3 text-center">Ledger</th>
-                                                    <th className="px-4 py-3">ID Number</th>
-                                                    <th className="px-4 py-3">Designation</th>
-                                                    <th className="px-4 py-3">Contact</th>
-                                                    <th className="px-4 py-3">Date of Joining</th>
-                                                    <th className="px-4 py-3 text-right pr-6">Actions</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y">
-                                                {members.map((member: any) => {
-                                                    // Ensure user object exists to avoid crash
-                                                    const user = member.user || {};
-
-                                                    return (
-                                                        <tr key={member.id} className="hover:bg-gray-50/30 group">
-                                                            <td className="px-4 py-3 pl-6">
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
-                                                                        {user.avatar_url ? (
-                                                                            <img src={getAssetUrl(user.avatar_url)} className="w-full h-full rounded-full object-cover" />
-                                                                        ) : (
-                                                                            (user.full_name || '?').charAt(0)
+                                    {isExpanded && (
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-sm text-left">
+                                                <thead className="bg-gray-50/50 dark:bg-slate-800/50 text-gray-500 dark:text-gray-400 font-medium border-b dark:border-gray-700">
+                                                    <tr>
+                                                        <th className="px-4 py-3 pl-6">Name</th>
+                                                        <th className="px-4 py-3 text-center">Ledger</th>
+                                                        <th className="px-4 py-3">ID Number</th>
+                                                        <th className="px-4 py-3">Designation</th>
+                                                        <th className="px-4 py-3">Contact</th>
+                                                        <th className="px-4 py-3">Date of Joining</th>
+                                                        <th className="px-4 py-3 text-right pr-6">Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y">
+                                                    {members.map((member: any) => {
+                                                        const user = member.user || {};
+                                                        return (
+                                                            <tr key={member.id} className="hover:bg-gray-50/30 group">
+                                                                <td className="px-4 py-3 pl-6">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
+                                                                            {user.avatar_url ? (
+                                                                                <img src={getAssetUrl(user.avatar_url)} className="w-full h-full rounded-full object-cover" />
+                                                                            ) : (
+                                                                                (user.full_name || '?').charAt(0)
+                                                                            )}
+                                                                        </div>
+                                                                        <div>
+                                                                            <div className="font-medium text-gray-900 flex items-center gap-2">
+                                                                                {user.full_name || 'Unknown'}
+                                                                            </div>
+                                                                            <Link to={`/dashboard/team/${member.id}`} className="text-[10px] text-primary hover:underline">View Profile</Link>
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-4 py-3 text-center">
+                                                                    {member.ledger_options?.create ? (
+                                                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 text-[10px] font-medium" title="Ledger Account Active">
+                                                                            <CheckCircle size={10} className="fill-green-100" /> Active
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="text-gray-300 text-[10px]">-</span>
+                                                                    )}
+                                                                </td>
+                                                                <td className="px-4 py-3 text-gray-600 font-mono text-xs">{member.staff_number}</td>
+                                                                <td className="px-4 py-3 text-gray-600">{member.designation}</td>
+                                                                <td className="px-4 py-3">
+                                                                    <div className="flex flex-col gap-0.5 text-xs text-gray-500">
+                                                                        <div className="flex items-center gap-1.5">
+                                                                            <Mail size={12} /> {user.email || '-'}
+                                                                        </div>
+                                                                        <div className="flex items-center gap-1.5">
+                                                                            <Phone size={12} /> {member.official_contact || member.personal_contact || '-'}
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-4 py-3 text-gray-600">
+                                                                    {member.date_of_joining ? new Date(member.date_of_joining).toLocaleDateString() : '-'}
+                                                                </td>
+                                                                <td className="px-4 py-3 text-right pr-6">
+                                                                    <div className="flex items-center justify-end gap-2">
+                                                                        <button
+                                                                            onClick={() => handleEdit(member)}
+                                                                            className="p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded transition-colors"
+                                                                            title="Edit Member"
+                                                                        >
+                                                                            <Edit size={16} />
+                                                                        </button>
+                                                                        {user.role !== 'DEVELOPER_ADMIN' && (
+                                                                            <>
+                                                                                {canDelete && (
+                                                                                    <button
+                                                                                        onClick={() => {
+                                                                                            if (window.confirm("Are you sure you want to delete this team member?")) {
+                                                                                                handleDelete(member.id);
+                                                                                            }
+                                                                                        }}
+                                                                                        className="p-1.5 text-red-600 bg-red-50 hover:bg-red-100 rounded transition-colors"
+                                                                                        title="Delete Member"
+                                                                                    >
+                                                                                        <Trash2 size={16} />
+                                                                                    </button>
+                                                                                )}
+                                                                                <button
+                                                                                    onClick={() => handleInitiateExit(member)}
+                                                                                    className="p-1.5 text-orange-600 bg-orange-50 hover:bg-orange-100 rounded transition-colors"
+                                                                                    title="Initiate Exit"
+                                                                                >
+                                                                                    <LogOut size={16} />
+                                                                                </button>
+                                                                            </>
                                                                         )}
                                                                     </div>
-                                                                    <div>
-                                                                        <div className="font-medium text-gray-900 flex items-center gap-2">
-                                                                            {user.full_name || 'Unknown'}
-                                                                        </div>
-                                                                        <Link to={`/dashboard/team/${member.id}`} className="text-[10px] text-primary hover:underline">View Profile</Link>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                            <td className="px-4 py-3 text-center">
-                                                                {member.ledger_options?.create ? (
-                                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 text-[10px] font-medium" title="Ledger Account Active">
-                                                                        <CheckCircle size={10} className="fill-green-100" /> Active
-                                                                    </span>
-                                                                ) : (
-                                                                    <span className="text-gray-300 text-[10px]">-</span>
-                                                                )}
-                                                            </td>
-                                                            <td className="px-4 py-3 text-gray-600 font-mono text-xs">{member.staff_number}</td>
-                                                            <td className="px-4 py-3 text-gray-600">{member.designation}</td>
-                                                            <td className="px-4 py-3">
-                                                                <div className="flex flex-col gap-0.5 text-xs text-gray-500">
-                                                                    <div className="flex items-center gap-1.5">
-                                                                        <Mail size={12} /> {user.email || '-'}
-                                                                    </div>
-                                                                    <div className="flex items-center gap-1.5">
-                                                                        <Phone size={12} /> {member.official_contact || member.personal_contact || '-'}
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                            <td className="px-4 py-3 text-gray-600">
-                                                                {member.date_of_joining ? new Date(member.date_of_joining).toLocaleDateString() : '-'}
-                                                            </td>
-                                                            <td className="px-4 py-3 text-right pr-6">
-                                                                <div className="flex items-center justify-end gap-2">
-                                                                    <button
-                                                                        onClick={() => handleEdit(member)}
-                                                                        className="p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded transition-colors"
-                                                                        title="Edit Member"
-                                                                    >
-                                                                        <Edit size={16} />
-                                                                    </button>
-                                                                    {user.role !== 'DEVELOPER_ADMIN' && (
-                                                                        <>
-                                                                            {canDelete && (
-                                                                                <button
-                                                                                    onClick={() => {
-                                                                                        if (window.confirm("Are you sure you want to delete this team member?")) {
-                                                                                            handleDelete(member.id);
-                                                                                        }
-                                                                                    }}
-                                                                                    className="p-1.5 text-red-600 bg-red-50 hover:bg-red-100 rounded transition-colors"
-                                                                                    title="Delete Member"
-                                                                                >
-                                                                                    <Trash2 size={16} />
-                                                                                </button>
-                                                                            )}
-                                                                            <button
-                                                                                onClick={() => handleInitiateExit(member)}
-                                                                                className="p-1.5 text-orange-600 bg-orange-50 hover:bg-orange-100 rounded transition-colors"
-                                                                                title="Initiate Exit"
-                                                                            >
-                                                                                <LogOut size={16} />
-                                                                            </button>
-                                                                        </>
-                                                                    )}
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    )
-                                                })}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
+                                                                </td>
+                                                            </tr>
+                                                        )
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })
+                    ) : (
+                        <div className="border rounded-lg bg-card overflow-hidden shadow-sm">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="bg-gray-50/50 text-gray-500 font-medium border-b">
+                                        <tr>
+                                            <th className="px-4 py-3 pl-6">Name</th>
+                                            <th className="px-4 py-3">ID Number</th>
+                                            <th className="px-4 py-3">Resigned Date</th>
+                                            <th className="px-4 py-3 text-right pr-6">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y">
+                                        {resignedStaff.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={4} className="px-4 py-8 text-center text-gray-500">No resigned staff members found.</td>
+                                            </tr>
+                                        ) : (
+                                            resignedStaff.map((member: any) => {
+                                                const user = member.user || {};
+                                                const resignationDate = user.resignations?.[0]?.requested_relieving_date;
 
-                    {filteredStaff.length === 0 && (
+                                                return (
+                                                    <tr key={member.id} className="hover:bg-gray-50/50">
+                                                        <td className="px-4 py-3 pl-6">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-bold text-xs opacity-60">
+                                                                    {(user.full_name || '?').charAt(0)}
+                                                                </div>
+                                                                <div className="font-medium text-gray-500">{user.full_name}</div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-gray-400 font-mono text-xs">{member.staff_number}</td>
+                                                        <td className="px-4 py-3 text-red-500 font-medium">
+                                                            {resignationDate ? new Date(resignationDate).toLocaleDateString('en-GB') : 'N/A'}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right pr-6">
+                                                            {canDelete && (
+                                                                <button
+                                                                    onClick={() => {
+                                                                        if (window.confirm("Permanently delete this resigned staff record?")) {
+                                                                            handleDelete(member.id);
+                                                                        }
+                                                                    }}
+                                                                    className="p-1.5 text-red-600 bg-red-50 hover:bg-red-100 rounded transition-colors"
+                                                                    title="Permanently Delete"
+                                                                >
+                                                                    <Trash2 size={16} />
+                                                                </button>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'active' && filteredStaff.length === 0 && (
                         <div className="text-center py-12 text-muted-foreground bg-gray-50 rounded-lg border border-dashed">
                             No team members found matching your filters.
                         </div>

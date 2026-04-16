@@ -195,11 +195,13 @@ export class BiometricController {
                     status: 'ONLINE', 
                     last_heartbeat: new Date(), 
                     last_office_ip: cleanIp,
-                    last_office_registration: new Date()
+                    last_office_registration: new Date(),
+                    updatedAt: new Date()
                 },
                 update: { 
                     last_office_ip: cleanIp,
-                    last_office_registration: new Date()
+                    last_office_registration: new Date(),
+                    updatedAt: new Date()
                 }
             });
 
@@ -225,12 +227,14 @@ export class BiometricController {
                     last_heartbeat: new Date(), 
                     last_office_ip: cleanIp,
                     last_office_registration: new Date(),
-                    last_bridge_heartbeat: new Date()
+                    last_bridge_heartbeat: new Date(),
+                    updatedAt: new Date()
                 },
                 update: { 
                     last_office_ip: cleanIp,
                     last_office_registration: new Date(),
-                    last_bridge_heartbeat: new Date()
+                    last_bridge_heartbeat: new Date(),
+                    updatedAt: new Date()
                 }
             });
 

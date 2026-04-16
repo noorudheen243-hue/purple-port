@@ -8,6 +8,7 @@ import AccountOverview from '../accounts/AccountOverview';
 import LedgerManagement from '../accounts/LedgerManagement';
 import TransactionHistory from '../accounts/TransactionHistory';
 import AccountStatement from '../accounts/AccountStatement';
+import AccountReports from '../accounts/AccountReports';
 import AccountBackupPanel from '../accounts/AccountBackupPanel';
 import InvoiceModule from './index';
 
@@ -21,8 +22,9 @@ const FinanceManagerPage = () => {
         { id: 'ledger', label: 'Ledger Master', theme: 'purple' },
         { id: 'history', label: 'Transaction History', theme: 'yellow' },
         { id: 'statements', label: 'Account Statements', theme: 'purple' },
-        { id: 'invoice', label: 'Client Invoice', theme: 'yellow' },
-        { id: 'backup', label: 'Account Backup', theme: 'purple' },
+        { id: 'reports', label: 'Reports', theme: 'yellow' },
+        { id: 'invoice', label: 'Client Invoice', theme: 'purple' },
+        { id: 'backup', label: 'Account Backup', theme: 'yellow' },
     ];
 
     const getTabClass = (isActive: boolean, theme: string) => {
@@ -100,6 +102,10 @@ const FinanceManagerPage = () => {
 
                     <TabsContent value="statements" className="mt-0">
                         <AccountStatement />
+                    </TabsContent>
+
+                    <TabsContent value="reports" className="mt-0">
+                        <AccountReports />
                     </TabsContent>
 
                     <TabsContent value="invoice" className="mt-0">

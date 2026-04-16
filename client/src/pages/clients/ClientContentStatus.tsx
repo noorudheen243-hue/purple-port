@@ -1,7 +1,9 @@
 import React, { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../lib/api';
-import { Target, CheckCircle, Clock } from 'lucide-react';
+import { getAssetUrl } from '../../lib/utils';
+import { Target, CheckCircle, Clock, User } from 'lucide-react';
+import { startOfMonth, endOfMonth } from 'date-fns';
 
 const COLORS = [
     'bg-blue-50 text-blue-800 border-blue-200',
@@ -18,28 +20,43 @@ const ClientContentStatus = () => {
         queryFn: async () => (await api.get('/clients')).data
     });
 
+    const { data: globalContentTypes = [], isLoading: typesLoading } = useQuery({
+        queryKey: ['content-types'],
+        queryFn: async () => (await api.get('/content-types')).data
+    });
+
     const { data: allTasks, isLoading: tasksLoading } = useQuery({
         queryKey: ['tasks-all-content'],
         queryFn: async () => (await api.get('/tasks')).data
     });
 
-    // 1. Extract all unique Content Strategy types across all clients
+    // Extract unique Content Strategy types across all clients
     const uniqueContentTypes = useMemo(() => {
-        if (!clients) return [];
-        const types = new Set<string>();
+        if (!clients || globalContentTypes.length === 0) return [];
+        const typeIds = new Set<string>();
         clients.forEach((client: any) => {
             if (client.content_strategies && Array.isArray(client.content_strategies)) {
                 client.content_strategies.forEach((strategy: any) => {
-                    if (strategy.type) types.add(strategy.type);
+                    if (strategy.content_type_id) typeIds.add(strategy.content_type_id);
                 });
             }
         });
-        return Array.from(types).sort();
-    }, [clients]);
+        
+        // Map IDs to Names and sort
+        const types = Array.from(typeIds)
+            .map(id => globalContentTypes.find((ct: any) => ct.id === id))
+            .filter(Boolean);
+            
+        return types.sort((a, b) => a.name.localeCompare(b.name));
+    }, [clients, globalContentTypes]);
 
-    // 2. Pre-process table rows 
+    // Pre-process table rows 
     const tableData = useMemo(() => {
-        if (!clients || !allTasks) return [];
+        if (!clients || !allTasks || !globalContentTypes) return [];
+
+        const now = new Date();
+        const currentMonthStart = startOfMonth(now);
+        const currentMonthEnd = endOfMonth(now);
 
         return clients.map((client: any) => {
             let totalAssigned = 0;
@@ -48,19 +65,23 @@ const ClientContentStatus = () => {
             // Map planned quantities
             if (client.content_strategies && Array.isArray(client.content_strategies)) {
                 client.content_strategies.forEach((strategy: any) => {
-                    if (strategy.type && strategy.quantity) {
-                        strategyMap[strategy.type] = strategy.quantity;
-                        totalAssigned += strategy.quantity;
+                    if (strategy.content_type_id && strategy.monthly_target) {
+                        strategyMap[strategy.content_type_id] = strategy.monthly_target;
+                        totalAssigned += strategy.monthly_target;
                     }
                 });
             }
 
-            // Calculate completed
+            // Calculate completed (ONLY IN CURRENT MONTH)
             let completed = 0;
             const clientTasks = allTasks.filter((t: any) => t.client_id === client.id);
+            
             clientTasks.forEach((task: any) => {
-                // If it's completed and its content_type matches one of the planned strategies
-                if (task.status === 'COMPLETED' && task.content_type && strategyMap[task.content_type]) {
+                const taskDate = new Date(task.createdAt);
+                const isCurrentMonth = taskDate >= currentMonthStart && taskDate <= currentMonthEnd;
+
+                // Match dynamically, a task counts if it was produced/planned for this month and status is COMPLETED
+                if (task.status === 'COMPLETED' && isCurrentMonth && task.content_type_id && strategyMap[task.content_type_id]) {
                     completed++;
                 }
             });
@@ -76,10 +97,10 @@ const ClientContentStatus = () => {
                 completed,
                 pending
             };
-        });
-    }, [clients, allTasks]);
+        }).filter((row: any) => row.totalAssigned > 0); // Only show clients with active strategies
+    }, [clients, allTasks, globalContentTypes]);
 
-    if (clientsLoading || tasksLoading) {
+    if (clientsLoading || tasksLoading || typesLoading) {
         return (
             <div className="p-8 text-center animate-pulse">
                 <div className="h-8 bg-gray-200 rounded w-64 mb-6 mx-auto"></div>
@@ -103,8 +124,8 @@ const ClientContentStatus = () => {
         <div className="p-6 space-y-6">
             <div className="flex justify-between items-center mb-2">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Client Content Status</h1>
-                    <p className="text-muted-foreground">Comprehensive overview of planned content strategies vs. execution.</p>
+                    <h1 className="text-2xl font-bold tracking-tight">Client Content Status (Current Month)</h1>
+                    <p className="text-muted-foreground">Overview of planned vs. completed content strategies for active clients.</p>
                 </div>
             </div>
 
@@ -118,10 +139,10 @@ const ClientContentStatus = () => {
                                     Client Name
                                 </th>
                                 <th colSpan={uniqueContentTypes.length} className="px-5 py-3 font-bold text-center text-indigo-900 border-b border-r bg-indigo-50/50">
-                                    Content Strategy (Planned Items)
+                                    Monthly Targets (Planned)
                                 </th>
                                 <th rowSpan={2} className="px-5 py-4 font-bold text-center text-blue-900 border-b border-r align-bottom bg-blue-50/30">
-                                    Total Assigned
+                                    Total Target
                                 </th>
                                 <th rowSpan={2} className="px-5 py-4 font-bold text-center text-emerald-900 border-b border-r align-bottom bg-emerald-50/30">
                                     Completed
@@ -132,9 +153,9 @@ const ClientContentStatus = () => {
                             </tr>
                             {/* SUB HEADER ROW FOR DYNAMIC STRATEGIES */}
                             <tr>
-                                {uniqueContentTypes.map((type, idx) => (
-                                    <th key={type} className={`px-4 py-2 text-xs font-semibold text-center border-b border-r ${COLORS[idx % COLORS.length]}`}>
-                                        {type}
+                                {uniqueContentTypes.map((type: any, idx: number) => (
+                                    <th key={type.id} className={`px-4 py-2 text-xs font-semibold text-center border-b border-r ${COLORS[idx % COLORS.length]}`}>
+                                        {type.name}
                                     </th>
                                 ))}
                             </tr>
@@ -146,18 +167,34 @@ const ClientContentStatus = () => {
                                 return (
                                     <tr key={client.id} className="hover:bg-gray-50 transition-colors">
                                         {/* Client Name Col */}
-                                        <td className="px-5 py-3 font-medium text-gray-900 border-r bg-white sticky left-0 z-10 shadow-[1px_0_0_0_#f3f4f6] group-hover:shadow-[1px_0_0_0_#e5e7eb] group-hover:bg-gray-50">
-                                            <div className="flex flex-col">
-                                                <span>{client.name}</span>
-                                                <span className="text-[10px] text-gray-400 font-mono">{client.code}</span>
+                                        <td className="px-5 py-3 font-medium text-gray-900 border-r bg-white sticky left-0 z-10 shadow-[1px_0_0_0_#f3f4f6] group-hover:shadow-[1px_0_0_0_#e5e7eb] group-hover:bg-gray-50 align-middle">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex-shrink-0 w-8 h-8 rounded-full overflow-hidden border border-gray-100 bg-gray-50">
+                                                    {clients?.find((c: any) => c.id === client.id)?.profile_picture ? (
+                                                        <img 
+                                                            src={getAssetUrl(clients.find((c: any) => c.id === client.id).profile_picture)} 
+                                                            alt={client.name} 
+                                                            className="w-full h-full object-cover"
+                                                            onError={(e) => { (e.target as any).src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(client.name); }}
+                                                        />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center text-gray-400 bg-gray-50 font-bold text-[10px]">
+                                                            {client.name.substring(0, 1)}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="flex flex-col min-w-0">
+                                                    <span className="truncate max-w-[180px] font-bold text-gray-800">{client.name}</span>
+                                                    <span className="text-[10px] text-gray-400 font-mono tracking-tight font-semibold uppercase">{client.code}</span>
+                                                </div>
                                             </div>
                                         </td>
 
                                         {/* Dynamic Strategy Quantities */}
-                                        {uniqueContentTypes.map((type) => {
-                                            const qty = client.strategyMap[type];
+                                        {uniqueContentTypes.map((type: any) => {
+                                            const qty = client.strategyMap[type.id];
                                             return (
-                                                <td key={type} className="px-4 py-3 text-center border-r">
+                                                <td key={type.id} className="px-4 py-3 text-center border-r">
                                                     {qty ? (
                                                         <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-gray-700 font-bold text-xs">
                                                             {qty}
@@ -197,7 +234,7 @@ const ClientContentStatus = () => {
                             }) : (
                                 <tr>
                                     <td colSpan={uniqueContentTypes.length + 4} className="px-6 py-12 text-center text-muted-foreground">
-                                        No client data found.
+                                        No active strategies found for current clients.
                                     </td>
                                 </tr>
                             )}

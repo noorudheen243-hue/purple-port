@@ -556,11 +556,53 @@ export class AttendanceController {
                 return res.status(403).json({ message: 'Forbidden' });
             }
             const { id } = req.params;
-            const { is_enabled, parameters } = req.body;
-            const updated = await AttendanceService.updateCriteriaConfig(id, { is_enabled, parameters });
+            const { rule_type, rule_code, name, description, is_enabled, parameters } = req.body;
+            const updated = await AttendanceService.updateCriteriaConfig(id, { 
+                rule_type, rule_code, name, description, is_enabled, parameters 
+            });
             res.status(200).json(updated);
         } catch (error: any) {
             res.status(400).json({ message: error.message });
+        }
+    }
+
+    static async createCriteriaConfig(req: Request, res: Response) {
+        try {
+            if (req.user?.role !== 'ADMIN' && req.user?.role !== 'MANAGER' && req.user?.role !== 'DEVELOPER_ADMIN') {
+                return res.status(403).json({ message: 'Forbidden' });
+            }
+            const { rule_type, rule_code, name, description, parameters } = req.body;
+            const config = await AttendanceService.createCriteriaConfig({ 
+                rule_type, rule_code, name, description, parameters 
+            });
+            res.status(201).json(config);
+        } catch (error: any) {
+            res.status(400).json({ message: error.message });
+        }
+    }
+
+    static async deleteCriteriaConfig(req: Request, res: Response) {
+        try {
+            if (req.user?.role !== 'ADMIN' && req.user?.role !== 'MANAGER' && req.user?.role !== 'DEVELOPER_ADMIN') {
+                return res.status(403).json({ message: 'Forbidden' });
+            }
+            const { id } = req.params;
+            await AttendanceService.deleteCriteriaConfig(id);
+            res.status(204).send();
+        } catch (error: any) {
+            res.status(400).json({ message: error.message });
+        }
+    }
+
+    static async syncDefaultCriteriaConfigs(req: Request, res: Response) {
+        try {
+            if (req.user?.role !== 'ADMIN' && req.user?.role !== 'MANAGER' && req.user?.role !== 'DEVELOPER_ADMIN') {
+                return res.status(403).json({ message: 'Forbidden' });
+            }
+            const result = await AttendanceService.syncDefaultCriteriaConfigs();
+            res.status(200).json(result);
+        } catch (error: any) {
+            res.status(500).json({ message: error.message });
         }
     }
 }

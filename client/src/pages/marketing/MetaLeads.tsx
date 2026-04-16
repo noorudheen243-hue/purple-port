@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import {
     Loader2, AlertCircle, Download, Users, Mail, Phone, RefreshCw,
     Plus, Edit, Trash2, History, ThumbsUp, ThumbsDown, MapPin,
-    Filter, MoreVertical, X, Check, Search
+    Filter, MoreVertical, X, Check, Search, Zap
 } from 'lucide-react';
 
 interface MetaLeadsProps {
@@ -258,11 +258,11 @@ export const MetaLeads: React.FC<MetaLeadsProps> = ({ clientId, fromDate, toDate
                     </div>
                 </div>
                 <div className="p-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm transition-transform hover:scale-[1.02]">
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Positive</p>
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">AI HOT Leads</p>
                     <div className="flex items-end justify-between">
-                        <h3 className="text-2xl font-black text-gray-900 dark:text-white">{positiveLeads}</h3>
-                        <div className="p-2 bg-orange-50 dark:bg-orange-900/30 rounded-lg text-orange-600 dark:text-orange-400">
-                            <ThumbsUp className="w-5 h-5" />
+                        <h3 className="text-2xl font-black text-gray-900 dark:text-white">{leads.filter(l => l.aiScore?.label === 'HOT').length}</h3>
+                        <div className="p-2 bg-red-50 dark:bg-red-900/30 rounded-lg text-red-600 dark:text-red-400">
+                            <Zap className="w-5 h-5" />
                         </div>
                     </div>
                 </div>
@@ -276,6 +276,7 @@ export const MetaLeads: React.FC<MetaLeadsProps> = ({ clientId, fromDate, toDate
                             <tr className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700">
                                 <th className="px-6 py-4 font-bold text-gray-600 dark:text-gray-400">Date/Source</th>
                                 <th className="px-6 py-4 font-bold text-gray-600 dark:text-gray-400">Lead Information</th>
+                                <th className="px-6 py-4 font-bold text-gray-600 dark:text-gray-400">AI Score</th>
                                 <th className="px-6 py-4 font-bold text-gray-600 dark:text-gray-400">Campaign/Loc.</th>
                                 <th className="px-6 py-4 font-bold text-gray-600 dark:text-gray-400">Quality/Status</th>
                                 <th className="px-6 py-4 font-bold text-gray-600 dark:text-gray-400">Feedback</th>
@@ -323,6 +324,29 @@ export const MetaLeads: React.FC<MetaLeadsProps> = ({ clientId, fromDate, toDate
                                                     <a href={`mailto:${lead.email}`} className="flex items-center text-xs text-gray-500 hover:text-blue-600">
                                                         <Mail className="w-3 h-3 mr-1" /> {lead.email}
                                                     </a>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex flex-col gap-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`text-lg font-black ${
+                                                        lead.aiScore?.label === 'HOT' ? 'text-red-600' :
+                                                        lead.aiScore?.label === 'WARM' ? 'text-orange-500' : 'text-blue-500'
+                                                    }`}>
+                                                        {lead.aiScore?.score || '??'}
+                                                    </span>
+                                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                                        lead.aiScore?.label === 'HOT' ? 'bg-red-100 text-red-700' :
+                                                        lead.aiScore?.label === 'WARM' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'
+                                                    }`}>
+                                                        {lead.aiScore?.label || 'PENDING'}
+                                                    </span>
+                                                </div>
+                                                {lead.aiScore?.factors_json && (
+                                                    <p className="text-[10px] text-gray-400 italic max-w-[120px] truncate">
+                                                        {JSON.parse(lead.aiScore.factors_json).slice(0, 2).join(', ')}
+                                                    </p>
                                                 )}
                                             </div>
                                         </td>

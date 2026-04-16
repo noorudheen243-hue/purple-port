@@ -17,7 +17,7 @@ app.set('trust proxy', 1);
 // 1. General Rate Limiter (Relaxed)
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 10000, // Increased for dev/testing
+    max: process.env.NODE_ENV === 'production' ? 1000 : 999999, // Very high for dev
     standardHeaders: true,
     legacyHeaders: false,
     message: 'Too many requests from this IP, please try again after 15 minutes'
@@ -26,7 +26,7 @@ const limiter = rateLimit({
 // 2. Strict Auth Limiter (Brute-force protection)
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 100, // Increased from 10 to 100 to allow legitimate logins while still protecting
+    max: process.env.NODE_ENV === 'production' ? 100 : 999999, // Disable for dev
     standardHeaders: true,
     legacyHeaders: false,
     message: 'Too many login attempts, please try again later.'
@@ -80,6 +80,7 @@ app.get('/health', (req, res) => {
 import authRoutes from './modules/auth/routes';
 import taskRoutes from './modules/tasks/routes';
 import clientRoutes from './modules/clients/routes';
+import contentTypeRoutes from './modules/content-types/routes';
 import campaignRoutes from './modules/campaigns/routes';
 import assetRoutes from './modules/assets/routes';
 import commentRoutes from './modules/comments/routes';
@@ -108,6 +109,7 @@ import deploymentRoutes from './modules/deployment/routes'; // New Auto-Update R
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/clients', clientRoutes);
+app.use('/api/content-types', contentTypeRoutes);
 app.use('/api/campaigns', campaignRoutes);
 app.use('/api/assets', assetRoutes);
 app.use('/api/comments', commentRoutes);
@@ -150,11 +152,13 @@ import chatRoutes from './modules/chat/routes';
 import launcherRoutes from './modules/launcher/routes';
 import adminRoutes from './modules/admin/routes';
 import meetingRoutes from './modules/meetings/routes';
+import aiSalesRoutes from './modules/ai_sales_engine/routes/aiSales.routes';
 
 app.use('/api/chat', chatRoutes);
 app.use('/api/launcher', launcherRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/meetings', meetingRoutes);
+app.use('/api/ai-sales', aiSalesRoutes);
 
 
 // --- Production: Serve Frontend ---

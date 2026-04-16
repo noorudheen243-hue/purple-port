@@ -52,12 +52,19 @@ export class MarketingSyncWorker {
     public static async syncSingleCampaign(campaignId: string, daysBack: number = 7): Promise<any> {
         console.log(`[SyncWorker] Single Sync requested for campaign: ${campaignId}`);
         const campaign = await (prisma as any).marketingCampaign.findUnique({
-            where: { id: campaignId },
-            include: { account: true }
+            where: { id: campaignId }
         });
 
-        if (!campaign || !campaign.account) {
-            throw new Error('Campaign or linked account not found');
+        if (!campaign) {
+            throw new Error('Campaign not found');
+        }
+
+        const account = await (prisma as any).marketingAccount.findFirst({
+            where: { clientId: campaign.clientId, platform: campaign.platform }
+        });
+
+        if (!account) {
+            throw new Error('Account linked to campaign not found');
         }
 
         const today = new Date();
@@ -68,9 +75,9 @@ export class MarketingSyncWorker {
         let externalMetrics: ExternalMarketingMetric[] = [];
         try {
             if (campaign.platform === 'meta') {
-                externalMetrics = await metaService.fetchMetrics(campaign.externalCampaignId, campaign.account.externalAccountId, startDate, today);
+                externalMetrics = await metaService.fetchMetrics(campaign.externalCampaignId, account.externalAccountId, startDate, today);
             } else if (campaign.platform === 'google') {
-                externalMetrics = await googleService.fetchMetrics(campaign.externalCampaignId, campaign.account.externalAccountId, startDate, today);
+                externalMetrics = await googleService.fetchMetrics(campaign.externalCampaignId, account.externalAccountId, startDate, today);
             }
 
             console.log(`[SyncWorker] Found ${externalMetrics.length} metrics for single sync of ${campaign.name}`);

@@ -352,16 +352,34 @@ export const updateClient = async (id: string, data: any) => {
     return updatedClient;
 };
 
-export const upsertContentStrategy = async (clientId: string, strategies: { type: string, quantity: number }[]) => {
+export const upsertContentStrategy = async (clientId: string, strategies: { content_type_id: string, monthly_target: number, notes?: string }[]) => {
     return await prisma.$transaction(async (tx) => {
+        // Find existing strategies to delete those not in the new payload
+        const newIds = strategies.map(s => s.content_type_id);
+        await tx.clientContentStrategy.deleteMany({
+            where: {
+                client_id: clientId,
+                content_type_id: { notIn: newIds }
+            }
+        });
+
         for (const s of strategies) {
             await tx.clientContentStrategy.upsert({
-                where: { client_id_type: { client_id: clientId, type: s.type } },
-                update: { quantity: s.quantity },
+                where: { 
+                    client_id_content_type_id: { 
+                        client_id: clientId, 
+                        content_type_id: s.content_type_id 
+                    } 
+                },
+                update: { 
+                    monthly_target: s.monthly_target,
+                    notes: s.notes
+                },
                 create: {
                     client_id: clientId,
-                    type: s.type,
-                    quantity: s.quantity
+                    content_type_id: s.content_type_id,
+                    monthly_target: s.monthly_target,
+                    notes: s.notes
                 }
             });
         }

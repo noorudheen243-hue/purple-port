@@ -17,7 +17,10 @@ router.post('/admin/recalculate-all', authenticate, AttendanceController.bulkRec
 
 // Attendance Criteria Config
 router.get('/admin/criteria/configs', authenticate, AttendanceController.getCriteriaConfigs);
+router.post('/admin/criteria/configs', authenticate, AttendanceController.createCriteriaConfig);
 router.patch('/admin/criteria/configs/:id', authenticate, AttendanceController.updateCriteriaConfig);
+router.delete('/admin/criteria/configs/:id', authenticate, AttendanceController.deleteCriteriaConfig);
+router.post('/admin/criteria/sync-defaults', authenticate, AttendanceController.syncDefaultCriteriaConfigs);
 
 router.get('/regularisation/requests', authenticate, AttendanceController.getRegularisationRequests);
 router.patch('/regularisation/:id/status', authenticate, AttendanceController.updateRegularisationStatus);

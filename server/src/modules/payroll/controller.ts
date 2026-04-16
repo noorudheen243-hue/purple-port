@@ -132,8 +132,22 @@ export const getPayrollHistory = async (req: Request, res: Response) => {
 export const processSlip = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const slip = await payrollService.processIndividualSlip(id);
+        const { bankId } = req.body;
+        const slip = await payrollService.processIndividualSlip(id, bankId);
         res.json(slip);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const processSlipsBulk = async (req: Request, res: Response) => {
+    try {
+        const { slipIds, bankId } = req.body;
+        if (!slipIds || !Array.isArray(slipIds) || !bankId) {
+            return res.status(400).json({ message: "SlipIds (Array) and BankId are required." });
+        }
+        const results = await payrollService.processMultipleSlips(slipIds, bankId);
+        res.json(results);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }

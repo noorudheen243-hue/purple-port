@@ -210,7 +210,19 @@ export const getSalaryDraft = async (userId: string, month: number, year: number
     const conveyance = profile.conveyance_allowance || 0;
     const accommodation = profile.accommodation_allowance || 0;
     const allowances = profile.allowances || 0;
-    const incentives = 0; // Placeholder
+    
+    // Dynamically fetch STAFF_INCENTIVES from JournalEntries
+    // We will store the user's ID in the `reference` field when recording Staff Incentives mid-month.
+    const incentiveAgg = await prisma.journalEntry.aggregate({
+        _sum: { amount: true },
+        where: {
+            nature: 'STAFF_INCENTIVE',
+            reference: userId,
+            date: { gte: startDate, lte: endDate }
+        }
+    });
+    
+    const incentives = incentiveAgg._sum.amount || 0;
 
     const monthlyGrossComponents = basic + hra + conveyance + accommodation + allowances + incentives;
 
@@ -254,25 +266,13 @@ export const getSalaryDraft = async (userId: string, month: number, year: number
         }
     });
 
-    // 9. Check Ledgers for Advance
-    let salaryAdvanceBalance = 0;
+    // 9. Check User for Advance (Single Source of Truth)
+    let salaryAdvanceBalance = profile.user.advance_balance || 0;
     try {
-        const advanceLedger = await prisma.ledger.findFirst({
-            where: { entity_id: userId, entity_type: 'USER', head: { code: '1000' } }
-        });
-        if (advanceLedger && advanceLedger.balance > 0) salaryAdvanceBalance += advanceLedger.balance;
-
-        let staffLedger = await prisma.ledger.findFirst({
-            where: { entity_id: userId, entity_type: 'USER', head: { code: '2000' } }
-        });
-        if (!staffLedger) {
-            staffLedger = await prisma.ledger.findFirst({
-                where: { name: profile.user.full_name, head: { code: '2000' } }
-            });
-        }
-        if (staffLedger && staffLedger.balance > 0) salaryAdvanceBalance += staffLedger.balance;
+        // We no longer query ledgers for advance balance as it's unreliable if ledgers get created mid-month.
+        // We sync via the `user.advance_balance` in the Accounting service.
     } catch (error) {
-        console.error("Failed to fetch ledger balances:", error);
+        console.error("error accessing advance balance:", error);
     }
 
 
@@ -281,7 +281,7 @@ export const getSalaryDraft = async (userId: string, month: number, year: number
         const currentAdvance = salaryAdvanceBalance;
 
         // Correct Net Pay Formula: Gross Total (Fresh Calc) - Deductions
-        const updatedNetPay = grossTotal - lopDeduction - currentAdvance - existingSlip.other_deductions;
+        const updatedNetPay = grossTotal - lopDeduction - currentAdvance - Math.max(existingSlip.other_deductions, incentives);
 
         return {
             ...existingSlip,
@@ -339,10 +339,10 @@ export const getSalaryDraft = async (userId: string, month: number, year: number
         lop_days: lopDays,
         lop_deduction: lopDeduction,
         advance_salary: salaryAdvanceBalance,
-        other_deductions: 0,
+        other_deductions: incentives, // Auto-deduct advance incentives paid mid-month
 
         total_working_days: totalWorkingDays,
-        net_pay: Math.max(0, Math.round(netPay)),
+        net_pay: Math.max(0, Math.round(netPay - incentives)), // Adjust net pay correctly
         gross_total: Math.round(grossTotal),
         daily_wage: Math.round(dailyWage),
 
@@ -528,23 +528,30 @@ export const getPayrollSlips = async (userId: string | undefined, year: number, 
     });
 };
 
-export const processIndividualSlip = async (slipId: string) => {
+export const processIndividualSlip = async (slipId: string, bankLedgerId?: string) => {
     const slipForUser = await prisma.payrollSlip.findUnique({ where: { id: slipId } });
     if (!slipForUser) throw new Error("Slip not found");
 
     const salaryExpenseLedger = await ensureLedger('INTERNAL', 'SALARY_EXPENSE', '6000', 'Salary Expense');
     const staffLedger = await ensureLedger('USER', slipForUser.user_id, '2000');
 
-    let bankLedger = await prisma.ledger.findFirst({
-        where: { name: { contains: 'Canara' } }
-    });
+    let bankLedger: any = null;
+    if (bankLedgerId) {
+        bankLedger = await prisma.ledger.findUnique({ where: { id: bankLedgerId } });
+    }
+
     if (!bankLedger) {
         bankLedger = await prisma.ledger.findFirst({
-            where: { entity_type: 'BANK', status: 'ACTIVE' }
+            where: { name: { contains: 'Canara' } }
         });
-    }
-    if (!bankLedger) {
-        bankLedger = await ensureLedger('INTERNAL', 'MAIN_BANK', '1000', 'Main Bank A/C');
+        if (!bankLedger) {
+            bankLedger = await prisma.ledger.findFirst({
+                where: { entity_type: 'BANK', status: 'ACTIVE' }
+            });
+        }
+        if (!bankLedger) {
+            bankLedger = await ensureLedger('INTERNAL', 'MAIN_BANK', '1000', 'Main Bank A/C');
+        }
     }
 
     let advanceLedger = null;
@@ -564,38 +571,30 @@ export const processIndividualSlip = async (slipId: string) => {
         const monthName = new Date(0, slip.run.month - 1).toLocaleString('default', { month: 'short' });
         const periodStr = `${monthName} ${slip.run.year}`;
 
+        // Unified Transaction Logic (Requirement: Single Entry as Expense)
+        // Debit: Salary Expense (Net Pay + Advance Recovery)
+        // Credit: Bank/Cash Ledger (Net Pay)
+        // Credit: Advance Ledger (Advance Recovery, if any)
+
         let totalExpense = slip.net_pay;
         if (slip.advance_salary > 0) totalExpense += slip.advance_salary;
 
-        const realAccrualLines = [
+        const combinedLines = [
             { ledger_id: salaryExpenseLedger.id, debit: totalExpense, credit: 0 },
-            { ledger_id: staffLedger.id, credit: slip.net_pay, debit: 0 }
+            { ledger_id: bankLedger.id, credit: slip.net_pay, debit: 0 }
         ];
+
         if (slip.advance_salary > 0 && advanceLedger) {
-            realAccrualLines.push({ ledger_id: advanceLedger.id, credit: slip.advance_salary, debit: 0 });
+            combinedLines.push({ ledger_id: advanceLedger.id, credit: slip.advance_salary, debit: 0 });
         }
 
         await createJournalEntry(tx, {
             date: new Date(),
-            description: `Payroll Accrual - ${periodStr} - ${slip.user.full_name}`,
+            description: `Payroll Payout - ${periodStr} - ${slip.user.full_name}`,
             amount: totalExpense,
             type: 'EXPENSE',
             created_by_id: 'SYSTEM',
-            lines: realAccrualLines
-        });
-
-        const paymentLines = [
-            { ledger_id: staffLedger.id, debit: slip.net_pay, credit: 0 },
-            { ledger_id: bankLedger.id, credit: slip.net_pay, debit: 0 }
-        ];
-
-        await createJournalEntry(tx, {
-            date: new Date(),
-            description: `Payroll Payment - ${periodStr} - ${slip.user.full_name}`,
-            amount: slip.net_pay,
-            type: 'PAYMENT',
-            created_by_id: 'SYSTEM',
-            lines: paymentLines
+            lines: combinedLines
         });
 
         return tx.payrollSlip.update({
@@ -603,6 +602,19 @@ export const processIndividualSlip = async (slipId: string) => {
             data: { status: 'PAID' }
         });
     });
+};
+
+export const processMultipleSlips = async (slipIds: string[], bankLedgerId: string) => {
+    const results = [];
+    for (const id of slipIds) {
+        try {
+            const res = await processIndividualSlip(id, bankLedgerId);
+            results.push({ id, status: 'SUCCESS' });
+        } catch (error: any) {
+            results.push({ id, status: 'ERROR', message: error.message });
+        }
+    }
+    return results;
 };
 
 export const rejectIndividualSlip = async (slipId: string) => {

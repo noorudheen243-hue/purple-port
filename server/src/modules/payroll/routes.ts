@@ -16,6 +16,7 @@ router.post('/confirm', protect, authorize('ADMIN'), payrollController.confirmPa
 router.get('/run', protect, authorize('ADMIN'), payrollController.getPayrollRun);
 router.get('/history', protect, payrollController.getPayrollHistory);
 router.post('/slip/:id/process', protect, authorize('ADMIN'), payrollController.processSlip);
+router.post('/process-bulk', protect, authorize('ADMIN'), payrollController.processSlipsBulk);
 router.delete('/slip/:id', protect, authorize('ADMIN'), payrollController.rejectSlip);
 
 export default router;

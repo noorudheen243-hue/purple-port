@@ -46,7 +46,7 @@ const AccountOverview = () => {
 
     if (isLoading) return <div className="p-8 text-center text-muted-foreground animate-pulse">Loading Financial Data...</div>;
 
-    const { income, expense, net_profit, cash_bank_balance, expense_pie_data } = overview || {};
+    const { income, expense, net_profit, cash_bank_balance, opening_balance, month_name, expense_pie_data } = overview || {};
 
     return (
         <div className="space-y-6">
@@ -82,47 +82,61 @@ const AccountOverview = () => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <Card className="bg-blue-50/50 border-blue-100 shadow-sm hover:shadow-md transition-shadow">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-[10px] uppercase font-bold text-blue-900 tracking-wider">Opening Balance</CardTitle>
+                        <Wallet className="h-4 w-4 text-blue-600" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-xl font-bold text-blue-700">₹{(opening_balance || 0).toLocaleString('en-IN')}</div>
+                        <p className="text-[10px] text-blue-600/80">Prev. Month Closing</p>
+                    </CardContent>
+                </Card>
+
                 <Card className="bg-green-50/50 border-green-100 shadow-sm hover:shadow-md transition-shadow">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-green-900">Total Income</CardTitle>
+                        <CardTitle className="text-[10px] uppercase font-bold text-green-900 tracking-wider">Income ({month_name})</CardTitle>
                         <ArrowDownLeft className="h-4 w-4 text-green-600" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-green-700">₹{(income || 0).toLocaleString('en-IN')}</div>
-                        <p className="text-xs text-green-600/80">Period Revenue</p>
+                        <div className="text-xl font-bold text-green-700">₹{(income || 0).toLocaleString('en-IN')}</div>
+                        <p className="text-[10px] text-green-600/80">Monthly Revenue</p>
                     </CardContent>
                 </Card>
+
                 <Card className="bg-red-50/50 border-red-100 shadow-sm hover:shadow-md transition-shadow">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-red-900">Total Expenses</CardTitle>
+                        <CardTitle className="text-[10px] uppercase font-bold text-red-900 tracking-wider">Expenses ({month_name})</CardTitle>
                         <ArrowUpRight className="h-4 w-4 text-red-600" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-red-700">₹{(expense || 0).toLocaleString('en-IN')}</div>
-                        <p className="text-xs text-red-600/80">Operating costs</p>
+                        <div className="text-xl font-bold text-red-700">₹{(expense || 0).toLocaleString('en-IN')}</div>
+                        <p className="text-[10px] text-red-600/80">Monthly Outflow</p>
                     </CardContent>
                 </Card>
-                <Card className="bg-blue-50/50 border-blue-100 shadow-sm hover:shadow-md transition-shadow">
+
+                <Card className="bg-indigo-50/50 border-indigo-100 shadow-sm hover:shadow-md transition-shadow">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-blue-900">Net Profit</CardTitle>
-                        <DollarSign className="h-4 w-4 text-blue-600" />
+                        <CardTitle className="text-[10px] uppercase font-bold text-indigo-900 tracking-wider">Month Balance</CardTitle>
+                        <DollarSign className="h-4 w-4 text-indigo-600" />
                     </CardHeader>
                     <CardContent>
-                        <div className={`text-2xl font-bold ${net_profit >= 0 ? 'text-blue-700' : 'text-red-600'}`}>
+                        <div className={`text-xl font-bold ${net_profit >= 0 ? 'text-indigo-700' : 'text-red-600'}`}>
                             ₹{(net_profit || 0).toLocaleString('en-IN')}
                         </div>
-                        <p className="text-xs text-blue-600/80">Period Net P&L</p>
+                        <p className="text-[10px] text-indigo-600/80">Income - Expense</p>
                     </CardContent>
                 </Card>
+
                 <Card className="bg-amber-50/50 border-amber-100 shadow-sm hover:shadow-md transition-shadow">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-amber-900">Cash & Bank</CardTitle>
+                        <CardTitle className="text-[10px] uppercase font-bold text-amber-900 tracking-wider">Cash & Bank</CardTitle>
                         <Wallet className="h-4 w-4 text-amber-600" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-amber-700">₹{(cash_bank_balance || 0).toLocaleString('en-IN')}</div>
-                        <p className="text-xs text-amber-600/80">Cumulative Liquidity</p>
+                        <div className="text-xl font-bold text-amber-700">₹{(cash_bank_balance || 0).toLocaleString('en-IN')}</div>
+                        <p className="text-[10px] text-amber-600/80">Net Liquidity</p>
                     </CardContent>
                 </Card>
             </div>

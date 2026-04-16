@@ -8,8 +8,13 @@ import { Card, CardContent } from '../../components/ui/card';
 import ConfirmationModal from '../../components/ui/ConfirmationModal'; // Assuming exists, otherwise standard alert
 
 const TransactionHistory = () => {
-    const [dateRange, setDateRange] = useState({ start: '', end: '' });
-    const [queryParams, setQueryParams] = useState({ limit: 20, start: '', end: '' });
+    const now = new Date();
+    const firstDay = format(new Date(now.getFullYear(), now.getMonth(), 1), 'yyyy-MM-dd');
+    const lastDay = format(new Date(now.getFullYear(), now.getMonth() + 1, 0), 'yyyy-MM-dd');
+
+    const [dateRange, setDateRange] = useState({ start: firstDay, end: lastDay });
+    const [page, setPage] = useState(1);
+    const [queryParams, setQueryParams] = useState({ limit: 100, offset: 0, start: firstDay, end: lastDay });
 
     // Edit/Delete State
     const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -23,7 +28,10 @@ const TransactionHistory = () => {
     const { data: transactions, isLoading, refetch } = useQuery({
         queryKey: ['transactions', queryParams],
         queryFn: async () => {
-            const params: any = { limit: queryParams.limit };
+            const params: any = { 
+                limit: queryParams.limit,
+                offset: queryParams.offset
+            };
             if (queryParams.start) params.start_date = queryParams.start;
             if (queryParams.end) params.end_date = queryParams.end;
 
@@ -54,12 +62,26 @@ const TransactionHistory = () => {
     });
 
     const handleGenerate = () => {
+        setPage(1);
         setQueryParams({
-            limit: 100, // Increase limit when filtering
+            limit: 100,
+            offset: 0,
             start: dateRange.start,
             end: dateRange.end
         });
         setTimeout(refetch, 100);
+    };
+
+    const handleNextPage = () => {
+        const nextOffset = queryParams.offset + 100;
+        setPage(page + 1);
+        setQueryParams({ ...queryParams, offset: nextOffset });
+    };
+
+    const handlePrevPage = () => {
+        const prevOffset = Math.max(0, queryParams.offset - 100);
+        setPage(Math.max(1, page - 1));
+        setQueryParams({ ...queryParams, offset: prevOffset });
     };
 
     const confirmDelete = (tx: any) => {
@@ -127,14 +149,15 @@ const TransactionHistory = () => {
                     </button>
                     <button
                         onClick={() => {
-                            setDateRange({ start: '', end: '' });
-                            setQueryParams({ limit: 20, start: '', end: '' });
+                            setDateRange({ start: firstDay, end: lastDay });
+                            setPage(1);
+                            setQueryParams({ limit: 100, offset: 0, start: firstDay, end: lastDay });
                             refetch();
                         }}
                         className="border px-4 py-2 rounded-md hover:bg-secondary flex items-center gap-2 h-10"
-                        title="Reset to Last 20"
+                        title="Reset to Full Month"
                     >
-                        <RefreshCw className="w-4 h-4" /> Reset
+                        <RefreshCw className="w-4 h-4" /> Reset Month
                     </button>
                 </CardContent>
             </Card>
@@ -165,7 +188,16 @@ const TransactionHistory = () => {
                                 <tr key={tx.id} className="hover:bg-muted/50 transition-colors">
                                     <td className="px-4 py-3 font-mono text-xs">{tx.transaction_number || '-'}</td>
                                     <td className="px-4 py-3 whitespace-nowrap">{format(new Date(tx.date), 'dd/MM/yyyy')}</td>
-                                    <td className="px-4 py-3 font-medium">{tx.description}</td>
+                                    <td className="px-4 py-3 font-medium">
+                                        <div className="flex flex-col">
+                                            <span>{tx.description}</span>
+                                            {tx.nature && tx.nature !== 'GENERAL' && (
+                                                <span className="text-[10px] font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded w-fit mt-1 border border-purple-100 uppercase">
+                                                    {tx.nature.replace('_', ' ')}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </td>
                                     <td className="px-4 py-3 text-xs uppercase badge">
                                         <span className={`px-2 py-0.5 rounded font-medium ${tx.type === 'INCOME' ? 'bg-green-100 text-green-700 border border-green-200' : tx.type === 'EXPENSE' ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-secondary text-foreground'}`}>
                                             {tx.type}
@@ -200,11 +232,33 @@ const TransactionHistory = () => {
                 </table>
             </div>
 
-            {!isLoading && transactions?.length >= 20 && !dateRange.start && (
-                <div className="text-center text-xs text-muted-foreground pt-2">
-                    Showing last 20 transactions. Use date filters to see more.
+            <div className="flex flex-col md:flex-row justify-between items-center bg-card p-4 border rounded-lg shadow-sm gap-4">
+                {!isLoading && transactions?.length > 0 ? (
+                    <div className="text-sm text-muted-foreground order-2 md:order-1">
+                        Showing {queryParams.offset + 1} to {queryParams.offset + transactions.length} transactions
+                    </div>
+                ) : <div className="order-2 md:order-1" />}
+
+                <div className="flex items-center gap-2 order-1 md:order-2">
+                    <button
+                        onClick={handlePrevPage}
+                        disabled={page === 1 || isLoading}
+                        className="p-2 border rounded-md hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                    >
+                        &larr; Previous 100
+                    </button>
+                    <div className="px-4 py-2 bg-muted rounded-md font-medium">
+                        Page {page}
+                    </div>
+                    <button
+                        onClick={handleNextPage}
+                        disabled={transactions?.length < 100 || isLoading}
+                        className="p-2 border rounded-md hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                    >
+                        Next 100 &rarr;
+                    </button>
                 </div>
-            )}
+            </div>
 
             {/* Edit Modal - simple implementation inline or component */}
             {isEditModalOpen && editingTx && (

@@ -22,7 +22,7 @@ const transactionSchema = z.object({
     from_ledger_id: z.string().uuid(), // Credit
     to_ledger_id: z.string().uuid(),   // Debit
     reference: z.string().optional(),
-    nature: z.enum(['GENERAL', 'ADVANCE_RECEIVED', 'ADVANCE_PAID']).optional(),
+    nature: z.string().optional(),
     entity_id: z.string().optional()
 });
 
@@ -144,9 +144,15 @@ export const syncLedgers = async (req: Request, res: Response) => {
 
 export const getTransactions = async (req: Request, res: Response) => {
     try {
-        const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
+        const limitStr = req.query.limit as string;
+        const limit = limitStr !== undefined ? parseInt(limitStr) : 20;
+        const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
         const startDate = req.query.start_date ? new Date(req.query.start_date as string) : undefined;
-        const endDate = req.query.end_date ? new Date(req.query.end_date as string) : undefined;
+        const endDateStr = req.query.end_date as string;
+        let endDate = endDateStr ? new Date(endDateStr) : undefined;
+        if (endDate) {
+            endDate.setHours(23, 59, 59, 999);
+        }
 
         let clientId = req.user?.role === 'CLIENT' ? (req.user as any).linked_client_id : undefined;
 
@@ -162,9 +168,10 @@ export const getTransactions = async (req: Request, res: Response) => {
             clientId = req.query.client_id as string;
         }
 
+        const accountType = req.query.account_type as string;
         console.log('DEBUG_TRANSACTIONS_FINAL_ID:', clientId);
 
-        const transactions = await AccountingService.getTransactions(limit, startDate, endDate, clientId);
+        const transactions = await AccountingService.getTransactions(limit, offset, startDate, endDate, clientId, accountType);
         res.json(transactions);
     } catch (error) {
         res.status(500).json({ message: "Failed to fetch transactions", error: (error as Error).message });

@@ -221,7 +221,7 @@ export const recordTransaction = async (data: {
                 where: { id: data.entity_id },
                 data: { advance_balance: { increment: data.amount } }
             });
-        } else if (data.nature === 'ADVANCE_PAID' && data.entity_id) {
+        } else if ((data.nature === 'ADVANCE_PAID' || data.nature === 'SALARY_ADVANCE') && data.entity_id) {
             // Staff Advance: Increase User's Advance Balance
             await tx.user.update({
                 where: { id: data.entity_id },
@@ -405,6 +405,9 @@ export const getFinancialOverview = async (month?: number, year?: number) => {
 
     const startDate = new Date(targetYear, targetMonth, 1);
     const endDate = new Date(targetYear, targetMonth + 1, 0, 23, 59, 59, 999);
+    const prevMonthEndDate = new Date(targetYear, targetMonth, 0, 23, 59, 59, 999);
+
+    const monthName = startDate.toLocaleString('default', { month: 'long' });
 
     // 1. Performance Data (Income/Expense for the period)
     const journalLines = await prisma.journalLine.findMany({
@@ -429,10 +432,8 @@ export const getFinancialOverview = async (month?: number, year?: number) => {
         const impact = line.debit - line.credit;
 
         if (head.type === 'INCOME') {
-            // Income: Credit increases balance (negative in our logic, so subtract impact)
             income -= impact; 
         } else if (head.type === 'EXPENSE') {
-            // Expense: Debit increases balance
             expense += impact;
             if (impact > 0) {
                 expenseBreakdown[line.ledger.name] = (expenseBreakdown[line.ledger.name] || 0) + impact;
@@ -440,7 +441,7 @@ export const getFinancialOverview = async (month?: number, year?: number) => {
         }
     });
 
-    // 2. Cash & Bank Balance (Cumulative up to endDate)
+    // 2. Cash & Bank Balances
     const bankLeads = await prisma.ledger.findMany({
         where: {
             OR: [
@@ -450,23 +451,38 @@ export const getFinancialOverview = async (month?: number, year?: number) => {
         }
     });
 
-    let bankBalance = 0;
+    let openingBalance = 0;
+    let closingBalance = 0;
+
     for (const l of bankLeads) {
-        const agg = await prisma.journalLine.aggregate({
+        // Opening (Up to prev month end)
+        const opAgg = await prisma.journalLine.aggregate({
+            where: {
+                ledger_id: l.id,
+                entry: { date: { lte: prevMonthEndDate } }
+            },
+            _sum: { debit: true, credit: true }
+        });
+        openingBalance += (opAgg._sum.debit || 0) - (opAgg._sum.credit || 0);
+
+        // Closing (Up to current month end)
+        const clAgg = await prisma.journalLine.aggregate({
             where: {
                 ledger_id: l.id,
                 entry: { date: { lte: endDate } }
             },
             _sum: { debit: true, credit: true }
         });
-        bankBalance += (agg._sum.debit || 0) - (agg._sum.credit || 0);
+        closingBalance += (clAgg._sum.debit || 0) - (clAgg._sum.credit || 0);
     }
 
     return {
+        month_name: monthName,
         income,
         expense,
-        net_profit: income - expense,
-        cash_bank_balance: bankBalance,
+        net_profit: income - expense, // This is current month net
+        opening_balance: openingBalance,
+        cash_bank_balance: closingBalance,
         expense_pie_data: Object.entries(expenseBreakdown).map(([name, value]) => ({ name, value: value as number }))
     };
 };
@@ -491,9 +507,11 @@ export const syncEntityLedgers = async () => {
 
 export const getTransactions = async (
     limit: number = 20,
+    offset: number = 0,
     startDate?: Date,
     endDate?: Date,
-    clientId?: string
+    clientId?: string,
+    accountType?: string
 ) => {
     const whereClause: any = {};
     if (startDate && endDate) {
@@ -501,6 +519,22 @@ export const getTransactions = async (
             gte: startDate,
             lte: endDate
         };
+    }
+
+    if (accountType) {
+        if (['BANK', 'CASH'].includes(accountType)) {
+            whereClause.lines = {
+                some: {
+                    ledger: { entity_type: accountType }
+                }
+            };
+        } else {
+            whereClause.lines = {
+                some: {
+                    ledger: { head: { type: accountType } }
+                }
+            };
+        }
     }
 
     if (clientId) {
@@ -548,7 +582,8 @@ export const getTransactions = async (
     const transactions = await prisma.journalEntry.findMany({
         where: whereClause,
         orderBy: { date: 'desc' },
-        take: limit,
+        take: limit > 0 ? limit : undefined,
+        skip: offset,
         include: {
             lines: {
                 include: { ledger: true }
@@ -569,6 +604,7 @@ export const getTransactions = async (
             type: tx.type,
             amount: tx.amount,
             reference: tx.reference,
+            nature: tx.nature,
             created_by: 'System', // Schema relation missing
             debit_ledgers: debitLines.map((l: any) => `${l.ledger.name} (${l.ledger.ledger_code || '-'})`).join(', '),
             credit_ledgers: creditLines.map((l: any) => `${l.ledger.name} (${l.ledger.ledger_code || '-'})`).join(', ')
@@ -617,7 +653,7 @@ export const deleteTransaction = async (entryId: string) => {
                 });
             }
         }
-    } else if (entry.nature === 'ADVANCE_PAID') {
+    } else if (entry.nature === 'ADVANCE_PAID' || entry.nature === 'SALARY_ADVANCE') {
         // Advance Paid -> Debit Ledger is User (Staff)
         const debitLine = entry.lines.find(l => l.debit > 0);
         if (debitLine) {

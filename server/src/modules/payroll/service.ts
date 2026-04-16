@@ -281,7 +281,7 @@ export const getSalaryDraft = async (userId: string, month: number, year: number
         const currentAdvance = salaryAdvanceBalance;
 
         // Correct Net Pay Formula: Gross Total (Fresh Calc) - Deductions
-        const updatedNetPay = grossTotal - lopDeduction - currentAdvance - Math.max(existingSlip.other_deductions, incentives);
+        const updatedNetPay = grossTotal - lopDeduction - currentAdvance - (existingSlip.other_deductions || 0);
 
         return {
             ...existingSlip,

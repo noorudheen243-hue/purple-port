@@ -224,7 +224,7 @@ export const GroupDetailWindow: React.FC<GroupDetailWindowProps> = ({ group, cli
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-white/5">
-                                        {campaignsLoading ? (
+                                        {metricsLoading ? (
                                             <tr><td colSpan={5} className="py-20 text-center"><Loader2 className="w-8 h-8 animate-spin mx-auto text-purple-600" /></td></tr>
                                         ) : campaignRes.length === 0 ? (
                                             <tr><td colSpan={5} className="py-20 text-center text-gray-600 font-bold uppercase text-xs">No Campaigns found in this group</td></tr>

@@ -1033,6 +1033,22 @@ export async function createLead(req: Request, res: Response) {
     }
 }
 
+export async function updateLeadFeedback(req: Request, res: Response) {
+    const { id } = req.params;
+    const { feedback } = req.body; // 'POSITIVE', 'NEGATIVE', or null
+
+    try {
+        const updated = await (prisma as any).lead.update({
+            where: { id },
+            data: { feedback }
+        });
+        res.json(updated);
+    } catch (e: any) {
+        console.error('updateLeadFeedback error:', e.message);
+        res.status(500).json({ message: 'Failed to update feedback', error: e.message });
+    }
+}
+
 export async function updateLead(req: Request, res: Response) {
     const { id } = req.params;
     const data = req.body;

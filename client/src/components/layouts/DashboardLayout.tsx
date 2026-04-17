@@ -16,7 +16,8 @@ import {
     TrendingUp,
     Home,
     Smartphone,
-    Calendar
+    Calendar,
+    ArrowLeft
 } from 'lucide-react';
 import api from '../../lib/api';
 import Swal from 'sweetalert2';
@@ -355,7 +356,15 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                         </button>
 
                         {/* Home Button - Visible Everywhere */}
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => navigate(-1)}
+                                className="p-3 rounded-xl shadow-md transition-all flex items-center justify-center bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 hidden md:flex"
+                                title="Go Back"
+                            >
+                                <ArrowLeft size={28} strokeWidth={2.5} />
+                            </button>
+
                             <Link
                                 to="/dashboard"
                                 className={`p-3 rounded-xl shadow-md transition-all flex items-center justify-center hidden md:flex

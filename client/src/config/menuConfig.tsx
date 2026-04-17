@@ -61,12 +61,6 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
         icon: CheckSquare,
         path: "/dashboard/tasks/manager"
     },
-    {
-        label: "Sales Intelligence",
-        icon: Zap,
-        roles: [ROLES.DEVELOPER_ADMIN],
-        path: "/dashboard/ai-sales"
-    },
 ];
 
 export const STAFF_MENU: MenuItem[] = [

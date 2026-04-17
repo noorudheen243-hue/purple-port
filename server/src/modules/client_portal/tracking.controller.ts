@@ -83,6 +83,7 @@ export const getMetaAdsLogs = async (req: Request, res: Response) => {
 
         const logs = await prisma.metaAdsLog.findMany({
             where: { client_id: clientId, ...dateFilter },
+            include: { group: true },
             orderBy: { date: 'desc' }
         });
         res.json(logs);
@@ -94,7 +95,7 @@ export const getMetaAdsLogs = async (req: Request, res: Response) => {
 export const createMetaAdsLog = async (req: Request, res: Response) => {
     try {
         const user = req.user as any;
-        const { client_id, marketing_campaign_id, notes, date, spend, results, reach, impressions } = req.body;
+        const { client_id, marketing_campaign_id, notes, date, spend, results, reach, impressions, group_id } = req.body;
 
         if (!marketing_campaign_id) {
             return res.status(400).json({ message: "Marketing Campaign ID is required to fetch real-time data." });
@@ -151,7 +152,8 @@ export const createMetaAdsLog = async (req: Request, res: Response) => {
                 status: campaign.status || 'ACTIVE',
                 results_json: JSON.stringify(results_json),
                 notes,
-                date: date ? new Date(date) : undefined
+                date: date ? new Date(date) : undefined,
+                group_id: group_id || undefined
             }
         });
 
@@ -267,6 +269,7 @@ export const getGoogleAdsLogs = async (req: Request, res: Response) => {
 
         const logs = await prisma.googleAdsLog.findMany({
             where: { client_id: clientId, ...dateFilter },
+            include: { group: true },
             orderBy: { date: 'desc' }
         });
         res.json(logs);
@@ -278,7 +281,7 @@ export const getGoogleAdsLogs = async (req: Request, res: Response) => {
 export const createGoogleAdsLog = async (req: Request, res: Response) => {
     try {
         const user = req.user as any;
-        const { client_id, campaign_name, campaign_type, spend, status, clicks, impressions, conversions, cpa, notes, date, startDate, endDate } = req.body;
+        const { client_id, campaign_name, campaign_type, spend, status, clicks, impressions, conversions, cpa, notes, date, startDate, endDate, group_id } = req.body;
 
         const log = await prisma.googleAdsLog.create({
             data: {
@@ -293,7 +296,8 @@ export const createGoogleAdsLog = async (req: Request, res: Response) => {
                 conversions: parseInt(conversions || 0),
                 cpa: parseFloat(cpa || 0),
                 notes,
-                date: date ? new Date(date) : undefined
+                date: date ? new Date(date) : undefined,
+                group_id: group_id || undefined
             } as any
         });
 
@@ -423,6 +427,7 @@ export const getSeoLogs = async (req: Request, res: Response) => {
 
         const logs = await prisma.seoLog.findMany({
             where: { client_id: clientId, ...dateFilter },
+            include: { group: true },
             orderBy: [{ year: 'desc' }, { month: 'desc' }]
         });
         res.json(logs);
@@ -434,7 +439,7 @@ export const getSeoLogs = async (req: Request, res: Response) => {
 export const createSeoLog = async (req: Request, res: Response) => {
     try {
         const user = req.user as any;
-        const { client_id, month, year, status, activities_json, keyword_rankings_json, organic_traffic, summary } = req.body;
+        const { client_id, month, year, status, activities_json, keyword_rankings_json, organic_traffic, summary, group_id } = req.body;
 
         const log = await prisma.seoLog.upsert({
             where: {
@@ -450,7 +455,8 @@ export const createSeoLog = async (req: Request, res: Response) => {
                 activities_json: typeof activities_json === 'object' ? JSON.stringify(activities_json) : activities_json,
                 keyword_rankings_json: typeof keyword_rankings_json === 'object' ? JSON.stringify(keyword_rankings_json) : keyword_rankings_json,
                 organic_traffic: parseInt(organic_traffic || 0),
-                summary
+                summary,
+                group_id: group_id || undefined
             },
             create: {
                 client_id,
@@ -461,7 +467,8 @@ export const createSeoLog = async (req: Request, res: Response) => {
                 activities_json: typeof activities_json === 'object' ? JSON.stringify(activities_json) : activities_json,
                 keyword_rankings_json: typeof keyword_rankings_json === 'object' ? JSON.stringify(keyword_rankings_json) : keyword_rankings_json,
                 organic_traffic: parseInt(organic_traffic || 0),
-                summary
+                summary,
+                group_id: group_id || undefined
             }
         });
         await prisma.task.create({ 
@@ -488,7 +495,7 @@ export const updateSeoLog = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const user = req.user as any;
-        const { month, year, status, activities_json, keyword_rankings_json, organic_traffic, summary } = req.body;
+        const { month, year, status, activities_json, keyword_rankings_json, organic_traffic, summary, group_id } = req.body;
 
         const log = await prisma.seoLog.update({
             where: { id },
@@ -500,7 +507,8 @@ export const updateSeoLog = async (req: Request, res: Response) => {
                 activities_json: typeof activities_json === 'object' ? JSON.stringify(activities_json) : activities_json,
                 keyword_rankings_json: typeof keyword_rankings_json === 'object' ? JSON.stringify(keyword_rankings_json) : keyword_rankings_json,
                 organic_traffic: parseInt(organic_traffic || 0),
-                summary
+                summary,
+                group_id: group_id || undefined
             }
         });
         await prisma.task.create({ 
@@ -691,3 +699,44 @@ export const deleteContentDeliverable = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Failed to delete deliverable' });
     }
 };
+// --- MARKETING GROUPS ---
+
+export const getMarketingGroups = async (req: Request, res: Response) => {
+    try {
+        const clientId = getValidatedClientId(req);
+        if (!clientId) return res.status(403).json({ message: "Access Denied: Invalid Client Context" });
+
+        const groups = await prisma.marketingGroup.findMany({
+            where: { client_id: clientId },
+            orderBy: { name: 'asc' }
+        });
+        res.json(groups);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const createMarketingGroup = async (req: Request, res: Response) => {
+    try {
+        const clientId = getValidatedClientId(req);
+        if (!clientId) return res.status(403).json({ message: "Access Denied: Invalid Client Context" });
+
+        const { name } = req.body;
+        if (!name) return res.status(400).json({ message: "Group name is required" });
+
+        const group = await prisma.marketingGroup.create({
+            data: {
+                name,
+                client_id: clientId
+            }
+        });
+        res.json(group);
+    } catch (error: any) {
+        if (error.code === 'P2002') {
+            return res.status(400).json({ message: "Group with this name already exists for this client." });
+        }
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// ... existing code ... (keeping exports below)

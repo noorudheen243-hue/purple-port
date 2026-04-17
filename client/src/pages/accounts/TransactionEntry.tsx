@@ -8,8 +8,9 @@ import { format } from 'date-fns';
 import { 
     CalendarIcon, Wallet, ArrowDownCircle, ArrowUpCircle, X, 
     Briefcase, FileText, UserCheck, Tag, Coffee, Home, Droplet, 
-    Paperclip, Monitor, Gift 
+    Paperclip, Monitor, Gift, LayoutDashboard, History
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import Swal from 'sweetalert2';
 
 // Form Schema
@@ -38,7 +39,8 @@ const TransactionEntry = () => {
             date: format(new Date(), 'yyyy-MM-dd'),
             type: 'EXPENSE',
             nature: 'GENERAL',
-            amount: 0
+            amount: 0,
+            payment_mode_id: 'b5aa6ccd-f190-4be1-8012-9148cdc14ef0' // Default to Main Bank Account (Canara)
         }
     });
 
@@ -99,14 +101,38 @@ const TransactionEntry = () => {
             nature: action.nature,
             amount: 0,
             description: action.label,
-            reference: ''
+            reference: '',
+            payment_mode_id: 'b5aa6ccd-f190-4be1-8012-9148cdc14ef0'
         });
     };
 
     const closeModal = () => {
         setSelectedAction(null);
-        reset();
+        reset({
+            date: format(new Date(), 'yyyy-MM-dd'),
+            type: 'EXPENSE',
+            nature: 'GENERAL',
+            amount: 0,
+            payment_mode_id: 'b5aa6ccd-f190-4be1-8012-9148cdc14ef0'
+        });
     };
+
+    // Auto-update description based on selected entity
+    const selectedEntityId = watch('entity_id');
+    React.useEffect(() => {
+        if (selectedEntityId && selectedAction) {
+            let entityName = '';
+            if (['SALARY_ADVANCE', 'STAFF_INCENTIVE'].includes(currentNature)) {
+                entityName = staff?.find((s: any) => s.id === selectedEntityId)?.full_name || '';
+            } else {
+                entityName = clients?.find((c: any) => c.id === selectedEntityId)?.name || '';
+            }
+            
+            if (entityName) {
+                setValue('description', `${entityName} - ${selectedAction.label}`);
+            }
+        }
+    }, [selectedEntityId, selectedAction, currentNature, staff, clients, setValue]);
 
     // Filtered Ledgers
     const paymentModes = ledgers?.filter((l: any) => ['BANK', 'CASH'].includes(l.entity_type)) || [];
@@ -205,6 +231,14 @@ const TransactionEntry = () => {
     return (
         <div className="max-w-7xl mx-auto space-y-6">
             <div className="flex flex-col items-center mb-8">
+                <div className="flex gap-4 mb-4">
+                    <Link to="/dashboard/accounts/overview" className="flex items-center gap-2 px-4 py-2 bg-white border rounded-lg text-sm font-medium text-muted-foreground hover:text-primary hover:border-primary transition-all shadow-sm">
+                        <LayoutDashboard className="w-4 h-4" /> Account Overview
+                    </Link>
+                    <Link to="/dashboard/accounts/history" className="flex items-center gap-2 px-4 py-2 bg-white border rounded-lg text-sm font-medium text-muted-foreground hover:text-primary hover:border-primary transition-all shadow-sm">
+                        <History className="w-4 h-4" /> Transaction History
+                    </Link>
+                </div>
                 <h1 className="text-3xl font-extrabold text-foreground tracking-tight">Record Transaction Dashboard</h1>
                 <p className="text-muted-foreground mt-2">Select a transaction category to proceed with auto-mapped accounting rules.</p>
             </div>

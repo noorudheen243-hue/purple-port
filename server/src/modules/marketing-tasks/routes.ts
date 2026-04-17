@@ -62,6 +62,7 @@ router.post('/accounts/disconnect', disconnectAccount);
 // Meta Profile Management (NEW)
 router.get('/meta/profiles', getMetaProfiles);
 router.post('/meta/link-profile', linkAccountToProfile);
+router.get('/meta/accounts', getAvailableAccounts);
 
 // Meta Ads Manager Operations (NEW)
 router.get('/meta/manager/campaigns', getMetaCampaignsDetailed);

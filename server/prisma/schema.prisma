@@ -432,6 +432,7 @@ model Client {
   leads               Lead[]
   marketingCampaigns  MarketingCampaign[]
   deals               Deal[]
+  marketingGroups     MarketingGroup[]
 
   @@index([status])
   @@index([account_manager_id])
@@ -1202,6 +1203,9 @@ model MetaAdsLog {
   endDate   DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  group_id String?
+  group    MarketingGroup? @relation(fields: [group_id], references: [id])
 }
 
 model GoogleAdsLog {
@@ -1229,6 +1233,9 @@ model GoogleAdsLog {
   endDate   DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  group_id String?
+  group    MarketingGroup? @relation(fields: [group_id], references: [id])
 }
 
 model SeoLog {
@@ -1252,7 +1259,26 @@ model SeoLog {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  group_id String?
+  group    MarketingGroup? @relation(fields: [group_id], references: [id])
+
   @@unique([client_id, month, year])
+}
+
+model MarketingGroup {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  client_id String
+  client    Client   @relation(fields: [client_id], references: [id])
+
+  metaLogs   MetaAdsLog[]
+  googleLogs GoogleAdsLog[]
+  seoLogs    SeoLog[]
+
+  @@unique([name, client_id])
 }
 
 model WebDevProject {

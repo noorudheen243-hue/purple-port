@@ -5,6 +5,7 @@ import * as reportsController from './reports.controller';
 import * as leadsController from './leads.controller';
 import * as trackingController from './tracking.controller';
 import * as activityController from './activity.controller';
+import { getMetaAccountStatus } from '../marketing-tasks/controller';
 
 const router = Router();
 
@@ -37,6 +38,7 @@ router.get('/reports', reportsController.getReports);
 router.post('/reports/generate', authorize('ADMIN', 'MANAGER', 'DM_EXECUTIVE', 'WEB_SEO_EXECUTIVE'), reportsController.generateReport);
 
 // Service Tracking Logs (Manual Data Entry)
+router.get('/tracking/meta-ads/status', getMetaAccountStatus);
 router.get('/tracking/meta-ads/campaigns', trackingController.getIntegratedCampaigns); // NEW: Fetch integrated Meta campaigns
 router.get('/tracking/meta-ads', trackingController.getMetaAdsLogs);
 router.post('/tracking/meta-ads', authorize('ADMIN', 'MANAGER', 'DM_EXECUTIVE', 'WEB_SEO_EXECUTIVE', 'MARKETING_EXEC', 'CREATIVE_DESIGNER', 'OPERATIONS_EXECUTIVE'), trackingController.createMetaAdsLog);
@@ -62,6 +64,10 @@ router.get('/tracking/content', trackingController.getContentDeliverables);
 router.post('/tracking/content', authorize('ADMIN', 'MANAGER', 'DM_EXECUTIVE', 'WEB_SEO_EXECUTIVE', 'MARKETING_EXEC', 'CREATIVE_DESIGNER', 'OPERATIONS_EXECUTIVE'), trackingController.createContentDeliverable);
 router.patch('/tracking/content/:id', authorize('ADMIN', 'MANAGER', 'DM_EXECUTIVE', 'WEB_SEO_EXECUTIVE', 'MARKETING_EXEC', 'CREATIVE_DESIGNER', 'OPERATIONS_EXECUTIVE', 'CLIENT'), trackingController.updateContentDeliverable);
 router.delete('/tracking/content/:id', authorize('ADMIN', 'MANAGER', 'DM_EXECUTIVE', 'WEB_SEO_EXECUTIVE', 'MARKETING_EXEC', 'CREATIVE_DESIGNER', 'OPERATIONS_EXECUTIVE'), trackingController.deleteContentDeliverable);
+
+// Marketing Groups
+router.get('/tracking/groups', trackingController.getMarketingGroups);
+router.post('/tracking/groups', authorize('ADMIN', 'MANAGER', 'DM_EXECUTIVE', 'WEB_SEO_EXECUTIVE'), trackingController.createMarketingGroup);
 
 // Lead Management
 router.get('/tracking/leads', leadsController.getLeads);

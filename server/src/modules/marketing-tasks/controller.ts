@@ -281,23 +281,28 @@ export async function getMetrics(req: Request, res: Response) {
             date: dateFilter
         };
 
-        if (clientId) {
+        // 1. Build Strict Group Filter
+        if (groupId && groupId !== 'all' && groupId !== 'undefined') {
+            whereClause.campaign = {
+                group_id: groupId as string
+            };
+            // If group is specific, we don't necessarily need clientId filter 
+            // because group_id is unique enough, but we include it if provided and valid
+            if (clientId && clientId !== 'all' && clientId !== '') {
+                whereClause.campaign.clientId = clientId as string;
+            }
+        } else if (clientId && clientId !== 'all' && clientId !== '') {
             whereClause.campaign = {
                 clientId: clientId as string
             };
         } else {
-            // Ensure we are only getting metrics for campaigns that HAVE a client
+            // Unrestricted - but usually discouraged for metrics
             whereClause.campaign = {
                 clientId: { not: '' }
             };
         }
 
-        if (groupId) {
-            if (!whereClause.campaign) whereClause.campaign = {};
-            whereClause.campaign.group_id = groupId as string;
-        }
-
-        if (platform) {
+        if (platform && platform !== 'all') {
             if (!whereClause.campaign) whereClause.campaign = {};
             whereClause.campaign.platform = platform as string;
         }
@@ -307,7 +312,6 @@ export async function getMetrics(req: Request, res: Response) {
             whereClause.campaign.status = { in: ['ACTIVE', 'ENABLED'] };
         } else if (status === 'all') {
             if (!whereClause.campaign) whereClause.campaign = {};
-            // Include everything that isn't deleted/unknown
             whereClause.campaign.status = { in: ['ACTIVE', 'PAUSED', 'ARCHIVED', 'ENABLED'] };
         }
 
@@ -332,7 +336,7 @@ export async function getMetrics(req: Request, res: Response) {
             }
         });
 
-        // 1. GLOBAL SUMMARY
+        // 2. Calculated Isolated Summary for the Group
         const summary = metrics.reduce((acc: any, curr: any) => {
             acc.impressions += (curr.impressions || 0);
             acc.clicks += (curr.clicks || 0);
@@ -344,10 +348,18 @@ export async function getMetrics(req: Request, res: Response) {
             return acc;
         }, { impressions: 0, clicks: 0, spend: 0, conversions: 0, reach: 0, results: 0, conversations: 0 });
 
-        // 2. CAMPAIGN AGGREGATES
-        const campaignWhere: any = { clientId: clientId as string };
-        if (platform) campaignWhere.platform = platform as string;
-        if (groupId) campaignWhere.group_id = groupId as string;
+        // 3. Campaign Portfolio (Filtered by Group)
+        const campaignWhere: any = {};
+        if (groupId && groupId !== 'all' && groupId !== 'undefined') {
+            campaignWhere.group_id = groupId as string;
+            if (clientId && clientId !== 'all' && clientId !== '') {
+                campaignWhere.clientId = clientId as string;
+            }
+        } else if (clientId && clientId !== 'all' && clientId !== '') {
+            campaignWhere.clientId = clientId as string;
+        }
+        
+        if (platform && platform !== 'all') campaignWhere.platform = platform as string;
         
         if (status === 'active') {
             campaignWhere.status = { in: ['ACTIVE', 'ENABLED'] };

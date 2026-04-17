@@ -36,6 +36,12 @@ export class MarketingSyncWorker {
                         where: { externalCampaignId: extId, platform: acc.platform }
                     });
 
+                    // Meta budgets are usually in minor units (e.g. cents)
+                    let budgetValue = parseFloat(ext.daily_budget || ext.lifetime_budget || '0');
+                    if (acc.platform === 'meta' && budgetValue > 0) {
+                        budgetValue = budgetValue / 100;
+                    }
+
                     const data: any = {
                         clientId: acc.clientId,
                         platform: acc.platform,
@@ -43,7 +49,7 @@ export class MarketingSyncWorker {
                         name: ext.name,
                         status: ext.effective_status || ext.status || 'UNKNOWN',
                         objective: ext.objective || 'UNKNOWN',
-                        budget: parseFloat(ext.daily_budget || ext.lifetime_budget || '0') / 100,
+                        budget: budgetValue,
                         bid_strategy: ext.bid_strategy,
                         startDate: ext.start_time ? new Date(ext.start_time) : null,
                         ends: ext.stop_time ? new Date(ext.stop_time) : null

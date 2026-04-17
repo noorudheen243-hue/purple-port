@@ -281,7 +281,7 @@ export const MarketingDashboard: React.FC = () => {
                         }`}
                 >
                     <BarChart3 className="w-4 h-4 mr-2" />
-                    Performance Overview
+                    Campaigns
                 </button>
                 <button
                     onClick={() => setView('leads')}
@@ -326,147 +326,12 @@ export const MarketingDashboard: React.FC = () => {
             )}
 
             {view === 'performance' ? (
-                <>
-                    {/* Summary Cards */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-                        <div className="p-5 bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 rounded-xl transition-all hover:shadow-md">
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1 font-medium">Total Spend</p>
-                             <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                                {"\u20B9"}{summary?.spend?.toLocaleString(undefined, { maximumFractionDigits: 0 }) || 0}
-                            </p>
-                        </div>
-                        <div className="p-5 bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 rounded-xl transition-all hover:shadow-md">
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1 font-medium">Total Impressions</p>
-                            <p className="text-2xl font-bold text-blue-600">
-                                {summary?.impressions?.toLocaleString() || 0}
-                            </p>
-                        </div>
-                        <div className="p-5 bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 rounded-xl transition-all hover:shadow-md">
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1 font-medium">Total Reach</p>
-                            <p className="text-2xl font-bold text-orange-500">
-                                {summary?.reach?.toLocaleString() || 0}
-                            </p>
-                        </div>
-                        <div className="p-5 bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 rounded-xl transition-all hover:shadow-md">
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1 font-medium">Total Clicks</p>
-                            <p className="text-2xl font-bold text-green-600">
-                                {summary?.clicks?.toLocaleString() || 0}
-                            </p>
-                        </div>
-                        <div className="p-5 bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 rounded-xl transition-all hover:shadow-md">
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1 font-medium">Total Results</p>
-                            <p className="text-2xl font-bold text-purple-600">
-                                {summary?.results?.toLocaleString() || 0}
-                            </p>
-                        </div>
-                        <div className="p-5 bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 rounded-xl transition-all hover:shadow-md">
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1 font-medium">Conversions</p>
-                            <p className="text-2xl font-bold text-pink-600">
-                                {summary?.conversions?.toLocaleString() || 0}
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Main Chart */}
-                    <div className="bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 rounded-xl mt-6 p-6">
-                        <h2 className="text-lg font-semibold mb-6 text-gray-800 dark:text-gray-200">
-                            Traffic Trend
-                            <span className="ml-2 text-sm font-normal text-purple-500">({dateRangeLabel})</span>
-                        </h2>
-                        {loading ? (
-                            <div className="flex justify-center items-center h-64 text-purple-600">
-                                <Loader2 className="h-8 w-8 animate-spin" />
-                            </div>
-                        ) : metrics.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-64 text-gray-500 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-dashed border-gray-200 dark:border-gray-700">
-                                <p className="font-medium">No data available for selected period</p>
-                                <p className="text-sm mt-1">Try adjusting the date range or click "Force Sync Data".</p>
-                            </div>
-                        ) : (
-                            <div className="h-[350px] w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={metrics} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                                        <defs>
-                                            <linearGradient id="colorClicks" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
-                                                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                                            </linearGradient>
-                                            <linearGradient id="colorImpressions" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
-                                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                                            </linearGradient>
-                                        </defs>
-                                        <XAxis
-                                            dataKey="displayDate"
-                                            stroke="#9ca3af"
-                                            fontSize={12}
-                                            tickLine={false}
-                                            axisLine={false}
-                                            tickMargin={10}
-                                        />
-                                        <YAxis
-                                            yAxisId="left"
-                                            stroke="#9ca3af"
-                                            fontSize={12}
-                                            tickLine={false}
-                                            axisLine={false}
-                                            tickFormatter={(val) => val >= 1000 ? `${(val / 1000).toFixed(1)}k` : val}
-                                        />
-                                        <YAxis
-                                            yAxisId="right"
-                                            orientation="right"
-                                            stroke="#9ca3af"
-                                            fontSize={12}
-                                            tickLine={false}
-                                            axisLine={false}
-                                            tickFormatter={(val) => val >= 1000 ? `${(val / 1000).toFixed(1)}k` : val}
-                                        />
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" strokeOpacity={0.5} />
-                                        <Tooltip
-                                            contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', padding: '12px' }}
-                                            itemStyle={{ fontSize: '14px', fontWeight: 500 }}
-                                        />
-                                        <Area
-                                            yAxisId="left"
-                                            type="monotone"
-                                            dataKey="impressions"
-                                            stroke="#3b82f6"
-                                            strokeWidth={2}
-                                            fillOpacity={1}
-                                            fill="url(#colorImpressions)"
-                                            name="Impressions"
-                                            activeDot={{ r: 6, strokeWidth: 0, fill: '#3b82f6' }}
-                                        />
-                                        <Area
-                                            yAxisId="right"
-                                            type="monotone"
-                                            dataKey="clicks"
-                                            stroke="#10b981"
-                                            strokeWidth={2}
-                                            fillOpacity={1}
-                                            fill="url(#colorClicks)"
-                                            name="Clicks"
-                                            activeDot={{ r: 6, strokeWidth: 0, fill: '#10b981' }}
-                                        />
-                                    </AreaChart>
-                                </ResponsiveContainer>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Replace the old table with SyncedCampaignTable */}
-                    <div className="mt-8">
-                        <SyncedCampaignTable 
-                            clientId={selectedClientId} 
-                            fromDate={fromDate} 
-                            toDate={toDate} 
-                            onViewLeads={(campId) => {
-                                // Potentially set a filter for the leads view in the future
-                                setView('leads');
-                            }}
-                        />
-                    </div>
-                </>
+                <SyncedCampaignTable
+                    clientId={selectedClientId}
+                    fromDate={fromDate}
+                    toDate={toDate}
+                    onViewLeads={() => setView('leads')}
+                />
             ) : (
                 <MetaLeads clientId={selectedClientId} fromDate={fromDate} toDate={toDate} />
             )}

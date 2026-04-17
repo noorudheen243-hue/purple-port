@@ -1,3 +1,6 @@
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import api from '../../lib/api';
 import { Plus, Trash2, Edit2, Loader2, Link as LinkIcon, AlertCircle, Eye } from 'lucide-react';
 import { GroupDetailWindow } from './GroupDetailWindow';
 
@@ -153,7 +156,7 @@ export const CampaignGroupManager: React.FC<CampaignGroupManagerProps> = ({ clie
                         No groups created yet. Organize your campaigns into logical categories.
                     </div>
                 ) : (
-                    groups?.map((group) => (
+                    groups?.map((group: MarketingGroup) => (
                         <div
                             key={group.id}
                             onClick={() => !editingId && setSelectedGroup(group)}

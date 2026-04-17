@@ -1,10 +1,18 @@
-Import-Module Posh-SSH -Force
-$VPS = "66.116.224.221"
-$User = "root"
 $Pass = "EzdanAdam@243"
 $SecPass = ConvertTo-SecureString $Pass -AsPlainText -Force
-$Cred = New-Object System.Management.Automation.PSCredential($User, $SecPass)
-$ssh = New-SSHSession -ComputerName $VPS -Credential $Cred -AcceptKey -Force
-$r = Invoke-SSHCommand -SessionId $ssh.SessionId -Command "curl -s 'http://localhost:4001/api/marketing/metrics?from=2026-03-01&to=2026-03-31' | head -c 2000"
-Write-Output $r.Output
-Remove-SSHSession -SessionId $ssh.SessionId | Out-Null
+$Cred = New-Object System.Management.Automation.PSCredential("root", $SecPass)
+try {
+    $s = New-SSHSession -ComputerName "66.116.224.221" -Credential $Cred -AcceptKey -Force
+    Write-Host "--- INTERNAL API TEST (curl) ---"
+    # Testing with -I to see headers and status code
+    $r1 = Invoke-SSHCommand -SessionId $s.SessionId -Command "curl -is http://localhost:4001/api/marketing/meta/accounts"
+    Write-Host $r1.Output
+    
+    Write-Host "`n--- RECENT BUILD LOG (Last 20) ---"
+    $r2 = Invoke-SSHCommand -SessionId $s.SessionId -Command "tail -n 20 /var/www/purple-port/server/build.log"
+    Write-Host $r2.Output
+} catch {
+    Write-Host "Exception: $($_.Exception.Message)"
+} finally {
+    if ($s) { Remove-SSHSession -SessionId $s.SessionId }
+}

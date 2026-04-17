@@ -1,25 +1,27 @@
-Import-Module Posh-SSH -Force
-$VPS = "66.116.224.221"
-$User = "root"
 $Pass = "EzdanAdam@243"
 $SecPass = ConvertTo-SecureString $Pass -AsPlainText -Force
-$Cred = New-Object System.Management.Automation.PSCredential($User, $SecPass)
+$Cred = New-Object System.Management.Automation.PSCredential("root", $SecPass)
 
-$sftp = New-SFTPSession -ComputerName $VPS -Credential $Cred -AcceptKey -Force
-$s = New-SSHSession -ComputerName $VPS -Credential $Cred -AcceptKey -Force
+try {
+    Write-Host "Connecting to VPS..." -ForegroundColor Cyan
+    $s = New-SSHSession -ComputerName "66.116.224.221" -Credential $Cred -AcceptKey -Force
 
-# Deploy compiled JavaScript
-Write-Host "Uploading JS Service..."
-Set-SFTPItem -SFTPSession $sftp -Path 'f:\Antigravity\server\dist\modules\payroll\service.js' -Destination '/var/www/antigravity/server/dist/modules/payroll/' -Force
+    Write-Host "`n--- Git Pull ---" -ForegroundColor Yellow
+    $pull = Invoke-SSHCommand -SessionId $s.SessionId -Command "cd /var/www/purple-port && git pull origin main 2>&1"
+    Write-Host $pull.Output
 
-# Also deploy TS for source parity
-Write-Host "Uploading TS Source..."
-Set-SFTPItem -SFTPSession $sftp -Path 'f:\Antigravity\server\src\modules\payroll\service.ts' -Destination '/var/www/antigravity/server/src/modules/payroll/' -Force
+    Write-Host "`n--- Build Client ---" -ForegroundColor Yellow
+    $build = Invoke-SSHCommand -SessionId $s.SessionId -Command "cd /var/www/purple-port/client && npm run build 2>&1" -Timeout 300
+    Write-Host $build.Output
 
-Write-Host "Restarting PM2..."
-$r = Invoke-SSHCommand -SessionId $s.SessionId -Command 'source $HOME/.nvm/nvm.sh 2>/dev/null; pm2 restart all'
-Write-Host $r.Output
+    Write-Host "`n--- Restart PM2 ---" -ForegroundColor Yellow
+    $pm2 = Invoke-SSHCommand -SessionId $s.SessionId -Command "pm2 restart qix-api 2>&1"
+    Write-Host $pm2.Output
 
-Remove-SFTPSession -SFTPSession $sftp | Out-Null
-Remove-SSHSession -SessionId $s.SessionId | Out-Null
-Write-Host "Hotfix deployed successfully!"
+    Write-Host "`n✅ HOTFIX DEPLOYED" -ForegroundColor Green
+
+} catch {
+    Write-Host "Exception: $($_.Exception.Message)" -ForegroundColor Red
+} finally {
+    if ($s) { Remove-SSHSession -SessionId $s.SessionId }
+}

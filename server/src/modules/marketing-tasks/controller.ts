@@ -20,6 +20,9 @@ function featureEnabled(req: Request, res: Response, next: NextFunction) {
     next();
 }
 
+// Exported as array so routes.ts can spread it into router.use()
+export const middleware = [featureEnabled];
+
 export async function manualSync(req: Request, res: Response) {
     try {
         const { clientId, daysBack } = req.body;

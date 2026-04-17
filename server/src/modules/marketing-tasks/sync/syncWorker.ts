@@ -10,6 +10,79 @@ const metaLeadsService = new MetaLeadsService();
 
 export class MarketingSyncWorker {
     /**
+     * Syncs all campaigns and recent metrics for a specific client across all platforms
+     */
+    public static async syncClientCampaigns(clientId: string, daysBack: number = 7): Promise<void> {
+        console.log(`[SyncWorker] Starting full sync for client: ${clientId} (${daysBack} days back)`);
+        
+        // Find all accounts for this client
+        const accounts = await (prisma as any).marketingAccount.findMany({
+            where: { clientId }
+        });
+
+        for (const acc of accounts) {
+            try {
+                let externalCampaigns: any[] = [];
+                if (acc.platform === 'meta') {
+                    externalCampaigns = await metaService.fetchCampaigns(acc.externalAccountId);
+                } else if (acc.platform === 'google') {
+                    externalCampaigns = await googleService.fetchCampaigns(acc.externalAccountId);
+                }
+
+                // Sync Campaign Metadata
+                for (const ext of externalCampaigns) {
+                    const extId = ext.id.toString();
+                    const existing = await (prisma as any).marketingCampaign.findFirst({
+                        where: { externalCampaignId: extId, platform: acc.platform }
+                    });
+
+                    const data: any = {
+                        clientId: acc.clientId,
+                        platform: acc.platform,
+                        externalCampaignId: extId,
+                        name: ext.name,
+                        status: ext.effective_status || ext.status || 'UNKNOWN',
+                        objective: ext.objective || 'UNKNOWN',
+                        budget: parseFloat(ext.daily_budget || ext.lifetime_budget || '0') / 100,
+                        bid_strategy: ext.bid_strategy,
+                        startDate: ext.start_time ? new Date(ext.start_time) : null,
+                        ends: ext.stop_time ? new Date(ext.stop_time) : null
+                    };
+
+                    if (!existing) {
+                        await (prisma as any).marketingCampaign.create({ data });
+                    } else {
+                        await (prisma as any).marketingCampaign.update({
+                            where: { id: existing.id },
+                            data
+                        });
+                    }
+                }
+
+                // Sync Metrics for these campaigns
+                const dbCampaigns = await (prisma as any).marketingCampaign.findMany({
+                    where: { clientId, platform: acc.platform }
+                });
+
+                const today = new Date();
+                const startDate = new Date();
+                startDate.setDate(today.getDate() - (daysBack - 1));
+
+                for (const camp of dbCampaigns) {
+                    await this.syncCampaignMetrics(camp.id, acc.externalAccountId, acc.platform, startDate, today);
+                }
+
+                // Sync Leads for Meta
+                if (acc.platform === 'meta') {
+                    await metaLeadsService.syncLeads(clientId, acc.externalAccountId);
+                }
+            } catch (err: any) {
+                console.error(`[SyncWorker] Account sync failed for ${acc.externalAccountId}:`, err.message);
+            }
+        }
+    }
+
+    /**
      * Syncs metrics for a specific platform and campaign within a date range
      */
     public static async syncCampaignMetrics(campaignId: string, accountId: string, platform: string, from: Date, to: Date): Promise<void> {

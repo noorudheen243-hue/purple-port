@@ -46,6 +46,11 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
         icon: TrendingUp
     },
     {
+        label: "Campaign Management",
+        path: "/dashboard/marketing-performance",
+        icon: BarChart3
+    },
+    {
         label: "Financial Management",
         path: "/dashboard/finance",
         icon: Wallet,
@@ -73,6 +78,11 @@ export const STAFF_MENU: MenuItem[] = [
         label: "Marketing Services",
         path: "/dashboard/client-portal/manage-services",
         icon: TrendingUp
+    },
+    {
+        label: "Campaign Management",
+        path: "/dashboard/marketing-performance",
+        icon: BarChart3
     },
     {
         label: "Task Management",

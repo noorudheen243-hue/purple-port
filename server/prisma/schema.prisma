@@ -833,6 +833,9 @@ model Lead {
   campaignId        String?            @map("campaign_id_marketing")
   marketingCampaign MarketingCampaign? @relation(fields: [campaignId], references: [id])
 
+  group_id          String?
+  group             MarketingGroup?    @relation(fields: [group_id], references: [id])
+
   // Lead Intelligence
   quality  String? @default("MEDIUM") // LOW, MEDIUM, HIGH
   status   String  @default("NEW") // NEW, CONTACTED, QUALIFIED, LOST, etc.
@@ -1278,6 +1281,9 @@ model MarketingGroup {
   googleLogs GoogleAdsLog[]
   seoLogs    SeoLog[]
 
+  campaigns  MarketingCampaign[]
+  leads      Lead[]
+
   @@unique([name, client_id])
 }
 
@@ -1541,6 +1547,9 @@ model MarketingCampaign {
   leads              Lead[]
   tasks              Task[]
   metaAdsLogs        MetaAdsLog[]
+
+  group_id           String?
+  group              MarketingGroup?   @relation(fields: [group_id], references: [id])
 }
 
 model MarketingAd {

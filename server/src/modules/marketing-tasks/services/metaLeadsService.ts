@@ -128,11 +128,13 @@ export class MetaLeadsService {
                                             email,
                                             phone,
                                             date: lead.created_time ? new Date(lead.created_time) : new Date(),
+                                            group_id: campaign.group_id, // Sync group from campaign
                                             updatedAt: new Date()
                                         },
                                         create: {
                                             clientId,
                                             campaignId: campaign.id,
+                                            group_id: campaign.group_id, // Sync group from campaign
                                             source: 'AUTO',
                                             externalLeadId: lead.id.toString(),
                                             formId: `AD_${adId}`,

@@ -9,6 +9,13 @@ import {
     getMetaProfiles, linkAccountToProfile, getAiTips, getMetaCampaignsDetailed, getMetaAdSets, getMetaAds, createMetaCampaign, createMetaAdSet, updateMetaStatus, sendReport,
     syncCampaign, getMetaAccountStatus
 } from './controller';
+import { 
+    getGroups, 
+    createGroup, 
+    updateGroup, 
+    deleteGroup, 
+    assignCampaignsToGroup 
+} from './marketingGroup.controller';
 import { protect } from '../auth/middleware';
 
 // Ensure temp upload dir exists
@@ -42,6 +49,13 @@ router.get('/meta/status', getMetaAccountStatus);
 // Get metrics endpoint (GET)
 router.get('/metrics', getMetrics);
 router.get('/ai-tips', getAiTips);
+
+// Grouping Endpoints
+router.get('/groups', getGroups);
+router.post('/groups', createGroup);
+router.put('/groups/:id', updateGroup);
+router.delete('/groups/:id', deleteGroup);
+router.post('/groups/assign', assignCampaignsToGroup);
 
 // Leads endpoints
 router.get('/leads', getLeads);

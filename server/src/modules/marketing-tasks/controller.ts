@@ -22,18 +22,27 @@ function featureEnabled(req: Request, res: Response, next: NextFunction) {
 
 export async function manualSync(req: Request, res: Response) {
     try {
-        // Explicitly calculate days back to January 1st of the current year
+        const { clientId, daysBack } = req.body;
+        
+        if (clientId) {
+            // New Sync All for Client logic (Synchronous for immediate feedback if desired, or background)
+            MarketingSyncWorker.syncClientCampaigns(clientId, daysBack || 7).catch(err => {
+                console.error(`[SyncController] Client Sync Error for ${clientId}:`, err);
+            });
+            return res.json({ message: 'Client campaign sync started in background.' });
+        }
+
+        // Legacy Global Sync logic
         const currentYear = new Date().getFullYear();
         const startOfYear = new Date(currentYear, 0, 1);
         const today = new Date();
-        const daysToCurrentYear = Math.ceil((today.getTime() - startOfYear.getTime()) / (1000 * 3600 * 24)) + 1; // +1 to be inclusive
+        const daysToCurrentYear = Math.ceil((today.getTime() - startOfYear.getTime()) / (1000 * 3600 * 24)) + 1;
 
-        // Trigger sync asynchronously for the current year
-        MarketingSyncWorker.syncAllActiveCampaigns(daysToCurrentYear).catch(err => {
-            console.error('Background Marketing Sync Error 2026/Current Year:', err);
+        MarketingSyncWorker.syncAllActiveCampaigns(daysBack || daysToCurrentYear).catch(err => {
+            console.error('Background Marketing Sync Error:', err);
         });
         
-        res.json({ message: `Sync started successfully. Fetching ${daysToCurrentYear} days of history for the current year in the background. This may take a few minutes.` });
+        res.json({ message: `Global sync started successfully.` });
     } catch (error) {
         console.error('Marketing Sync Error:', error);
         res.status(500).json({ message: 'Sync failed', error: (error as Error).message });
@@ -952,6 +961,13 @@ export async function getLeads(req: Request, res: Response) {
             whereClause.date = dateFilter;
         }
 
+        if (req.query.groupId) {
+            whereClause.group_id = req.query.groupId as string;
+        } else if (req.query.campaignId) {
+             // Support legacy or specific campaign filtering
+            whereClause.campaignId = req.query.campaignId as string;
+        }
+
         const leads = await (prisma as any).lead.findMany({
             where: whereClause,
             orderBy: { date: 'desc' },
@@ -983,11 +999,23 @@ export async function createLead(req: Request, res: Response) {
                 location,
                 campaign_name,
                 campaignId: campaignId || null,
+                group_id: req.body.group_id || null, // Allow manual group override
                 quality: quality || 'MEDIUM',
                 status: status || 'NEW',
                 date: new Date()
             }
         });
+
+        // AUTO-ASSIGN GROUP IF CAMPAIGN IS SELECTED
+        if (campaignId && !req.body.group_id) {
+            const camp = await (prisma as any).marketingCampaign.findUnique({ where: { id: campaignId } });
+            if (camp?.group_id) {
+                await (prisma as any).lead.update({
+                    where: { id: lead.id },
+                    data: { group_id: camp.group_id }
+                });
+            }
+        }
 
         // Trigger AI Scoring asynchronously
         AiSalesEngineService.calculateLeadScore(lead.id).catch(err => console.error('AI Lead Scoring Error:', err));

@@ -1,26 +1,53 @@
 import prisma from '../../../utils/prisma';
 import axios from 'axios';
 import { format } from 'date-fns';
-const META_GRAPH_URL = 'https://graph.facebook.com/v21.0';
+const META_GRAPH_URL = 'https://graph.facebook.com/v19.0';
 
 export class MetaAdsService {
 
     /**
      * Helper to fetch the valid access token for a given marketing account.
      */
-    private async getValidToken(accountId: string): Promise<string> {
+    private async getValidToken(accountId: string, clientId?: string): Promise<string> {
         const idWithoutPrefix = accountId.trim().replace('act_', '');
         const idWithPrefix = `act_${idWithoutPrefix}`;
 
+        // Build search criteria
+        const where: any = {
+            platform: 'meta',
+            externalAccountId: { in: [idWithoutPrefix, idWithPrefix, accountId] }
+        };
+
+        // If we have a clientId, we use it to find the SPECIFIC linking for this client
+        // This is crucial for multi-client accounts or ensuring we use the right token
+        if (clientId) {
+            where.clientId = clientId;
+        }
+
         const account = await prisma.marketingAccount.findFirst({
-            where: { 
-                externalAccountId: { in: [idWithoutPrefix, idWithPrefix] }, 
-                platform: 'meta' 
-            },
+            where,
             include: { metaToken: true }
         });
 
         if (!account) {
+            // FALLBACK: If we couldn't find a record for this SPECIFIC client+account,
+            // try to find ANY client that uses this account ID to get a valid token.
+            // This handles cases where a shared ad account is used.
+            const fallbackAccount = await prisma.marketingAccount.findFirst({
+                where: { 
+                    externalAccountId: { in: [idWithoutPrefix, idWithPrefix, accountId] }, 
+                    platform: 'meta',
+                    OR: [
+                        { metaTokenId: { not: null } },
+                        { accessToken: { not: null } }
+                    ]
+                },
+                include: { metaToken: true }
+            });
+            
+            if (fallbackAccount?.metaToken?.access_token) return fallbackAccount.metaToken.access_token;
+            if (fallbackAccount?.accessToken) return fallbackAccount.accessToken;
+            
             throw new Error(`Meta Ads: No marketing account found for ID ${accountId}`);
         }
 
@@ -65,10 +92,15 @@ export class MetaAdsService {
     /**
      * Fetch all Business Manager accounts/Ad Accounts the user has access to.
      */
-    async fetchAccounts(systemUserId: string, clientId?: string): Promise<any[]> {
+    async fetchAccounts(systemUserId: string, clientId?: string, profileId?: string): Promise<any[]> {
         let userToken = 'mock-long-lived-meta-token';
 
-        if (clientId) {
+        if (profileId) {
+            const tokenRecord = await prisma.metaToken.findUnique({ where: { id: profileId } });
+            if (tokenRecord?.access_token) {
+                userToken = tokenRecord.access_token;
+            }
+        } else if (clientId) {
             const acc = await prisma.marketingAccount.findFirst({
                 where: { clientId, platform: 'meta' },
                 include: { metaToken: true }
@@ -94,16 +126,19 @@ export class MetaAdsService {
         }
 
         try {
+            console.log(`[MetaAds] Discovering accounts for profile: ${profileId || 'N/A'}, clientId: ${clientId || 'N/A'}`);
             const response = await axios.get(`${META_GRAPH_URL}/me/adaccounts`, {
                 params: {
                     access_token: userToken,
                     fields: 'name,account_status,currency,timezone_name'
                 }
             });
-            return response.data.data;
+            const accounts = response.data.data || [];
+            console.log(`[MetaAds] Successfully discovered ${accounts.length} ad accounts.`);
+            return accounts;
         } catch (error: any) {
-            console.error('Meta API fetchAccounts error:', error.response?.data || error.message);
-            throw new Error('Failed to fetch Meta Ad Accounts');
+            console.error('[MetaAds] fetchAccounts error:', error.response?.data || error.message);
+            throw new Error('Failed to fetch Meta Ad Accounts from Facebook API');
         }
     }
 
@@ -206,8 +241,8 @@ export class MetaAdsService {
     /**
      * Fetch all campaigns under a specific Ad Account.
      */
-    async fetchCampaigns(accountId: string): Promise<any[]> {
-        const token = await this.getValidToken(accountId);
+    async fetchCampaigns(accountId: string, clientId?: string): Promise<any[]> {
+        const token = await this.getValidToken(accountId, clientId);
         const formattedAccountId = this.ensureActPrefix(accountId);
         console.log(`[MetaAds] fetchCampaigns called for account: ${formattedAccountId}`);
 
@@ -334,8 +369,8 @@ export class MetaAdsService {
      * Fetch daily insights (metrics) for an entire account broken down by campaign over a date range.
      * This avoids making N API calls for N campaigns.
      */
-    async fetchAccountMetricsByCampaign(accountId: string, from: Date, to: Date): Promise<any[]> {
-        const token = await this.getValidToken(accountId);
+    async fetchAccountMetricsByCampaign(accountId: string, from: Date, to: Date, clientId?: string): Promise<any[]> {
+        const token = await this.getValidToken(accountId, clientId);
         const formattedAccountId = this.ensureActPrefix(accountId);
 
         // Format dates as YYYY-MM-DD required by Meta Ads API

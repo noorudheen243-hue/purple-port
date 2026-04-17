@@ -41,8 +41,10 @@ import {
     BarChart3,
     Facebook,
     RefreshCw,
-    Filter
+    Filter,
+    Zap
 } from 'lucide-react';
+import SalesIntelligenceManager from '../marketing/SalesIntelligenceManager';
 
 import { format } from 'date-fns';
 import Swal from 'sweetalert2';
@@ -81,6 +83,7 @@ interface HistoryItem {
     badge?: string;
     status?: string;
     type: 'META' | 'GOOGLE' | 'SEO' | 'WEB' | 'CONTENT';
+    groupName?: string;
     originalData?: any; // To populate form on Edit
     startDate?: string | Date | null;
     endDate?: string | Date | null;
@@ -155,7 +158,8 @@ const ManageServicesView = () => {
     const selectedClient = isInternal ? clients?.find((c: any) => c.id === clientId) : ownClientData;
 
     // --- STATE ---
-    const initialView = searchParams.get('view') || (isInternal ? 'campaignData' : 'history');
+    const initialView = searchParams.get('view') || 
+        (isInternal ? 'salesIntelligence' : 'history');
     const initialServiceTab = searchParams.get('tab') || 'meta';
 
     const [activeTab, setActiveTab] = useState(initialView);
@@ -183,19 +187,56 @@ const ManageServicesView = () => {
     const [campaignForm, setCampaignForm] = useState<any>({
         date: new Date().toISOString(),
         status: 'ACTIVE',
-        campaign_label: ''
+        campaign_label: '',
+        group_id: ''
     });
+
 
     const [isAddingMetaCampaign, setIsAddingMetaCampaign] = useState(false);
     const [isSyncingCampaign, setIsSyncingCampaign] = useState(false);
     const [campaignSynced, setCampaignSynced] = useState(false);
 
-    // --- META SYNC STATUS ---
     const { data: metaAccountStatus, refetch: refetchMetaStatus } = useQuery({
         queryKey: ['meta-account-status', clientId],
-        queryFn: async () => (await api.get(`/marketing/meta/status?clientId=${clientId}`)).data,
+        queryFn: async () => (await api.get(`/client-portal/tracking/meta-ads/status?clientId=${clientId}`)).data,
         enabled: !!clientId && activeServiceTab === 'meta'
     });
+
+    // --- MARKETING GROUPS ---
+    const { data: marketingGroups, refetch: refetchGroups } = useQuery({
+        queryKey: ['marketing-groups', clientId],
+        queryFn: async () => (await api.get(`/client-portal/tracking/groups?clientId=${clientId}`)).data,
+        enabled: !!clientId
+    });
+
+    const createGroupMutation = useMutation({
+        mutationFn: async (name: string) => (await api.post(`/client-portal/tracking/groups?clientId=${clientId}`, { name })).data,
+        onSuccess: () => {
+            refetchGroups();
+            Swal.fire({ title: 'Success', text: 'Group created successfully', icon: 'success' });
+        },
+        onError: (err: any) => {
+            Swal.fire({ title: 'Error', text: err.response?.data?.message || 'Failed to create group', icon: 'error' });
+        }
+    });
+
+    const handleCreateNewGroup = async () => {
+        const { value: name } = await Swal.fire({
+            title: 'Create New Marketing Group',
+            input: 'text',
+            inputLabel: 'Group Name',
+            inputPlaceholder: 'e.g. Q4 Brand Awareness',
+            showCancelButton: true,
+            confirmButtonText: 'Save Group',
+            inputValidator: (value) => {
+                if (!value) return 'You need to write something!'
+            }
+        });
+
+        if (name) {
+            createGroupMutation.mutate(name);
+        }
+    };
 
     // --- CREATIVE TASK MODAL STATE ---
     const [isCreativeTaskModalOpen, setIsCreativeTaskModalOpen] = useState(false);
@@ -313,6 +354,7 @@ const ManageServicesView = () => {
                 badge: `₹${log.spend?.toLocaleString()}`,
                 status: log.status,
                 type: 'META',
+                groupName: log.group?.name,
                 originalData: log,
                 startDate: log.startDate,
                 endDate: log.endDate
@@ -334,6 +376,7 @@ const ManageServicesView = () => {
                 badge: `₹${log.spend?.toLocaleString()}`,
                 status: log.status,
                 type: 'GOOGLE',
+                groupName: log.group?.name,
                 originalData: log,
                 startDate: log.startDate,
                 endDate: log.endDate
@@ -350,6 +393,7 @@ const ManageServicesView = () => {
                 badge: `${log.organic_traffic?.toLocaleString()} Visits`,
                 status: log.status,
                 type: 'SEO',
+                groupName: log.group?.name,
                 originalData: log
             });
         });
@@ -732,7 +776,7 @@ const ManageServicesView = () => {
     };
 
     const resetCampaignForm = () => {
-        setCampaignForm({ date: new Date().toISOString(), status: 'ACTIVE', campaign_label: '' });
+        setCampaignForm({ date: new Date().toISOString(), status: 'ACTIVE', campaign_label: '', group_id: '' });
         setEditingCampaignId(null);
         setCampaignSynced(false);
         setIsAddingMetaCampaign(false);
@@ -784,10 +828,6 @@ const ManageServicesView = () => {
                     updatedForm.marketing_campaign_id = String(latest.id);
                 }
 
-                // If label is empty, fill it with the campaign name we just synced
-                if (!updatedForm.campaign_label && latest.name) {
-                    updatedForm.campaign_label = latest.name;
-                }
 
                 if (latest.startDate) {
                     try {
@@ -827,13 +867,7 @@ const ManageServicesView = () => {
             return;
         }
         
-        // Use manual label as campaign_name if provided
-        const finalData = {
-            ...campaignForm,
-            campaign_name: campaignForm.campaign_label || campaignForm.campaign_name
-        };
-        
-        metaMutation.mutate(finalData);
+        metaMutation.mutate(campaignForm);
     };
 
     const startEditCampaign = (item: HistoryItem) => {
@@ -1026,9 +1060,14 @@ const ManageServicesView = () => {
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="bg-yellow-50/50 p-1.5 rounded-2xl mb-6 border border-yellow-200/50 flex flex-wrap gap-2">
                     {isInternal && (
-                        <TabsTrigger value="campaignData" className="rounded-xl px-6 py-2.5 data-[state=active]:bg-[#2c185a] data-[state=active]:text-white data-[state=active]:shadow-md transition-all text-gray-700 font-bold hover:bg-yellow-100">
-                            <PenTool size={16} className="mr-2 text-purple-500" /> Manage Campaign
-                        </TabsTrigger>
+                        <>
+                            <TabsTrigger value="salesIntelligence" className="rounded-xl px-6 py-2.5 data-[state=active]:bg-[#2c185a] data-[state=active]:text-white data-[state=active]:shadow-md transition-all text-gray-700 font-bold hover:bg-yellow-100">
+                                <Zap size={16} className="mr-2 text-yellow-500" /> Sales Intelligence
+                            </TabsTrigger>
+                            <TabsTrigger value="campaignData" className="rounded-xl px-6 py-2.5 data-[state=active]:bg-[#2c185a] data-[state=active]:text-white data-[state=active]:shadow-md transition-all text-gray-700 font-bold hover:bg-yellow-100">
+                                <PenTool size={16} className="mr-2 text-purple-500" /> Manage Campaign
+                            </TabsTrigger>
+                        </>
                     )}
                     <TabsTrigger value="history" className="rounded-xl px-6 py-2.5 data-[state=active]:bg-[#2c185a] data-[state=active]:text-white data-[state=active]:shadow-md transition-all text-gray-700 font-bold hover:bg-yellow-100">
                         <Clock size={16} className="mr-2 text-amber-500" /> Campaign History
@@ -1037,6 +1076,15 @@ const ManageServicesView = () => {
                         <Users size={16} className="mr-2 text-blue-500" /> Lead Management
                     </TabsTrigger>
                 </TabsList>
+
+                {/* --- SALES INTELLIGENCE TAB --- */}
+                {isInternal && (
+                    <TabsContent value="salesIntelligence" className="mt-0">
+                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden min-h-[800px]">
+                            <SalesIntelligenceManager embeddedClientId={clientId || undefined} />
+                        </div>
+                    </TabsContent>
+                )}
 
                 {/* --- CAMPAIGN HISTORY TAB --- */}
                 <TabsContent value="history">
@@ -1103,7 +1151,14 @@ const ManageServicesView = () => {
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        <h3 className="font-bold text-gray-900 truncate uppercase tracking-tight">{item.title}</h3>
+                                                        <div className="flex items-center gap-3">
+                                                            <h4 className="text-lg font-bold text-gray-900 truncate">{item.title}</h4>
+                                                            {item.groupName && (
+                                                                <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 border-none font-black text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-md">
+                                                                    Group: {item.groupName}
+                                                                </Badge>
+                                                            )}
+                                                        </div>
                                                         <p className="text-sm text-gray-500 line-clamp-1 mb-2">{item.description}</p>
                                                         {(item.startDate || item.endDate) && (
                                                             <div className="flex items-center gap-2 text-[10px] font-bold">
@@ -1199,10 +1254,20 @@ const ManageServicesView = () => {
                                                 <h2 className="text-xl font-black text-gray-800 tracking-tight uppercase flex items-center gap-2">
                                                     Meta Ads Manager
                                                     <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md">
-                                                        {metaAccountStatus?.status === 'ACTIVE' ? 'CONNECTED' : (metaAccountStatus?.status || 'NOT LINKED')}
+                                                        {metaAccountStatus?.status === 'ACTIVE' ? 'CONNECTED' : 
+                                                         metaAccountStatus?.status === 'PENDING_SELECTION' ? 'SELECT AD ACCOUNT' :
+                                                         (metaAccountStatus?.status || 'NOT LINKED')}
                                                     </span>
                                                 </h2>
                                             </div>
+                                            {metaAccountStatus?.errorMessage && (
+                                                <div className="bg-red-50 p-3 rounded-lg border border-red-100 mt-2 mb-4 flex items-center gap-2">
+                                                    <div className="w-4 h-4 rounded-full bg-red-500 border-2 border-white" />
+                                                    <p className="text-[11px] font-bold text-red-600 uppercase tracking-tight">
+                                                        Integration alert: {metaAccountStatus.errorMessage}
+                                                    </p>
+                                                </div>
+                                            )}
 
                                             {metaAccountStatus?.status === 'ACTIVE' && !isAddingMetaCampaign && metaEntryMode === 'NEW' && (
                                                 <Button 
@@ -1284,16 +1349,35 @@ const ManageServicesView = () => {
                                         {isAddingMetaCampaign && (
                                             <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-300">
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-blue-50/30 p-6 rounded-2xl border border-blue-100/50">
-                                                    <div className="space-y-4">
-                                                        <div>
-                                                            <label className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1.5 block">1. Label the Campaign (Manual Entry)</label>
-                                                            <Input 
-                                                                placeholder="e.g. Summer Sale 2024 - Brand Awareness"
-                                                                className="rounded-xl border-2 border-blue-100 bg-white font-bold"
-                                                                value={campaignForm.campaign_label || ''}
-                                                                onChange={(e) => setCampaignForm({ ...campaignForm, campaign_label: e.target.value })}
-                                                            />
-                                                        </div>
+                                                        <div className="space-y-4">
+                                                            <div>
+                                                                <div className="flex items-center justify-between mb-1.5">
+                                                                    <label className="text-[10px] font-black text-blue-600 uppercase tracking-widest block">1. Select Marketing Group</label>
+                                                                    <button 
+                                                                        onClick={handleCreateNewGroup}
+                                                                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors text-[9px] font-black uppercase tracking-wider"
+                                                                    >
+                                                                        <Plus size={10} /> New Group
+                                                                    </button>
+                                                                </div>
+                                                                <select 
+                                                                    className="w-full h-11 px-4 py-2.5 rounded-xl border-2 border-blue-100 bg-white shadow-sm focus:border-blue-500 focus:ring-0 transition-all font-bold text-gray-700 text-sm"
+                                                                    value={campaignForm.group_id || ''}
+                                                                    onChange={(e) => setCampaignForm({ ...campaignForm, group_id: e.target.value })}
+                                                                >
+                                                                    <option value="">-- Choose Campaign Group --</option>
+                                                                    {marketingGroups?.map((g: any) => (
+                                                                        <option key={g.id} value={g.id}>{g.name}</option>
+                                                                    ))}
+                                                                </select>
+                                                            </div>
+
+                                                            {(!marketingGroups || marketingGroups.length === 0) && (
+                                                                <div className="bg-amber-50 p-3 rounded-xl border border-amber-100 flex items-center gap-2">
+                                                                    <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shrink-0" />
+                                                                    <p className="text-[9px] font-bold text-amber-700 leading-tight">No groups found. Please create a group (e.g. "Instagram Branding") to organize your campaign data.</p>
+                                                                </div>
+                                                            )}
 
                                                         <div>
                                                             <label className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1.5 block">2. Select Meta Campaign</label>
@@ -1459,6 +1543,24 @@ const ManageServicesView = () => {
                                         )}
                                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                             <div>
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <label className="text-xs font-bold text-gray-500 block">Marketing Group</label>
+                                                    <button onClick={handleCreateNewGroup} className="text-[9px] font-bold text-blue-600 hover:underline flex items-center gap-1">
+                                                        <Plus size={10} /> New
+                                                    </button>
+                                                </div>
+                                                <select 
+                                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                                    value={campaignForm.group_id || ''}
+                                                    onChange={(e) => setCampaignForm({ ...campaignForm, group_id: e.target.value })}
+                                                >
+                                                    <option value="">-- No Group --</option>
+                                                    {marketingGroups?.map((g: any) => (
+                                                        <option key={g.id} value={g.id}>{g.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div>
                                                 <label className="text-xs font-bold text-gray-500 mb-1 block">Campaign Name *</label>
                                                 <Input value={campaignForm.campaign_name || ''} onChange={(e) => setCampaignForm({ ...campaignForm, campaign_name: e.target.value })} />
                                             </div>
@@ -1556,27 +1658,45 @@ const ManageServicesView = () => {
                                                 </select>
                                             </div>
                                         )}
-                                        <div className="grid grid-cols-3 gap-4">
+                                        <div className="grid grid-cols-4 gap-4">
+                                            <div>
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <label className="text-xs font-bold text-gray-500 block">Marketing Group</label>
+                                                    <button onClick={handleCreateNewGroup} className="text-[9px] font-bold text-blue-600 hover:underline flex items-center gap-1">
+                                                        <Plus size={10} /> New
+                                                    </button>
+                                                </div>
+                                                <select 
+                                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                                    value={campaignForm.group_id || ''}
+                                                    onChange={(e) => setCampaignForm({ ...campaignForm, group_id: e.target.value })}
+                                                >
+                                                    <option value="">-- No Group --</option>
+                                                    {marketingGroups?.map((g: any) => (
+                                                        <option key={g.id} value={g.id}>{g.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
                                             <div>
                                                 <label className="text-xs font-bold text-gray-500 mb-1 block">Month (1-12) *</label>
                                                 <Input type="number" value={campaignForm.month || ''} onChange={(e) => setCampaignForm({ ...campaignForm, month: e.target.value })} />
                                             </div>
                                             <div>
                                                 <label className="text-xs font-bold text-gray-500 mb-1 block">Year *</label>
-                                                <Input type="number" value={campaignForm.year || ''} onChange={(e) => setCampaignForm({ ...campaignForm, year: e.target.value })} />
+                                                <Input type="number" value={campaignForm.year || new Date().getFullYear()} onChange={(e) => setCampaignForm({ ...campaignForm, year: e.target.value })} />
                                             </div>
+                                            <div>
+                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Traffic (Organic)</label>
+                                                <Input type="number" value={campaignForm.organic_traffic || 0} onChange={(e) => setCampaignForm({ ...campaignForm, organic_traffic: e.target.value })} />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
                                             <div>
                                                 <label className="text-xs font-bold text-gray-500 mb-1 block">Status</label>
                                                 <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={campaignForm.status} onChange={(e) => setCampaignForm({ ...campaignForm, status: e.target.value })}>
                                                     <option value="ACTIVE">Active</option>
                                                     <option value="CLOSED">Closed</option>
                                                 </select>
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="text-xs font-bold text-gray-500 mb-1 block">Organic Traffic</label>
-                                                <Input type="number" value={campaignForm.organic_traffic || 0} onChange={(e) => setCampaignForm({ ...campaignForm, organic_traffic: e.target.value })} />
                                             </div>
                                             <div>
                                                 <label className="text-xs font-bold text-gray-500 mb-1 block">Summary</label>

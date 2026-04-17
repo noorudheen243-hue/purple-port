@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Facebook, Link2, CheckCircle2, Edit, Save, X, Settings, RefreshCw, AlertTriangle, Wifi, WifiOff, Keyboard, List } from 'lucide-react';
+import { Facebook, Link2, CheckCircle2, Edit, Save, X, Settings, RefreshCw, AlertTriangle, Wifi, WifiOff, Keyboard, List, Plus } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
@@ -83,13 +83,33 @@ export const MarketingIntegrations: React.FC = () => {
         }
     };
 
-    const fetchAvailableAccounts = async (profileId: string) => {
-        if (!profileId || adAccountsByProfile[profileId]) return;
+    const fetchAvailableAccounts = async (profileId: string, clientId?: string, force = false) => {
+        if (!profileId) return;
+        if (!force && adAccountsByProfile[profileId]) {
+            // If already loaded and we have data, we might want to auto-select if still empty
+            if (clientId && tempData[clientId] && !tempData[clientId].accountId && adAccountsByProfile[profileId].length === 1) {
+                const autoAccountId = adAccountsByProfile[profileId][0].id.replace('act_', '');
+                setTempData(prev => ({
+                    ...prev,
+                    [clientId]: { ...prev[clientId], accountId: autoAccountId }
+                }));
+            }
+            return;
+        }
         
         setLoadingAccounts(prev => ({ ...prev, [profileId]: true }));
         try {
             const { data } = await api.get(`/marketing/meta/accounts?profileId=${profileId}`);
             setAdAccountsByProfile(prev => ({ ...prev, [profileId]: data }));
+            
+            // Auto-selection logic: if only one account exists, select it automatically for this client
+            if (clientId && data && data.length === 1) {
+                const autoAccountId = data[0].id.replace('act_', '');
+                setTempData(prev => ({
+                    ...prev,
+                    [clientId]: { ...prev[clientId], accountId: autoAccountId }
+                }));
+            }
         } catch (err) {
             console.error('Error fetching available accounts:', err);
         } finally {
@@ -117,7 +137,7 @@ export const MarketingIntegrations: React.FC = () => {
             setEditModeIds(prev => ({ ...prev, [clientId]: true }));
             
             if (currentProfileId) {
-                fetchAvailableAccounts(currentProfileId);
+                fetchAvailableAccounts(currentProfileId, clientId);
             }
         }
     };
@@ -140,7 +160,8 @@ export const MarketingIntegrations: React.FC = () => {
                 await api.post('/marketing/accounts/select', {
                     clientId,
                     platform: 'meta',
-                    externalAccountId: t.accountId
+                    externalAccountId: t.accountId,
+                    profileId: t.profileId
                 });
             }
 
@@ -342,19 +363,30 @@ export const MarketingIntegrations: React.FC = () => {
                                                                 placeholder="Enter Account ID"
                                                             />
                                                         ) : (
-                                                            <select
-                                                                className="w-48 p-2.5 bg-white border border-gray-200 rounded-lg text-sm font-bold shadow-sm focus:ring-2 focus:ring-blue-100 outline-none"
-                                                                value={tempData[client.id]?.accountId || ''}
-                                                                onChange={(e) => setTempData(prev => ({ ...prev, [client.id]: { ...prev[client.id], accountId: e.target.value } }))}
-                                                                disabled={!tempData[client.id]?.profileId || loadingAccounts[tempData[client.id]?.profileId]}
-                                                            >
-                                                                <option value="">-- Select Account --</option>
-                                                                {(adAccountsByProfile[tempData[client.id]?.profileId] || []).map((acc: any) => (
-                                                                    <option key={acc.id} value={acc.id.replace('act_', '')}>
-                                                                        {acc.name} ({acc.id.replace('act_', '')})
+                                                            <div className="relative">
+                                                                <select
+                                                                    className={`w-48 p-2.5 bg-white border rounded-lg text-sm font-bold shadow-sm focus:ring-2 focus:ring-blue-100 outline-none transition-all ${
+                                                                        loadingAccounts[tempData[client.id]?.profileId] ? 'opacity-50 border-blue-200' : 'border-gray-200'
+                                                                    }`}
+                                                                    value={tempData[client.id]?.accountId || ''}
+                                                                    onChange={(e) => setTempData(prev => ({ ...prev, [client.id]: { ...prev[client.id], accountId: e.target.value } }))}
+                                                                    disabled={!tempData[client.id]?.profileId || loadingAccounts[tempData[client.id]?.profileId]}
+                                                                >
+                                                                    <option value="">
+                                                                        {loadingAccounts[tempData[client.id]?.profileId] ? 'Loading accounts...' : (tempData[client.id]?.profileId ? '-- Select Account --' : 'Link Profile First')}
                                                                     </option>
-                                                                ))}
-                                                            </select>
+                                                                    {(adAccountsByProfile[tempData[client.id]?.profileId] || []).map((acc: any) => (
+                                                                        <option key={acc.id} value={acc.id.replace('act_', '')}>
+                                                                            {acc.name} ({acc.id.replace('act_', '')})
+                                                                        </option>
+                                                                    ))}
+                                                                </select>
+                                                                {loadingAccounts[tempData[client.id]?.profileId] && (
+                                                                    <div className="absolute right-10 top-1/2 -translate-y-1/2">
+                                                                        <RefreshCw className="w-3 h-3 text-blue-500 animate-spin" />
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         )}
                                                         <button 
                                                             onClick={() => setManualInputModes(prev => ({ ...prev, [client.id]: !prev[client.id] }))}
@@ -363,9 +395,18 @@ export const MarketingIntegrations: React.FC = () => {
                                                         >
                                                             {manualInputModes[client.id] ? <List className="w-4 h-4" /> : <Keyboard className="w-4 h-4" />}
                                                         </button>
+                                                        {tempData[client.id]?.profileId && (
+                                                            <button 
+                                                                onClick={() => fetchAvailableAccounts(tempData[client.id]?.profileId, client.id, true)}
+                                                                className="p-2 bg-gray-50 text-gray-500 border border-gray-200 rounded-lg hover:text-blue-600 hover:border-blue-200 transition-all"
+                                                                title="Refresh Account List"
+                                                            >
+                                                                <RefreshCw className={`w-4 h-4 ${loadingAccounts[tempData[client.id]?.profileId] ? 'animate-spin' : ''}`} />
+                                                            </button>
+                                                        )}
                                                     </div>
-                                                    {loadingAccounts[tempData[client.id]?.profileId] && !manualInputModes[client.id] && (
-                                                        <span className="text-[10px] text-blue-500 font-bold animate-pulse">Fetching accounts...</span>
+                                                    {!loadingAccounts[tempData[client.id]?.profileId] && tempData[client.id]?.profileId && (!adAccountsByProfile[tempData[client.id]?.profileId] || adAccountsByProfile[tempData[client.id]?.profileId].length === 0) && (
+                                                        <span className="text-[10px] text-red-500 font-bold">No ad accounts found for this profile.</span>
                                                     )}
                                                 </div>
                                             ) : (
@@ -385,7 +426,16 @@ export const MarketingIntegrations: React.FC = () => {
                                                         )}
                                                     </div>
                                                 ) : (
-                                                    <span className="text-gray-400 italic text-xs">Not linked</span>
+                                                    currentProfile ? (
+                                                        <button 
+                                                            onClick={() => handleEditToggle(client.id, currentProfile.id, '')}
+                                                            className="flex items-center gap-1.5 text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
+                                                        >
+                                                            <Plus className="w-3.5 h-3.5" /> Select Ad Account
+                                                        </button>
+                                                    ) : (
+                                                        <span className="text-gray-400 italic text-xs">Not linked</span>
+                                                    )
                                                 )
                                             )}
                                         </td>

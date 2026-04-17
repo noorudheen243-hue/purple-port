@@ -179,6 +179,8 @@ export async function getMetaAccountStatus(req: Request, res: Response) {
     try {
         const { clientId } = req.query;
         if (!clientId) return res.status(400).json({ message: 'clientId is required' });
+        
+        console.log(`[getMetaAccountStatus] Checking status for client: ${clientId}`);
 
         const account = await (prisma as any).marketingAccount.findFirst({
             where: { clientId: clientId as string, platform: 'meta' },
@@ -218,10 +220,11 @@ export async function getMetaAccountStatus(req: Request, res: Response) {
         
         try {
             if (account.externalAccountId && account.externalAccountId !== 'meta-account-linked' && account.externalAccountId !== 'pending-selection') {
-                campaigns = await metaService.fetchCampaigns(account.externalAccountId);
+                campaigns = await metaService.fetchCampaigns(account.externalAccountId, clientId as string);
                 console.log(`[DEBUG getMetaAccountStatus] Fetched ${campaigns.length} campaigns for ${account.externalAccountId}`);
             } else {
                 console.log(`[DEBUG getMetaAccountStatus] Skipping fetch: externalAccountId is placeholder (${account.externalAccountId})`);
+                status = 'PENDING_SELECTION';
             }
         } catch (err: any) {
             console.error('[DEBUG getMetaAccountStatus] Error fetching Meta campaigns:', err.message);
@@ -385,28 +388,34 @@ export async function authMeta(req: Request, res: Response) {
         return acc;
     }, {});
 
-    const appId = settingsMap['META_APP_ID'] || process.env.META_APP_ID;
+    const appId = (settingsMap['META_APP_ID'] || process.env.META_APP_ID || '').trim();
     
     // ULTIMATE FIX: Force HTTPS and use hardcoded production domain if present
-    // Fallback to dynamic host for local development only
-    const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
     const reqHost = req.get('host');
+    const isLocal = reqHost?.includes('localhost') || reqHost?.includes('127.0.0.1');
+    const protocol = isLocal ? 'http' : 'https';
+    
     const baseUrl = process.env.PRODUCTION_API_URL || `${protocol}://${reqHost}`;
     
     // Ensure baseUrl doesn't have trailing slash for consistency
     const cleanBaseUrl = baseUrl.replace(/\/$/, '');
-    const redirectUri = `${cleanBaseUrl}/api/marketing/auth/meta/callback`;
     
-    console.log(`[MetaAuth] Initiating OAuth for App ID: ${appId} (Redirect: ${redirectUri})`);
+    // Double-force HTTPS for redirectUri if not local
+    let redirectUri = `${cleanBaseUrl}/api/marketing/auth/meta/callback`;
+    if (!isLocal && redirectUri.startsWith('http:')) {
+        redirectUri = redirectUri.replace('http:', 'https:');
+    }
     
-    if (!appId) {
-        return res.status(400).send('Meta App ID is not configured. Please set it in Settings first.');
+    console.log(`[MetaAuth] Initiating OAuth for App ID: "${appId}" (Redirect: ${redirectUri})`);
+    
+    if (!appId || appId.includes('placeholder')) {
+        return res.status(400).send('Meta App ID is not configured properly in Settings. Current value: ' + appId);
     }
 
     // Redirect to Facebook Dialog with reauthenticate to allow switching accounts easily
-    const authUrl = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&state=${state}&scope=ads_management,ads_read,business_management,leads_retrieval,pages_manage_ads,pages_read_engagement&auth_type=reauthenticate`;
+    const authUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&state=${state}&scope=public_profile,ads_management,ads_read,business_management&auth_type=reauthenticate`;
     
-    console.log(`[MetaAuth] Initiating OAuth for App ID: ${appId} (Redirect: ${redirectUri})`);
+    console.log(`[MetaAuth] Redirecting to: ${authUrl}`);
     res.redirect(authUrl);
 }
 
@@ -442,17 +451,22 @@ export async function metaCallback(req: Request, res: Response) {
         const appSecret = settingsMap['META_APP_SECRET'] || process.env.META_APP_SECRET;
         
         // ULTIMATE FIX: Force HTTPS and use hardcoded production domain for callback exchange
-        const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
         const reqHost = req.get('host');
+        const isLocal = reqHost?.includes('localhost') || reqHost?.includes('127.0.0.1');
+        const protocol = isLocal ? 'http' : 'https';
+        
         const baseUrl = process.env.PRODUCTION_API_URL || `${protocol}://${reqHost}`;
         
         const cleanBaseUrl = baseUrl.replace(/\/$/, '');
-        const redirectUri = `${cleanBaseUrl}/api/marketing/auth/meta/callback`;
+        let redirectUri = `${cleanBaseUrl}/api/marketing/auth/meta/callback`;
+        if (!isLocal && redirectUri.startsWith('http:')) {
+            redirectUri = redirectUri.replace('http:', 'https:');
+        }
         
         console.log(`[MetaCallback] Exchanging token for App ID: ${appId} (Redirect: ${redirectUri})`);
 
         // Exchange code for short-lived token
-        const tokenRes = await axios.get(`https://graph.facebook.com/v21.0/oauth/access_token`, {
+        const tokenRes = await axios.get(`https://graph.facebook.com/v19.0/oauth/access_token`, {
             params: {
                 client_id: appId,
                 redirect_uri: redirectUri,
@@ -463,7 +477,7 @@ export async function metaCallback(req: Request, res: Response) {
         const shortToken = tokenRes.data.access_token;
 
         // Exchange for long-lived token
-        const longTokenRes = await axios.get(`https://graph.facebook.com/v21.0/oauth/access_token`, {
+        const longTokenRes = await axios.get(`https://graph.facebook.com/v19.0/oauth/access_token`, {
             params: {
                 grant_type: 'fb_exchange_token',
                 client_id: appId,
@@ -474,7 +488,7 @@ export async function metaCallback(req: Request, res: Response) {
         const longToken = longTokenRes.data.access_token;
 
         // Fetch Meta user info (Name and ID)
-        const meRes = await axios.get(`https://graph.facebook.com/v21.0/me`, {
+        const meRes = await axios.get(`https://graph.facebook.com/v19.0/me`, {
             params: { access_token: longToken, fields: 'id,name' }
         });
         const metaUserName = meRes.data.name;
@@ -771,12 +785,17 @@ export async function getIntegrationStatus(req: Request, res: Response) {
 
 export async function getAvailableAccounts(req: Request, res: Response) {
     const { id: userId } = (req as any).user;
-    const { clientId, platform } = req.query;
-    if (!clientId || !platform) return res.status(400).send('clientId and platform are required');
+    const { clientId, platform: queryPlatform, profileId } = req.query;
+    
+    // Default to 'meta' if profileId is provided (as it's specifically for Meta)
+    const platform = queryPlatform || (profileId ? 'meta' : null);
+
+    if (!platform) return res.status(400).send('platform is required');
+    if (!clientId && !profileId) return res.status(400).send('clientId or profileId is required');
 
     try {
         if (platform === 'meta') {
-            const accounts = await metaService.fetchAccounts(userId, clientId as string);
+            const accounts = await metaService.fetchAccounts(userId, clientId as string, profileId as string);
             return res.json(accounts);
         }
 
@@ -809,7 +828,7 @@ export async function getAvailableAccounts(req: Request, res: Response) {
 }
 
 export async function selectAccount(req: Request, res: Response) {
-    const { clientId, platform, externalAccountId } = req.body;
+    const { clientId, platform, externalAccountId, profileId } = req.body;
     if (!clientId || !platform || !externalAccountId) {
         return res.status(400).send('clientId, platform, and externalAccountId are required');
     }
@@ -818,19 +837,33 @@ export async function selectAccount(req: Request, res: Response) {
         console.log(`[DEBUG selectAccount] Received Request:`, req.body);
 
         // Use findFirst + create/update or upsert if possible with composite unique (which we don't have yet)
-        // Since we don't have a unique constraint on (clientId, platform), we check first
         const existing = await (prisma as any).marketingAccount.findFirst({
             where: { clientId, platform }
         });
 
         console.log(`[DEBUG selectAccount] Existing Account Found:`, !!existing);
 
+        let metaTokenId = profileId;
+        let accessToken = undefined;
+
+        // If no profileId provided, try to find an existing one linked to this client
+        if (!metaTokenId) {
+            const linked = await (prisma as any).marketingAccount.findFirst({
+                where: { clientId, platform, NOT: { metaTokenId: null } }
+            });
+            metaTokenId = linked?.metaTokenId;
+            accessToken = linked?.accessToken;
+        } else {
+            // Fetch token for the provided profileId
+            const profile = await (prisma as any).metaToken.findUnique({ where: { id: profileId } });
+            if (profile) accessToken = profile.access_token;
+        }
+
         if (existing) {
             // If the ID is changing, delete old campaigns to avoid data mixing
             if (existing.externalAccountId !== externalAccountId) {
                 console.log(`[DEBUG selectAccount] ID changed from ${existing.externalAccountId} to ${externalAccountId}. Deleting old campaigns.`);
 
-                // Fetch the campaigns to be deleted to get their IDs
                 const oldCampaigns = await (prisma as any).marketingCampaign.findMany({
                     where: { clientId, platform },
                     select: { id: true }
@@ -839,14 +872,9 @@ export async function selectAccount(req: Request, res: Response) {
                 const oldCampaignIds = oldCampaigns.map((c: any) => c.id);
 
                 if (oldCampaignIds.length > 0) {
-                    // Delete metrics first to satisfy foreign key constraints
                     await (prisma as any).marketingMetric.deleteMany({
                         where: { campaignId: { in: oldCampaignIds } }
                     });
-
-                    console.log(`[DEBUG selectAccount] Deleted metrics for ${oldCampaignIds.length} old campaigns.`);
-
-                    // Now safe to delete campaigns
                     await (prisma as any).marketingCampaign.deleteMany({
                         where: { id: { in: oldCampaignIds } }
                     });
@@ -856,15 +884,21 @@ export async function selectAccount(req: Request, res: Response) {
             const updated = await (prisma as any).marketingAccount.update({
                 where: { id: existing.id },
                 data: {
-                    externalAccountId
-                    // WE DO NOT CLEAR accessToken HERE.
-                    // The token is tied to the user's Facebook account, not the specific Ad Account ID.
+                    externalAccountId,
+                    metaTokenId: metaTokenId || existing.metaTokenId,
+                    accessToken: accessToken || existing.accessToken
                 }
             });
             console.log(`[DEBUG selectAccount] Update successful. New externalAccountId in DB:`, updated.externalAccountId);
         } else {
             const created = await (prisma as any).marketingAccount.create({
-                data: { clientId, platform, externalAccountId }
+                data: { 
+                    clientId, 
+                    platform, 
+                    externalAccountId,
+                    metaTokenId,
+                    accessToken
+                }
             });
             console.log(`[DEBUG selectAccount] Create successful. New externalAccountId in DB:`, created.externalAccountId);
         }

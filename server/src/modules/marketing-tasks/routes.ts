@@ -5,7 +5,7 @@ import fs from 'fs';
 import {
     manualSync, getMetrics, authMeta, metaCallback, authGoogle, googleCallback,
     getAvailableAccounts, getIntegrationStatus, selectAccount, disconnectAccount,
-    middleware, getLeads, syncLeads, createLead, updateLead, deleteLead, addFollowUp,
+    middleware, getLeads, syncLeads, createLead, updateLead, deleteLead, updateLeadFeedback, addFollowUp,
     getMetaProfiles, linkAccountToProfile, getAiTips, getMetaCampaignsDetailed, getMetaAdSets, getMetaAds, createMetaCampaign, createMetaAdSet, updateMetaStatus, sendReport,
     syncCampaign, getMetaAccountStatus
 } from './controller';
@@ -63,6 +63,7 @@ router.post('/groups/unassign', unassignCampaignFromGroup);
 router.get('/leads', getLeads);
 router.post('/leads', createLead);
 router.patch('/leads/:id', updateLead);
+router.patch('/leads/:id/feedback', updateLeadFeedback);
 router.delete('/leads/:id', deleteLead);
 router.post('/leads/sync', syncLeads);
 router.post('/leads/follow-up', addFollowUp);

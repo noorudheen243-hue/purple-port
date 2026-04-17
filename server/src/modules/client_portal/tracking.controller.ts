@@ -186,37 +186,31 @@ export const updateMetaAdsLog = async (req: Request, res: Response) => {
         const user = req.user as any;
         const data = req.body;
 
-        // Cleanup payload
-        delete data.id;
-        delete data.createdAt;
-        delete data.updatedAt;
-        delete data.client;
-        delete data.user;
-        delete data.client_id;
-        delete data.user_id;
-        delete data.marketingCampaign;
-        delete data.marketing_campaign_id;
-        delete data.group;
-        delete data.group_id;
+        // RECONSTRUCT payload explicitly to avoid "Unknown argument" Prisma errors
+        // This ensures non-enumerable or ghost properties like marketing_campaign_id are omitted
+        const updateData: any = {
+            user_id: user.id
+        };
 
-        // Parse types
-        if (data.date) data.date = new Date(data.date);
-        if (data.startDate) data.startDate = new Date(data.startDate);
-        if (data.endDate) data.endDate = new Date(data.endDate);
-        if (data.spend !== undefined) data.spend = parseFloat(data.spend || 0);
-        if (data.reach !== undefined) data.reach = parseInt(data.reach || 0);
-        if (data.impressions !== undefined) data.impressions = parseInt(data.impressions || 0);
-        if (data.results !== undefined) data.results = parseInt(data.results || 0);
-        if (data.frequency !== undefined) data.frequency = parseFloat(data.frequency || 0);
-        if (data.cpp !== undefined) data.cpp = parseFloat(data.cpp || 0);
-        if (data.results_json && typeof data.results_json === 'object') data.results_json = JSON.stringify(data.results_json);
+        if (data.date) updateData.date = new Date(data.date);
+        if (data.campaign_name) updateData.campaign_name = data.campaign_name;
+        if (data.objective) updateData.objective = data.objective;
+        if (data.platform) updateData.platform = data.platform;
+        if (data.spend !== undefined) updateData.spend = parseFloat(data.spend || 0);
+        if (data.status) updateData.status = data.status;
+        if (data.notes !== undefined) updateData.notes = data.notes;
+        if (data.startDate) updateData.startDate = new Date(data.startDate);
+        if (data.endDate) updateData.endDate = new Date(data.endDate);
+        
+        if (data.results_json) {
+            updateData.results_json = typeof data.results_json === 'object' 
+                ? JSON.stringify(data.results_json) 
+                : data.results_json;
+        }
 
         const log = await prisma.metaAdsLog.update({
             where: { id },
-            data: { 
-                ...data,
-                user_id: user.id
-            }
+            data: updateData
         });
 
         // Log this activity globally as a system 'Task' 
@@ -331,32 +325,27 @@ export const updateGoogleAdsLog = async (req: Request, res: Response) => {
         const user = req.user as any;
         const data = req.body;
 
-        // Cleanup
-        delete data.id;
-        delete data.createdAt;
-        delete data.updatedAt;
-        delete data.client;
-        delete data.user;
-        delete data.client_id;
-        delete data.user_id;
-        delete data.group;
-        delete data.group_id;
+        // RECONSTRUCT payload
+        const updateData: any = {
+            user_id: user.id
+        };
 
-        // Parse
-        if (data.date) data.date = new Date(data.date);
-        if (data.spend !== undefined) data.spend = parseFloat(data.spend || 0);
-        if (data.clicks !== undefined) data.clicks = parseInt(data.clicks || 0);
-        if (data.impressions !== undefined) data.impressions = parseInt(data.impressions || 0);
-        if (data.conversions !== undefined) data.conversions = parseInt(data.conversions || 0);
-        if (data.cpa !== undefined) data.cpa = parseFloat(data.cpa || 0);
-        if (data.results_json && typeof data.results_json === 'object') data.results_json = JSON.stringify(data.results_json);
+        if (data.date) updateData.date = new Date(data.date);
+        if (data.campaign_name) updateData.campaign_name = data.campaign_name;
+        if (data.campaign_type) updateData.campaign_type = data.campaign_type;
+        if (data.spend !== undefined) updateData.spend = parseFloat(data.spend || 0);
+        if (data.status) updateData.status = data.status;
+        if (data.clicks !== undefined) updateData.clicks = parseInt(data.clicks || 0);
+        if (data.impressions !== undefined) updateData.impressions = parseInt(data.impressions || 0);
+        if (data.conversions !== undefined) updateData.conversions = parseInt(data.conversions || 0);
+        if (data.cpa !== undefined) updateData.cpa = parseFloat(data.cpa || 0);
+        if (data.notes !== undefined) updateData.notes = data.notes;
+        if (data.startDate) updateData.startDate = new Date(data.startDate);
+        if (data.endDate) updateData.endDate = new Date(data.endDate);
 
         const log = await prisma.googleAdsLog.update({
             where: { id },
-            data: { 
-                ...data,
-                user_id: user.id
-            }
+            data: updateData
         });
 
         await prisma.task.create({

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/api';
-import { Plus, Trash2, Edit2, Loader2, Link as LinkIcon } from 'lucide-react';
+import { Plus, Trash2, Edit2, Loader2, Link as LinkIcon, AlertCircle } from 'lucide-react';
 
 interface MarketingGroup {
     id: string;
@@ -22,6 +22,8 @@ export const CampaignGroupManager: React.FC<CampaignGroupManagerProps> = ({ clie
     const [newName, setNewName] = useState('');
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editName, setEditName] = useState('');
+    const [createError, setCreateError] = useState<string | null>(null);
+    const [editError, setEditError] = useState<string | null>(null);
 
     const { data: groups, isLoading } = useQuery<MarketingGroup[]>({
         queryKey: ['marketing-groups', clientId],
@@ -35,6 +37,15 @@ export const CampaignGroupManager: React.FC<CampaignGroupManagerProps> = ({ clie
             queryClient.invalidateQueries({ queryKey: ['marketing-groups'] });
             setIsCreating(false);
             setNewName('');
+            setCreateError(null);
+        },
+        onError: (error: any) => {
+            const msg = error?.response?.data?.error || error?.message || 'Failed to create group';
+            if (msg.toLowerCase().includes('unique') || msg.toLowerCase().includes('already exists')) {
+                setCreateError(`A group named "${newName}" already exists for this client.`);
+            } else {
+                setCreateError(msg);
+            }
         }
     });
 
@@ -43,6 +54,11 @@ export const CampaignGroupManager: React.FC<CampaignGroupManagerProps> = ({ clie
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['marketing-groups'] });
             setEditingId(null);
+            setEditError(null);
+        },
+        onError: (error: any) => {
+            const msg = error?.response?.data?.error || error?.message || 'Failed to update group';
+            setEditError(msg);
         }
     });
 
@@ -55,11 +71,17 @@ export const CampaignGroupManager: React.FC<CampaignGroupManagerProps> = ({ clie
 
     const handleCreate = () => {
         if (!newName.trim()) return;
+        if (!clientId) {
+            setCreateError('Please select a client first before creating a group.');
+            return;
+        }
+        setCreateError(null);
         createMutation.mutate(newName);
     };
 
     const handleUpdate = (id: string) => {
         if (!editName.trim()) return;
+        setEditError(null);
         updateMutation.mutate({ id, name: editName });
     };
 
@@ -94,7 +116,7 @@ export const CampaignGroupManager: React.FC<CampaignGroupManagerProps> = ({ clie
                             autoFocus
                             type="text"
                             value={newName}
-                            onChange={(e) => setNewName(e.target.value)}
+                            onChange={(e) => { setNewName(e.target.value); setCreateError(null); }}
                             onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
                             placeholder="Group Name (e.g., Lead Gen 2026)"
                             className="flex-1 px-3 py-2 bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-700 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none"
@@ -107,12 +129,18 @@ export const CampaignGroupManager: React.FC<CampaignGroupManagerProps> = ({ clie
                             {createMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create'}
                         </button>
                         <button
-                            onClick={() => setIsCreating(false)}
+                            onClick={() => { setIsCreating(false); setCreateError(null); }}
                             className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700"
                         >
                             Cancel
                         </button>
                     </div>
+                    {createError && (
+                        <div className="mt-2 flex items-center gap-2 text-sm text-red-600">
+                            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                            {createError}
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -133,17 +161,26 @@ export const CampaignGroupManager: React.FC<CampaignGroupManagerProps> = ({ clie
                         >
                             <div className="flex justify-between items-start">
                                 {editingId === group.id ? (
-                                    <div className="flex-1 flex gap-2">
-                                        <input
-                                            autoFocus
-                                            type="text"
-                                            value={editName}
-                                            onChange={(e) => setEditName(e.target.value)}
-                                            onKeyDown={(e) => e.key === 'Enter' && handleUpdate(group.id)}
-                                            className="w-full px-2 py-1 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded outline-none"
-                                        />
-                                        <button onClick={() => handleUpdate(group.id)} className="text-purple-600 font-bold text-xs">Save</button>
-                                        <button onClick={() => setEditingId(null)} className="text-gray-400 text-xs">X</button>
+                                    <div className="flex-1">
+                                        <div className="flex gap-2">
+                                            <input
+                                                autoFocus
+                                                type="text"
+                                                value={editName}
+                                                onChange={(e) => { setEditName(e.target.value); setEditError(null); }}
+                                                onKeyDown={(e) => e.key === 'Enter' && handleUpdate(group.id)}
+                                                className="w-full px-2 py-1 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded outline-none"
+                                            />
+                                            <button onClick={() => handleUpdate(group.id)} disabled={updateMutation.isPending} className="text-purple-600 font-bold text-xs whitespace-nowrap">
+                                                {updateMutation.isPending ? '...' : 'Save'}
+                                            </button>
+                                            <button onClick={() => { setEditingId(null); setEditError(null); }} className="text-gray-400 text-xs">X</button>
+                                        </div>
+                                        {editError && editingId === group.id && (
+                                            <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
+                                                <AlertCircle className="w-3 h-3" />{editError}
+                                            </p>
+                                        )}
                                     </div>
                                 ) : (
                                     <div className="flex-1 min-w-0">

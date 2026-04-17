@@ -195,6 +195,9 @@ export const updateMetaAdsLog = async (req: Request, res: Response) => {
         delete data.client_id;
         delete data.user_id;
         delete data.marketingCampaign;
+        delete data.marketing_campaign_id;
+        delete data.group;
+        delete data.group_id;
 
         // Parse types
         if (data.date) data.date = new Date(data.date);
@@ -336,6 +339,8 @@ export const updateGoogleAdsLog = async (req: Request, res: Response) => {
         delete data.user;
         delete data.client_id;
         delete data.user_id;
+        delete data.group;
+        delete data.group_id;
 
         // Parse
         if (data.date) data.date = new Date(data.date);
@@ -507,8 +512,8 @@ export const updateSeoLog = async (req: Request, res: Response) => {
                 activities_json: typeof activities_json === 'object' ? JSON.stringify(activities_json) : activities_json,
                 keyword_rankings_json: typeof keyword_rankings_json === 'object' ? JSON.stringify(keyword_rankings_json) : keyword_rankings_json,
                 organic_traffic: parseInt(organic_traffic || 0),
-                summary,
-                group_id: group_id || undefined
+                summary
+                // group_id removed from update as it's a relation ID that should be handled via 'connect' or omitted
             }
         });
         await prisma.task.create({ 

@@ -316,10 +316,14 @@ export async function getMetrics(req: Request, res: Response) {
             include: {
                 campaign: {
                     select: {
+                        id: true,
                         name: true,
                         platform: true,
                         objective: true,
-                        status: true
+                        status: true,
+                        budget: true,
+                        startDate: true,
+                        ends: true
                     }
                 }
             },
@@ -328,7 +332,7 @@ export async function getMetrics(req: Request, res: Response) {
             }
         });
 
-        // Calculate aggregates
+        // 1. GLOBAL SUMMARY
         const summary = metrics.reduce((acc: any, curr: any) => {
             acc.impressions += (curr.impressions || 0);
             acc.clicks += (curr.clicks || 0);
@@ -340,7 +344,7 @@ export async function getMetrics(req: Request, res: Response) {
             return acc;
         }, { impressions: 0, clicks: 0, spend: 0, conversions: 0, reach: 0, results: 0, conversations: 0 });
 
-        // NEW: Fetch ALL relevant campaigns to return to UI (Ensures 66+ show up even with 0 metrics)
+        // 2. CAMPAIGN AGGREGATES
         const campaignWhere: any = { clientId: clientId as string };
         if (platform) campaignWhere.platform = platform as string;
         if (groupId) campaignWhere.group_id = groupId as string;
@@ -358,14 +362,50 @@ export async function getMetrics(req: Request, res: Response) {
                 name: true,
                 platform: true,
                 objective: true,
-                status: true
+                status: true,
+                budget: true,
+                startDate: true,
+                ends: true
             }
+        });
+
+        // Fetch lead counts for these campaigns
+        const leadCounts = await (prisma as any).lead.groupBy({
+            by: ['campaignId'],
+            where: {
+                campaignId: { in: allCampaigns.map((c: any) => c.id) }
+            },
+            _count: {
+                _all: true
+            }
+        });
+
+        // Map metrics to campaigns
+        const campaignsWithMetrics = allCampaigns.map((camp: any) => {
+            const campMetrics = metrics.filter((m: any) => m.campaignId === camp.id);
+            const aggr = campMetrics.reduce((acc: any, curr: any) => {
+                acc.impressions += (curr.impressions || 0);
+                acc.spend += (curr.spend || 0);
+                acc.reach += (curr.reach || 0);
+                acc.results += (curr.results || 0);
+                acc.conversations += (curr.conversations || 0);
+                acc.conversions += (curr.conversions || 0);
+                return acc;
+            }, { impressions: 0, spend: 0, reach: 0, results: 0, conversations: 0, conversions: 0 });
+
+            const leadsItem = leadCounts.find((lc: any) => lc.campaignId === camp.id);
+
+            return {
+                ...camp,
+                metrics: aggr,
+                leadsCount: leadsItem?._count._all || 0
+            };
         });
 
         res.json({
             summary,
             data: metrics,
-            campaigns: allCampaigns
+            campaigns: campaignsWithMetrics
         });
     } catch (error) {
         console.error('Error fetching marketing metrics:', error);

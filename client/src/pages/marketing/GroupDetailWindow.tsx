@@ -204,56 +204,114 @@ export const GroupDetailWindow: React.FC<GroupDetailWindowProps> = ({ group, cli
                 )}
 
                 {activeTab === 'campaigns' && (
-                    <div className="max-w-7xl mx-auto animate-in slide-in-from-bottom-4 duration-500">
+                    <div className="animate-in slide-in-from-bottom-4 duration-500">
                          <div className="bg-gray-900/50 border border-white/5 rounded-3xl overflow-hidden backdrop-blur-sm">
                             <div className="px-8 py-6 border-b border-white/5 flex justify-between items-center bg-white/5">
-                                <h3 className="text-sm font-black text-white uppercase tracking-widest">Active Group Campaigns</h3>
-                                <button className="text-[10px] font-black text-purple-400 uppercase tracking-widest flex items-center gap-1.5 hover:text-purple-300">
-                                    <PlusCircle className="w-4 h-4" /> Add More to Group
-                                </button>
+                                <h3 className="text-sm font-black text-white uppercase tracking-widest">Premium Campaign Portfolio</h3>
+                                <div className="flex items-center gap-4">
+                                    <div className="text-[10px] text-gray-500 font-bold uppercase mr-4">Viewing {campaignRes.length} Group Campaigns</div>
+                                    <button className="text-[10px] font-black text-purple-400 uppercase tracking-widest flex items-center gap-1.5 hover:text-purple-300">
+                                        <PlusCircle className="w-4 h-4" /> Add More to Group
+                                    </button>
+                                </div>
                             </div>
-                            <div className="p-0">
-                                <table className="w-full text-left">
-                                    <thead className="bg-black/40 text-[10px] uppercase font-black text-gray-500 tracking-widest border-b border-white/5">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse min-w-[1400px]">
+                                    <thead className="bg-black/40 text-[10px] uppercase font-black text-gray-500 tracking-widest border-b border-white/5 whitespace-nowrap">
                                         <tr>
-                                            <th className="px-8 py-4">Campaign Information</th>
-                                            <th className="px-8 py-4">Platform</th>
-                                            <th className="px-8 py-4">Status</th>
-                                            <th className="px-8 py-4">Objective</th>
-                                            <th className="px-8 py-4 text-right">Action</th>
+                                            <th className="px-6 py-4 sticky left-0 bg-gray-900/90 z-10 backdrop-blur-sm">Campaign Name</th>
+                                            <th className="px-6 py-4">Status</th>
+                                            <th className="px-6 py-4">Budget</th>
+                                            <th className="px-6 py-4">Total Spent</th>
+                                            <th className="px-6 py-4">Results</th>
+                                            <th className="px-6 py-4">CPR</th>
+                                            <th className="px-6 py-4">CPC (Message)</th>
+                                            <th className="px-6 py-4">Reach</th>
+                                            <th className="px-6 py-4">Impressions</th>
+                                            <th className="px-6 py-4 text-purple-400">Leads</th>
+                                            <th className="px-6 py-4">Start / End Date</th>
+                                            <th className="px-6 py-4 text-right">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-white/5">
                                         {metricsLoading ? (
-                                            <tr><td colSpan={5} className="py-20 text-center"><Loader2 className="w-8 h-8 animate-spin mx-auto text-purple-600" /></td></tr>
+                                            <tr><td colSpan={12} className="py-20 text-center"><Loader2 className="w-8 h-8 animate-spin mx-auto text-purple-600" /></td></tr>
                                         ) : campaignRes.length === 0 ? (
-                                            <tr><td colSpan={5} className="py-20 text-center text-gray-600 font-bold uppercase text-xs">No Campaigns found in this group</td></tr>
+                                            <tr><td colSpan={12} className="py-20 text-center text-gray-600 font-bold uppercase text-xs">No Campaigns found in this group</td></tr>
                                         ) : (
-                                            campaignRes.map((c: any) => (
-                                                <tr key={c.id} className="hover:bg-white/5 transition-colors group">
-                                                    <td className="px-8 py-5">
-                                                        <div className="font-bold text-gray-200">{c.name}</div>
-                                                        <div className="text-[10px] text-gray-500 font-medium tracking-tight">ID: {c.id.substring(0,8)}...</div>
-                                                    </td>
-                                                    <td className="px-8 py-5">
-                                                        <div className="flex items-center gap-2 text-gray-400 uppercase text-[10px] font-black">
-                                                            {c.platform === 'meta' ? <><Facebook className="w-3.5 h-3.5 text-blue-500" /> Meta</> : <><GoogleIcon /> Google</>}
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-8 py-5">
-                                                        <span className="bg-green-500/10 text-green-500 text-[9px] font-black px-2 py-0.5 rounded border border-green-500/20">{c.status}</span>
-                                                    </td>
-                                                    <td className="px-8 py-5 text-xs text-gray-400 font-medium capitalize">{c.objective?.replace('_', ' ') || 'N/A'}</td>
-                                                    <td className="px-8 py-5 text-right">
-                                                        <button 
-                                                            onClick={() => unassignMutation.mutate(c.id)}
-                                                            className="p-2 text-gray-600 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))
+                                            campaignRes.map((c: any) => {
+                                                const spent = c.metrics?.spend || 0;
+                                                const results = c.metrics?.results || 0;
+                                                const conversations = c.metrics?.conversations || 0;
+                                                const cpr = results > 0 ? (spent / results).toFixed(2) : '0.00';
+                                                const cpc = conversations > 0 ? (spent / conversations).toFixed(2) : '0.00';
+                                                
+                                                return (
+                                                    <tr key={c.id} className="hover:bg-white/5 transition-colors group">
+                                                        <td className="px-6 py-4 sticky left-0 bg-gray-900/90 z-10 backdrop-blur-sm">
+                                                            <div className="flex items-center gap-3">
+                                                                {c.platform === 'meta' ? <Facebook className="w-4 h-4 text-blue-500" /> : <div className="w-4 h-4 bg-red-400 rounded-full" />}
+                                                                <div>
+                                                                    <div className="font-bold text-gray-200 text-xs w-64 truncate">{c.name}</div>
+                                                                    <div className="text-[9px] text-gray-500 font-black uppercase tracking-tighter">ID: {c.id.substring(0,8)} | {c.platform}</div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <span className={`text-[9px] font-black px-2 py-0.5 rounded border ${
+                                                                c.status === 'ACTIVE' || c.status === 'ENABLED' 
+                                                                    ? 'bg-green-500/10 text-green-500 border-green-500/20' 
+                                                                    : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
+                                                            }`}>
+                                                                {c.status === 'ACTIVE' || c.status === 'ENABLED' ? 'RUNNING' : c.status}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="text-xs font-bold text-gray-400">${c.budget || 0}</div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="text-xs font-bold text-gray-200">${spent.toLocaleString()}</div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="text-xs font-black text-white">{results.toLocaleString()}</div>
+                                                            <div className="text-[9px] text-gray-500 uppercase font-bold">{c.objective?.replace('_', ' ') || 'Results'}</div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="text-xs font-bold text-purple-400">${cpr}</div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="text-xs font-bold text-indigo-400">${cpc}</div>
+                                                            <div className="text-[9px] text-gray-500 uppercase font-bold">{conversations} SMS</div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="text-xs text-gray-300 font-bold">{(c.metrics?.reach || 0).toLocaleString()}</div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="text-xs text-gray-300 font-bold">{(c.metrics?.impressions || 0).toLocaleString()}</div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="bg-purple-500/10 text-purple-400 px-3 py-1 rounded-full border border-purple-500/20 font-black text-center text-xs">
+                                                                {c.leadsCount || 0}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="text-[10px] text-gray-300 font-bold">
+                                                                {c.startDate ? format(new Date(c.startDate), 'MMM dd') : 'N/A'} - 
+                                                                {c.ends ? format(new Date(c.ends), 'MMM dd') : 'Live'}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-right">
+                                                            <button 
+                                                                onClick={() => unassignMutation.mutate(c.id)}
+                                                                className="p-2 text-gray-600 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
+                                                                title="Remove from Group"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })
                                         )}
                                     </tbody>
                                 </table>

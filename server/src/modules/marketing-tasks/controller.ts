@@ -266,7 +266,7 @@ export async function getMetaAccountStatus(req: Request, res: Response) {
 
 export async function getMetrics(req: Request, res: Response) {
     try {
-        const { clientId, platform, from, to, status } = req.query;
+        const { clientId, platform, from, to, status, groupId } = req.query;
 
         if (!from || !to) {
             return res.status(400).json({ message: 'from and to dates are required.' });
@@ -290,6 +290,11 @@ export async function getMetrics(req: Request, res: Response) {
             whereClause.campaign = {
                 clientId: { not: '' }
             };
+        }
+
+        if (groupId) {
+            if (!whereClause.campaign) whereClause.campaign = {};
+            whereClause.campaign.group_id = groupId as string;
         }
 
         if (platform) {
@@ -338,6 +343,7 @@ export async function getMetrics(req: Request, res: Response) {
         // NEW: Fetch ALL relevant campaigns to return to UI (Ensures 66+ show up even with 0 metrics)
         const campaignWhere: any = { clientId: clientId as string };
         if (platform) campaignWhere.platform = platform as string;
+        if (groupId) campaignWhere.group_id = groupId as string;
         
         if (status === 'active') {
             campaignWhere.status = { in: ['ACTIVE', 'ENABLED'] };

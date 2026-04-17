@@ -1,7 +1,5 @@
-import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import api from '../../lib/api';
-import { Plus, Trash2, Edit2, Loader2, Link as LinkIcon, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Edit2, Loader2, Link as LinkIcon, AlertCircle, Eye } from 'lucide-react';
+import { GroupDetailWindow } from './GroupDetailWindow';
 
 interface MarketingGroup {
     id: string;
@@ -24,6 +22,7 @@ export const CampaignGroupManager: React.FC<CampaignGroupManagerProps> = ({ clie
     const [editName, setEditName] = useState('');
     const [createError, setCreateError] = useState<string | null>(null);
     const [editError, setEditError] = useState<string | null>(null);
+    const [selectedGroup, setSelectedGroup] = useState<MarketingGroup | null>(null);
 
     const { data: groups, isLoading } = useQuery<MarketingGroup[]>({
         queryKey: ['marketing-groups', clientId],
@@ -157,11 +156,12 @@ export const CampaignGroupManager: React.FC<CampaignGroupManagerProps> = ({ clie
                     groups?.map((group) => (
                         <div
                             key={group.id}
-                            className="p-4 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md transition-all group"
+                            onClick={() => !editingId && setSelectedGroup(group)}
+                            className={`p-4 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md transition-all group relative cursor-pointer ${editingId === group.id ? 'cursor-default' : 'hover:border-purple-300'}`}
                         >
                             <div className="flex justify-between items-start">
                                 {editingId === group.id ? (
-                                    <div className="flex-1">
+                                    <div className="flex-1" onClick={(e) => e.stopPropagation()}>
                                         <div className="flex gap-2">
                                             <input
                                                 autoFocus
@@ -184,7 +184,10 @@ export const CampaignGroupManager: React.FC<CampaignGroupManagerProps> = ({ clie
                                     </div>
                                 ) : (
                                     <div className="flex-1 min-w-0">
-                                        <h4 className="font-bold text-gray-900 dark:text-gray-100 truncate">{group.name}</h4>
+                                        <h4 className="font-bold text-gray-900 dark:text-gray-100 truncate flex items-center gap-2">
+                                            {group.name}
+                                            <Eye className="w-3 h-3 text-purple-400 opacity-0 group-hover:opacity-100 transition-all" />
+                                        </h4>
                                         <div className="mt-2 flex items-center gap-3 text-xs font-medium text-gray-500">
                                             <span className="flex items-center gap-1">
                                                 <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
@@ -198,7 +201,7 @@ export const CampaignGroupManager: React.FC<CampaignGroupManagerProps> = ({ clie
                                     </div>
                                 )}
                                 
-                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
                                     <button
                                         onClick={() => {
                                             setEditingId(group.id);
@@ -224,6 +227,14 @@ export const CampaignGroupManager: React.FC<CampaignGroupManagerProps> = ({ clie
                     ))
                 )}
             </div>
+
+            {selectedGroup && (
+                <GroupDetailWindow 
+                    group={selectedGroup} 
+                    clientId={clientId} 
+                    onClose={() => setSelectedGroup(null)} 
+                />
+            )}
         </div>
     );
 };

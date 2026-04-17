@@ -14,7 +14,8 @@ import {
     createGroup, 
     updateGroup, 
     deleteGroup, 
-    assignCampaignsToGroup 
+    assignCampaignsToGroup,
+    unassignCampaignFromGroup
 } from './marketingGroup.controller';
 import { protect } from '../auth/middleware';
 
@@ -56,6 +57,7 @@ router.post('/groups', createGroup);
 router.put('/groups/:id', updateGroup);
 router.delete('/groups/:id', deleteGroup);
 router.post('/groups/assign', assignCampaignsToGroup);
+router.post('/groups/unassign', unassignCampaignFromGroup);
 
 // Leads endpoints
 router.get('/leads', getLeads);

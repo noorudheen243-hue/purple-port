@@ -96,3 +96,28 @@ export const assignCampaignsToGroup = async (req: Request, res: Response) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+export const unassignCampaignFromGroup = async (req: Request, res: Response) => {
+    try {
+        const { campaignId } = req.body;
+        if (!campaignId) {
+            return res.status(400).json({ error: 'Campaign ID is required' });
+        }
+
+        // Unassign campaign
+        await prisma.marketingCampaign.update({
+            where: { id: campaignId },
+            data: { group_id: null }
+        });
+
+        // Also unassign leads derived from this campaign
+        await prisma.lead.updateMany({
+            where: { campaignId: campaignId },
+            data: { group_id: null }
+        });
+
+        res.json({ success: true, message: 'Campaign unassigned from group successfully.' });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+};

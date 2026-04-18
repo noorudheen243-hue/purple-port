@@ -337,7 +337,7 @@ function startCronJob() {
             const destPath = path.join(backupDir, filename);
 
             // Force checkpoint for auto-backup too
-            try { await prisma.$executeRawUnsafe('PRAGMA wal_checkpoint(TRUNCATE);'); } catch { }
+            try { await prisma.$queryRawUnsafe('PRAGMA wal_checkpoint(TRUNCATE);'); } catch { }
 
             await createBackupZip(destPath);
             pruneOldBackups(backupDir, 30);
@@ -690,7 +690,7 @@ class TableStream extends Readable {
 export const exportFullBackupZip = async (req: Request, res: Response) => {
     try {
         // Ensure WAL is checkpointed before starting
-        try { await prisma.$executeRawUnsafe('PRAGMA wal_checkpoint(TRUNCATE);'); } catch { }
+        try { await prisma.$queryRawUnsafe('PRAGMA wal_checkpoint(TRUNCATE);'); } catch { }
 
         const archive = archiver('zip', { zlib: { level: 9 } });
         const filename = `purple-port-backup-${new Date().toISOString().split('T')[0]}.zip`;

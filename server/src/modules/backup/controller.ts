@@ -16,9 +16,17 @@ const prisma = new PrismaClient();
 // Linux (VPS):         /var/backups/antigravity
 function getBackupDir(): string {
     if (process.env.BACKUP_DIR) return process.env.BACKUP_DIR;
-    return process.platform === 'win32'
-        ? 'F:\\Antigravity\\Backup'
-        : '/var/backups/antigravity';
+    
+    // Default paths
+    const defaultWin = 'F:\\Antigravity\\Backup';
+    const defaultLinux = '/var/backups/antigravity';
+    
+    // Fallback if F:\ doesn't exist on windows
+    if (process.platform === 'win32' && !fs.existsSync('F:\\')) {
+        return path.join(process.cwd(), 'backups');
+    }
+
+    return process.platform === 'win32' ? defaultWin : defaultLinux;
 }
 
 function ensureBackupDir(dir: string) {
@@ -31,16 +39,25 @@ function ensureBackupDir(dir: string) {
 // ─── Database path resolution ───────────────────────────────────────────────
 function resolveDbPath(): string | null {
     const dbUrl = process.env.DATABASE_URL || '';
+    const cwd = process.cwd();
+    
     const candidates = [
-        path.join(process.cwd(), 'prisma', 'prod.db'),
-        path.join(process.cwd(), 'prisma', 'dev.db'),
+        path.join(cwd, 'prisma', 'dev.db'),
+        path.join(cwd, 'prisma', 'prod.db'),
+        path.join(cwd, 'dev.db'),
     ];
+
     if (dbUrl.startsWith('file:')) {
-        const rel = dbUrl.replace('file:', '').replace('./', '');
-        candidates.unshift(path.join(process.cwd(), rel));
-        candidates.unshift(path.join(process.cwd(), 'prisma', rel));
+        const rel = dbUrl.replace('file:', '').replace(/^\.\//, '');
+        candidates.unshift(path.join(cwd, rel));
+        candidates.unshift(path.join(cwd, 'prisma', rel));
     }
-    return candidates.find(p => fs.existsSync(p)) || null;
+
+    const found = candidates.find(p => fs.existsSync(p));
+    if (!found) {
+        console.warn('[Backup] Database candidates checked but none found:', candidates);
+    }
+    return found || null;
 }
 
 // ─── Core: Create a ZIP backup and save to a named file ────────────────────
@@ -49,8 +66,18 @@ async function createBackupZip(destPath: string): Promise<void> {
         const output = fs.createWriteStream(destPath);
         const archive = archiver('zip', { zlib: { level: 9 } });
 
-        output.on('close', resolve);
-        archive.on('error', reject);
+        output.on('close', () => {
+            console.log(`[Backup] Zip archive closed. Final size: ${archive.pointer()} bytes`);
+            resolve();
+        });
+        output.on('error', (err) => {
+            console.error('[Backup] WriteStream error:', err);
+            reject(err);
+        });
+        archive.on('error', (err) => {
+            console.error('[Backup] Archiver error:', err);
+            reject(err);
+        });
         archive.pipe(output);
 
         // Database
@@ -189,10 +216,11 @@ export const saveBackupToDisk = async (req: Request, res: Response) => {
 
         // CRITICAL: For SQLite in WAL mode, force checkpoint
         try {
-            await prisma.$executeRawUnsafe('PRAGMA wal_checkpoint(TRUNCATE);');
-            console.log('[Backup] SQLite WAL checkpoint successful.');
-        } catch (e) {
-            console.warn('[Backup] WAL checkpoint failed:', e);
+            // Using $queryRawUnsafe because PRAGMA returns results, which $executeRawUnsafe doesn't allow for SQLite
+            await prisma.$queryRawUnsafe('PRAGMA wal_checkpoint(TRUNCATE);');
+            console.log('[Backup] SQLite WAL checkpoint successful (TRUNCATE).');
+        } catch (e: any) {
+            console.warn('[Backup] WAL checkpoint failed (continuing anyway):', e.message);
         }
 
         await createBackupZip(destPath);

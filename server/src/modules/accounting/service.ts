@@ -147,6 +147,37 @@ export const createJournalEntry = async (
                 data: { balance: { decrement: line.credit } }
             });
         }
+
+        // --- UNIFIED LEDGER SYNC ---
+        // Record a "twin" transaction in the unified system if enabled and mapped
+        const isUnifiedEnabled = await tx.systemSetting.findUnique({ where: { key: 'UNIFIED_LEDGER_ENABLED' } });
+        if (isUnifiedEnabled?.value === 'true') {
+            const mapping = await tx.legacyLedgerMapping.findFirst({
+                where: {
+                    OR: [
+                        { old_income_ledger_id: line.ledger_id },
+                        { old_expense_ledger_id: line.ledger_id }
+                    ]
+                }
+            });
+
+            if (mapping) {
+                const isIncome = mapping.old_income_ledger_id === line.ledger_id;
+                const amount = Math.abs(line.debit - line.credit);
+                if (amount > 0) {
+                    await tx.unifiedTransaction.create({
+                        data: {
+                            ledger_id: mapping.new_ledger_id,
+                            transaction_type: isIncome ? 'INCOME' : 'EXPENSE',
+                            amount,
+                            date: data.date,
+                            description: data.description,
+                            reference: data.reference
+                        }
+                    });
+                }
+            }
+        }
     }
 
     return entry;
@@ -344,39 +375,74 @@ export const deleteLedger = async (id: string) => {
 };
 
 // Restore getAccountStatement
-export const getAccountStatement = async (ledgerId: string, startDate: Date, endDate: Date) => {
-    const ledger = await prisma.ledger.findUnique({
-        where: { id: ledgerId },
-        include: { head: true }
-    });
-    if (!ledger) throw new Error("Ledger not found");
+export const getAccountStatement = async (ledgerIds: string | string[], startDate: Date, endDate: Date) => {
+    try {
+        console.log('DEBUG_STATEMENT_REQUEST:', { ledgerIds, startDate, endDate });
+        
+        // 0. Normalize and Filter IDs
+        let ids = Array.isArray(ledgerIds) ? ledgerIds : [ledgerIds];
+        ids = ids.filter(id => id && id.trim() !== '');
+        
+        if (ids.length === 0) {
+            throw new Error("No valid ledger accounts selected for the statement.");
+        }
 
-    const openingAgg = await prisma.journalLine.aggregate({
-        where: {
-            ledger_id: ledgerId,
-            entry: { date: { lt: startDate } }
-        },
-        _sum: { debit: true, credit: true }
-    });
+        // 1. Fetch all involved ledgers to determine Nature and Opening Balances
+        const ledgers = await prisma.ledger.findMany({
+            where: { id: { in: ids } },
+            include: { head: true }
+        });
+        if (ledgers.length === 0) throw new Error("Ledger(s) not found");
 
-    const isDebitNature = ['ASSET', 'EXPENSE'].includes(ledger.head.type);
-    const opDr = openingAgg._sum.debit || 0;
-    const opCr = openingAgg._sum.credit || 0;
-    const openingBalance = isDebitNature ? (opDr - opCr) : (opCr - opDr);
+        // 2. Aggregate Opening Balances
+        // We'll use the nature of the FIRST ledger as the "Primary Nature" for consolidation
+        const primaryLedger = ledgers[0];
+        const isPrimaryDebitNature = ['ASSET', 'EXPENSE'].includes(primaryLedger.head.type);
 
+    let totalOpeningBalance = 0;
+
+    for (const ledger of ledgers) {
+        const openingAgg = await prisma.journalLine.aggregate({
+            where: {
+                ledger_id: ledger.id,
+                entry: { date: { lt: startDate } }
+            },
+            _sum: { debit: true, credit: true }
+        });
+
+        const isDebitNature = ['ASSET', 'EXPENSE'].includes(ledger.head.type);
+        const opDr = openingAgg._sum.debit || 0;
+        const opCr = openingAgg._sum.credit || 0;
+        
+        // Calculate balance for THIS ledger
+        const ledgerOpBal = isDebitNature ? (opDr - opCr) : (opCr - opDr);
+        
+        // Convert to primary nature if different
+        if (isDebitNature === isPrimaryDebitNature) {
+            totalOpeningBalance += ledgerOpBal;
+        } else {
+            totalOpeningBalance -= ledgerOpBal;
+        }
+    }
+
+    // 3. Fetch all transactions
     const transactions = await prisma.journalLine.findMany({
         where: {
-            ledger_id: ledgerId,
+            ledger_id: { in: ids },
             entry: { date: { gte: startDate, lte: endDate } }
         },
-        include: { entry: true },
+        include: { entry: true, ledger: { include: { head: true } } },
         orderBy: { entry: { date: 'asc' } }
     });
 
-    let runningBalance = openingBalance;
+    let runningBalance = totalOpeningBalance;
     const statementLines = transactions.map(tx => {
-        const impact = isDebitNature ? (tx.debit - tx.credit) : (tx.credit - tx.debit);
-        runningBalance += impact;
+        const isTxDebitNature = ['ASSET', 'EXPENSE'].includes(tx.ledger.head.type);
+        const impactOnItself = isTxDebitNature ? (tx.debit - tx.credit) : (tx.credit - tx.debit);
+        const impactOnConsolidated = (isTxDebitNature === isPrimaryDebitNature) ? impactOnItself : -impactOnItself;
+        
+        runningBalance += impactOnConsolidated;
+        
         return {
             id: tx.id,
             date: tx.entry.date,
@@ -385,17 +451,23 @@ export const getAccountStatement = async (ledgerId: string, startDate: Date, end
             reference: tx.entry.reference,
             debit: tx.debit,
             credit: tx.credit,
-            balance: runningBalance
+            balance: runningBalance,
+            ledger_name: tx.ledger.name
         };
     });
 
     return {
-        ledger,
+        ledger: primaryLedger,
+        all_ledgers: ledgers.map(l => l.name),
         period: { start: startDate, end: endDate },
-        opening_balance: openingBalance,
+        opening_balance: totalOpeningBalance,
         closing_balance: runningBalance,
         transactions: statementLines
     };
+    } catch (error) {
+        console.error('ERROR_GET_ACCOUNT_STATEMENT:', error);
+        throw error;
+    }
 };
 
 export const getFinancialOverview = async (month?: number, year?: number) => {
@@ -489,7 +561,9 @@ export const getFinancialOverview = async (month?: number, year?: number) => {
 
 export const syncEntityLedgers = async () => {
     let count = 0;
-    const clients = await prisma.client.findMany();
+    const clients = await prisma.client.findMany({
+        where: { status: { not: 'PROSPECT' } }
+    });
     for (const c of clients) {
         if (!c.id) continue;
         const l = await ensureLedger('CLIENT', c.id, '1000');

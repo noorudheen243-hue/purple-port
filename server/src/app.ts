@@ -97,6 +97,7 @@ import clientPortalRoutes from './modules/client_portal/routes';
 import marketingRoutes from './modules/marketing-tasks/routes';
 import settingsRoutes from './modules/settings/routes';
 import whatsappRoutes from './modules/whatsapp/routes';
+import intelCoreRoutes from './modules/intel_core/intelCore.routes';
 
 import path from 'path';
 
@@ -147,6 +148,7 @@ app.use('/api/attendance', attendanceRoutes); // Generic route second
 app.use('/api/leave', leaveRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
+app.use('/api/intel-core', intelCoreRoutes);
 
 import chatRoutes from './modules/chat/routes';
 import launcherRoutes from './modules/launcher/routes';
@@ -160,6 +162,11 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/meetings', meetingRoutes);
 app.use('/api/ai-sales', aiSalesRoutes);
 
+import marketingBetaRoutes from './modules/marketing_beta/routes';
+import strategyRoutes from './modules/strategy/strategy.routes';
+
+app.use('/api/marketing-beta', marketingBetaRoutes);
+app.use('/api/marketing/strategy', strategyRoutes);
 
 // --- Production: Serve Frontend ---
 // In production, we assume the React build is copied to a 'public' folder in the root

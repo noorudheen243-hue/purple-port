@@ -61,10 +61,11 @@ function resolveDbPath(): string | null {
 }
 
 // ─── Core: Create a ZIP backup and save to a named file ────────────────────
-async function createBackupZip(destPath: string): Promise<void> {
+async function createBackupZip(destPath: string, includeUploads: boolean = true): Promise<void> {
     return new Promise((resolve, reject) => {
         const output = fs.createWriteStream(destPath);
-        const archive = archiver('zip', { zlib: { level: 9 } });
+        // Using level 1 for speed; media files are already compressed.
+        const archive = archiver('zip', { zlib: { level: 1 } });
 
         output.on('close', () => {
             console.log(`[Backup] Zip archive closed. Final size: ${archive.pointer()} bytes`);
@@ -89,11 +90,13 @@ async function createBackupZip(destPath: string): Promise<void> {
             console.warn('[Backup] Database file not found — skipping DB in backup.');
         }
 
-        // Uploads
-        const uploadsDir = path.join(process.cwd(), 'uploads');
-        if (fs.existsSync(uploadsDir)) {
-            console.log(`[Backup] Adding uploads directory...`);
-            archive.directory(uploadsDir, 'uploads');
+        // Uploads (Optional)
+        if (includeUploads) {
+            const uploadsDir = path.join(process.cwd(), 'uploads');
+            if (fs.existsSync(uploadsDir)) {
+                console.log(`[Backup] Adding uploads directory...`);
+                archive.directory(uploadsDir, 'uploads');
+            }
         }
 
         archive.finalize();
@@ -202,17 +205,19 @@ function pruneOldBackups(backupDir: string, keepCount = 30) {
 // ──────────────────────────────────────────────────────────────────────────────
 export const saveBackupToDisk = async (req: Request, res: Response) => {
     try {
-        const { type } = req.body; // 'online' | 'offline' | 'auto'
+        const { type, includeUploads } = req.body; // 'online' | 'offline' | 'auto'
         const backupType = type || (process.env.NODE_ENV === 'production' ? 'online' : 'offline');
+        const shouldIncludeUploads = includeUploads !== false; // default to true
 
         const backupDir = getBackupDir();
         ensureBackupDir(backupDir);
 
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const filename = `backup-${backupType}-${timestamp}.zip`;
+        const suffix = shouldIncludeUploads ? '' : '-db-only';
+        const filename = `backup-${backupType}${suffix}-${timestamp}.zip`;
         const destPath = path.join(backupDir, filename);
 
-        console.log(`[Backup] Saving ${backupType} backup to: ${destPath}`);
+        console.log(`[Backup] Saving ${backupType} backup (includeUploads: ${shouldIncludeUploads}) to: ${destPath}`);
 
         // CRITICAL: For SQLite in WAL mode, force checkpoint
         try {
@@ -223,7 +228,7 @@ export const saveBackupToDisk = async (req: Request, res: Response) => {
             console.warn('[Backup] WAL checkpoint failed (continuing anyway):', e.message);
         }
 
-        await createBackupZip(destPath);
+        await createBackupZip(destPath, shouldIncludeUploads);
 
         const stats = fs.statSync(destPath);
         const sizeKB = (stats.size / 1024).toFixed(1);
@@ -692,7 +697,8 @@ export const exportFullBackupZip = async (req: Request, res: Response) => {
         // Ensure WAL is checkpointed before starting
         try { await prisma.$queryRawUnsafe('PRAGMA wal_checkpoint(TRUNCATE);'); } catch { }
 
-        const archive = archiver('zip', { zlib: { level: 9 } });
+        // Use level 1 for speed (the JSON streams are fast, but zipping 1.2GB uploads is the bottleneck)
+        const archive = archiver('zip', { zlib: { level: 1 } });
         const filename = `purple-port-backup-${new Date().toISOString().split('T')[0]}.zip`;
         res.setHeader('Content-Type', 'application/zip');
         res.setHeader('Content-Disposition', `attachment; filename=${filename}`);

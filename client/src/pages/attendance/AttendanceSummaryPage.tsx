@@ -211,13 +211,18 @@ const AttendanceSummaryPage = () => {
 
             // 2. Leave
             if (record.status === 'LEAVE') {
-                let code = <X className="h-4 w-4 text-red-600" />;
+                const isGreenLeave = ['CASUAL', 'SICK', 'EARNED'].includes(record.leave_type);
+                const colorClass = isGreenLeave ? 'text-green-700' : 'text-red-700';
+                const bgClass = isGreenLeave ? 'bg-green-100 border-green-200' : 'bg-red-100 border-red-200';
+                const iconColor = isGreenLeave ? 'text-green-600' : 'text-red-600';
+
+                let code = <X className={`h-4 w-4 ${iconColor}`} />;
                 if (record.leave_type) {
                     const typeMap: Record<string, string> = { 'CASUAL': 'CL', 'SICK': 'SL', 'EARNED': 'EL', 'UNPAID': 'LOP', 'MATERNITY': 'ML', 'PATERNITY': 'PL', 'COMPENSATORY': 'CO' };
                     const shortCode = typeMap[record.leave_type] || 'L';
-                    code = <span className="text-[10px] font-bold text-red-700">{shortCode}</span>;
+                    code = <span className={`text-[10px] font-bold ${colorClass}`}>{shortCode}</span>;
                 }
-                return <div className="w-full h-full bg-red-100 flex items-center justify-center rounded border border-red-200">{code}</div>;
+                return <div className={`w-full h-full ${bgClass} flex items-center justify-center rounded border`}>{code}</div>;
             }
 
             // 2b. Regularized

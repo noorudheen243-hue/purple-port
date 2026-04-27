@@ -42,9 +42,12 @@ import {
     Facebook,
     RefreshCw,
     Filter,
-    Zap
+    Zap,
+    Brain,
+    Target
 } from 'lucide-react';
 import SalesIntelligenceManager from '../marketing/SalesIntelligenceManager';
+import StrategyWizard from './StrategyWizard';
 
 import { format } from 'date-fns';
 import Swal from 'sweetalert2';
@@ -71,6 +74,8 @@ interface Lead {
     quality: string;
     status: string;
     is_positive?: boolean | null;
+    group_id?: string;
+    group?: { name: string; id: string };
     follow_ups: FollowUp[];
 }
 
@@ -121,7 +126,11 @@ const STATUS_COLORS: Record<string, string> = {
     'LOST': 'bg-gray-100 text-gray-700'
 };
 
-const ManageServicesView = () => {
+interface ManageServicesViewProps {
+    externalClientId?: string;
+}
+
+const ManageServicesView: React.FC<ManageServicesViewProps> = ({ externalClientId }) => {
     const [searchParams] = useSearchParams();
     const { user } = useAuthStore();
     const queryClient = useQueryClient();
@@ -136,9 +145,10 @@ const ManageServicesView = () => {
 
     // Determine Client ID
     const clientId = useMemo(() => {
+        if (externalClientId) return externalClientId;
         if (user?.role === 'CLIENT') return user.linked_client_id;
         return searchParams.get('clientId');
-    }, [user, searchParams]);
+    }, [user, searchParams, externalClientId]);
 
     // For CLIENT role, fetch just their own client data to populate selectedClient
     const { data: ownClientData } = useQuery({
@@ -1023,7 +1033,7 @@ const ManageServicesView = () => {
                         <p className="text-gray-500 text-sm">Campaign history, performance logs and lead tracking.</p>
                     </div>
                 </div>
-                {isInternal && (
+                {isInternal && !externalClientId && (
                     <div className="flex items-center gap-3 bg-indigo-50/50 p-2 rounded-xl border border-indigo-100 min-w-[300px]">
                         <Users size={20} className="ml-2 text-indigo-500" />
                         <select
@@ -2085,7 +2095,7 @@ const ManageServicesView = () => {
                                         <TableRow>
                                             <TableHead className="w-[120px] font-bold text-gray-700">Date</TableHead>
                                             <TableHead className="font-bold text-gray-700">Lead Info</TableHead>
-                                            <TableHead className="font-bold text-gray-700">Campaign</TableHead>
+                                            <TableHead className="font-bold text-gray-700">Group / Campaign</TableHead>
                                             <TableHead className="font-bold text-gray-700">Location</TableHead>
                                             <TableHead className="w-[100px] font-bold text-gray-700">Quality</TableHead>
                                             <TableHead className="w-[120px] font-bold text-gray-700">Status</TableHead>
@@ -2105,8 +2115,18 @@ const ManageServicesView = () => {
                                                     <Input placeholder="Name" value={leadForm.name} onChange={(e) => setLeadForm({ ...leadForm, name: e.target.value })} className="h-9" />
                                                     <Input placeholder="Phone" value={leadForm.phone} onChange={(e) => setLeadForm({ ...leadForm, phone: e.target.value })} className="h-9" />
                                                 </TableCell>
-                                                <TableCell className="p-2">
-                                                    <Input placeholder="Campaign" value={leadForm.campaign_name} onChange={(e) => setLeadForm({ ...leadForm, campaign_name: e.target.value })} className="h-9" />
+                                                <TableCell className="p-2 space-y-1">
+                                                    <select
+                                                        className="w-full h-8 px-2 py-1 rounded-md border border-indigo-200 bg-white text-[10px] font-bold text-indigo-700"
+                                                        value={leadForm.group_id || ''}
+                                                        onChange={(e) => setLeadForm({ ...leadForm, group_id: e.target.value })}
+                                                    >
+                                                        <option value="">-- No Group --</option>
+                                                        {marketingGroups?.map((g: any) => (
+                                                            <option key={g.id} value={g.id}>{g.name}</option>
+                                                        ))}
+                                                    </select>
+                                                    <Input placeholder="Campaign" value={leadForm.campaign_name} onChange={(e) => setLeadForm({ ...leadForm, campaign_name: e.target.value })} className="h-8 text-xs" />
                                                 </TableCell>
                                                 <TableCell className="p-2">
                                                     <Input placeholder="Location" value={leadForm.address} onChange={(e) => setLeadForm({ ...leadForm, address: e.target.value })} className="h-9" />
@@ -2195,8 +2215,18 @@ const ManageServicesView = () => {
                                                             <Input placeholder="Name" value={leadForm.name} onChange={(e) => setLeadForm({ ...leadForm, name: e.target.value })} className="h-9 font-bold" />
                                                             <Input placeholder="Phone" value={leadForm.phone} onChange={(e) => setLeadForm({ ...leadForm, phone: e.target.value })} className="h-9 text-indigo-600" />
                                                         </TableCell>
-                                                        <TableCell className="p-2">
-                                                            <Input placeholder="Campaign" value={leadForm.campaign_name} onChange={(e) => setLeadForm({ ...leadForm, campaign_name: e.target.value })} className="h-9" />
+                                                        <TableCell className="p-2 space-y-1">
+                                                            <select
+                                                                className="w-full h-8 px-2 py-1 rounded-md border border-amber-200 bg-white text-[10px] font-bold text-amber-700"
+                                                                value={leadForm.group_id || ''}
+                                                                onChange={(e) => setLeadForm({ ...leadForm, group_id: e.target.value })}
+                                                            >
+                                                                <option value="">-- No Group --</option>
+                                                                {marketingGroups?.map((g: any) => (
+                                                                    <option key={g.id} value={g.id}>{g.name}</option>
+                                                                ))}
+                                                            </select>
+                                                            <Input placeholder="Campaign" value={leadForm.campaign_name} onChange={(e) => setLeadForm({ ...leadForm, campaign_name: e.target.value })} className="h-8 text-xs" />
                                                         </TableCell>
                                                         <TableCell className="p-2">
                                                             <Input placeholder="Location" value={leadForm.address} onChange={(e) => setLeadForm({ ...leadForm, address: e.target.value })} className="h-9" />
@@ -2281,8 +2311,15 @@ const ManageServicesView = () => {
                                                                 </span>
                                                             </div>
                                                         </TableCell>
-                                                        <TableCell className="text-gray-600 font-medium italic">
-                                                            {lead.campaign_name || '-'}
+                                                        <TableCell className="text-gray-600 font-medium">
+                                                            <div className="flex flex-col">
+                                                                {lead.group?.name && (
+                                                                    <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">{lead.group.name}</span>
+                                                                )}
+                                                                <span className={lead.group?.name ? "text-xs italic opacity-70" : "italic opacity-70"}>
+                                                                    {lead.campaign_name || '-'}
+                                                                </span>
+                                                            </div>
                                                         </TableCell>
                                                         <TableCell className="text-gray-600 max-w-[150px] truncate">
                                                             <div className="flex items-center gap-1.5">

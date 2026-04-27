@@ -23,6 +23,7 @@ interface SyncedCampaignTableProps {
 export const SyncedCampaignTable: React.FC<SyncedCampaignTableProps> = ({ clientId, fromDate, toDate, onViewLeads }) => {
     const queryClient = useQueryClient();
     const [selectedGroupId, setSelectedGroupId] = useState<string>('all');
+    const [searchQuery, setSearchQuery] = useState('');
     const [assigningCampaigns, setAssigningCampaigns] = useState<string[]>([]);
     const [targetGroupId, setTargetGroupId] = useState('');
 
@@ -72,6 +73,14 @@ export const SyncedCampaignTable: React.FC<SyncedCampaignTableProps> = ({ client
     });
 
     const filteredCampaigns = campaigns?.filter(c => {
+        // Search filter
+        const matchesSearch = !searchQuery || 
+            c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            c.platform.toLowerCase().includes(searchQuery.toLowerCase());
+        
+        if (!matchesSearch) return false;
+
+        // Group filter
         if (selectedGroupId === 'all') return true;
         if (selectedGroupId === 'unassigned') return !c.group_id;
         return c.group_id === selectedGroupId;
@@ -101,21 +110,37 @@ export const SyncedCampaignTable: React.FC<SyncedCampaignTableProps> = ({ client
         <div className="space-y-4">
             {/* Filters & Actions Bar */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl border border-gray-100 dark:border-gray-800">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
-                        <Filter className="w-4 h-4 text-purple-500" />
+                <div className="flex flex-wrap items-center gap-4">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700">
+                            <Filter className="w-4 h-4 text-purple-500" />
+                        </div>
+                        <select
+                            value={selectedGroupId}
+                            onChange={e => setSelectedGroupId(e.target.value)}
+                            className="bg-transparent border-none text-sm font-black text-gray-700 dark:text-gray-200 focus:ring-0 outline-none cursor-pointer uppercase tracking-tight"
+                        >
+                            <option value="all">All Campaigns</option>
+                            <option value="unassigned">Unassigned Only</option>
+                            {groups?.map((g: any) => (
+                                <option key={g.id} value={g.id}>{g.name}</option>
+                            ))}
+                        </select>
                     </div>
-                    <select
-                        value={selectedGroupId}
-                        onChange={e => setSelectedGroupId(e.target.value)}
-                        className="bg-transparent border-none text-sm font-bold text-gray-700 dark:text-gray-200 focus:ring-0 outline-none cursor-pointer"
-                    >
-                        <option value="all">All Campaigns</option>
-                        <option value="unassigned">Unassigned Only</option>
-                        {groups?.map((g: any) => (
-                            <option key={g.id} value={g.id}>{g.name}</option>
-                        ))}
-                    </select>
+
+                    <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 hidden md:block"></div>
+
+                    {/* Search Bar */}
+                    <div className="flex items-center gap-3 bg-white dark:bg-gray-800 px-4 py-2 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 focus-within:ring-2 focus-within:ring-purple-600/20 transition-all">
+                        <Facebook className="w-3.5 h-3.5 text-gray-300" />
+                        <input 
+                            type="text"
+                            placeholder="Find Campaign..."
+                            className="bg-transparent border-none text-xs font-bold text-gray-700 dark:text-gray-200 focus:ring-0 outline-none w-48 placeholder:text-gray-300 uppercase tracking-widest"
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                        />
+                    </div>
                 </div>
 
                 {assigningCampaigns.length > 0 && (
@@ -162,7 +187,8 @@ export const SyncedCampaignTable: React.FC<SyncedCampaignTableProps> = ({ client
                                 </th>
                                 <th className="px-6 py-5">Campaign & Status</th>
                                 <th className="px-6 py-5">Started</th>
-                                <th className="px-6 py-5">Platform / Group</th>
+                                <th className="px-6 py-5">Platform</th>
+                                <th className="px-6 py-5">Group</th>
                                 <th className="px-6 py-5 text-right">Spend</th>
                                 <th className="px-6 py-5 text-right">Results</th>
                                 <th className="px-6 py-5 text-right">Leads</th>
@@ -173,110 +199,136 @@ export const SyncedCampaignTable: React.FC<SyncedCampaignTableProps> = ({ client
                         <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
                             {filteredCampaigns.length === 0 ? (
                                 <tr>
-                                    <td colSpan={9} className="px-6 py-12 text-center text-gray-400 italic text-sm">
+                                    <td colSpan={10} className="px-6 py-12 text-center text-gray-400 italic text-sm">
                                         No campaigns found matching your filters.
                                     </td>
                                 </tr>
                             ) : (
-                                filteredCampaigns.map(camp => {
-                                    const costPerLead = camp.metrics.leads > 0 ? camp.metrics.spend / camp.metrics.leads : 0;
-                                    const isSelected = assigningCampaigns.includes(camp.id);
-                                    const isActive = ['ACTIVE', 'Active', 'ENABLED'].includes(camp.status);
-                                    const startedDate = camp.createdAt
-                                        ? format(new Date(camp.createdAt), 'dd MMM yyyy')
-                                        : '—';
-
-                                    return (
-                                        <tr key={camp.id} className={`group text-sm transition-colors hover:bg-purple-50/20 dark:hover:bg-purple-900/5 ${isSelected ? 'bg-purple-50/30 dark:bg-purple-900/10' : ''}`}>
-                                            {/* Checkbox */}
-                                            <td className="px-6 py-4">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={isSelected}
-                                                    onChange={() => handleSelectCampaign(camp.id)}
-                                                    className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                                                />
-                                            </td>
-                                            {/* Campaign Name + Status */}
-                                            <td className="px-6 py-4">
-                                                <div className="flex flex-col">
-                                                    <span className="font-bold text-gray-900 dark:text-gray-100 group-hover:text-purple-600 transition-colors">
-                                                        {camp.name}
+                                Object.entries(
+                                    filteredCampaigns.reduce((acc: Record<string, any[]>, camp) => {
+                                        const groupName = camp.group?.name || 'Unassigned Campaigns';
+                                        if (!acc[groupName]) acc[groupName] = [];
+                                        acc[groupName].push(camp);
+                                        return acc;
+                                    }, {})
+                                ).map(([groupName, groupCampaigns]) => (
+                                    <React.Fragment key={groupName}>
+                                        {/* Group Header Row */}
+                                        <tr className="bg-gray-100/50 dark:bg-gray-900/50">
+                                            <td colSpan={10} className="px-6 py-2">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="h-4 w-1 bg-purple-600 rounded-full"></div>
+                                                    <span className="text-xs font-black text-purple-900 dark:text-purple-100 uppercase tracking-widest">
+                                                        {groupName}
                                                     </span>
-                                                    <div className="flex items-center gap-1.5 mt-1">
-                                                        {isActive
-                                                            ? <CheckCircle2 className="w-3 h-3 text-green-500" />
-                                                            : <AlertCircle className="w-3 h-3 text-gray-400" />}
-                                                        <span className={`text-[10px] font-bold uppercase ${isActive ? 'text-green-600' : 'text-gray-400'}`}>
-                                                            {camp.status}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            {/* Started Date */}
-                                            <td className="px-6 py-4">
-                                                <span className="text-xs font-medium text-gray-500 whitespace-nowrap">{startedDate}</span>
-                                            </td>
-                                            {/* Platform / Group */}
-                                            <td className="px-6 py-4">
-                                                <div className="flex flex-col gap-1.5">
-                                                    <div className="flex items-center gap-1.5">
-                                                        {camp.platform === 'meta'
-                                                            ? <Facebook className="w-3.5 h-3.5 text-blue-600" />
-                                                            : <GoogleIcon />}
-                                                        <span className="text-xs font-semibold capitalize text-gray-500">{camp.platform}</span>
-                                                    </div>
-                                                    {camp.group ? (
-                                                        <div className="flex items-center gap-1">
-                                                            <Check className="w-3 h-3 text-green-600 flex-shrink-0" strokeWidth={3} />
-                                                            <span className="text-xs font-bold text-green-600">{camp.group.name}</span>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-[10px] font-medium text-gray-400 italic">No Group</span>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            {/* Spend */}
-                                            <td className="px-6 py-4 text-right font-bold text-gray-900 dark:text-white">
-                                                ₹{Math.round(camp.metrics.spend).toLocaleString()}
-                                            </td>
-                                            {/* Results */}
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="flex flex-col items-end">
-                                                    <span className="font-bold text-purple-600">{camp.metrics.results.toLocaleString()}</span>
-                                                    <span className="text-[10px] text-gray-400 uppercase font-bold">{camp.objective || 'Results'}</span>
-                                                </div>
-                                            </td>
-                                            {/* Leads */}
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="flex items-center justify-end gap-1.5">
-                                                    <span className="font-bold text-blue-600">{camp.metrics.leads}</span>
-                                                    <Users className="w-3.5 h-3.5 text-blue-400" />
-                                                </div>
-                                            </td>
-                                            {/* Cost/Lead */}
-                                            <td className="px-6 py-4 text-right">
-                                                {costPerLead > 0 ? (
-                                                    <span className="font-bold text-gray-700 dark:text-gray-300">
-                                                        ₹{costPerLead.toFixed(1)}
+                                                    <span className="text-[10px] bg-purple-100 dark:bg-purple-900/40 text-purple-600 px-2 py-0.5 rounded-full font-bold">
+                                                        {groupCampaigns.length} Campaigns
                                                     </span>
-                                                ) : (
-                                                    <span className="text-gray-300">—</span>
-                                                )}
-                                            </td>
-                                            {/* Actions */}
-                                            <td className="px-6 py-4">
-                                                <button
-                                                    onClick={() => onViewLeads(camp.id)}
-                                                    className="p-2 hover:bg-white dark:hover:bg-gray-700 rounded-lg text-gray-400 hover:text-purple-600 transition-all shadow-sm hover:shadow"
-                                                    title="View Leads"
-                                                >
-                                                    <ChevronRight className="w-4 h-4" />
-                                                </button>
+                                                </div>
                                             </td>
                                         </tr>
-                                    );
-                                })
+                                        {groupCampaigns.map(camp => {
+                                            const costPerLead = camp.metrics.leads > 0 ? camp.metrics.spend / camp.metrics.leads : 0;
+                                            const isSelected = assigningCampaigns.includes(camp.id);
+                                            const isActive = ['ACTIVE', 'Active', 'ENABLED'].includes(camp.status);
+                                            const startedDate = camp.createdAt
+                                                ? format(new Date(camp.createdAt), 'dd MMM yyyy')
+                                                : '—';
+
+                                            return (
+                                                <tr key={camp.id} className={`group text-sm transition-colors hover:bg-purple-50/20 dark:hover:bg-purple-900/5 ${isSelected ? 'bg-purple-50/30 dark:bg-purple-900/10' : ''}`}>
+                                                    {/* Checkbox */}
+                                                    <td className="px-6 py-4">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isSelected}
+                                                            onChange={() => handleSelectCampaign(camp.id)}
+                                                            className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                                        />
+                                                    </td>
+                                                    {/* Campaign Name + Status */}
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex flex-col">
+                                                            <span className="font-bold text-gray-900 dark:text-gray-100 group-hover:text-purple-600 transition-colors">
+                                                                {camp.name}
+                                                            </span>
+                                                            <div className="flex items-center gap-1.5 mt-1">
+                                                                {isActive
+                                                                    ? <CheckCircle2 className="w-3 h-3 text-green-500" />
+                                                                    : <AlertCircle className="w-3 h-3 text-gray-400" />}
+                                                                <span className={`text-[10px] font-bold uppercase ${isActive ? 'text-green-600' : 'text-gray-400'}`}>
+                                                                    {camp.status}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    {/* Started Date */}
+                                                    <td className="px-6 py-4">
+                                                        <span className="text-xs font-medium text-gray-500 whitespace-nowrap">{startedDate}</span>
+                                                    </td>
+                                                    {/* Platform */}
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-1.5">
+                                                            {camp.platform === 'meta'
+                                                                ? <Facebook className="w-3.5 h-3.5 text-blue-600" />
+                                                                : <GoogleIcon />}
+                                                            <span className="text-xs font-semibold capitalize text-gray-500">{camp.platform}</span>
+                                                        </div>
+                                                    </td>
+                                                    {/* Group */}
+                                                    <td className="px-6 py-4">
+                                                        {camp.group ? (
+                                                            <div className="flex items-center gap-1">
+                                                                <Check className="w-3 h-3 text-green-600 flex-shrink-0" strokeWidth={3} />
+                                                                <span className="text-xs font-bold text-green-600">{camp.group.name}</span>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-[10px] font-medium text-gray-400 italic">No Group</span>
+                                                        )}
+                                                    </td>
+                                                    {/* Spend */}
+                                                    <td className="px-6 py-4 text-right font-bold text-gray-900 dark:text-white">
+                                                        ₹{Math.round(camp.metrics.spend).toLocaleString()}
+                                                    </td>
+                                                    {/* Results */}
+                                                    <td className="px-6 py-4 text-right">
+                                                        <div className="flex flex-col items-end">
+                                                            <span className="font-bold text-purple-600">{camp.metrics.results.toLocaleString()}</span>
+                                                            <span className="text-[10px] text-gray-400 uppercase font-bold">{camp.objective || 'Results'}</span>
+                                                        </div>
+                                                    </td>
+                                                    {/* Leads */}
+                                                    <td className="px-6 py-4 text-right">
+                                                        <div className="flex items-center justify-end gap-1.5">
+                                                            <span className="font-bold text-blue-600">{camp.metrics.leads}</span>
+                                                            <Users className="w-3.5 h-3.5 text-blue-400" />
+                                                        </div>
+                                                    </td>
+                                                    {/* Cost/Lead */}
+                                                    <td className="px-6 py-4 text-right">
+                                                        {costPerLead > 0 ? (
+                                                            <span className="font-bold text-gray-700 dark:text-gray-300">
+                                                                ₹{costPerLead.toFixed(1)}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-gray-300">—</span>
+                                                        )}
+                                                    </td>
+                                                    {/* Actions */}
+                                                    <td className="px-6 py-4">
+                                                        <button
+                                                            onClick={() => onViewLeads(camp.id)}
+                                                            className="p-2 hover:bg-white dark:hover:bg-gray-700 rounded-lg text-gray-400 hover:text-purple-600 transition-all shadow-sm hover:shadow"
+                                                            title="View Leads"
+                                                        >
+                                                            <ChevronRight className="w-4 h-4" />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </React.Fragment>
+                                ))
                             )}
                         </tbody>
                     </table>

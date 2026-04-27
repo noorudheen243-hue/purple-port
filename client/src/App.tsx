@@ -10,6 +10,7 @@ import { BiometricProbe } from './components/attendance/BiometricProbe';
 const Login = lazy(() => import('./pages/auth/Login'));
 const Register = lazy(() => import('./pages/auth/Register'));
 const Dashboard = lazy(() => import('./pages/dashboard'));
+const StrategyReportView = lazy(() => import('./pages/portal/StrategyWizard/StrategyReportView'));
 
 const queryClient = new QueryClient()
 
@@ -70,6 +71,7 @@ function App() {
 
                                     <Route element={<ProtectedRoute />}>
                                         <Route path="/dashboard/*" element={<Dashboard />} />
+                                        <Route path="/strategy/report/:id" element={<StrategyReportView />} />
                                         <Route path="/" element={<Navigate to="/dashboard" replace />} />
                                     </Route>
                                 </Routes>

@@ -28,8 +28,8 @@ export const MarketingIntegrations: React.FC = () => {
     const queryClient = useQueryClient();
 
     const { data: clients, isLoading: clientsLoading } = useQuery({
-        queryKey: ['clients'],
-        queryFn: async () => (await api.get('/clients')).data
+        queryKey: ['clients-active'],
+        queryFn: async () => (await api.get('/clients?status=ACTIVE')).data
     });
 
     React.useEffect(() => {

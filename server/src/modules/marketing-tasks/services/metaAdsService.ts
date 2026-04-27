@@ -170,7 +170,11 @@ export class MetaAdsService {
             if (day.actions && Array.isArray(day.actions)) {
                 // If we know the primary result type, fetch it accurately
                 if (primaryResultType) {
-                    const primaryAction = day.actions.find((a: any) => a.action_type === primaryResultType);
+                    const primaryAction = day.actions.find((a: any) => 
+                        a.action_type === primaryResultType ||
+                        a.action_type === `onsite_conversion.${primaryResultType}` ||
+                        (primaryResultType.includes('messaging_conversation_started') && a.action_type.includes('messaging_conversation_started'))
+                    );
                     if (primaryAction) {
                         totalResults = parseInt(primaryAction.value || '0', 10);
                     }

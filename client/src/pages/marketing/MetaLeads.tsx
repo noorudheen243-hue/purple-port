@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import {
     Loader2, AlertCircle, Download, Users, Mail, Phone, RefreshCw,
     Plus, Edit, Trash2, History, ThumbsUp, ThumbsDown, MapPin,
-    Filter, MoreVertical, X, Check, Search, Zap
+    Filter, MoreVertical, X, Check, Search, Zap, ChevronDown, ChevronRight
 } from 'lucide-react';
 
 interface MetaLeadsProps {
@@ -15,27 +15,18 @@ interface MetaLeadsProps {
 
 export const MetaLeads: React.FC<MetaLeadsProps> = ({ clientId, fromDate, toDate }) => {
     const [leads, setLeads] = useState<any[]>([]);
+    const [groups, setGroups] = useState<any[]>([]);
+    const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(false);
     const [syncing, setSyncing] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     // UI State
-    const [showAddModal, setShowAddModal] = useState(false);
     const [showFollowUpModal, setShowFollowUpModal] = useState(false);
     const [selectedLead, setSelectedLead] = useState<any>(null);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
     // Form States
-    const [formData, setFormData] = useState({
-        name: '',
-        phone: '',
-        email: '',
-        location: '',
-        campaign_name: '',
-        quality: 'MEDIUM',
-        status: 'NEW'
-    });
-
     const [followUpData, setFollowUpData] = useState({
         status: 'CONTACTED',
         notes: '',
@@ -61,36 +52,23 @@ export const MetaLeads: React.FC<MetaLeadsProps> = ({ clientId, fromDate, toDate
         }
     };
 
+    const fetchGroups = async () => {
+        if (!clientId) return;
+        try {
+            const res = await api.get(`/marketing/groups?clientId=${clientId}`);
+            setGroups(res.data || []);
+        } catch (err) {
+            console.error('Failed to fetch groups', err);
+        }
+    };
+
     useEffect(() => {
         fetchLeads();
+        fetchGroups();
     }, [clientId, fromDate, toDate]);
 
-    const handleSync = async () => {
-        if (!clientId) return;
-        setSyncing(true);
-        setError(null);
-        try {
-            await api.post(`/marketing/leads/sync`, { clientId });
-            await fetchLeads(); // Refresh table
-        } catch (err: any) {
-            console.error('Failed to sync leads', err);
-            setError(err.response?.data?.message || 'Failed to sync leads from Meta.');
-        } finally {
-            setSyncing(false);
-        }
-    };
-
-    const handleAddLead = async (e: React.FormEvent) => {
-        e.preventDefault();
-        try {
-            await api.post('/marketing/leads', { ...formData, clientId });
-            setShowAddModal(false);
-            setFormData({ name: '', phone: '', email: '', location: '', campaign_name: '', quality: 'MEDIUM', status: 'NEW' });
-            fetchLeads();
-        } catch (err) {
-            setError('Failed to create manual lead.');
-        }
-    };
+    // Redundant manual add/sync removed as per user requirement.
+    // Leads are now strictly funnelled from the Command Center.
 
     const handleDeleteLead = async (id: string) => {
         try {
@@ -130,16 +108,28 @@ export const MetaLeads: React.FC<MetaLeadsProps> = ({ clientId, fromDate, toDate
 
     useEffect(() => {
         fetchLeads();
+        fetchGroups();
     }, [clientId]);
+
+    const toggleGroup = (groupName: string) => {
+        setExpandedGroups(prev => {
+            const next = new Set(prev);
+            if (next.has(groupName)) next.delete(groupName);
+            else next.add(groupName);
+            return next;
+        });
+    };
 
     const exportToCSV = () => {
         if (leads.length === 0) return;
-        const headers = ['Date', 'Source', 'Name', 'Email', 'Phone', 'Location', 'Campaign', 'Quality', 'Status', 'Feedback'];
+        const headers = ['Date', 'Source', 'Group', 'Name', 'Email', 'Phone', 'Location', 'Campaign', 'Quality', 'Status', 'Feedback'];
         const csvRows = [headers.join(',')];
         leads.forEach(lead => {
+            const groupName = lead.group?.name || lead.marketingCampaign?.group?.name || 'Unassigned';
             const row = [
                 `"${format(new Date(lead.date), 'yyyy-MM-dd')}"`,
                 `"${lead.source}"`,
+                `"${groupName}"`,
                 `"${lead.name || ''}"`,
                 `"${lead.email || ''}"`,
                 `"${lead.phone || ''}"`,
@@ -197,26 +187,12 @@ export const MetaLeads: React.FC<MetaLeadsProps> = ({ clientId, fromDate, toDate
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
                     <button
-                        onClick={() => setShowAddModal(true)}
-                        className="flex-1 sm:flex-none px-4 py-2 bg-purple-600 text-white text-sm font-semibold rounded-lg hover:bg-purple-700 transition-all flex items-center justify-center shadow-lg shadow-purple-200 dark:shadow-none"
-                    >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Lead
-                    </button>
-                    <button
-                        onClick={handleSync}
-                        disabled={syncing}
-                        className="flex-1 sm:flex-none px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-all flex items-center justify-center disabled:opacity-50"
-                    >
-                        {syncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-                        {syncing ? 'Syncing...' : 'Fetch New'}
-                    </button>
-                    <button
                         onClick={exportToCSV}
                         disabled={leads.length === 0}
-                        className="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-50 transition-all"
+                        className="flex items-center px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-50 transition-all font-semibold shadow-sm"
                     >
-                        <Download className="w-5 h-5" />
+                        <Download className="w-4 h-4 mr-2" />
+                        Export CSV
                     </button>
                 </div>
             </div>
@@ -286,234 +262,178 @@ export const MetaLeads: React.FC<MetaLeadsProps> = ({ clientId, fromDate, toDate
                         <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
                             {loading && leads.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="px-6 py-20 text-center">
+                                    <td colSpan={7} className="px-6 py-20 text-center">
                                         <Loader2 className="w-8 h-8 animate-spin text-purple-600 mx-auto" />
                                         <p className="mt-2 text-gray-500 font-medium">Loading leads database...</p>
                                     </td>
                                 </tr>
                             ) : filteredLeads.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="px-6 py-20 text-center text-gray-500 italic">
+                                    <td colSpan={7} className="px-6 py-20 text-center text-gray-500 italic">
                                         No leads recorded for this client.
-                                        <br />Click "Add Lead" to start manual entry or "Fetch New" to sync from Meta.
                                     </td>
                                 </tr>
                             ) : (
-                                filteredLeads.map((lead) => (
-                                    <tr key={lead.id} className="group hover:bg-gray-50/50 dark:hover:bg-gray-900/30 transition-all">
-                                        <td className="px-6 py-4">
-                                            <div className="font-semibold text-gray-900 dark:text-white">
-                                                {format(new Date(lead.date || lead.createdAt), 'MMM dd, yyyy')}
-                                            </div>
-                                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase mt-1 ${lead.source === 'AUTO'
-                                                    ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
-                                                    : 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400'
-                                                }`}>
-                                                {lead.source}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="font-bold text-gray-900 dark:text-white leading-tight">{lead.name || 'Anonymous'}</div>
-                                            <div className="flex flex-col gap-0.5 mt-1">
-                                                {lead.phone && (
-                                                    <a href={`tel:${lead.phone}`} className="flex items-center text-xs text-blue-600 dark:text-blue-400 hover:underline">
-                                                        <Phone className="w-3 h-3 mr-1" /> {lead.phone}
-                                                    </a>
-                                                )}
-                                                {lead.email && (
-                                                    <a href={`mailto:${lead.email}`} className="flex items-center text-xs text-gray-500 hover:text-blue-600">
-                                                        <Mail className="w-3 h-3 mr-1" /> {lead.email}
-                                                    </a>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex flex-col gap-1">
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`text-lg font-black ${
-                                                        lead.aiScore?.label === 'HOT' ? 'text-red-600' :
-                                                        lead.aiScore?.label === 'WARM' ? 'text-orange-500' : 'text-blue-500'
-                                                    }`}>
-                                                        {lead.aiScore?.score || '??'}
+                                Object.entries(
+                                    filteredLeads.reduce((acc: Record<string, any[]>, lead) => {
+                                        const groupName = lead.group?.name || lead.marketingCampaign?.group?.name || 'Unassigned Leads';
+                                        if (!acc[groupName]) acc[groupName] = [];
+                                        acc[groupName].push(lead);
+                                        return acc;
+                                    }, {})
+                                ).map(([groupName, groupLeads]) => {
+                                    const isExpanded = expandedGroups.has(groupName);
+                                    return (
+                                        <React.Fragment key={groupName}>
+                                            {/* Group Header Row */}
+                                            <tr 
+                                                className="bg-yellow-400 hover:bg-yellow-500 cursor-pointer border-y border-yellow-500/20 transition-colors"
+                                                onClick={() => toggleGroup(groupName)}
+                                            >
+                                                <td colSpan={7} className="px-6 py-3">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="bg-[#2c185a] text-white p-1 rounded-md shadow-sm">
+                                                                {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                                            </div>
+                                                            <span className="text-sm font-black text-[#2c185a] uppercase tracking-widest">
+                                                                {groupName}
+                                                            </span>
+                                                            <span className="text-[10px] bg-[#2c185a]/10 text-[#2c185a] px-2.5 py-1 rounded-full font-black border border-[#2c185a]/20">
+                                                                {groupLeads.length} {groupLeads.length === 1 ? 'Lead' : 'Leads'}
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-[10px] font-black text-[#2c185a]/60 uppercase tracking-tighter">
+                                                            {isExpanded ? 'Click to collapse' : 'Click to expand details'}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {isExpanded && groupLeads.map((lead) => (
+                                            <tr key={lead.id} className="group hover:bg-gray-50/50 dark:hover:bg-gray-900/30 transition-all">
+                                                <td className="px-6 py-4">
+                                                    <div className="font-semibold text-gray-900 dark:text-white">
+                                                        {format(new Date(lead.date || lead.createdAt), 'MMM dd, yyyy')}
+                                                    </div>
+                                                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase mt-1 ${lead.source === 'AUTO'
+                                                            ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+                                                            : 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400'
+                                                        }`}>
+                                                        {lead.source}
                                                     </span>
-                                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                                                        lead.aiScore?.label === 'HOT' ? 'bg-red-100 text-red-700' :
-                                                        lead.aiScore?.label === 'WARM' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'
-                                                    }`}>
-                                                        {lead.aiScore?.label || 'PENDING'}
-                                                    </span>
-                                                </div>
-                                                {lead.aiScore?.factors_json && (
-                                                    <p className="text-[10px] text-gray-400 italic max-w-[120px] truncate">
-                                                        {JSON.parse(lead.aiScore.factors_json).slice(0, 2).join(', ')}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="text-gray-900 dark:text-gray-200 font-medium truncate max-w-[150px]" title={lead.campaign_name || lead.marketingCampaign?.name}>
-                                                {lead.campaign_name || lead.marketingCampaign?.name || 'Bulk Enquiry'}
-                                            </div>
-                                            <div className="flex items-center text-xs text-gray-500 mt-1">
-                                                <MapPin className="w-3 h-3 mr-1" /> {lead.location || 'Undefined'}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex flex-col gap-1.5">
-                                                <span className={`w-fit px-2 py-0.5 rounded-full text-[10px] font-bold ${lead.quality === 'HIGH' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400' :
-                                                        lead.quality === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400' :
-                                                            'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
-                                                    }`}>
-                                                    {lead.quality} QUALITY
-                                                </span>
-                                                <span className="text-[11px] font-semibold text-gray-500 px-2 border-l-2 border-purple-500">
-                                                    {lead.status}
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex gap-2">
-                                                <button
-                                                    onClick={() => toggleFeedback(lead, 'POSITIVE')}
-                                                    className={`p-1.5 rounded-lg transition-all ${lead.feedback === 'POSITIVE'
-                                                            ? 'bg-green-100 text-green-600 shadow-sm'
-                                                            : 'bg-gray-50 text-gray-400 hover:bg-green-50 hover:text-green-500'
-                                                        }`}
-                                                >
-                                                    <ThumbsUp className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => toggleFeedback(lead, 'NEGATIVE')}
-                                                    className={`p-1.5 rounded-lg transition-all ${lead.feedback === 'NEGATIVE'
-                                                            ? 'bg-red-100 text-red-600 shadow-sm'
-                                                            : 'bg-gray-50 text-gray-400 hover:bg-red-50 hover:text-red-500'
-                                                        }`}
-                                                >
-                                                    <ThumbsDown className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center justify-center gap-2">
-                                                <button
-                                                    onClick={() => { setSelectedLead(lead); setShowFollowUpModal(true); }}
-                                                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg relative group/hint"
-                                                >
-                                                    <History className="w-4 h-4" />
-                                                    {lead.follow_ups?.length > 0 && (
-                                                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] px-1 rounded-full border border-white">
-                                                            {lead.follow_ups.length}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="font-bold text-gray-900 dark:text-white leading-tight">{lead.name || 'Anonymous'}</div>
+                                                    <div className="flex flex-col gap-0.5 mt-1">
+                                                        {lead.phone && (
+                                                            <a href={`tel:${lead.phone}`} className="flex items-center text-xs text-blue-600 dark:text-blue-400 hover:underline">
+                                                                <Phone className="w-3 h-3 mr-1" /> {lead.phone}
+                                                            </a>
+                                                        )}
+                                                        {lead.email && (
+                                                            <a href={`mailto:${lead.email}`} className="flex items-center text-xs text-gray-500 hover:text-blue-600">
+                                                                <Mail className="w-3 h-3 mr-1" /> {lead.email}
+                                                            </a>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex flex-col gap-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className={`text-lg font-black ${
+                                                                lead.aiScore?.label === 'HOT' ? 'text-red-600' :
+                                                                lead.aiScore?.label === 'WARM' ? 'text-orange-500' : 'text-blue-500'
+                                                            }`}>
+                                                                {lead.aiScore?.score || '??'}
+                                                            </span>
+                                                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                                                lead.aiScore?.label === 'HOT' ? 'bg-red-100 text-red-700' :
+                                                                lead.aiScore?.label === 'WARM' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'
+                                                            }`}>
+                                                                {lead.aiScore?.label || 'PENDING'}
+                                                            </span>
+                                                        </div>
+                                                        {lead.aiScore?.factors_json && (
+                                                            <p className="text-[10px] text-gray-400 italic max-w-[120px] truncate">
+                                                                {JSON.parse(lead.aiScore.factors_json).slice(0, 2).join(', ')}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="text-gray-900 dark:text-gray-200 font-medium truncate max-w-[150px]" title={lead.campaign_name || lead.marketingCampaign?.name}>
+                                                        {lead.campaign_name || lead.marketingCampaign?.name || 'Bulk Enquiry'}
+                                                    </div>
+                                                    <div className="flex items-center text-xs text-gray-500 mt-1">
+                                                        <MapPin className="w-3 h-3 mr-1" /> {lead.location || 'Undefined'}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex flex-col gap-1.5">
+                                                        <span className={`w-fit px-2 py-0.5 rounded-full text-[10px] font-bold ${lead.quality === 'HIGH' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400' :
+                                                                lead.quality === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400' :
+                                                                    'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
+                                                            }`}>
+                                                            {lead.quality} QUALITY
                                                         </span>
-                                                    )}
-                                                </button>
-                                                <button
-                                                    onClick={() => setShowDeleteConfirm(lead.id)}
-                                                    className="p-2 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-lg"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
+                                                        <span className="text-[11px] font-semibold text-gray-500 px-2 border-l-2 border-purple-500">
+                                                            {lead.status}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() => toggleFeedback(lead, 'POSITIVE')}
+                                                            className={`p-1.5 rounded-lg transition-all ${lead.feedback === 'POSITIVE'
+                                                                    ? 'bg-green-100 text-green-600 shadow-sm'
+                                                                    : 'bg-gray-50 text-gray-400 hover:bg-green-50 hover:text-green-500'
+                                                                }`}
+                                                        >
+                                                            <ThumbsUp className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => toggleFeedback(lead, 'NEGATIVE')}
+                                                            className={`p-1.5 rounded-lg transition-all ${lead.feedback === 'NEGATIVE'
+                                                                    ? 'bg-red-100 text-red-600 shadow-sm'
+                                                                    : 'bg-gray-50 text-gray-400 hover:bg-red-50 hover:text-red-500'
+                                                                }`}
+                                                        >
+                                                            <ThumbsDown className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <button
+                                                            onClick={() => { setSelectedLead(lead); setShowFollowUpModal(true); }}
+                                                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg relative group/hint"
+                                                        >
+                                                            <History className="w-4 h-4" />
+                                                            {lead.follow_ups?.length > 0 && (
+                                                                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] px-1 rounded-full border border-white">
+                                                                    {lead.follow_ups.length}
+                                                                </span>
+                                                            )}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setShowDeleteConfirm(lead.id)}
+                                                            className="p-2 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-lg"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            ))}
+                                        </React.Fragment>
+                                    );
+                                })
                             )}
                         </tbody>
                     </table>
                 </div>
             </div>
-
-            {/* Add Lead Modal */}
-            {showAddModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
-                            <h3 className="font-bold text-gray-900 dark:text-white">Record New Manual Lead</h3>
-                            <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-gray-600 transition-colors"><X className="w-6 h-6" /></button>
-                        </div>
-                        <form onSubmit={handleAddLead} className="p-6 space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1.5">Full Name</label>
-                                    <input
-                                        type="text" required
-                                        value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                        className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border-0 rounded-xl focus:ring-2 focus:ring-purple-500 font-medium"
-                                        placeholder="Lead Name"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1.5">Contact Number</label>
-                                    <input
-                                        type="text" required
-                                        value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                                        className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border-0 rounded-xl focus:ring-2 focus:ring-purple-500 font-medium"
-                                        placeholder="Phone"
-                                    />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1.5">Email (Optional)</label>
-                                    <input
-                                        type="email"
-                                        value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })}
-                                        className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border-0 rounded-xl focus:ring-2 focus:ring-purple-500 font-medium"
-                                        placeholder="email@example.com"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1.5">Location</label>
-                                    <input
-                                        type="text"
-                                        value={formData.location} onChange={e => setFormData({ ...formData, location: e.target.value })}
-                                        className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border-0 rounded-xl focus:ring-2 focus:ring-purple-500 font-medium"
-                                        placeholder="City / State"
-                                    />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1.5">Campaign Title</label>
-                                <input
-                                    type="text"
-                                    value={formData.campaign_name} onChange={e => setFormData({ ...formData, campaign_name: e.target.value })}
-                                    className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border-0 rounded-xl focus:ring-2 focus:ring-purple-500 font-medium"
-                                    placeholder="e.g. WhatsApp July Offer"
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1.5">Quality</label>
-                                    <select
-                                        value={formData.quality} onChange={e => setFormData({ ...formData, quality: e.target.value })}
-                                        className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border-0 rounded-xl focus:ring-2 focus:ring-purple-500 font-medium"
-                                    >
-                                        <option value="HIGH">HIGH QUALITY</option>
-                                        <option value="MEDIUM">MEDIUM QUALITY</option>
-                                        <option value="LOW">LOW QUALITY</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1.5">Current Status</label>
-                                    <select
-                                        value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })}
-                                        className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border-0 rounded-xl focus:ring-2 focus:ring-purple-500 font-medium"
-                                    >
-                                        <option value="NEW">NEW LEAD</option>
-                                        <option value="CONTACTED">CONTACTED</option>
-                                        <option value="INTERESTED">INTERESTED</option>
-                                        <option value="WON">CONVERTED (WON)</option>
-                                        <option value="LOST">REJECTED (LOST)</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div className="flex gap-3 pt-4">
-                                <button type="button" onClick={() => setShowAddModal(false)} className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-200 transition-colors">Cancel</button>
-                                <button type="submit" className="flex-1 py-3 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 shadow-lg shadow-purple-200 dark:shadow-none transition-all">Save Lead</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
 
             {/* Follow-up Modal */}
             {showFollowUpModal && selectedLead && (

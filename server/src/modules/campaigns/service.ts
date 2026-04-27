@@ -12,6 +12,9 @@ export const getCampaigns = async (clientId?: string, month?: string) => {
 
     if (clientId) {
         where.client_id = clientId;
+    } else {
+        // Global list: Exclude campaigns for prospects
+        where.client = { status: { not: 'PROSPECT' } };
     }
 
     if (month) {

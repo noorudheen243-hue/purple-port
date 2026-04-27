@@ -29,10 +29,20 @@ router.delete('/transactions/:id', authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.D
 router.post('/reports/statement', authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN), AccountingController.getStatement);
 router.get('/reports/overview', authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN), AccountingController.getOverview);
 router.post('/sync-ledgers', authorize(ROLES.ADMIN, ROLES.DEVELOPER_ADMIN), AccountingController.syncLedgers);
+router.post('/ensure-ledger', authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN), AccountingController.ensureEntityLedger);
+
 
 // Backup & Restore
 router.get('/backup/excel', authorize(ROLES.ADMIN, ROLES.DEVELOPER_ADMIN), AccountingController.downloadExcelBackup);
 router.get('/backup/json', authorize(ROLES.ADMIN, ROLES.DEVELOPER_ADMIN), AccountingController.downloadJSONBackup);
 router.post('/backup/restore', authorize(ROLES.ADMIN, ROLES.DEVELOPER_ADMIN), AccountingController.restoreBackup);
+
+// Unified Ledger (New System)
+router.get('/unified/ledgers', authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN), AccountingController.getUnifiedLedgers);
+router.post('/unified/ledgers', authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN), AccountingController.createUnifiedLedger);
+router.post('/unified/transactions', authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN), AccountingController.recordUnifiedTransaction);
+router.post('/unified/reports/statement', authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN), AccountingController.getUnifiedStatement);
+router.get('/unified/ledgers/:id/balance', authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN), AccountingController.getUnifiedBalance);
+router.get('/unified/status', AccountingController.checkUnifiedEnabled);
 
 export default router;

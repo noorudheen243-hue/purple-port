@@ -28,7 +28,10 @@ export const getLeads = async (req: Request, res: Response) => {
 
         const leads = await prisma.lead.findMany({
             where: { client_id: clientId },
-            include: { follow_ups: { orderBy: { follow_up_number: 'asc' } } },
+            include: { 
+                follow_ups: { orderBy: { follow_up_number: 'asc' } },
+                group: { select: { name: true } }
+            },
             orderBy: { date: 'desc' }
         });
         res.json(leads);
@@ -42,7 +45,7 @@ export const createLead = async (req: Request, res: Response) => {
         const clientId = getValidatedClientId(req);
         if (!clientId) return res.status(403).json({ message: "Access Denied: Invalid Client Context" });
 
-        const { date, campaign_name, phone, name, location, quality, status, is_positive, follow_ups } = req.body;
+        const { date, campaign_name, phone, name, location, quality, status, is_positive, follow_ups, group_id } = req.body;
 
         const lead = await prisma.lead.create({
             data: {
@@ -54,6 +57,7 @@ export const createLead = async (req: Request, res: Response) => {
                 location,
                 quality,
                 status,
+                group_id,
                 feedback: is_positive ? 'POSITIVE' : 'NEGATIVE',
                 follow_ups: {
                     create: follow_ups?.map((f: any) => ({
@@ -79,7 +83,7 @@ export const updateLead = async (req: Request, res: Response) => {
         const clientId = getValidatedClientId(req);
         if (!clientId) return res.status(403).json({ message: "Access Denied: Invalid Client Context" });
 
-        const { date, campaign_name, phone, name, location, quality, status, is_positive, follow_ups } = req.body;
+        const { date, campaign_name, phone, name, location, quality, status, is_positive, follow_ups, group_id } = req.body;
 
         const lead = await prisma.lead.update({
             where: { id },
@@ -91,6 +95,7 @@ export const updateLead = async (req: Request, res: Response) => {
                 location,
                 quality,
                 status,
+                group_id,
                 feedback: is_positive ? 'POSITIVE' : 'NEGATIVE'
             }
         });

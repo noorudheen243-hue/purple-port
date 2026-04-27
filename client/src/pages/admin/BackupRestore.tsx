@@ -68,6 +68,9 @@ const BackupRestore: React.FC = () => {
     // Bulk Delete State
     const [selectedForDelete, setSelectedForDelete] = useState<string[]>([]);
 
+    // Backup Options
+    const [includeMedia, setIncludeMedia] = useState(false);
+
     // ─── Data Fetching ───────────────────────────────────────────────────────
     const fetchBackups = useCallback(async () => {
         setLoading(true);
@@ -100,7 +103,10 @@ const BackupRestore: React.FC = () => {
     const handleCreateOnlineBackup = async () => {
         setLoading(true);
         try {
-            const res = await api.post('/backup/save-to-disk', { type: 'online' });
+            const res = await api.post('/backup/save-to-disk', { 
+                type: 'online',
+                includeUploads: includeMedia 
+            });
             Swal.fire({
                 icon: 'success',
                 title: 'Backup Created',
@@ -168,7 +174,10 @@ const BackupRestore: React.FC = () => {
         setLoading(true);
         try {
             // Trigger fresh backup generation
-            const buildRes = await api.post('/backup/save-to-disk', { type: 'manual' });
+            const buildRes = await api.post('/backup/save-to-disk', { 
+                type: 'manual',
+                includeUploads: includeMedia 
+            });
             const filename = buildRes.data.filename;
 
             // Fetch the resulting blob
@@ -387,10 +396,48 @@ const BackupRestore: React.FC = () => {
                             Create New Backup
                         </CardTitle>
                         <CardDescription>
-                            Generate a full snapshot of the database and media files. Choose whether to save it to your computer or keep it on the server.
+                            Generate a snapshot of your system. Choose whether to include heavy media files or just the database.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="p-8 space-y-8">
+
+                        <div className="bg-violet-50 border border-violet-100 rounded-2xl p-5 flex flex-col gap-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-white rounded-lg shadow-sm">
+                                        <HardDrive className="h-5 w-5 text-violet-600" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-violet-900 leading-tight">Backup Strategy</h4>
+                                        <p className="text-xs text-violet-700/70">Toggle including media files (Photos/Videos)</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className={`text-[10px] font-black uppercase tracking-wider ${includeMedia ? 'text-violet-600' : 'text-gray-400'}`}>
+                                        {includeMedia ? 'Full (1.2 GB)' : 'Fast (DB Only)'}
+                                    </span>
+                                    <button 
+                                        onClick={() => setIncludeMedia(!includeMedia)}
+                                        className="focus:outline-none"
+                                    >
+                                        {includeMedia ? 
+                                            <ToggleRight className="h-9 w-9 text-violet-600" /> : 
+                                            <ToggleLeft className="h-9 w-9 text-gray-300" />
+                                        }
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            {includeMedia && (
+                                <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-100 rounded-xl animate-in fade-in slide-in-from-top-1 duration-300">
+                                    <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                                    <p className="text-[11px] text-amber-800 leading-relaxed">
+                                        <b>Warning:</b> Including 1.2 GB of media will take several minutes to generate and download. 
+                                        Fast mode (DB Only) is instantaneous and recommended for daily backups.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* Manual Local Option */}

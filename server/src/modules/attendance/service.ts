@@ -436,10 +436,13 @@ export class AttendanceService {
     static async recalculateAttendance(userId: string, startDate: Date, endDate: Date) {
         console.log(`[Recalc] Recalculating attendance for ${userId} from ${startDate.toISOString()} to ${endDate.toISOString()}`);
 
+        const searchStart = new Date(startDate);
+        searchStart.setDate(searchStart.getDate() - 1);
+
         const records = await db.attendanceRecord.findMany({
             where: {
                 user_id: userId,
-                date: { gte: startDate, lte: endDate }
+                date: { gte: searchStart, lte: endDate }
             }
         });
 
@@ -514,10 +517,14 @@ export class AttendanceService {
         });
 
         // Fetch all attendance records for range
+        // Expand search window back by 24h to capture IST-normalized records stored at 18:30 UTC
+        const searchStart = new Date(startDate);
+        searchStart.setDate(searchStart.getDate() - 1);
+
         const records = await db.attendanceRecord.findMany({
             where: {
                 date: {
-                    gte: startDate,
+                    gte: searchStart,
                     lte: endDate
                 }
             }
@@ -549,9 +556,8 @@ export class AttendanceService {
 
             // Populate existing records first (TRUST DB STATUS - NO FLY-BY UPDATES)
             userRecords.forEach(r => {
-                const istOffset = 330 * 60 * 1000;
-                const istDate = new Date(r.date.getTime() + istOffset);
-                const dateKey = istDate.toISOString().split('T')[0];
+                // Use robust IST date mapping consistency with getBiometricLogs
+                const dateKey = r.date.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 
                 attendanceMap[dateKey] = r;
 
@@ -570,7 +576,7 @@ export class AttendanceService {
 
             // Merge Holidays if no record exists
             holidays.forEach(h => {
-                const dateKey = h.date.toISOString().split('T')[0];
+                const dateKey = h.date.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
                 if (!attendanceMap[dateKey]) {
                     attendanceMap[dateKey] = {
                         id: h.id,
@@ -589,8 +595,7 @@ export class AttendanceService {
                 const last = new Date(Math.min(l.end_date.getTime(), endDate.getTime()));
 
                 while (current <= last) {
-                    const istDate = new Date(current.getTime() + (330 * 60 * 1000));
-                    const dateKey = istDate.toISOString().split('T')[0];
+                const dateKey = current.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 
                     if (!attendanceMap[dateKey]) {
                         attendanceMap[dateKey] = {

@@ -104,42 +104,47 @@ export const createClient = async (data: Prisma.ClientCreateInput, assignedStaff
 
     console.log(`[AUDIT] Client Created: ${client.name} (ID: ${client.id}) | Account Manager: ${accountManagerId}`);
 
-    // Auto-create Client Ledger
+    // Auto-create Client Ledger (Always default to creating an Asset account [1000])
     try {
-        if (ledgerOptions?.create && ledgerOptions.head_id) {
-            // User selected a specific head
-            const head = await prisma.accountHead.findUnique({ where: { id: ledgerOptions.head_id } });
-            if (head) {
-                await ensureLedger('CLIENT', client.id, head.code);
-            } else {
-                console.warn(`[WARNING] Client created but Ledger Head ID ${ledgerOptions.head_id} not found. Defaulting to 4000.`);
-                await ensureLedger('CLIENT', client.id, '4000');
-            }
-        } else if (ledgerOptions?.create === false) {
+        if (ledgerOptions?.create === false) {
             console.log(`[INFO] Client ${client.name}: Ledger creation skipped by user request.`);
         } else {
-            // Default Behavior (Fallback for legacy/unspecified)
-            await ensureLedger('CLIENT', client.id, '4000');
+            const headCode = ledgerOptions?.head_id ? 
+                (await prisma.accountHead.findUnique({ where: { id: ledgerOptions.head_id } }))?.code || '1000' 
+                : '1000';
+            
+            await ensureLedger('CLIENT', client.id, headCode);
+            console.log(`[AUDIT] Ensured Ledger for ${client.name} under Head ${headCode}`);
         }
-
     } catch (error) {
         console.error("Failed to create ledger for client:", error);
     }
 
-    // Auto-create Client Credentials
-    try {
-        await createCredentialsForClient(client);
-        console.log(`[AUDIT] Generated credentials for ${client.name}`);
-    } catch (error) {
-        console.error("Failed to generate credentials for client:", error);
+    // Auto-create Client Credentials (Skip for Prospects)
+    if (client.status !== 'PROSPECT') {
+        try {
+            await createCredentialsForClient(client);
+            console.log(`[AUDIT] Generated credentials for ${client.name}`);
+        } catch (error) {
+            console.error("Failed to generate credentials for client:", error);
+        }
     }
 
     return client;
 };
 
-export const getClients = async () => {
+export const getClients = async (includeProspects = false, status?: string) => {
     // 1. Fetch Clients
+    const whereClause: Prisma.ClientWhereInput = {};
+
+    if (status) {
+        whereClause.status = status;
+    } else if (!includeProspects) {
+        whereClause.status = { not: 'PROSPECT' };
+    }
+
     const clients = await prisma.client.findMany({
+        where: whereClause,
         orderBy: { updatedAt: 'desc' },
         include: {
             _count: {
@@ -329,21 +334,15 @@ export const updateClient = async (id: string, data: any) => {
         data: updateData,
     });
 
-    // Handle Ledger Creation on Update
+    // Handle Ledger Creation on Update (Default to 1000 [Assets] if creating)
     if (ledger_options && ledger_options.create) {
         try {
-            if (ledger_options.head_id) {
-                const head = await prisma.accountHead.findUnique({ where: { id: ledger_options.head_id } });
-                if (head) {
-                    await ensureLedger('CLIENT', id, head.code);
-                    console.log(`[ClientUpdate] Ledger created for ${updatedClient.name} under head ${head.code}`);
-                } else {
-                    console.warn(`[ClientUpdate] Head ID ${ledger_options.head_id} not found. Defaulting to 4000.`);
-                    await ensureLedger('CLIENT', id, '4000');
-                }
-            } else {
-                await ensureLedger('CLIENT', id, '4000'); // Default
-            }
+            const headCode = ledger_options.head_id ? 
+                (await prisma.accountHead.findUnique({ where: { id: ledger_options.head_id } }))?.code || '1000' 
+                : '1000';
+            
+            await ensureLedger('CLIENT', id, headCode);
+            console.log(`[ClientUpdate] Ensured Ledger for ${updatedClient.name} under Head ${headCode}`);
         } catch (error) {
             console.error("[ClientUpdate] Failed to create ledger:", error);
         }
@@ -435,7 +434,10 @@ export const deleteClient = async (id: string) => {
 
 export const generateClientCredentials = async () => {
     const clients = await prisma.client.findMany({
-        where: { portalUser: null }, // Find clients without portal access
+        where: { 
+            portalUser: null,
+            status: { not: 'PROSPECT' }
+        }, // Find clients without portal access
         select: { id: true, name: true, company_email: true }
     });
 
@@ -457,6 +459,7 @@ export const generateClientCredentials = async () => {
 
 export const getClientCredentials = async () => {
     return await prisma.client.findMany({
+        where: { status: { not: 'PROSPECT' } },
         orderBy: { name: 'asc' },
         select: {
             id: true,

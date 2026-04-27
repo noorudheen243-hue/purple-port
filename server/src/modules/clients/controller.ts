@@ -5,7 +5,7 @@ import * as clientService from './service';
 const createClientSchema = z.object({
     name: z.string().min(2),
     industry: z.string().optional().or(z.literal('')),
-    status: z.enum(['LEAD', 'ACTIVE', 'ON_HOLD', 'COMPLETED', 'INACTIVE']).default('LEAD'),
+    status: z.enum(['LEAD', 'ACTIVE', 'ON_HOLD', 'COMPLETED', 'INACTIVE', 'PROSPECT']).default('LEAD'),
     brand_colors: z.any().optional(),
     logo_url: z.string().optional().or(z.literal('')),
 
@@ -111,7 +111,9 @@ export const createClient = async (req: Request, res: Response) => {
 
 export const getClients = async (req: Request, res: Response) => {
     try {
-        const clients = await clientService.getClients();
+        const includeProspects = req.query.includeProspects === 'true';
+        const status = req.query.status as string;
+        const clients = await clientService.getClients(includeProspects, status);
         res.json(clients);
     } catch (error: any) {
         res.status(500).json({ message: error.message });

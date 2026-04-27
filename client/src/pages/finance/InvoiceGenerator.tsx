@@ -74,7 +74,7 @@ const InvoiceGenerator = () => {
     const { data: clients = [] } = useQuery({
         queryKey: ['clients'],
         queryFn: async () => {
-            const { data } = await api.get('/clients'); // Assuming endpoint exists
+            const { data } = await api.get('/clients?status=ACTIVE'); // Restricted to ACTIVE
             return data;
         },
         enabled: clientType === 'ONBOARDED'

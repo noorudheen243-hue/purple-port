@@ -21,7 +21,8 @@ import {
     MessageSquare,
     UserCheck,
     ScrollText,
-    LogOut
+    LogOut,
+    Megaphone
 } from 'lucide-react';
 import { ROLES } from '../utils/roles';
 
@@ -41,14 +42,10 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
         icon: User
     },
     {
-        label: "Marketing Services",
-        path: "/dashboard/client-portal/manage-services",
-        icon: TrendingUp
-    },
-    {
-        label: "Campaign Management",
-        path: "/dashboard/marketing-performance",
-        icon: BarChart3
+        label: "Marketing Management",
+        path: "/dashboard/marketing-management",
+        icon: Megaphone,
+        highlight: true
     },
     {
         label: "Financial Management",
@@ -75,14 +72,9 @@ export const STAFF_MENU: MenuItem[] = [
         icon: User
     },
     {
-        label: "Marketing Services",
-        path: "/dashboard/client-portal/manage-services",
-        icon: TrendingUp
-    },
-    {
-        label: "Campaign Management",
-        path: "/dashboard/marketing-performance",
-        icon: BarChart3
+        label: "Marketing Management",
+        path: "/dashboard/marketing-management",
+        icon: Megaphone
     },
     {
         label: "Task Management",

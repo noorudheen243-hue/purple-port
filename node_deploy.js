@@ -42,9 +42,9 @@ conn.on('ready', () => {
         rm /root/deploy_package.tar.gz
 
         echo "-> Updating Frontend..."
-        mkdir -p $REMOTE_PATH/server/public
-        rm -rf $REMOTE_PATH/server/public/*
-        cp -r $REMOTE_PATH/updated_files/client_dist/* $REMOTE_PATH/server/public/
+        mkdir -p $REMOTE_PATH/client/dist
+        rm -rf $REMOTE_PATH/client/dist/*
+        cp -r $REMOTE_PATH/updated_files/client_dist/* $REMOTE_PATH/client/dist/
 
         echo "-> Updating Backend & Data..."
         mkdir -p $REMOTE_PATH/server/dist
@@ -71,18 +71,10 @@ conn.on('ready', () => {
         cd $REMOTE_PATH/server
         npx prisma db push --accept-data-loss
 
-        echo "-> Running Task Migration..."
-        cp $REMOTE_PATH/updated_files/server_dist/migrate_tasks.js $REMOTE_PATH/server/
-        node migrate_tasks.js
-        rm migrate_tasks.js
-
-        echo "-> Running Debug Counts..."
-        cp $REMOTE_PATH/updated_files/server_dist/debug_counts.js $REMOTE_PATH/server/
-        node debug_counts.js
-        rm debug_counts.js
-
-        echo "-> Restarting PM2..."
-        pm2 restart qix-backend || pm2 start dist/server.js --name qix-backend
+        echo "-> Restarting PM2 (qix-api)..."
+        pm2 stop qix-ads-v2.7 2>/dev/null || true
+        pm2 delete qix-ads-v2.7 2>/dev/null || true
+        pm2 restart qix-api || pm2 start dist/server.js --name qix-api
       `;
             conn.exec(remoteCmd, (err, stream) => {
                 if (err) throw err;

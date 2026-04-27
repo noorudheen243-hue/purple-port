@@ -26,10 +26,10 @@ const SalesPipelinePage: React.FC<SalesPipelinePageProps> = ({ clientId: propCli
     const [loading, setLoading] = useState(true);
     const [selectedClientId, setSelectedClientId] = useState<string>(propClientId || '');
 
-    // Fetch available clients for selector (fallback)
+    // Fetch available clients for selector (fallback) - ONLY ACTIVE
     const { data: clients } = useQuery({
-        queryKey: ['clients'],
-        queryFn: async () => (await api.get('/clients')).data,
+        queryKey: ['clients-active'],
+        queryFn: async () => (await api.get('/clients?status=ACTIVE')).data,
         enabled: !propClientId
     });
 

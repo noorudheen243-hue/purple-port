@@ -19,6 +19,11 @@ const TaskDetail = lazy(() => import('../tasks/TaskDetail'));
 const MarketingDashboard = lazy(() => import('../../pages/marketing/MarketingDashboard'));
 const MarketingIntegrations = lazy(() => import('../../pages/marketing/MarketingIntegrations'));
 const SalesIntelligenceManager = lazy(() => import('../../pages/marketing/SalesIntelligenceManager'));
+const AiCommandCenter = lazy(() => import('../../pages/portal/Intelligence/AiCommandCenter'));
+
+
+const MarketingCoreBeta = lazy(() => import('../../pages/MarketingCoreBeta'));
+const MarketingManagement = lazy(() => import('../../pages/marketing/MarketingManagement'));
 
 // Client Portal Modules
 const ClientPortalLayout = lazy(() => import('../../pages/portal/ClientPortalLayout'));
@@ -113,6 +118,7 @@ const Dashboard = () => {
                 <Routes>
                     {/* ... other routes ... */}
                     <Route index element={<Overview />} />
+                    <Route path="ai-commander" element={<AiCommandCenter />} />
                     <Route path="chat" element={<ChatLayout />} />
                     <Route path="clients" element={<ClientList />} />
                     <Route path="client-manager" element={<ClientManagerPage />} />
@@ -155,6 +161,9 @@ const Dashboard = () => {
                     <Route path="marketing-integrations" element={<MarketingIntegrations />} />
                     <Route path="ai-sales" element={<SalesIntelligenceManager />} />
                     <Route path="ai-sales/*" element={<SalesIntelligenceManager />} />
+
+                    <Route path="marketing-beta" element={<MarketingCoreBeta />} />
+                    <Route path="marketing-management" element={<MarketingManagement />} />
 
 
 

@@ -26,7 +26,7 @@ export async function manualSync(req: Request, res: Response) {
         
         if (clientId) {
             // New Sync All for Client logic (Synchronous for immediate feedback if desired, or background)
-            MarketingSyncWorker.syncClientCampaigns(clientId, daysBack || 7).catch(err => {
+            MarketingSyncWorker.syncClientCampaigns(clientId, daysBack || 35).catch(err => {
                 console.error(`[SyncController] Client Sync Error for ${clientId}:`, err);
             });
             return res.json({ message: 'Client campaign sync started in background.' });
@@ -377,7 +377,13 @@ export async function getMetrics(req: Request, res: Response) {
                 status: true,
                 budget: true,
                 startDate: true,
-                ends: true
+                ends: true,
+                group: {
+                    select: {
+                        id: true,
+                        name: true
+                    }
+                }
             }
         });
 
@@ -1030,7 +1036,17 @@ export async function getLeads(req: Request, res: Response) {
             where: whereClause,
             orderBy: { date: 'desc' },
             include: {
-                marketingCampaign: { select: { name: true } },
+                marketingCampaign: { 
+                    select: { 
+                        name: true,
+                        group: {
+                            select: { name: true }
+                        }
+                    } 
+                },
+                group: {
+                    select: { name: true }
+                },
                 follow_ups: { orderBy: { date: 'desc' } },
                 aiScore: true
             }

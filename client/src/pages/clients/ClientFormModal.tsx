@@ -15,7 +15,7 @@ import FormErrorAlert from '../../components/ui/FormErrorAlert';
 const clientSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters"),
     industry: z.string().optional(),
-    status: z.enum(["LEAD", "ACTIVE", "ON_HOLD", "COMPLETED", "INACTIVE"]).default("LEAD"),
+    status: z.enum(["LEAD", "ACTIVE", "ON_HOLD", "COMPLETED", "INACTIVE", "PROSPECT"]).default("LEAD"),
     brand_colors: z.string().optional(),
     logo_url: z.string().optional(),
 

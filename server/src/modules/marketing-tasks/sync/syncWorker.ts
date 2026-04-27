@@ -12,7 +12,7 @@ export class MarketingSyncWorker {
     /**
      * Syncs all campaigns and recent metrics for a specific client across all platforms
      */
-    public static async syncClientCampaigns(clientId: string, daysBack: number = 7): Promise<void> {
+    public static async syncClientCampaigns(clientId: string, daysBack: number = 35): Promise<void> {
         console.log(`[SyncWorker] Starting full sync for client: ${clientId} (${daysBack} days back)`);
         
         // Find all accounts for this client
@@ -248,7 +248,7 @@ export class MarketingSyncWorker {
      * Main entry point for cron job to sync all active campaigns
      * @param daysBack - Number of days of history to sync. Defaults to 2 (yesterday and today).
      */
-    public static async syncAllActiveCampaigns(daysBack: number = 2): Promise<void> {
+    public static async syncAllActiveCampaigns(daysBack: number = 7): Promise<void> {
         const syncErrors: string[] = []; // Collect account-level errors to persist in logs
 
         const log = await (prisma as any).marketingSyncLog.create({

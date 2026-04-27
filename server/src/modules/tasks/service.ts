@@ -123,7 +123,12 @@ export const getTasks = async (filters: {
     let whereClause: Prisma.TaskWhereInput = {};
 
     if (filters?.campaign_id) whereClause.campaign_id = filters.campaign_id;
-    if (filters?.client_id) whereClause.client_id = filters.client_id;
+    if (filters?.client_id) {
+        whereClause.client_id = filters.client_id;
+    } else {
+        // Global board: Exclude tasks for prospects
+        whereClause.client = { status: { not: 'PROSPECT' } };
+    }
     if (filters?.assignee_id) whereClause.assignee_id = filters.assignee_id;
     if (filters?.status) whereClause.status = filters.status;
     if (filters?.priority) whereClause.priority = filters.priority;
@@ -343,7 +348,9 @@ export const getTaskStats = async (filters: {
     groupBy?: 'staff' | 'department' | 'status' | 'client' | 'staff_type';
     department?: string;
 }) => {
-    const whereClause: Prisma.TaskWhereInput = {};
+    const whereClause: Prisma.TaskWhereInput = {
+        client: { status: { not: 'PROSPECT' } }
+    };
 
     // Synchronized Period Logic:
     // Include tasks that were ACTIVE or COMPLETED during this period.
@@ -453,7 +460,9 @@ export const getDashboardStats = async (user: { id: string, role: string, depart
     const isManagerial = ['ADMIN', 'MANAGER', 'DEVELOPER_ADMIN', 'MARKETING_EXEC', 'WEB_SEO_EXECUTIVE'].includes(user.role) || user.department === 'MARKETING' || user.department === 'WEB';
 
     // 2. Task Status Distribution
-    const distributionWhere: Prisma.TaskWhereInput = isManagerial ? {} : { assignee_id: user.id };
+    const distributionWhere: Prisma.TaskWhereInput = isManagerial ? 
+        { client: { status: { not: 'PROSPECT' } } } : 
+        { assignee_id: user.id, client: { status: { not: 'PROSPECT' } } };
 
     const statusRaw = await prisma.task.groupBy({
         by: ['status'],
@@ -485,7 +494,8 @@ export const getDashboardStats = async (user: { id: string, role: string, depart
                 by: ['assignee_id', 'status'],
                 where: {
                     assignee_id: { in: creativeIds },
-                    createdAt: { gte: startOfMonth }
+                    createdAt: { gte: startOfMonth },
+                    client: { status: { not: 'PROSPECT' } }
                 },
                 _count: { id: true }
             });
@@ -620,10 +630,10 @@ export const clearActiveTasks = async () => {
 export const calculateDashboardAggregates = async () => {
     // Run all counts in parallel for maximum speed
     const [total, completed, inProgress, rework, overdue] = await Promise.all([
-        prisma.task.count(),
-        prisma.task.count({ where: { status: 'COMPLETED' } }),
-        prisma.task.count({ where: { status: 'IN_PROGRESS' } }),
-        prisma.task.count({ where: { nature: 'REWORK' } }),
+        prisma.task.count({ where: { client: { status: { not: 'PROSPECT' } } } }),
+        prisma.task.count({ where: { status: 'COMPLETED', client: { status: { not: 'PROSPECT' } } } }),
+        prisma.task.count({ where: { status: 'IN_PROGRESS', client: { status: { not: 'PROSPECT' } } } }),
+        prisma.task.count({ where: { nature: 'REWORK', client: { status: { not: 'PROSPECT' } } } }),
         prisma.task.count({
             where: {
                 OR: [
@@ -668,7 +678,7 @@ export const getDigitalMarketingDashboardStats = async (month?: number, year?: n
 
     // 1. Total Active Clients (Snapshot of current status)
     const activeClients = await prisma.client.count({
-        where: { status: 'ACTIVE' }
+        where: { status: 'ACTIVE' } // Status: ACTIVE already excludes PROSPECT
     });
 
     // 2. Active Meta Campaigns (Unique campaigns active in the period)
@@ -686,7 +696,8 @@ export const getDigitalMarketingDashboardStats = async (month?: number, year?: n
     const assignedCreativeTasks = await prisma.task.count({
         where: {
             department: 'CREATIVE',
-            status: { notIn: ['COMPLETED', 'CANCELLED'] }
+            status: { notIn: ['COMPLETED', 'CANCELLED'] },
+            client: { status: { not: 'PROSPECT' } }
         }
     });
 
@@ -723,6 +734,7 @@ export const getDigitalMarketingDashboardStats = async (month?: number, year?: n
         where: {
             department: 'CREATIVE',
             status: { notIn: ['COMPLETED', 'CANCELLED'] },
+            client: { status: { not: 'PROSPECT' } },
             OR: [
                 { due_date: { lt: now } },
                 { status: { in: ['REVISION', 'REWORK', 'OVERDUE'] } }

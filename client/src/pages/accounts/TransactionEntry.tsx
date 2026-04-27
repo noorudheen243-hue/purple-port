@@ -47,15 +47,27 @@ const TransactionEntry = () => {
     const isExpense = watch('type') === 'EXPENSE';
     const currentNature = watch('nature');
 
+    const { data: unifiedStatus } = useQuery({
+        queryKey: ['unified-status'],
+        queryFn: async () => (await api.get('/accounting/unified/status')).data
+    });
+    const isUnified = unifiedStatus?.enabled;
+
     // Fetch Data
     const { data: ledgers, isLoading: isLoadingLedgers } = useQuery({
         queryKey: ['ledgers'],
         queryFn: async () => (await api.get('/accounting/ledgers')).data
     });
 
+    const { data: unifiedLedgers } = useQuery({
+        queryKey: ['unified-ledgers'],
+        queryFn: async () => (await api.get('/accounting/unified/ledgers')).data,
+        enabled: !!isUnified
+    });
+
     const { data: clients } = useQuery({
-        queryKey: ['clients'],
-        queryFn: async () => (await api.get('/clients')).data
+        queryKey: ['clients-active'],
+        queryFn: async () => (await api.get('/clients?status=ACTIVE')).data
     });
 
     const { data: staff } = useQuery({
@@ -67,14 +79,35 @@ const TransactionEntry = () => {
     });
 
     const mutation = useMutation({
-        mutationFn: (data: any) => api.post('/accounting/transactions', data),
+        mutationFn: (data: any) => {
+            if (isUnified) {
+                // Determine unified ledger ID
+                const unifiedLedger = unifiedLedgers?.find((l: any) => 
+                    (l.entity_type === (data.nature.includes('STAFF') ? 'USER' : 'CLIENT')) && 
+                    (l.entity_id === data.entity_id)
+                );
+                
+                if (unifiedLedger) {
+                    return api.post('/accounting/unified/transactions', {
+                        ledger_id: unifiedLedger.id,
+                        transaction_type: data.type,
+                        amount: data.amount,
+                        date: data.date,
+                        description: data.description,
+                        reference: data.reference
+                    });
+                }
+            }
+            return api.post('/accounting/transactions', data);
+        },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['ledgers'] });
             queryClient.invalidateQueries({ queryKey: ['transactions'] });
+            queryClient.invalidateQueries({ queryKey: ['unified-ledgers'] });
             
             Swal.fire({
-                title: 'Transaction Recorded!',
-                text: `Transaction ${data.data?.transaction_number || ''} recorded successfully.`,
+                title: isUnified ? 'Unified Transaction Recorded!' : 'Transaction Recorded!',
+                text: isUnified ? 'Transaction added to unified ledger.' : `Transaction ${data.data?.transaction_number || ''} recorded successfully.`,
                 icon: 'success',
                 confirmButtonColor: '#10b981',
                 confirmButtonText: 'Great!'
@@ -151,28 +184,41 @@ const TransactionEntry = () => {
 
             if (data.nature === 'SALARY_ADVANCE') {
                 const staffLedger = ledgers?.find((l: any) => l.entity_type === 'USER' && l.entity_id === data.entity_id);
-                if (!staffLedger) return Swal.fire('Error', 'Ledger not found for selected Staff. Please ensure their profile is synced with accounts.', 'error');
+                if (!staffLedger) {
+                    const confirm = await Swal.fire({
+                        title: 'Ledger Missing',
+                        text: 'No accounting ledger found for this staff member. Create one now?',
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonText: 'Yes, Create'
+                    });
+                    if (confirm.isConfirmed) {
+                        try {
+                            await api.post('/accounting/ensure-ledger', { entity_type: 'USER', entity_id: data.entity_id });
+                            queryClient.invalidateQueries({ queryKey: ['ledgers'] });
+                            return Swal.fire('Sync Complete', 'Ledger has been created. Please try recording again.', 'success');
+                        } catch (err) {
+                            return Swal.fire('Error', 'Failed to create ledger.', 'error');
+                        }
+                    }
+                    return;
+                }
                 to_ledger_id = staffLedger.id;
             } else if (data.nature === 'STAFF_INCENTIVE') {
                 const incentiveLedger = ledgers?.find((l: any) => l.name.toLowerCase().includes('incentive') && l.head?.type === 'EXPENSE');
                 if (!incentiveLedger) return Swal.fire('Error', 'Staff Incentives Expense Ledger not found. Please create one in Chart of Accounts.', 'error');
                 to_ledger_id = incentiveLedger.id;
-                // Important: We store the staff ID in the reference field so the Payroll module knows who received this!
                 data.reference = final_entity_id;
             } else if (data.nature === 'META_RECHARGE_EXPENSE') {
-                // Try to find a client-specific meta expense ledger first, otherwise fallback to the generic 'Meta Ads Spend'
                 const clientObj = clients?.find((c: any) => c.id === data.entity_id);
                 let metaExpenseLedger = ledgers?.find((l: any) => l.name.toLowerCase().includes((clientObj?.name || '').toLowerCase() + ' meta') && l.head?.type === 'EXPENSE');
                 if (!metaExpenseLedger) {
                     metaExpenseLedger = ledgers?.find((l: any) => l.name.toLowerCase().includes('meta ads spend') && l.head?.type === 'EXPENSE');
                 }
-                
                 if (!metaExpenseLedger) return Swal.fire('Error', 'Meta Ads Spend Expense Ledger not found. Please create one in Chart of Accounts.', 'error');
-                
                 to_ledger_id = metaExpenseLedger.id;
-                data.reference = final_entity_id; // Still record the client ID in case needed for tracking
+                data.reference = final_entity_id;
             } else if (data.nature === 'PETTY_EXPENSE' || data.nature === 'RENT') {
-                // Find ledger by name matching the sub_category
                 const targetName = data.sub_category;
                 let targetLedger = ledgers?.find((l: any) => l.name.toLowerCase().includes(targetName?.toLowerCase() || ''));
                 if(!targetLedger) return Swal.fire('Error', `Specific ledger not found for ${targetName}. Please create it first.`, 'error');
@@ -188,10 +234,27 @@ const TransactionEntry = () => {
 
             if (['ADVANCE_RECEIVED', 'DM_SERVICE_CHARGE', 'META_RECHARGE_INCOME'].includes(data.nature)) {
                 const clientLedger = ledgers?.find((l: any) => l.entity_type === 'CLIENT' && l.entity_id === data.entity_id);
-                if (!clientLedger) return Swal.fire('Error', 'Ledger not found for selected Client.', 'error');
+                if (!clientLedger) {
+                    const confirm = await Swal.fire({
+                        title: 'Ledger Not Found',
+                        text: 'This client does not have an active ledger account. Activate it now?',
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonText: 'Yes, Activate'
+                    });
+                    if (confirm.isConfirmed) {
+                        try {
+                            await api.post('/accounting/ensure-ledger', { entity_type: 'CLIENT', entity_id: data.entity_id });
+                            queryClient.invalidateQueries({ queryKey: ['ledgers'] });
+                            return Swal.fire('Activated', 'Client ledger has been activated. Please try recording again.', 'success');
+                        } catch (err) {
+                            return Swal.fire('Error', 'Failed to activate client ledger.', 'error');
+                        }
+                    }
+                    return;
+                }
                 from_ledger_id = clientLedger.id;
             } else if (['BRANDING_WORKS', 'OTHER_SERVICE_CHARGE'].includes(data.nature)) {
-                // Find Income Ledger by Nature
                 let targetName = data.nature === 'BRANDING_WORKS' ? 'Branding' : 'Service Charge';
                 let targetLedger = ledgers?.find((l: any) => l.name.toLowerCase().includes(targetName.toLowerCase()) && l.head?.type === 'INCOME');
                 if(!targetLedger) return Swal.fire('Error', `Specific Income ledger not found for ${targetName}. Please create it first.`, 'error');

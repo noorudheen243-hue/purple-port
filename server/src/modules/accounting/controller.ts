@@ -142,6 +142,23 @@ export const syncLedgers = async (req: Request, res: Response) => {
     }
 };
 
+export const ensureEntityLedger = async (req: Request, res: Response) => {
+    try {
+        const { entity_type, entity_id, head_code } = req.body;
+        if (!entity_type || !entity_id) {
+            return res.status(400).json({ message: "Missing entity_type or entity_id" });
+        }
+        
+        // Default head codes if not provided
+        const finalHeadCode = head_code || (entity_type === 'CLIENT' ? '1000' : (entity_type === 'USER' ? '2000' : '4000'));
+        
+        const ledger = await AccountingService.ensureLedger(entity_type, entity_id, finalHeadCode);
+        res.json(ledger);
+    } catch (error) {
+        res.status(500).json({ message: (error as Error).message });
+    }
+};
+
 export const getTransactions = async (req: Request, res: Response) => {
     try {
         const limitStr = req.query.limit as string;
@@ -248,5 +265,63 @@ export const restoreBackup = async (req: Request, res: Response) => {
         res.status(200).json(result);
     } catch (error) {
         res.status(500).json({ message: "Failed to restore backup.", error: (error as Error).message });
+    }
+};
+
+// --- UNIFIED LEDGER SYSTEM ---
+
+export const getUnifiedLedgers = async (req: Request, res: Response) => {
+    try {
+        const ledgers = await AccountingService.getUnifiedLedgers();
+        res.json(ledgers);
+    } catch (error) {
+        res.status(500).json({ message: "Failed to fetch unified ledgers" });
+    }
+};
+
+export const createUnifiedLedger = async (req: Request, res: Response) => {
+    try {
+        const ledger = await AccountingService.createUnifiedLedger(req.body);
+        res.status(201).json(ledger);
+    } catch (error) {
+        res.status(500).json({ message: "Failed to create unified ledger", error: (error as Error).message });
+    }
+};
+
+export const recordUnifiedTransaction = async (req: Request, res: Response) => {
+    try {
+        const entry = await AccountingService.recordUnifiedTransaction(req.body);
+        res.status(201).json(entry);
+    } catch (error) {
+        res.status(500).json({ message: "Failed to record unified transaction", error: (error as Error).message });
+    }
+};
+
+export const getUnifiedStatement = async (req: Request, res: Response) => {
+    try {
+        const { ledger_id, start_date, end_date } = req.body;
+        const stmt = await AccountingService.getUnifiedStatement(ledger_id, new Date(start_date), new Date(end_date));
+        res.json(stmt);
+    } catch (error) {
+        res.status(500).json({ message: (error as Error).message });
+    }
+};
+
+export const getUnifiedBalance = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const balance = await AccountingService.calculateUnifiedBalance(id);
+        res.json({ balance });
+    } catch (error) {
+        res.status(500).json({ message: (error as Error).message });
+    }
+};
+
+export const checkUnifiedEnabled = async (req: Request, res: Response) => {
+    try {
+        const enabled = await AccountingService.isUnifiedLedgerEnabled();
+        res.json({ enabled });
+    } catch (error) {
+        res.status(500).json({ message: "Failed to check feature flag" });
     }
 };

@@ -85,6 +85,12 @@ const LedgerManagement = () => {
         onError: (err: any) => alert("Failed to delete: " + (err.response?.data?.message || err.message))
     });
 
+    const { data: unifiedStatus } = useQuery({
+        queryKey: ['unified-status'],
+        queryFn: async () => (await api.get('/accounting/unified/status')).data
+    });
+    const isUnified = unifiedStatus?.enabled;
+
     // --- Helpers ---
     const filteredLedgers = ledgers?.filter((l: Ledger) =>
         l.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -99,17 +105,25 @@ const LedgerManagement = () => {
 
     return (
         <div className="space-y-6">
+            {isUnified && (
+                <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg flex items-center gap-3 text-amber-800 text-sm font-medium">
+                    <AlertTriangle className="w-5 h-5 text-amber-500" />
+                    Unified Ledger System is ACTIVE. Legacy ledgers are in READ-ONLY mode.
+                </div>
+            )}
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Ledger Master List</h1>
                     <p className="text-muted-foreground">Manage your chart of accounts.</p>
                 </div>
-                <button
-                    onClick={() => setIsCreateOpen(true)}
-                    className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90"
-                >
-                    <Plus className="w-4 h-4" /> Create Account
-                </button>
+                {!isUnified && (
+                    <button
+                        onClick={() => setIsCreateOpen(true)}
+                        className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90"
+                    >
+                        <Plus className="w-4 h-4" /> Create Account
+                    </button>
+                )}
             </div>
 
             <div className="flex gap-4 items-center bg-card p-4 rounded-lg border">
@@ -147,20 +161,24 @@ const LedgerManagement = () => {
                                     {formatCurrency(ledger.balance)}
                                 </td>
                                 <td className="px-4 py-3 text-right flex justify-end gap-2">
-                                    <button
-                                        onClick={() => setEditingLedger(ledger)}
-                                        className="p-1 hover:bg-secondary rounded text-blue-600"
-                                        title="Edit"
-                                    >
-                                        <Pencil className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                        onClick={() => setDeletingLedger(ledger)}
-                                        className="p-1 hover:bg-secondary rounded text-red-600"
-                                        title="Delete"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
+                                    {!isUnified && (
+                                        <>
+                                            <button
+                                                onClick={() => setEditingLedger(ledger)}
+                                                className="p-1 hover:bg-secondary rounded text-blue-600"
+                                                title="Edit"
+                                            >
+                                                <Pencil className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => setDeletingLedger(ledger)}
+                                                className="p-1 hover:bg-secondary rounded text-red-600"
+                                                title="Delete"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </>
+                                    )}
                                 </td>
                             </tr>
                         ))}

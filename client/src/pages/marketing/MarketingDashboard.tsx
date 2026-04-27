@@ -3,14 +3,12 @@ import { useQuery } from '@tanstack/react-query';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import api from '../../lib/api';
 import { format } from 'date-fns';
-import { Loader2, AlertCircle, Facebook, BarChart3, Users, Calendar } from 'lucide-react';
-import { Sparkles, LayoutDashboard, FileText, Settings, Layers } from 'lucide-react';
+import { Loader2, AlertCircle, BarChart3, Users, Calendar, Layers } from 'lucide-react';
+
 import { CampaignGroupManager } from './CampaignGroupManager';
 import { SyncedCampaignTable } from './SyncedCampaignTable';
 import { MetaLeads } from './MetaLeads';
-import { MetaAdsDashboard } from './MetaAdsDashboard';
-import { MetaAdsManager } from './MetaAdsManager';
-import MetaReportsTab from './MetaReportsTab';
+
 
 const GoogleIcon = () => (
     <svg viewBox="0 0 24 24" className="w-full h-full" fill="currentColor">
@@ -21,14 +19,25 @@ const GoogleIcon = () => (
     </svg>
 );
 
-export const MarketingDashboard: React.FC = () => {
+interface MarketingDashboardProps {
+    externalClientId?: string;
+}
+
+export const MarketingDashboard: React.FC<MarketingDashboardProps> = ({ externalClientId }) => {
     const [metrics, setMetrics] = useState<any[]>([]);
     const [summary, setSummary] = useState<any>(null);
     const [loading, setLoading] = useState(false);
-    const [view, setView] = useState<'performance' | 'leads' | 'meta-dashboard' | 'meta-manager' | 'meta-reports' | 'groups'>('performance');
+    const [view, setView] = useState<'performance' | 'leads' | 'groups'>('performance');
+
     const [platform, setPlatform] = useState<string>('all');
     const [error, setError] = useState<string | null>(null);
-    const [selectedClientId, setSelectedClientId] = useState<string>('');
+    const [selectedClientId, setSelectedClientId] = useState<string>(externalClientId || '');
+
+    useEffect(() => {
+        if (externalClientId !== undefined) {
+            setSelectedClientId(externalClientId);
+        }
+    }, [externalClientId]);
     const [statusFilter, setStatusFilter] = useState<'active' | 'all'>('active');
     const [syncing, setSyncing] = useState(false);
     const [syncSuccess, setSyncSuccess] = useState<string | null>(null);
@@ -39,10 +48,10 @@ export const MarketingDashboard: React.FC = () => {
     const [fromDate, setFromDate] = useState<string>(firstDayOfMonthStr);
     const [toDate, setToDate] = useState<string>(todayStr);
 
-    // Fetch available clients
+    // Fetch available clients - ONLY ACTIVE
     const { data: clients, isLoading: clientsLoading } = useQuery({
-        queryKey: ['clients'],
-        queryFn: async () => (await api.get('/clients')).data
+        queryKey: ['clients-active'],
+        queryFn: async () => (await api.get('/clients?status=ACTIVE')).data
     });
 
     const fetchMetrics = async (from?: string, to?: string) => {
@@ -135,19 +144,20 @@ export const MarketingDashboard: React.FC = () => {
                     <p className="text-gray-500 text-sm mt-1">Unified insights from Meta and Google Ads</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-                    {/* Client Selector */}
-                    <select
-                        value={selectedClientId}
-                        onChange={(e) => setSelectedClientId(e.target.value)}
-                        className="flex-1 md:w-56 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm font-medium"
-                    >
-                        <option value="">{clientsLoading ? 'Loading clients...' : '-- Select Client --'}</option>
-                        {clients?.map((client: any) => (
-                            <option key={client.id} value={client.id}>
-                                {client.name}
-                            </option>
-                        ))}
-                    </select>
+                    {!externalClientId && (
+                        <select
+                            value={selectedClientId}
+                            onChange={(e) => setSelectedClientId(e.target.value)}
+                            className="flex-1 md:w-56 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm font-medium"
+                        >
+                            <option value="">{clientsLoading ? 'Loading clients...' : '-- Select Client --'}</option>
+                            {clients?.map((client: any) => (
+                                <option key={client.id} value={client.id}>
+                                    {client.name}
+                                </option>
+                            ))}
+                        </select>
+                    )}
                     {/* Platform Selector */}
                     <select
                         value={platform}
@@ -252,32 +262,12 @@ export const MarketingDashboard: React.FC = () => {
             )}
 
             {/* View Toggle */}
-            <div className="flex border-b border-gray-200 dark:border-gray-700 mb-6 overflow-x-auto">
-                <button
-                    onClick={() => setView('meta-dashboard')}
-                    className={`py-3 px-6 text-sm font-medium flex items-center border-b-2 transition-all whitespace-nowrap ${view === 'meta-dashboard'
-                            ? 'border-purple-600 text-purple-600 dark:text-purple-400 bg-purple-50/30 dark:bg-purple-900/10'
-                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-                        }`}
-                >
-                    <Sparkles className={`w-4 h-4 mr-2 ${view === 'meta-dashboard' ? 'animate-pulse text-purple-500' : ''}`} />
-                    Performance Dashboard
-                </button>
-                <button
-                    onClick={() => setView('meta-manager')}
-                    className={`py-3 px-6 text-sm font-medium flex items-center border-b-2 transition-all whitespace-nowrap ${view === 'meta-manager'
-                            ? 'border-purple-600 text-purple-600 dark:text-purple-400 bg-purple-50/30 dark:bg-purple-900/10'
-                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-                        }`}
-                >
-                    <LayoutDashboard className="w-4 h-4 mr-2" />
-                    Meta Ads Manager
-                </button>
+            <div className="flex gap-4 mb-6 overflow-x-auto pb-2">
                 <button
                     onClick={() => setView('performance')}
-                    className={`py-3 px-6 text-sm font-medium flex items-center border-b-2 transition-colors whitespace-nowrap ${view === 'performance'
-                            ? 'border-purple-600 text-purple-600 dark:text-purple-400'
-                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                    className={`px-6 py-2.5 rounded-lg text-sm font-bold flex items-center transition-all duration-200 shadow-sm border-2 ${view === 'performance'
+                            ? 'bg-yellow-400 text-purple-900 border-purple-600'
+                            : 'bg-yellow-50 text-purple-700 border-transparent hover:bg-yellow-100 hover:border-yellow-200'
                         }`}
                 >
                     <BarChart3 className="w-4 h-4 mr-2" />
@@ -285,9 +275,9 @@ export const MarketingDashboard: React.FC = () => {
                 </button>
                 <button
                     onClick={() => setView('leads')}
-                    className={`py-3 px-6 text-sm font-medium flex items-center border-b-2 transition-colors whitespace-nowrap ${view === 'leads'
-                            ? 'border-purple-600 text-purple-600 dark:text-purple-400'
-                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                    className={`px-6 py-2.5 rounded-lg text-sm font-bold flex items-center transition-all duration-200 shadow-sm border-2 ${view === 'leads'
+                            ? 'bg-yellow-400 text-purple-900 border-purple-600'
+                            : 'bg-yellow-50 text-purple-700 border-transparent hover:bg-yellow-100 hover:border-yellow-200'
                         }`}
                 >
                     <Users className="w-4 h-4 mr-2" />
@@ -295,9 +285,9 @@ export const MarketingDashboard: React.FC = () => {
                 </button>
                 <button
                     onClick={() => setView('groups')}
-                    className={`py-3 px-6 text-sm font-medium flex items-center border-b-2 transition-colors whitespace-nowrap ${view === 'groups'
-                            ? 'border-purple-600 text-purple-600 dark:text-purple-400'
-                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                    className={`px-6 py-2.5 rounded-lg text-sm font-bold flex items-center transition-all duration-200 shadow-sm border-2 ${view === 'groups'
+                            ? 'bg-yellow-400 text-purple-900 border-purple-600'
+                            : 'bg-yellow-50 text-purple-700 border-transparent hover:bg-yellow-100 hover:border-yellow-200'
                         }`}
                 >
                     <Layers className="w-4 h-4 mr-2" />
@@ -305,25 +295,11 @@ export const MarketingDashboard: React.FC = () => {
                 </button>
             </div>
 
+
             {view === 'groups' && (
                 <CampaignGroupManager clientId={selectedClientId} />
             )}
 
-            {view === 'meta-manager' && (
-                <MetaAdsManager clientId={selectedClientId} />
-            )}
-
-            {view === 'meta-dashboard' && (
-                <MetaAdsDashboard 
-                    clientId={selectedClientId} 
-                    fromDate={fromDate} 
-                    toDate={toDate} 
-                />
-            )}
-
-            {view === 'meta-reports' && (
-                <MetaReportsTab />
-            )}
 
             {view === 'performance' ? (
                 <SyncedCampaignTable

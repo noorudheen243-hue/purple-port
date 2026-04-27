@@ -346,7 +346,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
             <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
             <main className="ml-0 md:ml-64 p-2 md:p-4 lg:p-6 transition-[margin] duration-300">
-                <header className="flex justify-between items-center mb-8">
+                <header className="sticky top-0 z-40 flex justify-between items-center -mx-2 md:-mx-4 lg:-mx-6 -mt-2 md:-mt-4 lg:-mt-6 px-2 md:px-4 lg:px-6 py-4 bg-background/80 backdrop-blur-md border-b border-border/50 mb-8 transition-all">
                     <div className="flex items-center gap-4">
                         <button
                             className="md:hidden p-2 -ml-2 hover:bg-accent rounded-md"

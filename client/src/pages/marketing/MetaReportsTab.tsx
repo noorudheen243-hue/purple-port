@@ -48,8 +48,8 @@ export default function MetaReportsTab() {
     const [previewReady, setPreviewReady] = useState(false);
 
     const { data: clients = [] } = useQuery({
-        queryKey: ['clients'],
-        queryFn: async () => (await api.get('/clients')).data
+        queryKey: ['clients-active'],
+        queryFn: async () => (await api.get('/clients?status=ACTIVE')).data
     });
 
     const { data: metricsData, isLoading, refetch } = useQuery({

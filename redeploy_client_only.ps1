@@ -15,16 +15,16 @@ Write-Host "`n=== ZIP CONTENTS PREVIEW ===" -ForegroundColor Cyan
 Write-Host ($rz.Output -join "`n")
 
 # Now clear the target and extract
-$r1 = Invoke-SSHCommand -SSHSession $s -Command "rm -rf /var/www/antigravity/client/dist/* && unzip -o /tmp/client_dist.zip -d /var/www/antigravity/client/dist/ && echo 'EXTRACT_OK'"
+$r1 = Invoke-SSHCommand -SSHSession $s -Command "rm -rf /var/www/purple-port/client/dist/* && unzip -o /tmp/client_dist.zip -d /var/www/purple-port/client/dist/ && echo 'EXTRACT_OK'"
 Write-Host "`n=== EXTRACTION ===" -ForegroundColor Cyan
 Write-Host ($r1.Output[-5..-1] -join "`n")
 
 # Verify
-$r2 = Invoke-SSHCommand -SSHSession $s -Command "ls /var/www/antigravity/client/dist/"
+$r2 = Invoke-SSHCommand -SSHSession $s -Command "ls /var/www/purple-port/client/dist/"
 Write-Host "`n=== DIST ROOT ===" -ForegroundColor Cyan
 Write-Host ($r2.Output -join "`n")
 
-$r3 = Invoke-SSHCommand -SSHSession $s -Command "ls /var/www/antigravity/client/dist/assets/ | grep ManageServices"
+$r3 = Invoke-SSHCommand -SSHSession $s -Command "ls /var/www/purple-port/client/dist/assets/ | grep Marketing"
 Write-Host "`n=== ManageServicesView File ===" -ForegroundColor Cyan
 Write-Host ($r3.Output -join "`n")
 

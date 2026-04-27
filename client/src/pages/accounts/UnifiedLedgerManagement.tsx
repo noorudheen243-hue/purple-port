@@ -1,16 +1,33 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/api';
-import { Plus, Search, Link as LinkIcon, ExternalLink, ShieldCheck } from 'lucide-react';
+import { Plus, Search, Link as LinkIcon, ExternalLink, ShieldCheck, X } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
+import Swal from 'sweetalert2';
 
 const UnifiedLedgerManagement = () => {
     const queryClient = useQueryClient();
     const [search, setSearch] = useState('');
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [newLedger, setNewLedger] = useState({ name: '', type: 'GENERAL' });
 
     const { data: ledgers, isLoading } = useQuery({
         queryKey: ['unified-ledgers'],
         queryFn: async () => (await api.get('/accounting/unified/ledgers')).data
+    });
+
+    const createMutation = useMutation({
+        mutationFn: (data: any) => api.post('/accounting/unified/ledgers', {
+            ledger_name: data.name,
+            entity_type: data.type
+        }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['unified-ledgers'] });
+            setIsCreateModalOpen(false);
+            setNewLedger({ name: '', type: 'GENERAL' });
+            Swal.fire('Success', 'Unified account created successfully!', 'success');
+        },
+        onError: (err: any) => Swal.fire('Error', err.response?.data?.message || 'Failed to create', 'error')
     });
 
     const filteredLedgers = ledgers?.filter((l: any) =>
@@ -30,9 +47,12 @@ const UnifiedLedgerManagement = () => {
                     <p className="text-purple-700 text-sm">Managing combined Income & Expense accounts with legacy mapping.</p>
                 </div>
                 <div className="flex gap-3">
-                     <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
-                        <ShieldCheck className="w-3 h-3" /> SAFE MODE ACTIVE
-                     </span>
+                     <button 
+                        onClick={() => setIsCreateModalOpen(true)}
+                        className="bg-purple-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-purple-700 transition-all shadow-lg shadow-purple-200"
+                     >
+                        <Plus className="w-4 h-4" /> Create Unified Account
+                     </button>
                 </div>
             </div>
 
@@ -85,6 +105,54 @@ const UnifiedLedgerManagement = () => {
                     </div>
                 ))}
             </div>
+
+            {/* Create Modal */}
+            {isCreateModalOpen && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="bg-purple-900 p-6 text-white flex justify-between items-center">
+                            <div>
+                                <h2 className="text-xl font-bold">New Unified Account</h2>
+                                <p className="text-purple-300 text-xs mt-1">No group/head classification required.</p>
+                            </div>
+                            <button onClick={() => setIsCreateModalOpen(false)} className="hover:rotate-90 transition-transform p-1">
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+                        <div className="p-8 space-y-6">
+                            <div className="space-y-2">
+                                <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Account Name</label>
+                                <input 
+                                    type="text"
+                                    className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl px-4 py-3 focus:border-purple-500 outline-none transition-all font-bold"
+                                    placeholder="e.g. Petty Cash, General Income..."
+                                    value={newLedger.name}
+                                    onChange={(e) => setNewLedger({...newLedger, name: e.target.value})}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Account Category</label>
+                                <select 
+                                    className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl px-4 py-3 focus:border-purple-500 outline-none transition-all font-bold appearance-none"
+                                    value={newLedger.type}
+                                    onChange={(e) => setNewLedger({...newLedger, type: e.target.value})}
+                                >
+                                    <option value="GENERAL">General Operating Account</option>
+                                    <option value="CLIENT">Client Related Account</option>
+                                    <option value="USER">Staff/User Account</option>
+                                </select>
+                            </div>
+                            <button 
+                                onClick={() => createMutation.mutate(newLedger)}
+                                disabled={!newLedger.name || createMutation.isPending}
+                                className="w-full bg-purple-900 text-white py-4 rounded-xl font-black uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-purple-100 disabled:opacity-50"
+                            >
+                                Create Unified Account
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

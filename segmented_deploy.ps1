@@ -29,6 +29,10 @@ try {
     $r6 = Invoke-SSHCommand -SSHSession $s -Command "cd /var/www/purple-port/server && pm2 restart qix-api || pm2 start dist/server.js --name qix-api"
     Write-Host $r6.Output
 
+    Write-Host "6. Running Unified Migration..."
+    $r7 = Invoke-SSHCommand -SSHSession $s -Command "cd /var/www/purple-port/server && node dist/scripts/migrate_to_unified.js"
+    Write-Host $r7.Output
+
 } catch {
     Write-Error $_.Exception.Message
 } finally {

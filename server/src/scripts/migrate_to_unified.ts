@@ -30,6 +30,16 @@ async function main() {
             const expenseLedger = ledgers.find(l => l.head.type === 'EXPENSE');
             const assetLedger = ledgers.find(l => l.head.type === 'ASSET'); // Some clients are Assets (Receivables)
 
+            // Check if already exists
+            const existing = await prisma.ledgerMaster.findFirst({
+                where: { entity_type: 'CLIENT', entity_id: client.id }
+            });
+
+            if (existing) {
+                console.log(`Client ${client.name} already migrated. Skipping.`);
+                continue;
+            }
+
             // Create Unified Ledger
             const unified = await prisma.ledgerMaster.create({
                 data: {
@@ -69,6 +79,16 @@ async function main() {
             const incomeLedger = ledgers.find(l => l.head.type === 'INCOME');
             const expenseLedger = ledgers.find(l => l.head.type === 'EXPENSE');
             const liabilityLedger = ledgers.find(l => l.head.type === 'LIABILITY'); // Staff are Liabilities (Payable)
+
+            // Check if already exists
+            const existing = await prisma.ledgerMaster.findFirst({
+                where: { entity_type: 'USER', entity_id: s.id }
+            });
+
+            if (existing) {
+                console.log(`Staff ${s.full_name} already migrated. Skipping.`);
+                continue;
+            }
 
             const unified = await prisma.ledgerMaster.create({
                 data: {

@@ -1,11 +1,8 @@
-const axios = require('axios');
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
 
 async function check() {
     try {
-        // We need an auth token, but we can also check via prisma directly to verify data is there
-        const { PrismaClient } = require('@prisma/client');
-        const prisma = new PrismaClient();
-        
         const masters = await prisma.ledgerMaster.findMany({
             include: { mappings: true }
         });
@@ -16,7 +13,7 @@ async function check() {
         }
         
         const status = await prisma.systemSetting.findUnique({ where: { key: 'UNIFIED_LEDGER_ENABLED' } });
-        console.log(`System Status: ${status.value}`);
+        console.log(`System Status: ${status?.value || 'false'}`);
         
         await prisma.$disconnect();
     } catch (e) {

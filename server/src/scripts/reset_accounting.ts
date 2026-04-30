@@ -51,19 +51,20 @@ async function main() {
 
     // 6. Create Operating/Expense Ledgers (General)
     const operatingLedgers = [
-        { name: 'Electricity & Utilities', type: 'GENERAL' },
-        { name: 'Office Rent', type: 'GENERAL' },
-        { name: 'Digital Assets (Software/Subs)', type: 'GENERAL' },
-        { name: 'Asset Purchase (Hardware/Furniture)', type: 'GENERAL' },
+        { name: 'Electricity', type: 'GENERAL' },
+        { name: 'Rent', type: 'GENERAL' },
+        { name: 'Digital Asset', type: 'GENERAL' },
         { name: 'Drinking Water', type: 'GENERAL' },
-        { name: 'Refreshment & Snacks', type: 'GENERAL' },
-        { name: 'Celebrations & Team Events', type: 'GENERAL' },
-        { name: 'Transportation & Travel', type: 'GENERAL' },
-        { name: 'Office Stationary', type: 'GENERAL' },
-        { name: 'Other Service Charges (Income)', type: 'GENERAL' },
-        { name: 'Bank Charges', type: 'GENERAL' },
-        { name: 'Miscellaneous Expenses', type: 'GENERAL' },
-        { name: 'Cash in Hand', type: 'GENERAL' },
+        { name: 'Refreshment', type: 'GENERAL' },
+        { name: 'Celebration', type: 'GENERAL' },
+        { name: 'Transportation', type: 'GENERAL' },
+        { name: 'Stationary', type: 'GENERAL' },
+        { name: 'Meta Recharge', type: 'GENERAL' },
+        { name: 'Service Charges', type: 'GENERAL' },
+        { name: 'Campaign Recharge', type: 'GENERAL' },
+        { name: 'Consultation Fee', type: 'GENERAL' },
+        { name: 'Misc Income', type: 'GENERAL' },
+        { name: 'Cash in Hand', type: 'CASH' },
         { name: 'Main Bank Account', type: 'BANK' }
     ];
 

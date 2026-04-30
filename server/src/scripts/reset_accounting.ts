@@ -52,7 +52,8 @@ async function main() {
     // 6. Create Operating/Expense Ledgers (General)
     const operatingLedgers = [
         { name: 'Electricity', type: 'GENERAL' },
-        { name: 'Rent', type: 'GENERAL' },
+        { name: 'Office Rent', type: 'GENERAL' },
+        { name: 'Accommodation Rent', type: 'GENERAL' },
         { name: 'Digital Asset', type: 'GENERAL' },
         { name: 'Drinking Water', type: 'GENERAL' },
         { name: 'Refreshment', type: 'GENERAL' },

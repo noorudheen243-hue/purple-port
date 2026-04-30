@@ -5,53 +5,42 @@ import { generateLedgerCode } from '../../utils/ledgerIdGenerator';
 
 export type LedgerType = 'CLIENT' | 'VENDOR' | 'BANK' | 'CASH' | 'INCOME' | 'EXPENSE' | 'ADJUSTMENT' | 'INTERNAL';
 
+// --- LEGACY ACCOUNTING CORE ---
+
 export const createLedger = async (data: {
     name: string;
     head_id: string;
     entity_type: string;
-    entity_id?: string; // Added optional entity_id
+    entity_id?: string;
     description?: string;
     opening_balance?: number;
     opening_balance_date?: Date;
 }) => {
     return prisma.$transaction(async (tx) => {
         const ledgerCode = await generateLedgerCode(tx);
-
-        // 1. Create Ledger
         const ledger = await tx.ledger.create({
             data: {
                 ledger_code: ledgerCode,
                 name: data.name,
                 head_id: data.head_id,
                 entity_type: data.entity_type,
-                entity_id: data.entity_id,     // Pass it through
+                entity_id: data.entity_id,
                 description: data.description,
                 status: 'ACTIVE',
-                balance: 0 // Balance is updated via transactions only
+                balance: 0
             }
         });
 
-        // 2. Handle Opening Balance if > 0
         if (data.opening_balance && data.opening_balance > 0) {
-            // Find "Opening Balance Adjustment" ledger
             const adjustmentLedger = await tx.ledger.findFirst({
                 where: { name: 'Opening Balance Adjustment' }
             });
-
             if (!adjustmentLedger) throw new Error("System Ledger 'Opening Balance Adjustment' not found.");
-
-            // Determine Debit/Credit based on Head Type
-            // Assets/Expenses -> Debit increases
-            // Liabilities/Income/Equity -> Credit increases
 
             const head = await tx.accountHead.findUnique({ where: { id: data.head_id } });
             if (!head) throw new Error("Account Head not found");
 
             const isDebitNature = ['ASSET', 'EXPENSE'].includes(head.type);
-
-            // If Asset/Expense: Debit Ledger, Credit Adjustment
-            // If Liability/Income: Credit Ledger, Debit Adjustment
-
             let debitLedgerId = isDebitNature ? ledger.id : adjustmentLedger.id;
             let creditLedgerId = isDebitNature ? adjustmentLedger.id : ledger.id;
 
@@ -65,12 +54,10 @@ export const createLedger = async (data: {
                 reference: 'OPENING_BAL'
             });
         }
-
         return ledger;
     });
 };
 
-// Exported for internal module usage (Payroll, Invoicing)
 export const createJournalEntry = async (
     tx: Prisma.TransactionClient,
     data: {
@@ -78,19 +65,15 @@ export const createJournalEntry = async (
         description: string;
         amount: number;
         type: string;
-        // Standard Two-Leg Support (Optional if using lines directly)
         debit_ledger_id?: string;
         credit_ledger_id?: string;
         reference?: string;
         invoice_id?: string;
         created_by_id?: string;
-        // Multi-Leg Support
         lines?: { ledger_id: string; debit: number; credit: number }[];
     }
 ) => {
     const transactionId = await generateTransactionId(tx);
-
-    // 1. Create Header
     const entry = await tx.journalEntry.create({
         data: {
             date: data.date,
@@ -105,25 +88,17 @@ export const createJournalEntry = async (
         }
     });
 
-    // 2. Prepare Lines
     const linesToCreate = [];
-
-    // Support basic 2-leg inputs
     if (data.debit_ledger_id && data.credit_ledger_id) {
         linesToCreate.push({ ledger_id: data.debit_ledger_id, debit: data.amount, credit: 0 });
         linesToCreate.push({ ledger_id: data.credit_ledger_id, debit: 0, credit: data.amount });
     }
-
-    // Support explicit multi-leg inputs
     if (data.lines && data.lines.length > 0) {
         linesToCreate.push(...data.lines);
     }
 
-    if (linesToCreate.length === 0) {
-        throw new Error("Journal Entry must have at least 2 lines (Debit/Credit).");
-    }
+    if (linesToCreate.length === 0) throw new Error("Journal Entry must have at least 2 lines.");
 
-    // 3. Create Lines & Update Balances
     for (const line of linesToCreate) {
         await tx.journalLine.create({
             data: {
@@ -134,7 +109,6 @@ export const createJournalEntry = async (
             }
         });
 
-        // Update Ledger Balance
         if (line.debit > 0) {
             await tx.ledger.update({
                 where: { id: line.ledger_id },
@@ -148,58 +122,521 @@ export const createJournalEntry = async (
             });
         }
 
-        // --- UNIFIED LEDGER SYNC ---
-        // Record a "twin" transaction in the unified system if enabled and mapped
+        // Unified Sync
         const isUnifiedEnabled = await tx.systemSetting.findUnique({ where: { key: 'UNIFIED_LEDGER_ENABLED' } });
         if (isUnifiedEnabled?.value === 'true') {
-            const mapping = await tx.legacyLedgerMapping.findFirst({
-                where: {
-                    OR: [
-                        { old_income_ledger_id: line.ledger_id },
-                        { old_expense_ledger_id: line.ledger_id }
-                    ]
-                }
-            });
+            // Find ALL possible mappings for this entry's lines
+            const mappedLines = [];
+            for (const line of linesToCreate) {
+                const mapping = await tx.legacyLedgerMapping.findFirst({
+                    where: {
+                        OR: [
+                            { old_income_ledger_id: line.ledger_id },
+                            { old_expense_ledger_id: line.ledger_id }
+                        ]
+                    }
+                });
+                if (mapping) mappedLines.push({ line, mapping });
+            }
 
-            if (mapping) {
-                const isIncome = mapping.old_income_ledger_id === line.ledger_id;
-                const amount = Math.abs(line.debit - line.credit);
+            // If we have mapped lines, pick the best one to sync (to avoid duplication)
+            if (mappedLines.length > 0) {
+                // Heuristic: Pick the first one, but try to match the entry type (EXPENSE vs INCOME)
+                const bestMatch = mappedLines.find(m => 
+                    (data.type === 'EXPENSE' && m.mapping.old_expense_ledger_id === m.line.ledger_id) ||
+                    (data.type === 'RECEIPT' && m.mapping.old_income_ledger_id === m.line.ledger_id)
+                ) || mappedLines[0];
+
+                const isIncome = bestMatch.mapping.old_income_ledger_id === bestMatch.line.ledger_id;
+                const amount = Math.abs(bestMatch.line.debit - bestMatch.line.credit);
+                
                 if (amount > 0) {
                     await tx.unifiedTransaction.create({
                         data: {
-                            ledger_id: mapping.new_ledger_id,
+                            ledger_id: bestMatch.mapping.new_ledger_id,
                             transaction_type: isIncome ? 'INCOME' : 'EXPENSE',
                             amount,
                             date: data.date,
                             description: data.description,
-                            reference: data.reference
+                            reference: data.reference || `LE:${entry.id}` // Link by reference if no ref provided
                         }
                     });
                 }
             }
         }
     }
-
     return entry;
 };
 
+// --- UNIFIED LEDGER SYSTEM ---
+
+export const isUnifiedLedgerEnabled = async () => {
+    const setting = await prisma.systemSetting.findUnique({
+        where: { key: 'UNIFIED_LEDGER_ENABLED' }
+    });
+    return setting?.value === 'true';
+};
+
+export const createUnifiedLedger = async (data: {
+    entity_type: string;
+    entity_id?: string;
+    ledger_name: string;
+    metadata?: string;
+    old_income_ledger_id?: string;
+    old_expense_ledger_id?: string;
+}) => {
+    return prisma.$transaction(async (tx) => {
+        const ledger = await tx.ledgerMaster.create({
+            data: {
+                entity_type: data.entity_type,
+                entity_id: data.entity_id,
+                ledger_name: data.ledger_name,
+                ledger_type: 'unified',
+                metadata: data.metadata
+            }
+        });
+
+        if (data.old_income_ledger_id || data.old_expense_ledger_id) {
+            await tx.legacyLedgerMapping.create({
+                data: {
+                    new_ledger_id: ledger.id,
+                    old_income_ledger_id: data.old_income_ledger_id,
+                    old_expense_ledger_id: data.old_expense_ledger_id
+                }
+            });
+        }
+        return ledger;
+    });
+};
+
+export const updateUnifiedLedger = async (id: string, data: any) => {
+    return await prisma.ledgerMaster.update({
+        where: { id },
+        data: {
+            ledger_name: data.ledger_name,
+            metadata: data.metadata
+        }
+    });
+};
+
+export const deleteUnifiedLedger = async (id: string) => {
+    const txCount = await prisma.unifiedTransaction.count({ where: { ledger_id: id } });
+    if (txCount > 0) throw new Error('Cannot delete ledger with existing transactions.');
+    return await prisma.ledgerMaster.delete({ where: { id } });
+};
+
+export const getUnifiedLedgers = async (type?: string) => {
+    const ledgers = await prisma.ledgerMaster.findMany({
+        where: type ? { entity_type: type } : {},
+        include: { mappings: true },
+        orderBy: { ledger_name: 'asc' }
+    });
+
+    // Active Filter (User Request)
+    const activeUsers = await prisma.user.findMany({ where: { status: 'ACTIVE' }, select: { id: true } });
+    const activeUserIds = new Set(activeUsers.map(u => u.id));
+
+    const activeClients = await prisma.client.findMany({ where: { status: 'ACTIVE' }, select: { id: true } });
+    const activeClientIds = new Set(activeClients.map(c => c.id));
+
+    return ledgers.filter(ledger => {
+        if (ledger.entity_type === 'USER' || ledger.entity_type === 'TEAM') {
+            return !ledger.entity_id || activeUserIds.has(ledger.entity_id);
+        }
+        if (ledger.entity_type === 'CLIENT') {
+            return !ledger.entity_id || activeClientIds.has(ledger.entity_id);
+        }
+        return true;
+    });
+};
+
+export const recordUnifiedTransaction = async (data: {
+    ledger_id: string;
+    transaction_type: 'INCOME' | 'EXPENSE';
+    category?: string;
+    sub_type?: string;
+    amount: number;
+    date: Date;
+    description: string;
+    reference?: string;
+    payroll_slip_id?: string;
+}) => {
+    return prisma.$transaction(async (tx) => {
+        const transaction = await tx.unifiedTransaction.create({
+            data: {
+                ledger_id: data.ledger_id,
+                transaction_type: data.transaction_type,
+                category: data.category,
+                sub_type: data.sub_type,
+                amount: data.amount,
+                date: data.date,
+                description: data.description,
+                reference: data.reference || (data.payroll_slip_id ? `PAYROLL_SLIP:${data.payroll_slip_id}` : undefined)
+            }
+        });
+
+        // Requirement: Auto-fetch advance salary in next payroll
+        if (data.sub_type === 'Advance Salary' || data.category === 'Salary Advance') {
+            const ledger = await tx.ledgerMaster.findUnique({ where: { id: data.ledger_id } });
+            if (ledger && (ledger.entity_type === 'USER' || ledger.entity_type === 'TEAM') && ledger.entity_id) {
+                await tx.user.update({
+                    where: { id: ledger.entity_id },
+                    data: { advance_balance: { increment: data.amount } }
+                });
+            }
+        }
+
+        if (data.payroll_slip_id && (data.category === 'Staff Salary' || data.category === 'Monthly Payroll')) {
+            await tx.payrollSlip.update({
+                where: { id: data.payroll_slip_id },
+                data: { status: 'PAID', payment_date: data.date }
+            });
+        }
+
+        return transaction;
+    });
+};
+
+export const deleteUnifiedTransaction = async (id: string) => {
+    return prisma.$transaction(async (tx) => {
+        const transaction = await tx.unifiedTransaction.findUnique({ 
+            where: { id },
+            include: { ledger: true }
+        });
+        if (!transaction) throw new Error("Transaction not found");
+
+        // 1. Revert Payroll Status if linked
+        const slipId = transaction.reference?.startsWith('PAYROLL_SLIP:') ? transaction.reference.split(':')[1] : null;
+        if (slipId) {
+            await tx.payrollSlip.update({
+                where: { id: slipId },
+                data: { status: 'PENDING', payment_date: null }
+            });
+        }
+
+        // 2. Revert Advance Balance if any
+        if (transaction.sub_type === 'Advance Salary' || transaction.category === 'Salary Advance') {
+            if (transaction.ledger && transaction.ledger.entity_id) {
+                await tx.user.update({
+                    where: { id: transaction.ledger.entity_id },
+                    data: { advance_balance: { decrement: transaction.amount } }
+                });
+            }
+        }
+
+        return tx.unifiedTransaction.delete({ where: { id } });
+    });
+};
+
+export const updateUnifiedTransaction = async (id: string, data: any) => {
+    return prisma.unifiedTransaction.update({
+        where: { id },
+        data: {
+            amount: data.amount,
+            description: data.description,
+            category: data.category,
+            date: data.date ? new Date(data.date) : undefined,
+            transaction_type: data.transaction_type
+        }
+    });
+};
+
+// --- ANALYTICS & REPORTS ---
+
+async function calculateUnifiedBalanceAtDate(ledger_id: string, date: Date) {
+    const mapping = await prisma.legacyLedgerMapping.findFirst({ where: { new_ledger_id: ledger_id } });
+    const newAgg = await prisma.unifiedTransaction.groupBy({
+        by: ['transaction_type'],
+        where: { ledger_id, date: { lt: date } },
+        _sum: { amount: true }
+    });
+
+    let income = 0;
+    let expense = 0;
+
+    newAgg.forEach(agg => {
+        if (agg.transaction_type === 'INCOME') income = agg._sum.amount || 0;
+        if (agg.transaction_type === 'EXPENSE') expense = agg._sum.amount || 0;
+    });
+
+    if (mapping) {
+        const migrationDate = mapping.migration_date;
+        const effectiveDate = date < migrationDate ? date : migrationDate;
+
+        if (mapping.old_income_ledger_id) {
+            const incomeAgg = await prisma.journalLine.aggregate({
+                where: { ledger_id: mapping.old_income_ledger_id, entry: { date: { lt: effectiveDate } } },
+                _sum: { debit: true, credit: true }
+            });
+            income += Math.abs((incomeAgg._sum.debit || 0) - (incomeAgg._sum.credit || 0));
+        }
+        if (mapping.old_expense_ledger_id) {
+            const expenseAgg = await prisma.journalLine.aggregate({
+                where: { ledger_id: mapping.old_expense_ledger_id, entry: { date: { lt: effectiveDate } } },
+                _sum: { debit: true, credit: true }
+            });
+            expense += Math.abs((expenseAgg._sum.debit || 0) - (expenseAgg._sum.credit || 0));
+        }
+    }
+    return income - expense;
+}
+
+export const calculateUnifiedBalance = async (ledger_id: string) => {
+    return calculateUnifiedBalanceAtDate(ledger_id, new Date('2099-12-31'));
+};
+
+export const getUnifiedStatement = async (ledger_id: string, startDate: Date, endDate: Date) => {
+    const mapping = await prisma.legacyLedgerMapping.findFirst({ where: { new_ledger_id: ledger_id } });
+    const newTransactions = await prisma.unifiedTransaction.findMany({
+        where: { ledger_id, date: { gte: startDate, lte: endDate } },
+        orderBy: { date: 'asc' }
+    });
+
+    const legacyTransactions: any[] = [];
+    if (mapping) {
+        const migrationDate = mapping.migration_date;
+        if (mapping.old_income_ledger_id) {
+            const lines = await prisma.journalLine.findMany({
+                where: { ledger_id: mapping.old_income_ledger_id, entry: { date: { gte: startDate, lte: endDate, lt: migrationDate } } },
+                include: { entry: true }
+            });
+            lines.forEach(line => legacyTransactions.push({ id: line.id, date: line.entry.date, description: line.entry.description, transaction_type: 'INCOME', amount: Math.abs(line.debit - line.credit), isLegacy: true }));
+        }
+        if (mapping.old_expense_ledger_id) {
+            const lines = await prisma.journalLine.findMany({
+                where: { ledger_id: mapping.old_expense_ledger_id, entry: { date: { gte: startDate, lte: endDate, lt: migrationDate } } },
+                include: { entry: true }
+            });
+            lines.forEach(line => legacyTransactions.push({ id: line.id, date: line.entry.date, description: line.entry.description, transaction_type: 'EXPENSE', amount: Math.abs(line.debit - line.credit), isLegacy: true }));
+        }
+    }
+
+    const all = [...newTransactions.map(t => ({ ...t, isLegacy: false })), ...legacyTransactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const openingBalance = await calculateUnifiedBalanceAtDate(ledger_id, startDate);
+    let balance = openingBalance;
+
+    const statementWithBalance = all.map(t => {
+        if (t.transaction_type === 'INCOME') balance += t.amount;
+        else balance -= t.amount;
+        return { ...t, running_balance: balance };
+    });
+
+    return {
+        transactions: statementWithBalance,
+        openingBalance,
+        closingBalance: balance,
+        totalIncome: all.filter(t => t.transaction_type === 'INCOME').reduce((sum, t) => sum + t.amount, 0),
+        totalExpense: all.filter(t => t.transaction_type === 'EXPENSE').reduce((sum, t) => sum + t.amount, 0)
+    };
+};
+
+export const getUnifiedSummary = async (month?: number, year?: number) => {
+    let startDate: Date;
+    let endDate: Date;
+    const now = new Date();
+
+    if (year) {
+        if (month) {
+            // Specific Month
+            startDate = new Date(year, month - 1, 1);
+            endDate = new Date(year, month, 0, 23, 59, 59, 999);
+        } else {
+            // Specific Year
+            startDate = new Date(year, 0, 1);
+            endDate = new Date(year, 11, 31, 23, 59, 59, 999);
+        }
+    } else {
+        // Default: Current Month
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    }
+
+    // 1. Current Period Stats
+    const incomeCurrent = await prisma.unifiedTransaction.aggregate({
+        where: { transaction_type: 'INCOME', date: { gte: startDate, lte: endDate } },
+        _sum: { amount: true }
+    });
+
+    const expenseCurrent = await prisma.unifiedTransaction.aggregate({
+        where: { transaction_type: 'EXPENSE', date: { gte: startDate, lte: endDate } },
+        _sum: { amount: true }
+    });
+
+    // 2. Opening Balance (Flow before startDate)
+    const incomeBefore = await prisma.unifiedTransaction.aggregate({
+        where: { transaction_type: 'INCOME', date: { lt: startDate } },
+        _sum: { amount: true }
+    });
+    const expenseBefore = await prisma.unifiedTransaction.aggregate({
+        where: { transaction_type: 'EXPENSE', date: { lt: startDate } },
+        _sum: { amount: true }
+    });
+
+    // Include Legacy Mappings for Opening Balance
+    const mappings = await prisma.legacyLedgerMapping.findMany();
+    let legacyOpeningBalance = 0;
+    for (const m of mappings) {
+        const effectiveDate = startDate < m.migration_date ? startDate : m.migration_date;
+        if (m.old_income_ledger_id) {
+            const agg = await prisma.journalLine.aggregate({
+                where: { ledger_id: m.old_income_ledger_id, entry: { date: { lt: effectiveDate } } },
+                _sum: { debit: true, credit: true }
+            });
+            legacyOpeningBalance += Math.abs((agg._sum.debit || 0) - (agg._sum.credit || 0));
+        }
+        if (m.old_expense_ledger_id) {
+            const agg = await prisma.journalLine.aggregate({
+                where: { ledger_id: m.old_expense_ledger_id, entry: { date: { lt: effectiveDate } } },
+                _sum: { debit: true, credit: true }
+            });
+            legacyOpeningBalance -= Math.abs((agg._sum.debit || 0) - (agg._sum.credit || 0));
+        }
+    }
+
+    const openingBalance = (incomeBefore._sum.amount || 0) - (expenseBefore._sum.amount || 0) + legacyOpeningBalance;
+    const netIncome = incomeCurrent._sum.amount || 0;
+    const netExpense = expenseCurrent._sum.amount || 0;
+    const grossIncome = openingBalance + netIncome;
+    const monthBalance = netIncome - netExpense;
+    const cashBankBalance = grossIncome - netExpense;
+
+    // 3. Distribution Queries (Period-Filtered)
+    const expenseCategories = await prisma.unifiedTransaction.groupBy({
+        by: ['category'],
+        where: { transaction_type: 'EXPENSE', date: { gte: startDate, lte: endDate } },
+        _sum: { amount: true },
+        orderBy: { _sum: { amount: 'desc' } },
+        take: 5
+    });
+
+    const revenueCategories = await prisma.unifiedTransaction.groupBy({
+        by: ['category'],
+        where: { transaction_type: 'INCOME', date: { gte: startDate, lte: endDate } },
+        _sum: { amount: true },
+        orderBy: { _sum: { amount: 'desc' } },
+        take: 5
+    });
+
+    return {
+        openingBalance,
+        netIncome,
+        netExpense,
+        grossIncome,
+        monthBalance,
+        cashBankBalance,
+        expenseDistribution: expenseCategories.map(c => ({ label: c.category || 'General', value: c._sum.amount || 0 })),
+        revenueDistribution: revenueCategories.map(c => ({ label: c.category || 'General', value: c._sum.amount || 0 })),
+        netCashFlow: monthBalance, // Running month flow
+        totalIncome: netIncome,
+        totalExpense: netExpense
+    };
+};
+
+export const getGlobalTransactionHistory = async (limit: number = 100) => {
+    const unified = await prisma.unifiedTransaction.findMany({ take: limit, orderBy: { date: 'desc' }, include: { ledger: true } });
+    
+    // Fix: Use JournalEntry instead of JournalLine to avoid row duplication for the same transaction
+    const legacyEntries = await prisma.journalEntry.findMany({ 
+        take: limit, 
+        orderBy: { date: 'desc' }, 
+        include: { lines: { include: { ledger: true } } } 
+    });
+
+    const merged = [
+        ...unified.map(t => ({ 
+            id: t.id, 
+            date: t.date, 
+            description: t.description, 
+            transaction_type: t.transaction_type, 
+            category: t.category, 
+            amount: t.amount, 
+            reference: t.reference, 
+            isLegacy: false, 
+            ledger: t.ledger 
+        })),
+        ...legacyEntries.map(entry => {
+            const debitLines = entry.lines.filter(l => l.debit > 0);
+            const creditLines = entry.lines.filter(l => l.credit > 0);
+            return { 
+                id: entry.id, // Use actual entry ID
+                date: entry.date, 
+                description: entry.description, 
+                transaction_type: entry.type === 'RECEIPT' ? 'INCOME' : (entry.type === 'PAYMENT' || entry.type === 'EXPENSE' ? 'EXPENSE' : 'JOURNAL'), 
+                category: 'Legacy', 
+                amount: entry.amount, 
+                reference: entry.reference, 
+                isLegacy: true, 
+                ledger: { 
+                    ledger_name: debitLines.map(l => l.ledger.name).join(', ') || 'Various', 
+                    entity_type: debitLines[0]?.ledger.entity_type || 'GENERAL' 
+                } 
+            };
+        })
+    ];
+    return merged.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, limit);
+};
+
+export const getExpenseSummary = async (month?: number, year?: number) => {
+    const dateQuery: any = {};
+    if (month && year) {
+        dateQuery.date = { gte: new Date(year, month - 1, 1), lte: new Date(year, month, 0, 23, 59, 59) };
+    }
+    const expenses = await prisma.unifiedTransaction.groupBy({ by: ['category'], where: { transaction_type: 'EXPENSE', ...dateQuery }, _sum: { amount: true }, _count: { id: true } });
+    return expenses.map(e => ({ category: e.category || 'Uncategorized', total: e._sum.amount || 0, count: e._count.id }));
+};
+
+// --- MISC LEGACY HELPERS ---
+
+export const getLedgers = async () => prisma.ledger.findMany({ include: { head: true }, orderBy: { name: 'asc' } });
+export const getAccountHeads = async () => prisma.accountHead.findMany({ orderBy: { code: 'asc' } });
+export const deleteLedger = async (id: string) => {
+    const count = await prisma.journalLine.count({ where: { ledger_id: id } });
+    if (count > 0) throw new Error("Cannot delete ledger with transactions.");
+    return prisma.ledger.delete({ where: { id } });
+};
+
+export const getIncomeSummary = async (month?: number, year?: number) => {
+    const dateQuery: any = {};
+    if (month && year) {
+        dateQuery.date = { gte: new Date(year, month - 1, 1), lte: new Date(year, month, 0, 23, 59, 59) };
+    }
+    const incomes = await prisma.unifiedTransaction.groupBy({ 
+        by: ['category'], 
+        where: { transaction_type: 'INCOME', ...dateQuery }, 
+        _sum: { amount: true }, 
+        _count: { id: true } 
+    });
+    return incomes.map(e => ({ 
+        category: e.category || 'Uncategorized', 
+        total: e._sum.amount || 0, 
+        count: e._count.id 
+    }));
+};
+
+export const getCategoryTransactions = async (category: string) => {
+    return prisma.unifiedTransaction.findMany({
+        where: { category },
+        include: { ledger: true },
+        orderBy: { date: 'desc' }
+    });
+};
+
+// --- LEGACY ACCOUNTING CORE (RESTORED) ---
 
 export const recordTransaction = async (data: {
     date: Date;
     description: string;
     amount: number;
-    type: string; // PAYMENT, RECEIPT, CONTRA, EXPENSE
-    from_ledger_id: string; // The GIVER (Credit)
-    to_ledger_id: string;   // The RECEIVER (Debit)
+    type: string;
+    from_ledger_id: string; // Credit
+    to_ledger_id: string;   // Debit
     reference?: string;
-    user_id: string;
-    nature?: string; // GENERAL, ADVANCE_RECEIVED, ADVANCE_PAID
-    entity_id?: string; // Client ID or User ID (Staff)
+    nature?: string;
+    user_id?: string;
+    entity_id?: string;
 }) => {
     return prisma.$transaction(async (tx) => {
         const transactionId = await generateTransactionId(tx);
-
-        // Create Entry
         const entry = await tx.journalEntry.create({
             data: {
                 date: data.date,
@@ -209,12 +646,11 @@ export const recordTransaction = async (data: {
                 reference: data.reference,
                 // @ts-ignore
                 transaction_number: transactionId,
-                created_by_id: data.user_id,
+                created_by_id: data.user_id || 'SYSTEM',
                 nature: data.nature || 'GENERAL'
             }
         });
 
-        // Debit Line (Receiver - To)
         await tx.journalLine.create({
             data: {
                 entry_id: entry.id,
@@ -224,7 +660,6 @@ export const recordTransaction = async (data: {
             }
         });
 
-        // Credit Line (Giver - From)
         await tx.journalLine.create({
             data: {
                 entry_id: entry.id,
@@ -234,7 +669,6 @@ export const recordTransaction = async (data: {
             }
         });
 
-        // Update Balances (Dr+, Cr-)
         await tx.ledger.update({
             where: { id: data.to_ledger_id },
             data: { balance: { increment: data.amount } }
@@ -245,15 +679,12 @@ export const recordTransaction = async (data: {
             data: { balance: { decrement: data.amount } }
         });
 
-        // --- ADVANCE LOGIC ---
         if (data.nature === 'ADVANCE_RECEIVED' && data.entity_id) {
-            // Client Advance: Increase Client's Advance Balance
             await tx.client.update({
                 where: { id: data.entity_id },
                 data: { advance_balance: { increment: data.amount } }
             });
         } else if ((data.nature === 'ADVANCE_PAID' || data.nature === 'SALARY_ADVANCE') && data.entity_id) {
-            // Staff Advance: Increase User's Advance Balance
             await tx.user.update({
                 where: { id: data.entity_id },
                 data: { advance_balance: { increment: data.amount } }
@@ -264,57 +695,41 @@ export const recordTransaction = async (data: {
     });
 };
 
-// Ledger management functions
-// Ledger management functions
 export const ensureLedger = async (entityType: string, entityId: string, headCode: string, description?: string) => {
-    // 1. Resolve Entity Name
     let entityName = '';
     if (entityType === 'CLIENT') {
         const c = await prisma.client.findUnique({ where: { id: entityId } });
         if (!c) throw new Error("Client not found for ledger creation");
         entityName = c.name;
-    } else if (entityType === 'USER') { // Support Staff
+    } else if (entityType === 'USER') {
         const u = await prisma.user.findUnique({ where: { id: entityId } });
         if (!u) throw new Error("User not found for ledger creation");
         entityName = u.full_name;
     } else {
-        // For INTERNAL, BANK, etc., use entityId as the name identifier
         entityName = entityId;
     }
 
-    // 2. Resolve Head ID from Code
     const head = await prisma.accountHead.findUnique({ where: { code: headCode } });
     if (!head) throw new Error(`Account Head Code ${headCode} not found.`);
 
-    // 3. Find Existing Ledger
     let existing;
     if (entityId) {
         existing = await prisma.ledger.findFirst({
-            where: {
-                entity_type: entityType,
-                entity_id: entityId,
-                head_id: head.id // FIX: Must match both entity AND head
-            }
+            where: { entity_type: entityType, entity_id: entityId, head_id: head.id }
         });
     } else {
         existing = await prisma.ledger.findFirst({
-            where: {
-                entity_type: entityType,
-                name: entityName,
-                head_id: head.id // FIX: Must match both entity AND head
-            }
+            where: { entity_type: entityType, name: entityName, head_id: head.id }
         });
     }
 
     if (existing) {
-        // UPDATE Logic: If head is different, entity_id is missing, OR NAME is different (Sync Name)
         const updates: any = {};
         if (existing.head_id !== head.id) updates.head_id = head.id;
         if (existing.entity_id !== entityId) updates.entity_id = entityId;
         if (existing.name !== entityName) updates.name = entityName;
 
         if (Object.keys(updates).length > 0) {
-            console.log(`[Ledger] Automatic update of ${Object.keys(updates).join(', ')} for ${entityType} ${entityId}`);
             return await prisma.ledger.update({
                 where: { id: existing.id },
                 data: updates
@@ -323,101 +738,41 @@ export const ensureLedger = async (entityType: string, entityId: string, headCod
         return existing;
     }
 
-    // 4. Create New
-    // 4. Create New
     return await createLedger({
         name: entityName,
         entity_type: entityType,
-        entity_id: entityId, // FIX: Pass the entity ID!
+        entity_id: entityId,
         head_id: head.id,
         description: description || `Auto-generated Ledger for ${entityType}`
     });
 };
 
-export const getLedgers = async () => {
-    return prisma.ledger.findMany({
-        include: { head: true },
-        orderBy: { name: 'asc' }
-    });
-};
-
-export const getAccountHeads = async () => {
-    return prisma.accountHead.findMany({
-        orderBy: { code: 'asc' }
-    });
-};
-
-export const updateLedger = async (id: string, data: { name?: string; description?: string; status?: string; opening_balance?: number }) => {
-    // Basic update logic
-    return prisma.ledger.update({
-        where: { id },
-        data: {
-            name: data.name,
-            description: data.description,
-            status: data.status
-        }
-    });
-};
-
-export const deleteLedger = async (id: string) => {
-    const ledger = await prisma.ledger.findUnique({
-        where: { id },
-        include: { _count: { select: { journalLines: true } } }
-    });
-
-    if (!ledger) throw new Error("Ledger not found");
-
-    if (ledger._count.journalLines > 0) {
-        throw new Error("Cannot delete ledger with existing transactions.");
-    }
-
-    return prisma.ledger.delete({ where: { id } });
-};
-
-// Restore getAccountStatement
 export const getAccountStatement = async (ledgerIds: string | string[], startDate: Date, endDate: Date) => {
-    try {
-        console.log('DEBUG_STATEMENT_REQUEST:', { ledgerIds, startDate, endDate });
-        
-        // 0. Normalize and Filter IDs
-        let ids = Array.isArray(ledgerIds) ? ledgerIds : [ledgerIds];
-        ids = ids.filter(id => id && id.trim() !== '');
-        
-        if (ids.length === 0) {
-            throw new Error("No valid ledger accounts selected for the statement.");
-        }
+    let ids = Array.isArray(ledgerIds) ? ledgerIds : [ledgerIds];
+    ids = ids.filter(id => id && id.trim() !== '');
+    if (ids.length === 0) throw new Error("No valid ledger accounts selected for the statement.");
 
-        // 1. Fetch all involved ledgers to determine Nature and Opening Balances
-        const ledgers = await prisma.ledger.findMany({
-            where: { id: { in: ids } },
-            include: { head: true }
-        });
-        if (ledgers.length === 0) throw new Error("Ledger(s) not found");
+    const ledgers = await prisma.ledger.findMany({
+        where: { id: { in: ids } },
+        include: { head: true }
+    });
+    if (ledgers.length === 0) throw new Error("Ledger(s) not found");
 
-        // 2. Aggregate Opening Balances
-        // We'll use the nature of the FIRST ledger as the "Primary Nature" for consolidation
-        const primaryLedger = ledgers[0];
-        const isPrimaryDebitNature = ['ASSET', 'EXPENSE'].includes(primaryLedger.head.type);
-
+    const primaryLedger = ledgers[0];
+    const isPrimaryDebitNature = ['ASSET', 'EXPENSE'].includes(primaryLedger.head.type);
     let totalOpeningBalance = 0;
 
     for (const ledger of ledgers) {
         const openingAgg = await prisma.journalLine.aggregate({
-            where: {
-                ledger_id: ledger.id,
-                entry: { date: { lt: startDate } }
-            },
+            where: { ledger_id: ledger.id, entry: { date: { lt: startDate } } },
             _sum: { debit: true, credit: true }
         });
 
         const isDebitNature = ['ASSET', 'EXPENSE'].includes(ledger.head.type);
         const opDr = openingAgg._sum.debit || 0;
         const opCr = openingAgg._sum.credit || 0;
-        
-        // Calculate balance for THIS ledger
         const ledgerOpBal = isDebitNature ? (opDr - opCr) : (opCr - opDr);
-        
-        // Convert to primary nature if different
+
         if (isDebitNature === isPrimaryDebitNature) {
             totalOpeningBalance += ledgerOpBal;
         } else {
@@ -425,12 +780,8 @@ export const getAccountStatement = async (ledgerIds: string | string[], startDat
         }
     }
 
-    // 3. Fetch all transactions
     const transactions = await prisma.journalLine.findMany({
-        where: {
-            ledger_id: { in: ids },
-            entry: { date: { gte: startDate, lte: endDate } }
-        },
+        where: { ledger_id: { in: ids }, entry: { date: { gte: startDate, lte: endDate } } },
         include: { entry: true, ledger: { include: { head: true } } },
         orderBy: { entry: { date: 'asc' } }
     });
@@ -440,9 +791,7 @@ export const getAccountStatement = async (ledgerIds: string | string[], startDat
         const isTxDebitNature = ['ASSET', 'EXPENSE'].includes(tx.ledger.head.type);
         const impactOnItself = isTxDebitNature ? (tx.debit - tx.credit) : (tx.credit - tx.debit);
         const impactOnConsolidated = (isTxDebitNature === isPrimaryDebitNature) ? impactOnItself : -impactOnItself;
-        
         runningBalance += impactOnConsolidated;
-        
         return {
             id: tx.id,
             date: tx.entry.date,
@@ -464,47 +813,31 @@ export const getAccountStatement = async (ledgerIds: string | string[], startDat
         closing_balance: runningBalance,
         transactions: statementLines
     };
-    } catch (error) {
-        console.error('ERROR_GET_ACCOUNT_STATEMENT:', error);
-        throw error;
-    }
 };
 
 export const getFinancialOverview = async (month?: number, year?: number) => {
     const now = new Date();
     const targetMonth = month !== undefined ? month - 1 : now.getMonth();
     const targetYear = year !== undefined ? year : now.getFullYear();
-
     const startDate = new Date(targetYear, targetMonth, 1);
     const endDate = new Date(targetYear, targetMonth + 1, 0, 23, 59, 59, 999);
     const prevMonthEndDate = new Date(targetYear, targetMonth, 0, 23, 59, 59, 999);
-
     const monthName = startDate.toLocaleString('default', { month: 'long' });
 
-    // 1. Performance Data (Income/Expense for the period)
     const journalLines = await prisma.journalLine.findMany({
-        where: {
-            entry: {
-                date: { gte: startDate, lte: endDate }
-            }
-        },
-        include: {
-            ledger: {
-                include: { head: true }
-            }
-        }
+        where: { entry: { date: { gte: startDate, lte: endDate } } },
+        include: { ledger: { include: { head: true } } }
     });
 
     let income = 0;
     let expense = 0;
-    const expenseBreakdown: any = {};
+    const expenseBreakdown: Record<string, number> = {};
 
     journalLines.forEach(line => {
         const { head } = line.ledger;
         const impact = line.debit - line.credit;
-
         if (head.type === 'INCOME') {
-            income -= impact; 
+            income -= impact;
         } else if (head.type === 'EXPENSE') {
             expense += impact;
             if (impact > 0) {
@@ -513,36 +846,21 @@ export const getFinancialOverview = async (month?: number, year?: number) => {
         }
     });
 
-    // 2. Cash & Bank Balances
     const bankLeads = await prisma.ledger.findMany({
-        where: {
-            OR: [
-                { entity_type: 'BANK' },
-                { entity_type: 'CASH' }
-            ]
-        }
+        where: { OR: [{ entity_type: 'BANK' }, { entity_type: 'CASH' }] }
     });
 
     let openingBalance = 0;
     let closingBalance = 0;
-
     for (const l of bankLeads) {
-        // Opening (Up to prev month end)
         const opAgg = await prisma.journalLine.aggregate({
-            where: {
-                ledger_id: l.id,
-                entry: { date: { lte: prevMonthEndDate } }
-            },
+            where: { ledger_id: l.id, entry: { date: { lte: prevMonthEndDate } } },
             _sum: { debit: true, credit: true }
         });
         openingBalance += (opAgg._sum.debit || 0) - (opAgg._sum.credit || 0);
 
-        // Closing (Up to current month end)
         const clAgg = await prisma.journalLine.aggregate({
-            where: {
-                ledger_id: l.id,
-                entry: { date: { lte: endDate } }
-            },
+            where: { ledger_id: l.id, entry: { date: { lte: endDate } } },
             _sum: { debit: true, credit: true }
         });
         closingBalance += (clAgg._sum.debit || 0) - (clAgg._sum.credit || 0);
@@ -552,124 +870,64 @@ export const getFinancialOverview = async (month?: number, year?: number) => {
         month_name: monthName,
         income,
         expense,
-        net_profit: income - expense, // This is current month net
+        net_profit: income - expense,
         opening_balance: openingBalance,
         cash_bank_balance: closingBalance,
-        expense_pie_data: Object.entries(expenseBreakdown).map(([name, value]) => ({ name, value: value as number }))
+        expense_pie_data: Object.entries(expenseBreakdown).map(([name, value]) => ({ name, value }))
     };
 };
 
 export const syncEntityLedgers = async () => {
     let count = 0;
-    const clients = await prisma.client.findMany({
-        where: { status: { not: 'PROSPECT' } }
-    });
+    const clients = await prisma.client.findMany({ where: { status: { not: 'PROSPECT' } } });
     for (const c of clients) {
-        if (!c.id) continue;
         const l = await ensureLedger('CLIENT', c.id, '1000');
         if (l.createdAt > new Date(Date.now() - 5000)) count++;
     }
+
     const staff = await prisma.user.findMany();
     for (const u of staff) {
-        if (!u.id) continue;
-        const l = await ensureLedger('USER', u.id, '2000'); // FIX: Sync Staff to Salary Payable ledger
+        const l = await ensureLedger('USER', u.id, '2000');
         if (l.createdAt > new Date(Date.now() - 5000)) count++;
     }
     return { message: "Sync Complete", new_ledgers: count };
 };
 
-
-export const getTransactions = async (
-    limit: number = 20,
-    offset: number = 0,
-    startDate?: Date,
-    endDate?: Date,
-    clientId?: string,
-    accountType?: string
-) => {
+export const getTransactions = async (limit: number = 20, offset: number = 0, startDate?: Date, endDate?: Date, clientId?: string, accountType?: string) => {
     const whereClause: any = {};
     if (startDate && endDate) {
-        whereClause.date = {
-            gte: startDate,
-            lte: endDate
-        };
+        whereClause.date = { gte: startDate, lte: endDate };
     }
-
     if (accountType) {
         if (['BANK', 'CASH'].includes(accountType)) {
-            whereClause.lines = {
-                some: {
-                    ledger: { entity_type: accountType }
-                }
-            };
+            whereClause.lines = { some: { ledger: { entity_type: accountType } } };
         } else {
-            whereClause.lines = {
-                some: {
-                    ledger: { head: { type: accountType } }
-                }
-            };
+            whereClause.lines = { some: { ledger: { head: { type: accountType } } } };
         }
     }
-
     if (clientId) {
-        // Fetch Client Details to get Name
         const client = await prisma.client.findUnique({ where: { id: clientId } });
-
         const orConditions: any[] = [
-            // Case A: Linked via Ledger Lines (Direct Ledger Impact - Strict ID match)
-            {
-                lines: {
-                    some: {
-                        ledger: {
-                            entity_type: 'CLIENT',
-                            entity_id: clientId
-                        }
-                    }
-                }
-            },
-            // Case B: Linked via Invoice
-            {
-                invoice: {
-                    client_id: clientId
-                }
-            }
+            { lines: { some: { ledger: { entity_type: 'CLIENT', entity_id: clientId } } } },
+            { invoice: { client_id: clientId } }
         ];
-
-        // Case C: Fallback - Match Ledger by Client Name (If Entity ID/Type missing on Ledger)
         if (client) {
-            orConditions.push({
-                lines: {
-                    some: {
-                        ledger: {
-                            name: client.name
-                        }
-                    }
-                }
-            });
+            orConditions.push({ lines: { some: { ledger: { name: client.name } } } });
         }
-
         whereClause.OR = orConditions;
     }
-
-
 
     const transactions = await prisma.journalEntry.findMany({
         where: whereClause,
         orderBy: { date: 'desc' },
         take: limit > 0 ? limit : undefined,
         skip: offset,
-        include: {
-            lines: {
-                include: { ledger: true }
-            }
-        }
+        include: { lines: { include: { ledger: true } } }
     });
 
-    // Transform for UI: Flatten Lines to show Debits/Credits clearly
     return transactions.map((tx: any) => {
         const debitLines = tx.lines.filter((l: any) => l.debit > 0);
         const creditLines = tx.lines.filter((l: any) => l.credit > 0);
-
         return {
             id: tx.id,
             transaction_number: tx.transaction_number,
@@ -679,10 +937,21 @@ export const getTransactions = async (
             amount: tx.amount,
             reference: tx.reference,
             nature: tx.nature,
-            created_by: 'System', // Schema relation missing
+            created_by: 'System',
             debit_ledgers: debitLines.map((l: any) => `${l.ledger.name} (${l.ledger.ledger_code || '-'})`).join(', '),
             credit_ledgers: creditLines.map((l: any) => `${l.ledger.name} (${l.ledger.ledger_code || '-'})`).join(', ')
         };
+    });
+};
+
+export const updateLedger = async (id: string, data: any) => {
+    return prisma.ledger.update({
+        where: { id },
+        data: {
+            name: data.name,
+            description: data.description,
+            status: data.status
+        }
     });
 };
 
@@ -691,65 +960,68 @@ export const deleteTransaction = async (entryId: string) => {
         where: { id: entryId },
         include: { lines: true }
     });
-
     if (!entry) throw new Error("Transaction not found");
 
     for (const line of entry.lines) {
         if (line.debit > 0) {
-            await prisma.ledger.update({
-                where: { id: line.ledger_id },
-                data: { balance: { decrement: line.debit } }
-            });
+            await prisma.ledger.update({ where: { id: line.ledger_id }, data: { balance: { decrement: line.debit } } });
         }
         if (line.credit > 0) {
-            await prisma.ledger.update({
-                where: { id: line.ledger_id },
-                data: { balance: { increment: line.credit } }
-            });
+            await prisma.ledger.update({ where: { id: line.ledger_id }, data: { balance: { increment: line.credit } } });
         }
     }
 
-    // Verify and Revert Advance Balances
     if (entry.nature === 'ADVANCE_RECEIVED') {
-        // Find client linked? Usually found via Ledger Entity or passing context. 
-        // Current Schema doesn't link JournalEntry directly to Client/User for nature.
-        // We must inspect proper Journal Lines or rely on a new field.
-        // LIMITATION: 'nature' was added, but 'entity_id' wasn't added to JournalEntry.
-        // We have to infer from Ledgers. 
-        // Advance Received -> Credit Ledger is Client.
         const creditLine = entry.lines.find(l => l.credit > 0);
         if (creditLine) {
             const ledger = await prisma.ledger.findUnique({ where: { id: creditLine.ledger_id } });
             if (ledger && ledger.entity_type === 'CLIENT' && ledger.entity_id) {
-                await prisma.client.update({
-                    where: { id: ledger.entity_id },
-                    data: { advance_balance: { decrement: entry.amount } }
-                });
+                await prisma.client.update({ where: { id: ledger.entity_id }, data: { advance_balance: { decrement: entry.amount } } });
             }
         }
     } else if (entry.nature === 'ADVANCE_PAID' || entry.nature === 'SALARY_ADVANCE') {
-        // Advance Paid -> Debit Ledger is User (Staff)
         const debitLine = entry.lines.find(l => l.debit > 0);
         if (debitLine) {
             const ledger = await prisma.ledger.findUnique({ where: { id: debitLine.ledger_id } });
             if (ledger && ledger.entity_type === 'USER' && ledger.entity_id) {
-                await prisma.user.update({
-                    where: { id: ledger.entity_id },
-                    data: { advance_balance: { decrement: entry.amount } }
-                });
+                await prisma.user.update({ where: { id: ledger.entity_id }, data: { advance_balance: { decrement: entry.amount } } });
             }
         }
     }
 
+    // Requirement: Delete associated UnifiedTransaction if any
+    const linkedUnifiedTx = await prisma.unifiedTransaction.findFirst({
+        where: {
+            OR: [
+                { reference: entry.reference || 'NONE_STRICT' },
+                { reference: `LE:${entryId}` },
+                { reference: `PAYROLL_SLIP:${entry.id}` }, // Legacy link
+                { description: entry.description, amount: entry.amount, date: entry.date }
+            ]
+        }
+    });
+    
+    if (linkedUnifiedTx) {
+        // Use the unified delete logic to ensure all side effects (payroll, etc) are reverted
+        await deleteUnifiedTransaction(linkedUnifiedTx.id);
+    }
+
+    // Handle Payroll Slip Status Reversion for direct legacy entries
+    const legacySlipId = entry.reference?.startsWith('PAYROLL_SLIP:') ? entry.reference.split(':')[1] : null;
+    if (legacySlipId) {
+        await prisma.payrollSlip.update({
+            where: { id: legacySlipId },
+            data: { status: 'PENDING', payment_date: null }
+        });
+    }
+
     await prisma.journalLine.deleteMany({ where: { entry_id: entryId } });
     await prisma.journalEntry.delete({ where: { id: entryId } });
-
     return { message: "Transaction deleted and balances reverted." };
 };
 
-export const updateTransaction = async (entryId: string, data: { description?: string, date?: Date, reference?: string, amount?: number }) => {
+export const updateTransaction = async (entryId: string, data: any) => {
     return prisma.$transaction(async (tx) => {
-        // 1. Fetch original entry
         const originalEntry = await tx.journalEntry.findUnique({
             where: { id: entryId },
             include: { lines: true }
@@ -758,70 +1030,39 @@ export const updateTransaction = async (entryId: string, data: { description?: s
 
         const updates: any = {};
         if (data.description) updates.description = data.description;
-        if (data.date) updates.date = data.date;
+        if (data.date) updates.date = new Date(data.date);
         if (data.reference) updates.reference = data.reference;
 
-        // If Amount is NOT changing, just update metadata
         if (data.amount === undefined || data.amount === originalEntry.amount) {
-            return tx.journalEntry.update({
-                where: { id: entryId },
-                data: updates
-            });
+            return tx.journalEntry.update({ where: { id: entryId }, data: updates });
         }
 
-        // --- FINANCIAL UPDATE LOGIC ---
         const newAmount = data.amount;
         const oldAmount = originalEntry.amount;
         const ratio = newAmount / oldAmount;
-
         updates.amount = newAmount;
 
-        // 2. Revert Old Balances
         for (const line of originalEntry.lines) {
             if (line.debit > 0) {
-                await tx.ledger.update({
-                    where: { id: line.ledger_id },
-                    data: { balance: { decrement: line.debit } }
-                });
+                await tx.ledger.update({ where: { id: line.ledger_id }, data: { balance: { decrement: line.debit } } });
             }
             if (line.credit > 0) {
-                await tx.ledger.update({
-                    where: { id: line.ledger_id },
-                    data: { balance: { increment: line.credit } }
-                });
+                await tx.ledger.update({ where: { id: line.ledger_id }, data: { balance: { increment: line.credit } } });
             }
         }
 
-        // 3. Update Lines (Scale by ratio) & Apply New Balances
         for (const line of originalEntry.lines) {
             const newDebit = line.debit * ratio;
             const newCredit = line.credit * ratio;
-
-            // Update Line
-            await tx.journalLine.update({
-                where: { id: line.id },
-                data: { debit: newDebit, credit: newCredit }
-            });
-
-            // Apply New Balance
+            await tx.journalLine.update({ where: { id: line.id }, data: { debit: newDebit, credit: newCredit } });
             if (newDebit > 0) {
-                await tx.ledger.update({
-                    where: { id: line.ledger_id },
-                    data: { balance: { increment: newDebit } }
-                });
+                await tx.ledger.update({ where: { id: line.ledger_id }, data: { balance: { increment: newDebit } } });
             }
             if (newCredit > 0) {
-                await tx.ledger.update({
-                    where: { id: line.ledger_id },
-                    data: { balance: { decrement: newCredit } }
-                });
+                await tx.ledger.update({ where: { id: line.ledger_id }, data: { balance: { decrement: newCredit } } });
             }
         }
 
-        // 4. Update Header
-        return tx.journalEntry.update({
-            where: { id: entryId },
-            data: updates
-        });
+        return tx.journalEntry.update({ where: { id: entryId }, data: updates });
     });
 };

@@ -111,6 +111,22 @@ async function main() {
         }
     }
 
+    // 3. Create Master Expense Ledger if not exists
+    const expenseLedger = await prisma.ledgerMaster.findFirst({
+        where: { ledger_name: 'Master Expense Account', entity_type: 'GENERAL' }
+    });
+
+    if (!expenseLedger) {
+        await prisma.ledgerMaster.create({
+            data: {
+                ledger_name: 'Master Expense Account',
+                entity_type: 'GENERAL',
+                ledger_type: 'unified'
+            }
+        });
+        console.log('Created Master Expense Account.');
+    }
+
     console.log('Migration complete.');
 }
 

@@ -40,9 +40,18 @@ router.post('/backup/restore', authorize(ROLES.ADMIN, ROLES.DEVELOPER_ADMIN), Ac
 // Unified Ledger (New System)
 router.get('/unified/ledgers', authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN), AccountingController.getUnifiedLedgers);
 router.post('/unified/ledgers', authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN), AccountingController.createUnifiedLedger);
+router.get('/unified/transactions', authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN), AccountingController.getUnifiedTransactions);
 router.post('/unified/transactions', authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN), AccountingController.recordUnifiedTransaction);
+router.patch('/unified/transactions/:id', authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN), AccountingController.updateUnifiedTransaction);
+router.delete('/unified/transactions/:id', authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN), AccountingController.deleteUnifiedTransaction);
 router.post('/unified/reports/statement', authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN), AccountingController.getUnifiedStatement);
+router.get('/unified/reports/summary', authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN), AccountingController.getUnifiedSummary);
+router.patch('/unified/ledgers/:id', authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN), AccountingController.updateUnifiedLedger);
+router.delete('/unified/ledgers/:id', authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN), AccountingController.deleteUnifiedLedger);
 router.get('/unified/ledgers/:id/balance', authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN), AccountingController.getUnifiedBalance);
+router.get('/unified/reports/expenses', authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN), AccountingController.getExpenseSummary);
+router.get('/unified/reports/income', authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN), AccountingController.getUnifiedIncomeSummary);
+router.get('/unified/transactions/category/:category', authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN), AccountingController.getCategoryTransactions);
 router.get('/unified/status', AccountingController.checkUnifiedEnabled);
 
 export default router;

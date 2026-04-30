@@ -579,11 +579,17 @@ export const processIndividualSlip = async (slipId: string, bankLedgerId?: strin
         // Credit: Bank/Cash Ledger (Net Pay)
         // Credit: Advance Ledger (Advance Recovery, if any)
 
-        let totalExpense = slip.net_pay;
-        if (slip.advance_salary > 0) totalExpense += slip.advance_salary;
+        let totalGross = slip.net_pay;
+        if (slip.advance_salary > 0) totalGross += slip.advance_salary;
 
+        // Requirement: Posting to both bank and staff ledgers
         const combinedLines = [
-            { ledger_id: salaryExpenseLedger.id, debit: totalExpense, credit: 0 },
+            // 1. Provisioning: Record Expense and Credit Staff Ledger (Liability)
+            { ledger_id: salaryExpenseLedger.id, debit: totalGross, credit: 0 },
+            { ledger_id: staffLedger.id, credit: totalGross, debit: 0 },
+
+            // 2. Payout: Debit Staff Ledger (Clearing Liability) and Credit Bank/Advance
+            { ledger_id: staffLedger.id, debit: totalGross, credit: 0 },
             { ledger_id: bankLedger.id, credit: slip.net_pay, debit: 0 }
         ];
 
@@ -594,11 +600,20 @@ export const processIndividualSlip = async (slipId: string, bankLedgerId?: strin
         await createJournalEntry(tx, {
             date: new Date(),
             description: `Payroll Payout - ${periodStr} - ${slip.user.full_name}`,
-            amount: totalExpense,
+            amount: totalGross,
             type: 'EXPENSE',
             created_by_id: 'SYSTEM',
+            reference: `PAYROLL_SLIP:${slipId}`,
             lines: combinedLines
         });
+
+        // Clear Advance Balance if recovered
+        if (slip.advance_salary > 0) {
+            await tx.user.update({
+                where: { id: slip.user_id },
+                data: { advance_balance: { decrement: slip.advance_salary } }
+            });
+        }
 
         return tx.payrollSlip.update({
             where: { id: slipId },

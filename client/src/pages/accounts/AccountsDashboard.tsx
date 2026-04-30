@@ -4,11 +4,11 @@ import api from '../../lib/api';
 import LedgerManagement from './LedgerManagement';
 import SalaryReports from './SalaryReports';
 import AccountStatement from './AccountStatement';
-import UnifiedLedgerManagement from './UnifiedLedgerManagement';
+import FinancialDashboard from './FinancialDashboard';
 import UnifiedLedgerStatement from './UnifiedLedgerStatement';
 
 const AccountsDashboard = () => {
-    const [activeTab, setActiveTab] = useState<'ledgers' | 'reports' | 'statements' | 'unified-ledgers' | 'unified-statements'>('ledgers');
+    const [activeTab, setActiveTab] = useState<'ledgers' | 'reports' | 'statements' | 'hub' | 'unified-statements'>('hub');
 
     // Fetch Unified System Status
     const { data: unifiedStatus } = useQuery({
@@ -35,44 +35,48 @@ const AccountsDashboard = () => {
     return (
         <div className="space-y-6">
             <div className="flex flex-wrap gap-2 bg-transparent p-0 w-fit">
+                {isUnified && (
+                    <button
+                        onClick={() => setActiveTab('hub')}
+                        className={getTabClass('hub', 'unified')}
+                    >
+                        ✨ Financial Hub
+                    </button>
+                )}
+                
                 <button
                     onClick={() => setActiveTab('ledgers')}
                     className={getTabClass('ledgers')}
                 >
-                    Ledger Management
+                    Legacy Ledgers
                 </button>
                 <button
                     onClick={() => setActiveTab('reports')}
                     className={getTabClass('reports')}
                 >
-                    Salary & Wages Reports
+                    Salary Reports
                 </button>
                 <button
                     onClick={() => setActiveTab('statements')}
                     className={getTabClass('statements')}
                 >
-                    Statements
+                    Legacy Statements
                 </button>
 
-                {/* Unified System Tabs */}
-                <button
-                    onClick={() => setActiveTab('unified-ledgers')}
-                    className={getTabClass('unified-ledgers', 'unified')}
-                >
-                    Unified Ledgers (New)
-                </button>
-                <button
-                    onClick={() => setActiveTab('unified-statements')}
-                    className={getTabClass('unified-statements', 'unified')}
-                >
-                    Unified Statements
-                </button>
+                {isUnified && (
+                    <button
+                        onClick={() => setActiveTab('unified-statements')}
+                        className={getTabClass('unified-statements', 'unified')}
+                    >
+                        Statement Engine
+                    </button>
+                )}
             </div>
 
+            {activeTab === 'hub' && <FinancialDashboard />}
             {activeTab === 'ledgers' && <LedgerManagement />}
             {activeTab === 'reports' && <SalaryReports />}
             {activeTab === 'statements' && <AccountStatement />}
-            {activeTab === 'unified-ledgers' && <UnifiedLedgerManagement />}
             {activeTab === 'unified-statements' && <UnifiedLedgerStatement />}
         </div>
     );

@@ -2142,6 +2142,7 @@ model LedgerMaster {
   entity_id   String?
   ledger_name String
   ledger_type String   @default("unified")
+  metadata    String?  // JSON for extra entity info
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -2154,6 +2155,8 @@ model UnifiedTransaction {
   ledger_id        String
   ledger           LedgerMaster @relation(fields: [ledger_id], references: [id])
   transaction_type String   // INCOME, EXPENSE
+  category         String?  // Electricity, Rent, Service Charge, etc.
+  sub_type         String?  // Salary, Advance, Incentive
   amount           Float
   date             DateTime @default(now())
   description      String

@@ -5,13 +5,26 @@ const api = axios.create({
     withCredentials: true,
 });
 
+// Request Interceptor to add Token
+api.interceptors.request.use(
+    (config) => {
+        const token = localStorage.getItem('auth_token');
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error);
+    }
+);
+
 api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
-            // Logic to redirect to login on 401 can go here, 
-            // but usually handled by global state or router protector
-            // window.location.href = '/login';
+            // Optional: Handle token expiration/forced logout
+            // localStorage.removeItem('auth_token');
         }
         return Promise.reject(error);
     }

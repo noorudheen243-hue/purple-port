@@ -11,6 +11,8 @@ const Login = lazy(() => import('./pages/auth/Login'));
 const Register = lazy(() => import('./pages/auth/Register'));
 const Dashboard = lazy(() => import('./pages/dashboard'));
 const StrategyReportView = lazy(() => import('./pages/portal/StrategyWizard/StrategyReportView'));
+const CategoryTransactionsView = lazy(() => import('./pages/accounts/CategoryTransactionsView'));
+
 
 const queryClient = new QueryClient()
 
@@ -72,6 +74,7 @@ function App() {
                                     <Route element={<ProtectedRoute />}>
                                         <Route path="/dashboard/*" element={<Dashboard />} />
                                         <Route path="/strategy/report/:id" element={<StrategyReportView />} />
+                                        <Route path="/accounts/category-transactions/:category" element={<CategoryTransactionsView />} />
                                         <Route path="/" element={<Navigate to="/dashboard" replace />} />
                                     </Route>
                                 </Routes>

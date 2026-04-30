@@ -5,7 +5,7 @@ interface User {
     id: string;
     email: string;
     full_name: string;
-    role: string; // Simplified to string to avoid mismatch with schema
+    role: string;
     department: string;
     avatar_url?: string;
     linked_client_id?: string;
@@ -33,27 +33,42 @@ export const useAuthStore = create<AuthState>((set) => ({
     checkAuth: async () => {
         try {
             const { data } = await api.get('/auth/me');
-            sessionStorage.clear(); // Reset notification flags on app load/checkAuth
+            sessionStorage.clear();
             set({ user: data, isAuthenticated: true, isLoading: false });
         } catch (error) {
+            localStorage.removeItem('auth_token');
             set({ user: null, isAuthenticated: false, isLoading: false });
         }
     },
 
     login: async (credentials) => {
         const { data } = await api.post('/auth/login', credentials);
-        sessionStorage.clear(); // Clear all session flags on fresh login
+        sessionStorage.clear();
+        
+        // Persist token for header-based auth fallback
+        if (data.token) {
+            localStorage.setItem('auth_token', data.token);
+        }
+        
         set({ user: data, isAuthenticated: true });
     },
 
     register: async (registerData) => {
         const { data } = await api.post('/auth/register', registerData);
+        if (data.token) {
+            localStorage.setItem('auth_token', data.token);
+        }
         set({ user: data, isAuthenticated: true });
     },
 
     logout: async () => {
-        await api.post('/auth/logout');
-        sessionStorage.clear(); // Clear all session flags on logout
+        try {
+            await api.post('/auth/logout');
+        } catch (e) {
+            console.warn('Logout request failed, clearing local state anyway');
+        }
+        sessionStorage.clear();
+        localStorage.removeItem('auth_token');
         set({ user: null, isAuthenticated: false });
     },
 }));

@@ -272,10 +272,12 @@ export const restoreBackup = async (req: Request, res: Response) => {
 
 export const getUnifiedLedgers = async (req: Request, res: Response) => {
     try {
-        const ledgers = await AccountingService.getUnifiedLedgers();
+        const { type } = req.query;
+        const ledgers = await AccountingService.getUnifiedLedgers(type as string);
         res.json(ledgers);
     } catch (error) {
-        res.status(500).json({ message: "Failed to fetch unified ledgers" });
+        console.error("DEBUG [getUnifiedLedgers]:", error);
+        res.status(500).json({ message: "Failed to fetch ledgers" });
     }
 };
 
@@ -299,11 +301,20 @@ export const recordUnifiedTransaction = async (req: Request, res: Response) => {
 
 export const getUnifiedStatement = async (req: Request, res: Response) => {
     try {
-        const { ledger_id, start_date, end_date } = req.body;
-        const stmt = await AccountingService.getUnifiedStatement(ledger_id, new Date(start_date), new Date(end_date));
+        const { ledger_id, startDate, endDate, start_date, end_date } = req.body;
+        const sDate = new Date(startDate || start_date);
+        const eDate = new Date(endDate || end_date);
+        
+        // Ensure endDate covers the entire day
+        if (!isNaN(eDate.getTime())) {
+            eDate.setHours(23, 59, 59, 999);
+        }
+
+        const stmt = await AccountingService.getUnifiedStatement(ledger_id, sDate, eDate);
         res.json(stmt);
     } catch (error) {
-        res.status(500).json({ message: (error as Error).message });
+        console.error('Failed to generate statement:', error);
+        res.status(500).json({ message: 'Failed to generate statement' });
     }
 };
 
@@ -323,5 +334,101 @@ export const checkUnifiedEnabled = async (req: Request, res: Response) => {
         res.json({ enabled });
     } catch (error) {
         res.status(500).json({ message: "Failed to check feature flag" });
+    }
+};
+export const getExpenseSummary = async (req: Request, res: Response) => {
+    try {
+        const { month, year } = req.query;
+        const summary = await AccountingService.getExpenseSummary(
+            month ? parseInt(month as string) : undefined,
+            year ? parseInt(year as string) : undefined
+        );
+        res.json(summary);
+    } catch (error) {
+        res.status(500).json({ message: "Failed to fetch expense summary" });
+    }
+};
+
+export const getUnifiedTransactions = async (req: Request, res: Response) => {
+    try {
+        const { limit } = req.query;
+        const history = await AccountingService.getGlobalTransactionHistory(limit ? parseInt(limit as string) : 100);
+        res.json(history);
+    } catch (error) {
+        console.error('Failed to fetch transaction history:', error);
+        res.status(500).json({ message: 'Failed to fetch transactions' });
+    }
+};
+
+export const deleteUnifiedTransaction = async (req: Request, res: Response) => {
+    try {
+        await AccountingService.deleteUnifiedTransaction(req.params.id);
+        res.json({ message: 'Transaction deleted' });
+    } catch (error) {
+        res.status(500).json({ message: 'Failed to delete' });
+    }
+};
+
+export const updateUnifiedTransaction = async (req: Request, res: Response) => {
+    try {
+        const updated = await AccountingService.updateUnifiedTransaction(req.params.id, req.body);
+        res.json(updated);
+    } catch (error) {
+        res.status(500).json({ message: 'Failed to update' });
+    }
+};
+
+export const getUnifiedSummary = async (req: Request, res: Response) => {
+    try {
+        const { month, year } = req.query;
+        const summary = await AccountingService.getUnifiedSummary(
+            month ? parseInt(month as string) : undefined,
+            year ? parseInt(year as string) : undefined
+        );
+        res.json(summary);
+    } catch (error) {
+        console.error('Failed to fetch analytics summary:', error);
+        res.status(500).json({ message: 'Failed to fetch analytics' });
+    }
+};
+
+export const updateUnifiedLedger = async (req: Request, res: Response) => {
+    try {
+        const ledger = await AccountingService.updateUnifiedLedger(req.params.id, req.body);
+        res.json(ledger);
+    } catch (error: any) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+export const deleteUnifiedLedger = async (req: Request, res: Response) => {
+    try {
+        await AccountingService.deleteUnifiedLedger(req.params.id);
+        res.json({ message: 'Ledger deleted successfully' });
+    } catch (error: any) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+export const getUnifiedIncomeSummary = async (req: Request, res: Response) => {
+    try {
+        const { month, year } = req.query;
+        const summary = await AccountingService.getIncomeSummary(
+            month ? parseInt(month as string) : undefined,
+            year ? parseInt(year as string) : undefined
+        );
+        res.json(summary);
+    } catch (error) {
+        res.status(500).json({ message: 'Failed to fetch' });
+    }
+};
+
+export const getCategoryTransactions = async (req: Request, res: Response) => {
+    try {
+        const { category } = req.params;
+        const transactions = await AccountingService.getCategoryTransactions(category);
+        res.json(transactions);
+    } catch (error) {
+        res.status(500).json({ message: 'Failed to fetch category transactions' });
     }
 };

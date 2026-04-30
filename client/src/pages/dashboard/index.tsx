@@ -43,6 +43,7 @@ const TransactionEntry = lazy(() => import('../accounts/TransactionEntry'));
 const AccountOverview = lazy(() => import('../accounts/AccountOverview'));
 const AccountStatement = lazy(() => import('../accounts/AccountStatement'));
 const TransactionHistory = lazy(() => import('../accounts/TransactionHistory'));
+const LedgerFullView = lazy(() => import('../accounts/LedgerFullView'));
 
 const ROIDashboard = lazy(() => import('../ad_intelligence/ROIDashboard'));
 const TeamList = lazy(() => import('../team/TeamList'));
@@ -148,6 +149,7 @@ const Dashboard = () => {
                     <Route path="accounts/overview" element={<AccountOverview />} />
                     <Route path="accounts/statement" element={<AccountStatement />} />
                     <Route path="accounts/history" element={<TransactionHistory />} />
+                    <Route path="accounts/ledger/:id" element={<LedgerFullView />} />
 
                     {/* Finance Module */}
                     <Route path="finance" element={<FinanceManagerPage />} />

@@ -11,34 +11,91 @@ import { Badge } from "../../components/ui/badge";
 import { Dialog, DialogContent, DialogTrigger } from '../../components/ui/dialog';
 import { Eye, Printer, Share2, Download, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import InvoiceTemplate from '../../components/finance/InvoiceTemplate';
-import StatementTemplate from '../../components/finance/StatementTemplate'; // NEW
+import StatementTemplate from '../../components/finance/StatementTemplate'; 
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-
+import { useAuthStore } from '../../store/authStore';
 const ClientAccountsPage = () => {
+    const { user } = useAuthStore();
     const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
     const printRef = useRef<HTMLDivElement>(null); // For Invoice
     const statementPrintRef = useRef<HTMLDivElement>(null); // For Statement
+    const [searchParams] = useSearchParams();
+    const entityId = searchParams.get('entity_id') || (user?.role === 'CLIENT' ? (user as any).linked_client_id : null);
 
     const handlePrintStatement = () => {
         if (statementPrintRef.current) {
             const content = statementPrintRef.current.innerHTML;
             const printWindow = window.open('', '', 'height=800,width=800');
             if (printWindow) {
-                printWindow.document.write('<html><head><title>Statement</title>');
-                printWindow.document.write('<script src="https://cdn.tailwindcss.com"></script>'); // Quick style inject
-                printWindow.document.write('</head><body >');
+                printWindow.document.write('<html><head><title>Statement of Account</title>');
+                printWindow.document.write('<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">');
+                printWindow.document.write('<script src="https://cdn.tailwindcss.com"></script>');
+                printWindow.document.write('<style>@media print { body { -webkit-print-color-adjust: exact; } .no-print { display: none; } }</style>');
+                printWindow.document.write('</head><body class="bg-white">');
                 printWindow.document.write(content);
                 printWindow.document.write('</body></html>');
                 printWindow.document.close();
-                printWindow.focus();
-                setTimeout(() => printWindow.print(), 1000); // Increased timeout for images
+                
+                // Wait for styles and fonts to load
+                setTimeout(() => {
+                    printWindow.focus();
+                    printWindow.print();
+                    // printWindow.close(); // Optional: close after print
+                }, 1000);
             }
         }
     };
 
-    const [searchParams] = useSearchParams();
-    const entityId = searchParams.get('entity_id');
+    const handleDownloadStatementPDF = async () => {
+        if (statementPrintRef.current) {
+            const element = statementPrintRef.current;
+            const originalStyle = element.style.display;
+            
+            // Temporarily make visible for capture
+            element.style.display = 'block';
+            element.style.position = 'absolute';
+            element.style.left = '-9999px';
+            
+            try {
+                const canvas = await html2canvas(element, { 
+                    scale: 2,
+                    useCORS: true,
+                    logging: false,
+                    windowWidth: 794 // Approx A4 width in px at 96 DPI
+                });
+                
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = pdf.internal.pageSize.getHeight();
+                
+                const canvasWidth = canvas.width;
+                const canvasHeight = canvas.height;
+                
+                // Calculate height of one A4 page in canvas units
+                const pageHeightInCanvas = (canvasWidth * pdfHeight) / pdfWidth;
+                
+                let heightLeft = canvasHeight;
+                let position = 0;
+                let pageCount = 0;
+
+                while (heightLeft > 0) {
+                    if (pageCount > 0) pdf.addPage();
+                    
+                    pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, (canvasHeight * pdfWidth) / canvasWidth);
+                    
+                    heightLeft -= pageHeightInCanvas;
+                    position -= pdfHeight;
+                    pageCount++;
+                }
+
+                pdf.save(`Statement_${client?.name || 'Account'}_${format(new Date(), 'yyyyMMdd')}.pdf`);
+            } finally {
+                element.style.display = originalStyle;
+            }
+        }
+    };
 
     // Fetch Transactions (Backend automatically filters for the logged-in Client)
     const { data: transactions = [], isLoading: loadingTx } = useQuery({
@@ -59,6 +116,17 @@ const ClientAccountsPage = () => {
             const { data } = await api.get('/billing/invoices');
             return data;
         }
+    });
+
+    // Fetch Client Details
+    const { data: client } = useQuery({
+        queryKey: ['client-details', entityId],
+        queryFn: async () => {
+            if (!entityId) return null;
+            const { data } = await api.get(`/clients/${entityId}`);
+            return data;
+        },
+        enabled: !!entityId
     });
 
     const isLoading = loadingTx || loadingInv;
@@ -117,9 +185,14 @@ const ClientAccountsPage = () => {
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between">
                             <CardTitle>Transaction History</CardTitle>
-                            <Button variant="outline" size="sm" onClick={handlePrintStatement}>
-                                <Printer className="h-4 w-4 mr-2" /> Print Statement
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button variant="outline" size="sm" onClick={handlePrintStatement}>
+                                    <Printer className="h-4 w-4 mr-2" /> Print
+                                </Button>
+                                <Button variant="outline" size="sm" onClick={handleDownloadStatementPDF}>
+                                    <Download className="h-4 w-4 mr-2" /> Download PDF
+                                </Button>
+                            </div>
                         </CardHeader>
                         <CardContent>
                             <div className="overflow-x-auto">
@@ -150,13 +223,16 @@ const ClientAccountsPage = () => {
                                 </table>
                             </div>
 
-                            {/* Hidden Printable Template */}
                             <div className="hidden">
-                                <StatementTemplate
-                                    ref={statementPrintRef}
-                                    transactions={recentActivity}
-                                    clientName="Client Account" // TODO: Fetch client name context if available
-                                />
+                                <div style={{ position: 'absolute', top: '-10000px' }}>
+                                    <StatementTemplate
+                                        ref={statementPrintRef}
+                                        transactions={recentActivity}
+                                        clientName={client?.name || "Client Account"}
+                                        startDate={recentActivity.length > 0 ? new Date(recentActivity[recentActivity.length - 1].date) : undefined}
+                                        endDate={recentActivity.length > 0 ? new Date(recentActivity[0].date) : undefined}
+                                    />
+                                </div>
                             </div>
                         </CardContent>
                     </Card>

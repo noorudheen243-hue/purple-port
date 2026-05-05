@@ -160,6 +160,12 @@ export const syncJournalEntryToUnified = async (
             });
 
             if (ledger && ledger.head) {
+                // EXCLUSION LOGIC: Only sync P&L impacting accounts (Income/Expense)
+                // This ensures "Single Entry" behavior for the dashboard.
+                if (ledger.head.type !== 'INCOME' && ledger.head.type !== 'EXPENSE') {
+                    continue;
+                }
+
                 let unifiedType: 'INCOME' | 'EXPENSE';
                 if (ledger.head.type === 'ASSET') {
                     unifiedType = line.debit > 0 ? 'INCOME' : 'EXPENSE';
@@ -236,8 +242,13 @@ export const repairUnifiedSync = async () => {
         await prisma.$transaction(async (tx) => {
             for (const entry of batch) {
                 try {
-                    // Check if any of this entry's lines are missing from unified
-                    const entryNeedsSync = entry.lines.some(line => !refSet.has(`LE:${entry.id}:${line.ledger_id}`));
+                    // Check if any of this entry's lines (that are P&L impacting) are missing from unified
+                    const entryNeedsSync = entry.lines.some(line => {
+                        // We only care about syncing the P&L impacting lines
+                        // We need the head to know the type, so we'll check it in the sync function
+                        // But for the check here, we'll be more inclusive and let syncJournalEntryToUnified filter it.
+                        return !refSet.has(`LE:${entry.id}:${line.ledger_id}`);
+                    });
                     
                     if (entryNeedsSync) {
                         await syncJournalEntryToUnified(tx, entry, entry.lines);
@@ -636,15 +647,21 @@ export const getUnifiedSummary = async (month?: number, year?: number) => {
 export const getGlobalTransactionHistory = async (limit: number = 100) => {
     const unified = await prisma.unifiedTransaction.findMany({ take: limit, orderBy: { date: 'desc' }, include: { ledger: true } });
     
-    // Fix: Use JournalEntry instead of JournalLine to avoid row duplication for the same transaction
+    // Fix: Use JournalEntry instead of JournalLine to avoid row duplication
     const legacyEntries = await prisma.journalEntry.findMany({ 
         take: limit, 
         orderBy: { date: 'desc' }, 
-        include: { lines: { include: { ledger: true } } } 
+        include: { lines: { include: { ledger: { include: { head: true } } } } } 
     });
 
     // Create a set of synced legacy entry IDs to avoid double-showing in history
-    const syncedLegacyIds = new Set(unified.filter(t => t.reference?.startsWith('LE:')).map(t => t.reference?.replace('LE:', '')));
+    // We extract the entryId from the new format: LE:entryId:ledgerId
+    const syncedLegacyIds = new Set(
+        unified
+            .filter(t => t.reference?.startsWith('LE:'))
+            .map(t => t.reference?.split(':')[1])
+            .filter(Boolean)
+    );
 
     const merged = [
         ...unified.map(t => ({

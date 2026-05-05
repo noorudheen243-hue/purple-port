@@ -448,7 +448,7 @@ const calculateTotalDeductions = (s: any) => (s.lop_deduction || 0) + (s.advance
 const Payslips = () => {
     const { user } = useAuthStore();
     const queryClient = useQueryClient();
-    const isAdmin = user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'DEVELOPER_ADMIN';
+    const isAdmin = user?.role === 'ADMIN' || user?.role === 'DEVELOPER_ADMIN';
 
     const [selectedSlip, setSelectedSlip] = useState<any | null>(null);
     const [selectedUserId, setSelectedUserId] = useState<string>('me');

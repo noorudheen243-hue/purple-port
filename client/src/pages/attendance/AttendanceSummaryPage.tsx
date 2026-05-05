@@ -313,6 +313,7 @@ const AttendanceSummaryPage = () => {
                 } else if (status === 'HALF_DAY') {
                     totalHalfDaysCount++;
                     totalPresentValue += value;
+                    totalLOP += 0.5; // Count half-day as 0.5 LOP
                 } else if (status === 'ABSENT') {
                     totalLOP++;
                 } else {

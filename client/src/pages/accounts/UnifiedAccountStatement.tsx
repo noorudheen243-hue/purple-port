@@ -48,7 +48,7 @@ const UnifiedAccountStatement = () => {
     });
 
     const filteredLedgers = ledgers?.filter((l: any) => 
-        l.ledger_name.toLowerCase().includes(searchTerm.toLowerCase())
+        l.entity_type !== 'USER' && l.ledger_name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const handlePrint = () => {

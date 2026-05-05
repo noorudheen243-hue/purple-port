@@ -29,6 +29,7 @@ router.delete('/transactions/:id', authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.D
 router.post('/reports/statement', authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN), AccountingController.getStatement);
 router.get('/reports/overview', authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN), AccountingController.getOverview);
 router.post('/sync-ledgers', authorize(ROLES.ADMIN, ROLES.DEVELOPER_ADMIN), AccountingController.syncLedgers);
+router.post('/repair-sync', authorize(ROLES.ADMIN, ROLES.DEVELOPER_ADMIN), AccountingController.repairSync);
 router.post('/ensure-ledger', authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN), AccountingController.ensureEntityLedger);
 
 

@@ -15,6 +15,7 @@ import {
     ShieldCheck
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
+import Swal from 'sweetalert2';
 
 const UnifiedReportOverview = () => {
     const now = new Date();
@@ -66,10 +67,47 @@ const UnifiedReportOverview = () => {
                         </select>
                     </div>
 
-                    <div className="flex items-center gap-3 bg-emerald-50 text-emerald-700 px-6 py-3 rounded-2xl border border-emerald-100 shadow-sm">
+                    <button 
+                        onClick={async () => {
+                            try {
+                                Swal.fire({
+                                    title: 'Re-Syncing Data...',
+                                    text: 'Retroactively migrating legacy transactions to the unified system.',
+                                    allowOutsideClick: false,
+                                    didOpen: () => { Swal.showLoading(); }
+                                });
+
+                                const res = await api.post('/accounting/repair-sync');
+                                
+                                if (res.data.errors > 0) {
+                                    Swal.fire({
+                                        title: 'Sync Partial Success',
+                                        text: `Synced ${res.data.syncedEntries} entries, but ${res.data.errors} entries failed. Check server logs for details.`,
+                                        icon: 'warning'
+                                    });
+                                } else {
+                                    Swal.fire({
+                                        title: 'Sync Complete!',
+                                        text: `${res.data.syncedEntries} entries migrated. Total: ${res.data.totalEntries}`,
+                                        icon: 'success'
+                                    });
+                                }
+                            } catch (error: any) {
+                                console.error('Sync failed:', error);
+                                const errorDetail = error.response?.data?.detail || error.response?.data?.message || 'Unknown error';
+                                Swal.fire({
+                                    title: 'Sync Failed',
+                                    text: errorDetail,
+                                    icon: 'error',
+                                    footer: error.response?.data?.stack ? `<pre style="font-size: 8px; text-align: left; max-height: 100px; overflow: auto;">${error.response.data.stack}</pre>` : undefined
+                                });
+                            }
+                        }}
+                        className="flex items-center gap-3 bg-emerald-50 text-emerald-700 px-6 py-3 rounded-2xl border border-emerald-100 shadow-sm hover:bg-emerald-100 transition-all active:scale-95 z-50 cursor-pointer"
+                    >
                         <ShieldCheck className="w-5 h-5" />
                         <span className="text-xs font-black uppercase tracking-widest">Live Sync Active</span>
-                    </div>
+                    </button>
                 </div>
             </div>
 

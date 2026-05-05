@@ -25,11 +25,15 @@ export const calculateAutoLOP = async (userId: string, month: number, year: numb
     const monthEnd = new Date(year, month, 0);
     if (endDate > monthEnd) endDate = monthEnd;
 
+    // Boundary Look-back Fix: Capture records stored at 18:30 UTC for IST midnight of Day 1
+    const searchStart = new Date(startDate);
+    searchStart.setDate(searchStart.getDate() - 1);
+
     // 1. Fetch Attendance Records 
     const attendance = await prisma.attendanceRecord.findMany({
         where: {
             user_id: userId,
-            date: { gte: startDate, lte: endDate }
+            date: { gte: searchStart, lte: endDate }
         }
     });
 
@@ -56,6 +60,12 @@ export const calculateAutoLOP = async (userId: string, month: number, year: numb
             date: { gte: startDate, lte: endDate }
         }
     });
+
+    // 5. Fetch Attendance Criteria Configuration
+    const criteriaConfigs = await prisma.attendanceCriteriaConfig.findMany({
+        where: { is_enabled: true }
+    });
+    const enabledRules = new Set(criteriaConfigs.map(c => c.rule_code));
 
     const IST_OFFSET = 330 * 60 * 1000;
 
@@ -95,24 +105,52 @@ export const calculateAutoLOP = async (userId: string, month: number, year: numb
 
         const isSunday = current.getDay() === 0;
 
-        const hasLeave = approvedLeaves.some(l => {
+        // Respect Attendance Engine Configuration
+        const ruleA4Enabled = enabledRules.has('A4'); // Holiday / Weekly Off
+        const ruleB1Enabled = enabledRules.has('B1'); // No Punch (Absent)
+
+        // Leave Handling Refinement
+        const leaveInfo = approvedLeaves.find(l => {
             const lStart = new Date(l.start_date.getTime() + IST_OFFSET).toISOString().split('T')[0];
             const lEnd = new Date(l.end_date.getTime() + IST_OFFSET).toISOString().split('T')[0];
             return dateKey >= lStart && dateKey <= lEnd;
         });
 
+        const isPaidLeave = leaveInfo && !['UNPAID', 'LOP'].includes(leaveInfo.type);
+        const isHalfDayLeave = leaveInfo?.is_half_day || false;
+
         const record = attendanceMap[dateKey];
         if (record) {
             // Evaluated if record exists
             if (record.status === 'ABSENT' || record.status === 'HALF_DAY') {
-                if (!regSet.has(dateKey) && !hasLeave) {
-                    lopDays += record.status === 'HALF_DAY' ? 0.5 : 1.0;
+                // Ignore LOP on Sundays or Holidays even if an ABSENT record exists
+                // Rule A4 determines if Sunday/Holiday skip is enabled
+                const shouldSkipLOP = ruleA4Enabled && (isSunday || holidaySet.has(dateKey));
+
+                if (!regSet.has(dateKey) && !shouldSkipLOP) {
+                    let deduction = record.status === 'HALF_DAY' ? 0.5 : 1.0;
+                    if (isPaidLeave) {
+                        // If it's a paid leave, offset the deduction
+                        // Full-day leave -> 0 LOP, Half-day leave -> reduce by 0.5
+                        deduction = isHalfDayLeave ? Math.max(0, deduction - 0.5) : 0;
+                    } else if (leaveInfo) {
+                        // If it's an UNPAID leave, it remains LOP
+                        deduction = record.status === 'HALF_DAY' ? 0.5 : 1.0;
+                    }
+                    lopDays += deduction;
                 }
             }
         } else {
-            // Missing Day Penalty Penalty
-            if (dateKey < todayKey && !isSunday && !holidaySet.has(dateKey) && !hasLeave && !regSet.has(dateKey)) {
-                lopDays += 1.0;
+            // Missing Day Penalty
+            const isNonWorkingDay = ruleA4Enabled && (isSunday || holidaySet.has(dateKey));
+            
+            // Only apply Missing Day Penalty if Rule B1 is enabled
+            if (dateKey < todayKey && !isNonWorkingDay && !regSet.has(dateKey) && ruleB1Enabled) {
+                let deduction = 1.0;
+                if (isPaidLeave) {
+                    deduction = isHalfDayLeave ? 0.5 : 0;
+                }
+                lopDays += deduction;
             }
         }
 

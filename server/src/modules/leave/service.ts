@@ -126,15 +126,21 @@ export class LeaveService {
 
         // Sync with Attendance Records
         if (status === 'APPROVED') {
+            const IST_OFFSET = 330 * 60 * 1000;
             const current = new Date(request.start_date);
             const end = new Date(request.end_date);
 
             while (current <= end) {
+                // Normalize current date to IST midnight (18:30 UTC previous day)
+                const istDate = new Date(current.getTime() + IST_OFFSET);
+                istDate.setUTCHours(0, 0, 0, 0);
+                const normalizedDate = new Date(istDate.getTime() - IST_OFFSET);
+
                 await db.attendanceRecord.upsert({
                     where: {
                         user_id_date: {
                             user_id: request.user_id,
-                            date: new Date(current)
+                            date: normalizedDate
                         }
                     },
                     update: {
@@ -143,7 +149,7 @@ export class LeaveService {
                     },
                     create: {
                         user_id: request.user_id,
-                        date: new Date(current),
+                        date: normalizedDate,
                         status: request.is_half_day ? 'PRESENT' : 'LEAVE',
                         check_in: null,
                         check_out: null,
@@ -199,12 +205,16 @@ export class LeaveService {
 
         // If it was APPROVED, we must clear the attendance records
         if (request.status === 'APPROVED') {
+            // Use 1-day buffer to ensure IST-midnight records (18:30 UTC) are cleared
+            const searchStart = new Date(request.start_date);
+            searchStart.setDate(searchStart.getDate() - 1);
+
             await db.attendanceRecord.deleteMany({
                 where: {
                     user_id: request.user_id,
                     status: 'LEAVE',
                     date: {
-                        gte: request.start_date,
+                        gte: searchStart,
                         lte: request.end_date
                     }
                 }
@@ -227,12 +237,16 @@ export class LeaveService {
 
         // If it was APPROVED, we must clear the attendance records
         if (request.status === 'APPROVED') {
+            // Use 1-day buffer to ensure IST-midnight records (18:30 UTC) are cleared
+            const searchStart = new Date(request.start_date);
+            searchStart.setDate(searchStart.getDate() - 1);
+
             await db.attendanceRecord.deleteMany({
                 where: {
                     user_id: request.user_id,
                     status: 'LEAVE',
                     date: {
-                        gte: request.start_date,
+                        gte: searchStart,
                         lte: request.end_date
                     }
                 }

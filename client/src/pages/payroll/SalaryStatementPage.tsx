@@ -12,7 +12,7 @@ import * as XLSX from 'xlsx';
 
 const SalaryStatementPage = () => {
     const { user } = useAuthStore();
-    const isAdmin = user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'DEVELOPER_ADMIN';
+    const isAdmin = user?.role === 'ADMIN' || user?.role === 'DEVELOPER_ADMIN';
 
     const [selectedUserId, setSelectedUserId] = useState<string>('me');
     const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());

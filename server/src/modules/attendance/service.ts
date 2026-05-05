@@ -764,24 +764,30 @@ export class AttendanceService {
 
         // Sync with Attendance Records
         if (status === 'APPROVED') {
+            const IST_OFFSET = 330 * 60 * 1000;
+            const istDate = new Date(request.date.getTime() + IST_OFFSET);
+            istDate.setUTCHours(0, 0, 0, 0);
+            const normalizedDate = new Date(istDate.getTime() - IST_OFFSET);
+
             // 1. Fetch Shift for Date (Dynamic)
             const { ShiftService } = require('./shift.service');
-            const shift = await ShiftService.getShiftForDate(request.user_id, request.date);
+            const shift = await ShiftService.getShiftForDate(request.user_id, normalizedDate);
 
-            // shift.start_time / end_time are in "HH:mm" (24h)
-
+            // 2. Calculate IST-relative times
             const [startH, startM] = shift.start_time.split(':').map(Number);
             const [endH, endM] = shift.end_time.split(':').map(Number);
 
-            const checkInTime = new Date(request.date);
-            checkInTime.setHours(startH, startM, 0, 0);
+            const checkInTime = new Date(normalizedDate.getTime() + IST_OFFSET);
+            checkInTime.setUTCHours(startH, startM, 0, 0);
+            const finalCheckIn = new Date(checkInTime.getTime() - IST_OFFSET);
 
-            const checkOutTime = new Date(request.date);
-            checkOutTime.setHours(endH, endM, 0, 0);
+            const checkOutTime = new Date(normalizedDate.getTime() + IST_OFFSET);
+            checkOutTime.setUTCHours(endH, endM, 0, 0);
+            let finalCheckOut = new Date(checkOutTime.getTime() - IST_OFFSET);
 
             // Handle overnight shifts
-            if (checkOutTime < checkInTime) {
-                checkOutTime.setDate(checkOutTime.getDate() + 1);
+            if (finalCheckOut < finalCheckIn) {
+                finalCheckOut.setDate(finalCheckOut.getDate() + 1);
             }
 
             // 3. Update or Create Attendance Record
@@ -789,14 +795,14 @@ export class AttendanceService {
                 where: {
                     user_id_date: {
                         user_id: request.user_id,
-                        date: request.date
+                        date: normalizedDate
                     }
                 },
                 update: {
-                    status: 'REGULARIZED',
+                    status: 'PRESENT', // Align with Rule A2 (Regularized = PRESENT)
                     method: 'REGULARISATION',
-                    check_in: checkInTime,
-                    check_out: checkOutTime,
+                    check_in: finalCheckIn,
+                    check_out: finalCheckOut,
                     work_hours: shift.id === 'RAMZAN' ? 7 : 8.5,
                     shift_snapshot: `${shift.start_time}-${shift.end_time}`,
                     shift_id: shift.id === 'LEGACY' || shift.id === 'DEFAULT' ? null : shift.id,
@@ -805,10 +811,10 @@ export class AttendanceService {
                 },
                 create: {
                     user_id: request.user_id,
-                    date: request.date,
-                    status: 'REGULARIZED',
-                    check_in: checkInTime,
-                    check_out: checkOutTime,
+                    date: normalizedDate,
+                    status: 'PRESENT',
+                    check_in: finalCheckIn,
+                    check_out: finalCheckOut,
                     work_hours: shift.id === 'RAMZAN' ? 7 : 8.5,
                     method: 'REGULARISATION',
                     shift_snapshot: `${shift.start_time}-${shift.end_time}`,

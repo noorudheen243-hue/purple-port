@@ -1,8 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
-async function toggle(enabled) {
-  const value = enabled ? 'true' : 'false';
+async function toggle(enabled: boolean): Promise<void> {
+  const value: string = enabled ? 'true' : 'false';
   await prisma.systemSetting.upsert({
     where: { key: 'UNIFIED_LEDGER_ENABLED' },
     update: { value },

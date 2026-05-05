@@ -135,10 +135,36 @@ export const syncLedgers = async (req: Request, res: Response) => {
         if (req.user!.role !== 'ADMIN' && req.user!.role !== 'DEVELOPER_ADMIN') {
             return res.status(403).json({ message: "Forbidden" });
         }
-        const result = await AccountingService.syncEntityLedgers();
+        
+        // Enhance: Run full repair including transactions
+        const result = await AccountingService.repairUnifiedSync();
         res.json(result);
-    } catch (error) {
-        res.status(500).json({ message: (error as Error).message });
+    } catch (error: any) {
+        console.error("Sync ledgers error:", error);
+        res.status(500).json({ 
+            message: "Internal Server Error", 
+            detail: error.message,
+            stack: error.stack
+        });
+    }
+};
+
+export const repairSync = async (req: Request, res: Response) => {
+    try {
+        // Admin Only
+        if (req.user!.role !== 'ADMIN' && req.user!.role !== 'DEVELOPER_ADMIN') {
+            return res.status(403).json({ message: "Forbidden" });
+        }
+
+        const result = await AccountingService.repairUnifiedSync();
+        res.json(result);
+    } catch (error: any) {
+        console.error("Repair sync error:", error);
+        res.status(500).json({ 
+            message: "Internal Server Error", 
+            detail: error.message,
+            stack: error.stack
+        });
     }
 };
 

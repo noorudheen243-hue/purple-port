@@ -364,7 +364,8 @@ model PayrollSlip {
   lop_days      Float @default(0.0) // Auto-calculated
   lop_deduction Float @default(0.0) // lop_days * daily_wage
 
-  other_deductions Float @default(0.0) // Tax, PF, etc.
+  other_deductions   Float @default(0.0) // Tax, PF, etc.
+  advance_incentives Float @default(0.0) // Mid-month incentive payouts
 
   total_working_days Int @default(0)
 
@@ -430,22 +431,53 @@ model Client {
   reports             Report[]
   leads               Lead[]
   marketingCampaigns  MarketingCampaign[]
+  deals               Deal[]
+  marketingGroups     MarketingGroup[]
+  marketingCampaignsBeta MarketingCampaignBeta[]
+  
+  // AI Strategy Engine
+  strategy_inputs        StrategyInput?
+  strategy_outputs       StrategyOutput?
+  strategy_market_inputs StrategyMarketInput?
+  strategy_versions      StrategyVersion[]
+  ai_assumptions         AiAssumption[]
+  ai_thoughts            AiThought[]
+
+  // Strategy Lifecycle Management
+  strategy_masters       StrategyDataMaster[]
 
   @@index([status])
   @@index([account_manager_id])
 }
 
+model ContentType {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  is_custom   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  strategies ClientContentStrategy[]
+  tasks      Task[]   @relation("TaskContentType")
+}
+
 model ClientContentStrategy {
-  id        String   @id @default(uuid())
-  type      String // Poster, Reel, etc.
-  quantity  Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(uuid())
+  type            String?  // Legacy
+  monthly_target  Int      @default(0)
+  quantity        Int?     @default(0) // Legacy mapping for old data backward compat
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  client_id String
-  client    Client @relation(fields: [client_id], references: [id], onDelete: Cascade)
+  client_id       String
+  client          Client @relation(fields: [client_id], references: [id], onDelete: Cascade)
 
-  @@unique([client_id, type])
+  content_type_id String?
+  content_type    ContentType? @relation(fields: [content_type_id], references: [id])
+
+  @@unique([client_id, content_type_id])
 }
 
 model Campaign {
@@ -479,7 +511,11 @@ model Task {
   status       String    @default("PLANNED") // Enum: TaskStatus
   priority     String    @default("MEDIUM") // Enum: TaskPriority
   type         String    @default("GRAPHIC") // Enum: TaskType
-  content_type String? // Enum: Content Strategy Type (Poster, Reel, etc.)
+  content_type String? // Legacy type
+
+  content_type_id String?
+  contentTypeObj  ContentType? @relation("TaskContentType", fields: [content_type_id], references: [id])
+
   nature       String    @default("NEW") // Enum: NEW, REWORK
   category     String    @default("CAMPAIGN") // Enum: CAMPAIGN, INTERNAL
   due_date     DateTime?
@@ -809,6 +845,9 @@ model Lead {
   campaignId        String?            @map("campaign_id_marketing")
   marketingCampaign MarketingCampaign? @relation(fields: [campaignId], references: [id])
 
+  group_id          String?
+  group             MarketingGroup?    @relation(fields: [group_id], references: [id])
+
   // Lead Intelligence
   quality  String? @default("MEDIUM") // LOW, MEDIUM, HIGH
   status   String  @default("NEW") // NEW, CONTACTED, QUALIFIED, LOST, etc.
@@ -822,6 +861,12 @@ model Lead {
 
   // Relations
   follow_ups LeadFollowUp[]
+  aiScore    AiLeadScore?
+  aiSuggestions AiFollowupSuggestion[]
+  deal       Deal?
+
+  campaign_beta_id String?
+  campaignBeta     MarketingCampaignBeta? @relation(fields: [campaign_beta_id], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1172,8 +1217,13 @@ model MetaAdsLog {
   marketingCampaign     MarketingCampaign? @relation(fields: [marketing_campaign_id], references: [id])
 
   notes     String?
+  startDate DateTime?
+  endDate   DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  group_id String?
+  group    MarketingGroup? @relation(fields: [group_id], references: [id])
 }
 
 model GoogleAdsLog {
@@ -1197,8 +1247,13 @@ model GoogleAdsLog {
   cpa         Float @default(0.0) // Cost Per Acquisition
 
   notes     String?
+  startDate DateTime?
+  endDate   DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  group_id String?
+  group    MarketingGroup? @relation(fields: [group_id], references: [id])
 }
 
 model SeoLog {
@@ -1222,7 +1277,30 @@ model SeoLog {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  group_id String?
+  group    MarketingGroup? @relation(fields: [group_id], references: [id])
+
   @@unique([client_id, month, year])
+}
+
+model MarketingGroup {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  client_id String
+  client    Client   @relation(fields: [client_id], references: [id])
+
+  metaLogs   MetaAdsLog[]
+  googleLogs GoogleAdsLog[]
+  seoLogs    SeoLog[]
+
+  campaigns  MarketingCampaign[]
+  leads      Lead[]
+  marketingCampaignsBeta MarketingCampaignBeta[]
+
+  @@unique([name, client_id])
 }
 
 model WebDevProject {
@@ -1475,11 +1553,19 @@ model MarketingCampaign {
   status             String?
   createdAt          DateTime          @default(now())
   client             Client            @relation(fields: [clientId], references: [id])
+  budget             Float?
+  bid_strategy       String?
+  attribution_setting String?
+  startDate          DateTime?
+  ends               DateTime?
   marketingAds       MarketingAd[]
   marketingMetrics   MarketingMetric[]
   leads              Lead[]
   tasks              Task[]
   metaAdsLogs        MetaAdsLog[]
+
+  group_id           String?
+  group              MarketingGroup?   @relation(fields: [group_id], references: [id])
 }
 
 model MarketingAd {
@@ -1505,6 +1591,11 @@ model MarketingMetric {
   ctr         Float?
   cpc         Float?
   cpm         Float?
+  results_cost           Float?
+  messaging_conversations Int?
+  new_messaging_contacts  Int?
+  purchases              Int?
+  cost_per_purchase       Float?
   campaign    MarketingCampaign @relation(fields: [campaignId], references: [id])
 }
 
@@ -1716,4 +1807,370 @@ model AttendanceCriteriaConfig {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Deal {
+  id                String   @id @default(uuid())
+  title             String
+  description       String?
+  value             Float    @default(0.0)
+  stage             String   @default("DISCOVERY") // DISCOVERY, QUALIFICATION, PROPOSAL, NEGOTIATION, CLOSING
+  status            String   @default("OPEN") // OPEN, WON, LOST, STALLED
+  expected_close_date DateTime?
+  
+  clientId          String
+  client            Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  leadId            String?  @unique
+  lead              Lead?    @relation(fields: [leadId], references: [id])
+
+  // AI Data
+  aiPrediction      AiDealPrediction?
+  aiSuggestions     AiFollowupSuggestion[]
+
+  campaign_beta_id String?
+  campaignBeta     MarketingCampaignBeta? @relation(fields: [campaign_beta_id], references: [id])
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([stage])
+  @@index([status])
+}
+
+model AiLeadScore {
+  id              String   @id @default(uuid())
+  leadId          String   @unique
+  lead            Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  
+  score           Int      @default(0) // 0-100
+  label           String   @default("COLD") // HOT, WARM, COLD
+  
+  factors_json    String   @default("{}") // Reasons for the score
+  last_calculated DateTime @default(now())
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model AiDealPrediction {
+  id              String   @id @default(uuid())
+  dealId          String   @unique
+  deal            Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  
+  probability     Float    @default(0.0) // 0.0 to 1.0
+  risk_level      String   @default("LOW") // LOW, MEDIUM, HIGH
+  
+  factors_json    String   @default("{}")
+  last_calculated DateTime @default(now())
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model AiFollowupSuggestion {
+  id              String   @id @default(uuid())
+  
+  leadId          String?
+  lead            Lead?    @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  
+  dealId          String?
+  deal            Deal?    @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  
+  suggested_date  DateTime
+  suggested_type  String   // CALL, EMAIL, MEETING
+  reason          String
+  status          String   @default("PENDING") // PENDING, COMPLETED, IGNORED
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model AiSalesInsight {
+  id              String   @id @default(uuid())
+  type            String   // CONVERSION_RATE, SOURCE_EFFECTIVENESS, STAFF_PERFORMANCE
+  data_json       String   @default("{}")
+  period          String   // WEEKLY, MONTHLY
+  
+  createdAt       DateTime @default(now())
+}
+
+model AiForecast {
+  id                String   @id @default(uuid())
+  month             Int
+  year              Int
+  expected_revenue  Float
+  pipeline_value    Float
+  data_json         String   @default("{}")
+  
+  createdAt         DateTime @default(now())
+
+  @@unique([month, year])
+}
+
+// --- MODULE: MARKETING CORE BETA ---
+
+model MarketingCampaignBeta {
+  id                    String    @id @default(uuid())
+  campaign_name         String
+  status                String
+  spend                 Float     @default(0.0)
+  results               Int       @default(0)
+  start_date            DateTime?
+  end_date              DateTime?
+  external_campaign_id  String    @unique // e.g. meta ad campaign id
+
+  clientId              String?
+  client                Client?   @relation(fields: [clientId], references: [id])
+  
+  groupId               String?
+  group                 MarketingGroup? @relation(fields: [groupId], references: [id])
+  
+  // Relations
+  leads                 Lead[]
+  deals                 Deal[]
+  betaInsights          AiInsightBeta[]
+  
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model AiInsightBeta {
+  id                    String    @id @default(uuid())
+  campaign_id           String
+  type                  String    // e.g. ANOMALY, SUGGESTION
+  message               String
+  is_read               Boolean   @default(false)
+  createdAt             DateTime  @default(now())
+  
+  campaign              MarketingCampaignBeta @relation(fields: [campaign_id], references: [id], onDelete: Cascade)
+}
+
+model AutomationLogBeta {
+  id                    String    @id @default(uuid())
+  trigger_event         String
+  action_suggested      String
+  related_entity_type   String    // CAMPAIGN, LEAD
+  related_entity_id     String
+  createdAt             DateTime  @default(now())
+}
+
+// --- MODULE: AI STRATEGY ENGINE ---
+
+model StrategyInput {
+  id                String   @id @default(uuid())
+  clientId          String   @unique
+  client            Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  business_name     String?
+  industry          String?
+  website_url       String?
+  competitor_urls   String?  // Commas or JSON
+  
+  location          String?
+  business_age      String?  // JSON
+  services_json     String?  // JSON
+  
+  digital_presence  String?  // JSON
+  ica_data          String?  // JSON
+  
+  goals_json        String?  // JSON
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model StrategyOutput {
+  id                String   @id @default(uuid())
+  clientId          String   @unique
+  client            Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  positioning       String?  
+  channel_mix       String?  // JSON
+  funnel_model      String?  // JSON
+  kpi_targets       String?  // JSON
+  execution_plan    String?  // JSON
+  tactical_ads_json String?  // JSON
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model StrategyVersion {
+  id                String   @id @default(uuid())
+  clientId          String
+  client            Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  version_name      String?
+  input_snapshot    String   // JSON
+  output_snapshot   String   // JSON
+  
+  createdAt         DateTime @default(now())
+
+  @@index([clientId])
+}
+
+model AiAssumption {
+  id                String   @id @default(uuid())
+  clientId          String
+  client            Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  category          String   
+  assumption_text   String
+  source            String?  
+  
+  createdAt         DateTime @default(now())
+
+  @@index([clientId])
+}
+
+// --- NEW MODULE: MARKET UNDERSTANDING ---
+
+model StrategyMarketInput {
+  id                String   @id @default(uuid())
+  clientId          String   @unique
+  client            Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  industry_benchmarks String?  // JSON
+  
+  positioning       StrategyPositioningData?
+  competitor        StrategyCompetitorData?
+  demand            StrategyDemandData?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model StrategyPositioningData {
+  id                String   @id @default(uuid())
+  marketInputId     String   @unique
+  marketInput       StrategyMarketInput @relation(fields: [marketInputId], references: [id], onDelete: Cascade)
+  
+  data_json         String   // JSON structure
+}
+
+model StrategyCompetitorData {
+  id                String   @id @default(uuid())
+  marketInputId     String   @unique
+  marketInput       StrategyMarketInput @relation(fields: [marketInputId], references: [id], onDelete: Cascade)
+  
+  data_json         String   // JSON structure
+}
+
+model StrategyDemandData {
+  id                String   @id @default(uuid())
+  marketInputId     String   @unique
+  marketInput       StrategyMarketInput @relation(fields: [marketInputId], references: [id], onDelete: Cascade)
+  
+  data_json         String   // JSON structure
+}
+
+model AiThought {
+  id        String   @id @default(uuid())
+  clientId  String?
+  client    Client?  @relation(fields: [clientId], references: [id])
+  type      String   // TASK_OPTIMIZATION, BUDGET_ALERT, STRATEGY_DRIFT, SYSTEM_HEALTH
+  reasoning String   // The internal thought process
+  actions   AiAction[]
+  createdAt DateTime @default(now())
+
+  @@index([clientId])
+}
+
+model AiAction {
+  id          String   @id @default(uuid())
+  thoughtId    String
+  thought     AiThought @relation(fields: [thoughtId], references: [id])
+  command     String   // e.g. "CREATE_TASK"
+  params_json String   // arguments for the service
+  status      String   @default("PROPOSED") // PROPOSED, EXECUTED, IGNORED
+  executedAt  DateTime?
+  
+  @@index([thoughtId])
+}
+
+// --- MODULE: STRATEGY LIFECYCLE MANAGEMENT ---
+
+model StrategyDataMaster {
+  id            String   @id @default(uuid())
+  strategy_id   String?  @unique // Optional readable ID
+  strategy_name String
+  status        String   @default("Draft") // Draft, Completed
+
+  client_id     String
+  client        Client   @relation(fields: [client_id], references: [id], onDelete: Cascade)
+
+  sections      StrategyDataSection[]
+  logs          StrategyProgressLog[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([client_id])
+}
+
+model StrategyDataSection {
+  id           String   @id @default(uuid())
+  master_id    String
+  master       StrategyDataMaster @relation(fields: [master_id], references: [id], onDelete: Cascade)
+
+  section_name String
+  data_json    String   // JSON blob
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([master_id, section_name])
+}
+
+model StrategyProgressLog {
+  id           String   @id @default(uuid())
+  master_id    String
+  master       StrategyDataMaster @relation(fields: [master_id], references: [id], onDelete: Cascade)
+
+  action       String
+  data_snapshot String? // Optional JSON
+
+  createdAt    DateTime @default(now())
+}
+
+// --- MODULE: UNIFIED LEDGER SYSTEM ---
+
+model LedgerMaster {
+  id          String   @id @default(uuid())
+  entity_type String   // CLIENT, USER, GENERAL
+  entity_id   String?
+  ledger_name String
+  ledger_type String   @default("unified")
+  metadata    String?  // JSON for extra entity info
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  transactions UnifiedTransaction[]
+  mappings     LegacyLedgerMapping[]
+}
+
+model UnifiedTransaction {
+  id               String   @id @default(uuid())
+  ledger_id        String
+  ledger           LedgerMaster @relation(fields: [ledger_id], references: [id])
+  transaction_type String   // INCOME, EXPENSE
+  category         String?  // Electricity, Rent, Service Charge, etc.
+  sub_type         String?  // Salary, Advance, Incentive
+  amount           Float
+  date             DateTime @default(now())
+  description      String
+  reference        String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model LegacyLedgerMapping {
+  id                    String @id @default(uuid())
+  new_ledger_id         String
+  ledger                LedgerMaster @relation(fields: [new_ledger_id], references: [id])
+  old_income_ledger_id  String?
+  old_expense_ledger_id String?
+  migration_date        DateTime @default(now())
+  createdAt             DateTime @default(now())
 }

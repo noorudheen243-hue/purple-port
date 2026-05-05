@@ -12,7 +12,7 @@ import EditShiftModal from '../../components/payroll/EditShiftModal';
 
 const PayrollCalendar = () => {
     const { user } = useAuthStore();
-    const isAdmin = user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'DEVELOPER_ADMIN';
+    const isAdmin = user?.role === 'ADMIN' || user?.role === 'DEVELOPER_ADMIN';
     const queryClient = useQueryClient();
 
     const [selectedUserId, setSelectedUserId] = useState<string>('me'); // 'me' resolves to current user in backed if no param usually, but here we logic it out

@@ -31,7 +31,7 @@ const UniversalTransactionRecorder = () => {
     });
 
     const categories = [
-        'Service Charges', 'Campaign Recharge', 'Consultation Fee', 'Ad Spend', 'Salary', 'Rent', 'Electricity', 
+        'Service Charges', 'Campaign Recharge', 'Consultation Fee', 'Ad Spend', 'Salary', 'Salary Advance', 'Rent', 'Electricity', 
         'Digital Assets', 'Drinks', 'Celebration', 'Transport', 'Advance', 'Misc'
     ];
 

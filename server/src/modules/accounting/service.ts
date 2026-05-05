@@ -68,6 +68,7 @@ export const createJournalEntry = async (
         debit_ledger_id?: string;
         credit_ledger_id?: string;
         reference?: string;
+        nature?: string;
         invoice_id?: string;
         created_by_id?: string;
         lines?: { ledger_id: string; debit: number; credit: number }[];
@@ -81,6 +82,7 @@ export const createJournalEntry = async (
             amount: data.amount,
             type: data.type,
             reference: data.reference,
+            nature: data.nature || 'GENERAL',
             // @ts-ignore
             transaction_number: transactionId,
             created_by_id: data.created_by_id || 'SYSTEM',
@@ -121,51 +123,146 @@ export const createJournalEntry = async (
                 data: { balance: { decrement: line.credit } }
             });
         }
+    }
 
-        // Unified Sync
-        const isUnifiedEnabled = await tx.systemSetting.findUnique({ where: { key: 'UNIFIED_LEDGER_ENABLED' } });
-        if (isUnifiedEnabled?.value === 'true') {
-            // Find ALL possible mappings for this entry's lines
-            const mappedLines = [];
-            for (const line of linesToCreate) {
-                const mapping = await tx.legacyLedgerMapping.findFirst({
-                    where: {
-                        OR: [
-                            { old_income_ledger_id: line.ledger_id },
-                            { old_expense_ledger_id: line.ledger_id }
-                        ]
-                    }
-                });
-                if (mapping) mappedLines.push({ line, mapping });
+    // Unified Sync (Corrected: Outside the loop, syncing all mapped lines)
+    await syncJournalEntryToUnified(tx, entry, linesToCreate);
+
+    return entry;
+};
+
+/**
+ * Syncs a single Journal Entry and its lines to the Unified Ledger system.
+ * This is a standalone function that can be used for both live sync and repairs.
+ */
+export const syncJournalEntryToUnified = async (
+    tx: Prisma.TransactionClient,
+    entry: { id: string; date: Date; description: string; reference?: string | null },
+    lines: { ledger_id: string; debit: number; credit: number }[]
+) => {
+    const isUnifiedEnabled = await tx.systemSetting.findUnique({ where: { key: 'UNIFIED_LEDGER_ENABLED' } });
+    if (isUnifiedEnabled?.value !== 'true') return;
+
+    for (const line of lines) {
+        const mapping = await tx.legacyLedgerMapping.findFirst({
+            where: {
+                OR: [
+                    { old_income_ledger_id: line.ledger_id },
+                    { old_expense_ledger_id: line.ledger_id }
+                ]
             }
+        });
 
-            // If we have mapped lines, pick the best one to sync (to avoid duplication)
-            if (mappedLines.length > 0) {
-                // Heuristic: Pick the first one, but try to match the entry type (EXPENSE vs INCOME)
-                const bestMatch = mappedLines.find(m => 
-                    (data.type === 'EXPENSE' && m.mapping.old_expense_ledger_id === m.line.ledger_id) ||
-                    (data.type === 'RECEIPT' && m.mapping.old_income_ledger_id === m.line.ledger_id)
-                ) || mappedLines[0];
+        if (mapping) {
+            const ledger = await tx.ledger.findUnique({
+                where: { id: line.ledger_id },
+                include: { head: true }
+            });
 
-                const isIncome = bestMatch.mapping.old_income_ledger_id === bestMatch.line.ledger_id;
-                const amount = Math.abs(bestMatch.line.debit - bestMatch.line.credit);
-                
+            if (ledger && ledger.head) {
+                let unifiedType: 'INCOME' | 'EXPENSE';
+                if (ledger.head.type === 'ASSET') {
+                    unifiedType = line.debit > 0 ? 'INCOME' : 'EXPENSE';
+                } else if (ledger.head.type === 'EXPENSE') {
+                    unifiedType = line.debit > 0 ? 'EXPENSE' : 'INCOME';
+                } else if (ledger.head.type === 'INCOME') {
+                    unifiedType = line.credit > 0 ? 'INCOME' : 'EXPENSE';
+                } else {
+                    unifiedType = line.credit > 0 ? 'INCOME' : 'EXPENSE';
+                }
+
+                const amount = Math.abs(line.debit - line.credit);
                 if (amount > 0) {
-                    await tx.unifiedTransaction.create({
-                        data: {
-                            ledger_id: bestMatch.mapping.new_ledger_id,
-                            transaction_type: isIncome ? 'INCOME' : 'EXPENSE',
-                            amount,
-                            date: data.date,
-                            description: data.description,
-                            reference: data.reference || `LE:${entry.id}` // Link by reference if no ref provided
-                        }
+                    // Use a deterministic reference for idempotency: LE:ENTRY_ID:LEDGER_ID
+                    const uniqueRef = `LE:${entry.id}:${line.ledger_id}`;
+                    
+                    // Check if already exists to prevent duplicates during live sync
+                    const existing = await tx.unifiedTransaction.findFirst({
+                        where: { reference: uniqueRef }
                     });
+
+                    if (!existing) {
+                        await tx.unifiedTransaction.create({
+                            data: {
+                                ledger_id: mapping.new_ledger_id,
+                                transaction_type: unifiedType,
+                                amount,
+                                date: entry.date,
+                                description: entry.description,
+                                reference: uniqueRef
+                            }
+                        });
+                    }
                 }
             }
         }
     }
-    return entry;
+};
+
+/**
+ * Repairs the Unified Ledger system by:
+ * 1. Ensuring all legacy ledgers are mapped to unified ones.
+ * 2. Retroactively syncing any JournalEntry that doesn't have a corresponding UnifiedTransaction.
+ */
+export const repairUnifiedSync = async () => {
+    console.log("[REPAIR_SYNC] Starting high-performance system repair...");
+    
+    // 1. Ensure all ledgers are mapped
+    try {
+        await syncEntityLedgers();
+    } catch (error) {
+        console.error("[REPAIR_SYNC] Ledger sync error:", error);
+    }
+
+    // 2. Sync missing transactions using high-speed batching
+    const entries = await prisma.journalEntry.findMany({
+        include: { lines: true }
+    });
+
+    // Pre-fetch all existing unified references starting with LE: to avoid N+1 queries
+    const existingRefs = await prisma.unifiedTransaction.findMany({
+        where: { reference: { startsWith: 'LE:' } },
+        select: { reference: true }
+    });
+    const refSet = new Set(existingRefs.map(r => r.reference));
+
+    let syncedCount = 0;
+    let errorCount = 0;
+    const BATCH_SIZE = 50;
+
+    for (let i = 0; i < entries.length; i += BATCH_SIZE) {
+        const batch = entries.slice(i, i + BATCH_SIZE);
+        
+        await prisma.$transaction(async (tx) => {
+            for (const entry of batch) {
+                try {
+                    // Check if any of this entry's lines are missing from unified
+                    const entryNeedsSync = entry.lines.some(line => !refSet.has(`LE:${entry.id}:${line.ledger_id}`));
+                    
+                    if (entryNeedsSync) {
+                        await syncJournalEntryToUnified(tx, entry, entry.lines);
+                        syncedCount++;
+                    }
+                } catch (err) {
+                    errorCount++;
+                    console.error(`[REPAIR_SYNC] Batch error on entry ${entry.id}:`, err);
+                }
+            }
+        }, {
+            timeout: 30000 // 30s timeout for SQLite batch
+        });
+        
+        if (syncedCount % 100 === 0) console.log(`[REPAIR_SYNC] Progress: ${i}/${entries.length} checked...`);
+    }
+
+    console.log(`[REPAIR_SYNC] Repair complete. Synced: ${syncedCount}, Errors: ${errorCount}`);
+
+    return { 
+        message: "Repair complete", 
+        syncedEntries: syncedCount,
+        totalEntries: entries.length,
+        errors: errorCount
+    };
 };
 
 // --- UNIFIED LEDGER SYSTEM ---
@@ -232,16 +329,20 @@ export const getUnifiedLedgers = async (type?: string) => {
         orderBy: { ledger_name: 'asc' }
     });
 
-    // Active Filter (User Request)
-    const activeUsers = await prisma.user.findMany({ where: { status: 'ACTIVE' }, select: { id: true } });
-    const activeUserIds = new Set(activeUsers.map(u => u.id));
+    // Staff users: active users who are NOT CLIENT-role
+    const staffUsers = await prisma.user.findMany({
+        where: { status: 'ACTIVE', role: { not: 'CLIENT' } },
+        select: { id: true }
+    });
+    const staffUserIds = new Set(staffUsers.map(u => u.id));
 
     const activeClients = await prisma.client.findMany({ where: { status: 'ACTIVE' }, select: { id: true } });
     const activeClientIds = new Set(activeClients.map(c => c.id));
 
     return ledgers.filter(ledger => {
         if (ledger.entity_type === 'USER' || ledger.entity_type === 'TEAM') {
-            return !ledger.entity_id || activeUserIds.has(ledger.entity_id);
+            // Only show ledgers linked to actual staff members (non-CLIENT role)
+            return !ledger.entity_id || staffUserIds.has(ledger.entity_id);
         }
         if (ledger.entity_type === 'CLIENT') {
             return !ledger.entity_id || activeClientIds.has(ledger.entity_id);
@@ -276,7 +377,7 @@ export const recordUnifiedTransaction = async (data: {
         });
 
         // Requirement: Auto-fetch advance salary in next payroll
-        if (data.sub_type === 'Advance Salary' || data.category === 'Salary Advance') {
+        if (data.sub_type === 'Advance Salary' || data.category === 'Salary Advance' || data.category === 'Advance') {
             const ledger = await tx.ledgerMaster.findUnique({ where: { id: data.ledger_id } });
             if (ledger && (ledger.entity_type === 'USER' || ledger.entity_type === 'TEAM') && ledger.entity_id) {
                 await tx.user.update({
@@ -315,7 +416,7 @@ export const deleteUnifiedTransaction = async (id: string) => {
         }
 
         // 2. Revert Advance Balance if any
-        if (transaction.sub_type === 'Advance Salary' || transaction.category === 'Salary Advance') {
+        if (transaction.sub_type === 'Advance Salary' || transaction.category === 'Salary Advance' || transaction.category === 'Advance') {
             if (transaction.ledger && transaction.ledger.entity_id) {
                 await tx.user.update({
                     where: { id: transaction.ledger.entity_id },
@@ -542,19 +643,23 @@ export const getGlobalTransactionHistory = async (limit: number = 100) => {
         include: { lines: { include: { ledger: true } } } 
     });
 
+    // Create a set of synced legacy entry IDs to avoid double-showing in history
+    const syncedLegacyIds = new Set(unified.filter(t => t.reference?.startsWith('LE:')).map(t => t.reference?.replace('LE:', '')));
+
     const merged = [
-        ...unified.map(t => ({ 
-            id: t.id, 
-            date: t.date, 
-            description: t.description, 
-            transaction_type: t.transaction_type, 
-            category: t.category, 
-            amount: t.amount, 
-            reference: t.reference, 
-            isLegacy: false, 
-            ledger: t.ledger 
+        ...unified.map(t => ({
+            id: t.id,
+            date: t.date,
+            description: t.description,
+            transaction_type: t.transaction_type,
+            category: t.category || 'General',
+            amount: t.amount,
+            ledger_name: t.ledger.ledger_name,
+            entity_type: t.ledger.entity_type,
+            reference: t.reference,
+            is_unified: true
         })),
-        ...legacyEntries.map(entry => {
+        ...legacyEntries.filter(entry => !syncedLegacyIds.has(entry.id)).map(entry => {
             const debitLines = entry.lines.filter(l => l.debit > 0);
             const creditLines = entry.lines.filter(l => l.credit > 0);
             return { 
@@ -564,12 +669,10 @@ export const getGlobalTransactionHistory = async (limit: number = 100) => {
                 transaction_type: entry.type === 'RECEIPT' ? 'INCOME' : (entry.type === 'PAYMENT' || entry.type === 'EXPENSE' ? 'EXPENSE' : 'JOURNAL'), 
                 category: 'Legacy', 
                 amount: entry.amount, 
-                reference: entry.reference, 
-                isLegacy: true, 
-                ledger: { 
-                    ledger_name: debitLines.map(l => l.ledger.name).join(', ') || 'Various', 
-                    entity_type: debitLines[0]?.ledger.entity_type || 'GENERAL' 
-                } 
+                ledger_name: debitLines.length === 1 ? debitLines[0].ledger.name : (creditLines.length === 1 ? creditLines[0].ledger.name : 'Multiple Accounts'),
+                entity_type: debitLines.length === 1 ? debitLines[0].ledger.entity_type : (creditLines.length === 1 ? creditLines[0].ledger.entity_type : 'INTERNAL'),
+                reference: entry.reference,
+                is_unified: false
             };
         })
     ];
@@ -636,47 +739,16 @@ export const recordTransaction = async (data: {
     entity_id?: string;
 }) => {
     return prisma.$transaction(async (tx) => {
-        const transactionId = await generateTransactionId(tx);
-        const entry = await tx.journalEntry.create({
-            data: {
-                date: data.date,
-                description: data.description,
-                amount: data.amount,
-                type: data.type,
-                reference: data.reference,
-                // @ts-ignore
-                transaction_number: transactionId,
-                created_by_id: data.user_id || 'SYSTEM',
-                nature: data.nature || 'GENERAL'
-            }
-        });
-
-        await tx.journalLine.create({
-            data: {
-                entry_id: entry.id,
-                ledger_id: data.to_ledger_id,
-                debit: data.amount,
-                credit: 0
-            }
-        });
-
-        await tx.journalLine.create({
-            data: {
-                entry_id: entry.id,
-                ledger_id: data.from_ledger_id,
-                debit: 0,
-                credit: data.amount
-            }
-        });
-
-        await tx.ledger.update({
-            where: { id: data.to_ledger_id },
-            data: { balance: { increment: data.amount } }
-        });
-
-        await tx.ledger.update({
-            where: { id: data.from_ledger_id },
-            data: { balance: { decrement: data.amount } }
+        const entry = await createJournalEntry(tx, {
+            date: data.date,
+            description: data.description,
+            amount: data.amount,
+            type: data.type,
+            debit_ledger_id: data.to_ledger_id,
+            credit_ledger_id: data.from_ledger_id,
+            reference: data.reference,
+            nature: data.nature,
+            created_by_id: data.user_id
         });
 
         if (data.nature === 'ADVANCE_RECEIVED' && data.entity_id) {
@@ -712,16 +784,14 @@ export const ensureLedger = async (entityType: string, entityId: string, headCod
     const head = await prisma.accountHead.findUnique({ where: { code: headCode } });
     if (!head) throw new Error(`Account Head Code ${headCode} not found.`);
 
-    let existing;
-    if (entityId) {
-        existing = await prisma.ledger.findFirst({
-            where: { entity_type: entityType, entity_id: entityId, head_id: head.id }
-        });
-    } else {
-        existing = await prisma.ledger.findFirst({
-            where: { entity_type: entityType, name: entityName, head_id: head.id }
-        });
-    }
+    const existing = await prisma.ledger.findFirst({
+        where: {
+            OR: [
+                { entity_type: entityType, entity_id: entityId, head_id: head.id },
+                { name: entityName, head_id: head.id }
+            ]
+        }
+    });
 
     if (existing) {
         const updates: any = {};
@@ -878,18 +948,30 @@ export const getFinancialOverview = async (month?: number, year?: number) => {
 };
 
 export const syncEntityLedgers = async () => {
+    console.log("[SYNC_LEDGERS] Scanning all legacy ledgers for missing mappings...");
+    const allLedgers = await prisma.ledger.findMany();
+    const allMappings = await prisma.legacyLedgerMapping.findMany();
+    
     let count = 0;
-    const clients = await prisma.client.findMany({ where: { status: { not: 'PROSPECT' } } });
-    for (const c of clients) {
-        const l = await ensureLedger('CLIENT', c.id, '1000');
-        if (l.createdAt > new Date(Date.now() - 5000)) count++;
+    for (const l of allLedgers) {
+        try {
+            const isMapped = allMappings.some(m => m.old_income_ledger_id === l.id || m.old_expense_ledger_id === l.id);
+            if (!isMapped) {
+                console.log(`[SYNC_LEDGERS] Creating unified mapping for: ${l.name} (${l.entity_type})`);
+                await createUnifiedLedger({
+                    entity_type: l.entity_type || 'GENERAL', // Fallback for null entity_type
+                    entity_id: l.entity_id || l.name, // Use name as ID for internal/bank ledgers
+                    ledger_name: l.name,
+                    old_income_ledger_id: l.id
+                });
+                count++;
+            }
+        } catch (e) {
+            console.error(`[SYNC_LEDGERS] Failed to sync ledger ${l.name}:`, e);
+        }
     }
 
-    const staff = await prisma.user.findMany();
-    for (const u of staff) {
-        const l = await ensureLedger('USER', u.id, '2000');
-        if (l.createdAt > new Date(Date.now() - 5000)) count++;
-    }
+    console.log(`[SYNC_LEDGERS] Sync complete. Created ${count} new mappings.`);
     return { message: "Sync Complete", new_ledgers: count };
 };
 

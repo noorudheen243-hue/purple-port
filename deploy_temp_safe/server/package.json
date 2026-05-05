@@ -20,6 +20,7 @@
     "seed": "ts-node prisma/seed.ts"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^5.10.0",
     "@types/compression": "^1.8.1",
     "@types/node-cron": "^3.0.11",

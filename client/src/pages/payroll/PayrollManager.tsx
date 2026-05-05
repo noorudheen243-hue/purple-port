@@ -15,9 +15,10 @@ import PayrollSettings from './PayrollSettings';
 const PayrollManager = () => {
     const { user } = useAuthStore();
     const isAdminOrManager = user?.role === 'ADMIN' || user?.role === 'DEVELOPER_ADMIN' || user?.role === 'MANAGER';
+    const isSystemAdmin = user?.role === 'ADMIN' || user?.role === 'DEVELOPER_ADMIN';
 
-    // Default tab: 'calculator' for admin, 'history' for staff
-    const defaultTab = isAdminOrManager ? 'calculator' : 'history';
+    // Default tab: 'calculator' for admin, 'history' for manager/staff
+    const defaultTab = isSystemAdmin ? 'calculator' : 'history';
 
     return (
         <div className="space-y-6">
@@ -29,7 +30,7 @@ const PayrollManager = () => {
             <Tabs defaultValue={defaultTab} className="space-y-6">
                 <div className="bg-muted/40 p-2 rounded-lg border overflow-x-auto">
                     <TabsList className="bg-transparent gap-2 h-auto p-0 min-w-max justify-start">
-                        {isAdminOrManager && (
+                        {isSystemAdmin && (
                              <TabsTrigger
                                 value="calculator"
                                 className="data-[state=active]:bg-purple-900 data-[state=active]:text-yellow-400 data-[state=inactive]:bg-white data-[state=inactive]:text-gray-600 px-4 py-2 rounded-md font-bold transition-all shadow-sm border border-transparent data-[state=active]:border-yellow-400 data-[state=inactive]:border-gray-200"
@@ -59,7 +60,7 @@ const PayrollManager = () => {
                             <Calendar className="w-4 h-4 mr-2" />
                             Payroll Calendar
                         </TabsTrigger>
-                        {isAdminOrManager && (
+                        {isSystemAdmin && (
                             <>
                                 <TabsTrigger
                                     value="process"

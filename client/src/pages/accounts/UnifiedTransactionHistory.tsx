@@ -218,7 +218,11 @@ const UnifiedTransactionHistory = () => {
                                     type="date" 
                                     className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 py-4 outline-none focus:border-purple-500 font-bold text-slate-600"
                                     value={editingTx.date ? format(new Date(editingTx.date), 'yyyy-MM-dd') : ''}
-                                    onChange={(e) => setEditingTx({...editingTx, date: new Date(e.target.value).toISOString()})}
+                                    onChange={(e) => {
+                                        if (e.target.value) {
+                                            setEditingTx({...editingTx, date: new Date(e.target.value).toISOString()});
+                                        }
+                                    }}
                                 />
                             </div>
                             <div className="space-y-2">

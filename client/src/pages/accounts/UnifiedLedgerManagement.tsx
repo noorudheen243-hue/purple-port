@@ -41,8 +41,8 @@ const UnifiedLedgerManagement = ({ onOpenCreator }: Props) => {
     const [editMetadata, setEditMetadata] = useState('');
 
     const { data: ledgers, isLoading } = useQuery({
-        queryKey: ['unified-ledgers'],
-        queryFn: async () => (await api.get('/accounting/unified/ledgers')).data
+        queryKey: ['unified-ledgers', activeCategory],
+        queryFn: async () => (await api.get(`/accounting/unified/ledgers?type=${activeCategory}`)).data
     });
 
     const updateMutation = useMutation({
@@ -118,11 +118,11 @@ const UnifiedLedgerManagement = ({ onOpenCreator }: Props) => {
         navigate(`/dashboard/accounts/ledger/${ledgerId}`);
     };
 
-    const filteredLedgers = ledgers?.filter((l: any) => {
-        const matchesSearch = l.ledger_name.toLowerCase().includes(search.toLowerCase());
-        const matchesCategory = l.entity_type === activeCategory || (activeCategory === 'USER' && l.entity_type === 'TEAM');
-        return matchesSearch && matchesCategory;
-    });
+    // API already returns ledgers filtered by entity_type via ?type= param.
+    // Here we only apply the search filter on top.
+    const filteredLedgers = ledgers?.filter((l: any) =>
+        l.ledger_name.toLowerCase().includes(search.toLowerCase())
+    );
 
     if (isLoading) return <div className="p-20 text-center animate-pulse text-slate-400 font-black uppercase tracking-widest">Accessing Financial Vault...</div>;
 

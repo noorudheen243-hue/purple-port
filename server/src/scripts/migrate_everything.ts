@@ -89,8 +89,8 @@ async function main() {
             }
         });
 
-        const gIncomeId = ['INCOME', 'BANK', 'CASH'].includes(legacy.entity_type) ? legacy.id : null;
-        const gExpenseId = ['EXPENSE', 'ADJUSTMENT'].includes(legacy.entity_type) ? legacy.id : null;
+        const gIncomeId = ['INCOME', 'BANK', 'CASH'].includes(legacy.entity_type) ? (legacy.id as any) : undefined;
+        const gExpenseId = ['EXPENSE', 'ADJUSTMENT'].includes(legacy.entity_type) ? (legacy.id as any) : undefined;
 
         await (prisma.legacyLedgerMapping as any).create({
             data: {

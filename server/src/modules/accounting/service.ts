@@ -167,13 +167,10 @@ export const syncJournalEntryToUnified = async (
                 }
 
                 let unifiedType: 'INCOME' | 'EXPENSE';
-                if (ledger.head.type === 'ASSET') {
-                    unifiedType = line.debit > 0 ? 'INCOME' : 'EXPENSE';
-                } else if (ledger.head.type === 'EXPENSE') {
+                if (ledger.head.type === 'EXPENSE') {
                     unifiedType = line.debit > 0 ? 'EXPENSE' : 'INCOME';
-                } else if (ledger.head.type === 'INCOME') {
-                    unifiedType = line.credit > 0 ? 'INCOME' : 'EXPENSE';
                 } else {
+                    // INCOME head
                     unifiedType = line.credit > 0 ? 'INCOME' : 'EXPENSE';
                 }
 

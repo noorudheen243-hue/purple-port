@@ -126,8 +126,16 @@ export const getTasks = async (filters: {
     if (filters?.client_id) {
         whereClause.client_id = filters.client_id;
     } else {
-        // Global board: Exclude tasks for prospects
-        whereClause.client = { status: { not: 'PROSPECT' } };
+        // Global board: Exclude tasks for prospects but include internal tasks (no client)
+        whereClause.AND = [
+            ...(whereClause.AND as any || []),
+            {
+                OR: [
+                    { client_id: null },
+                    { client: { status: { not: 'PROSPECT' } } }
+                ]
+            }
+        ];
     }
     if (filters?.assignee_id) whereClause.assignee_id = filters.assignee_id;
     if (filters?.status) whereClause.status = filters.status;
@@ -349,7 +357,10 @@ export const getTaskStats = async (filters: {
     department?: string;
 }) => {
     const whereClause: Prisma.TaskWhereInput = {
-        client: { status: { not: 'PROSPECT' } }
+        OR: [
+            { client_id: null },
+            { client: { status: { not: 'PROSPECT' } } }
+        ]
     };
 
     // Synchronized Period Logic:
@@ -461,8 +472,8 @@ export const getDashboardStats = async (user: { id: string, role: string, depart
 
     // 2. Task Status Distribution
     const distributionWhere: Prisma.TaskWhereInput = isManagerial ? 
-        { client: { status: { not: 'PROSPECT' } } } : 
-        { assignee_id: user.id, client: { status: { not: 'PROSPECT' } } };
+        { OR: [{ client_id: null }, { client: { status: { not: 'PROSPECT' } } }] } : 
+        { assignee_id: user.id, OR: [{ client_id: null }, { client: { status: { not: 'PROSPECT' } } }] };
 
     const statusRaw = await prisma.task.groupBy({
         by: ['status'],
@@ -495,7 +506,7 @@ export const getDashboardStats = async (user: { id: string, role: string, depart
                 where: {
                     assignee_id: { in: creativeIds },
                     createdAt: { gte: startOfMonth },
-                    client: { status: { not: 'PROSPECT' } }
+                    OR: [{ client_id: null }, { client: { status: { not: 'PROSPECT' } } }]
                 },
                 _count: { id: true }
             });
@@ -630,10 +641,10 @@ export const clearActiveTasks = async () => {
 export const calculateDashboardAggregates = async () => {
     // Run all counts in parallel for maximum speed
     const [total, completed, inProgress, rework, overdue] = await Promise.all([
-        prisma.task.count({ where: { client: { status: { not: 'PROSPECT' } } } }),
-        prisma.task.count({ where: { status: 'COMPLETED', client: { status: { not: 'PROSPECT' } } } }),
-        prisma.task.count({ where: { status: 'IN_PROGRESS', client: { status: { not: 'PROSPECT' } } } }),
-        prisma.task.count({ where: { nature: 'REWORK', client: { status: { not: 'PROSPECT' } } } }),
+        prisma.task.count({ where: { OR: [{ client_id: null }, { client: { status: { not: 'PROSPECT' } } }] } }),
+        prisma.task.count({ where: { status: 'COMPLETED', OR: [{ client_id: null }, { client: { status: { not: 'PROSPECT' } } }] } }),
+        prisma.task.count({ where: { status: 'IN_PROGRESS', OR: [{ client_id: null }, { client: { status: { not: 'PROSPECT' } } }] } }),
+        prisma.task.count({ where: { nature: 'REWORK', OR: [{ client_id: null }, { client: { status: { not: 'PROSPECT' } } }] } }),
         prisma.task.count({
             where: {
                 OR: [
@@ -697,7 +708,7 @@ export const getDigitalMarketingDashboardStats = async (month?: number, year?: n
         where: {
             department: 'CREATIVE',
             status: { notIn: ['COMPLETED', 'CANCELLED'] },
-            client: { status: { not: 'PROSPECT' } }
+            OR: [{ client_id: null }, { client: { status: { not: 'PROSPECT' } } }]
         }
     });
 
@@ -734,10 +745,12 @@ export const getDigitalMarketingDashboardStats = async (month?: number, year?: n
         where: {
             department: 'CREATIVE',
             status: { notIn: ['COMPLETED', 'CANCELLED'] },
-            client: { status: { not: 'PROSPECT' } },
-            OR: [
-                { due_date: { lt: now } },
-                { status: { in: ['REVISION', 'REWORK', 'OVERDUE'] } }
+            AND: [
+                { OR: [{ client_id: null }, { client: { status: { not: 'PROSPECT' } } }] },
+                { OR: [
+                    { due_date: { lt: now } },
+                    { status: { in: ['REVISION', 'REWORK', 'OVERDUE'] } }
+                ]}
             ]
         }
     });

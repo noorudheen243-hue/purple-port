@@ -156,7 +156,6 @@ const BackupRestore: React.FC = () => {
         // 1. Trigger File Picker IMMEDIATELY within the click handler
         if (supportsFilePicker) {
             try {
-                // Use a local suggested name since we don't have server response yet
                 const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
                 const suggestedName = `backup-manual-${timestamp}.zip`;
 
@@ -180,8 +179,12 @@ const BackupRestore: React.FC = () => {
             });
             const filename = buildRes.data.filename;
 
-            // Fetch the resulting blob
-            const response = await api.get(`/backup/download/${filename}`, { responseType: 'blob' });
+            // Step 3: Fetch the resulting blob
+            // Using a more robust fetch for large blobs
+            const response = await api.get(`/backup/download/${filename}`, { 
+                responseType: 'blob',
+                timeout: 300000 // 5 minute timeout for large files
+            });
             const blob = new Blob([response.data], { type: 'application/zip' });
 
             if (fileHandle) {
@@ -215,7 +218,50 @@ const BackupRestore: React.FC = () => {
             }
             fetchBackups(); // Refresh history
         } catch (err: any) {
-            Swal.fire({ icon: 'error', title: 'Backup Failed', text: err.message });
+            const errorMsg = err.response?.data?.message || err.message;
+            Swal.fire({ 
+                icon: 'error', 
+                title: 'Backup Failed', 
+                text: errorMsg,
+                footer: errorMsg === 'Network Error' ? '<p class="text-xs text-red-500 text-center">Connection timed out or was reset. Try the <b>Direct Download</b> option below instead.</p>' : undefined
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    /** Direct download link that bypasses Blob memory issues */
+    const handleDirectDownload = async () => {
+        setLoading(true);
+        try {
+            // 1. Trigger fresh backup generation
+            const buildRes = await api.post('/backup/save-to-disk', { 
+                type: 'manual',
+                includeUploads: includeMedia 
+            });
+            const filename = buildRes.data.filename;
+
+            // 2. Open download in new tab (uses JWT cookie automatically)
+            const downloadUrl = `${api.defaults.baseURL || '/api'}/backup/download/${filename}`;
+            window.open(downloadUrl, '_blank');
+
+            Swal.fire({
+                icon: 'info',
+                title: 'Direct Download',
+                text: 'Generation complete. Your browser should now start the download.',
+                timer: 3000,
+                showConfirmButton: false,
+                toast: true,
+                position: 'bottom-end'
+            });
+            
+            fetchBackups();
+        } catch (err: any) {
+            Swal.fire({ 
+                icon: 'error', 
+                title: 'Generation Failed', 
+                text: err.response?.data?.message || err.message 
+            });
         } finally {
             setLoading(false);
         }
@@ -451,14 +497,26 @@ const BackupRestore: React.FC = () => {
                                         Generates on server and prompts you to select a path on your PC to download.
                                     </p>
                                 </div>
-                                <Button 
-                                    onClick={handleManualLocalBackup}
-                                    disabled={loading}
-                                    className="w-full h-12 bg-violet-600 hover:bg-violet-700 shadow-lg shadow-violet-200 rounded-xl"
-                                >
-                                    {loading ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <HardDriveDownload className="h-4 w-4 mr-2" />}
-                                    Manual Backup to PC
-                                </Button>
+                                <div className="grid grid-cols-1 gap-3 w-full">
+                                    <Button 
+                                        onClick={handleManualLocalBackup}
+                                        disabled={loading}
+                                        className="w-full h-12 bg-violet-600 hover:bg-violet-700 shadow-lg shadow-violet-200 rounded-xl"
+                                    >
+                                        {loading ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <HardDriveDownload className="h-4 w-4 mr-2" />}
+                                        Manual Backup to PC
+                                    </Button>
+
+                                    <Button 
+                                        onClick={handleDirectDownload}
+                                        disabled={loading}
+                                        variant="outline"
+                                        className="w-full h-10 border-violet-200 text-violet-600 hover:bg-violet-50 rounded-xl text-xs font-bold"
+                                    >
+                                        <Download className="h-3.5 w-3.5 mr-2" />
+                                        Direct Download (Reliable)
+                                    </Button>
+                                </div>
                                 {supportsFilePicker && <span className="text-[10px] uppercase tracking-wider text-violet-400 font-bold">Use Specified Folder Path</span>}
                             </div>
 

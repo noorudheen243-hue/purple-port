@@ -230,13 +230,18 @@ export const saveBackupToDisk = async (req: Request, res: Response) => {
 
         await createBackupZip(destPath, shouldIncludeUploads);
 
+        // Ensure file is fully flushed and exists before responding
+        if (!fs.existsSync(destPath)) {
+            throw new Error('Backup file generation failed: File not found after zipping');
+        }
+
         const stats = fs.statSync(destPath);
         const sizeKB = (stats.size / 1024).toFixed(1);
 
         // Prune old backups (keep last 30 total)
         pruneOldBackups(backupDir, 30);
 
-        console.log(`[Backup] Backup saved: ${filename} (${sizeKB} KB)`);
+        console.log(`[Backup] ✅ Backup saved: ${filename} (${sizeKB} KB)`);
         res.json({
             message: 'Backup saved successfully',
             filename,
@@ -246,7 +251,7 @@ export const saveBackupToDisk = async (req: Request, res: Response) => {
             createdAt: new Date().toISOString()
         });
     } catch (error: any) {
-        console.error('[Backup] Save-to-disk error:', error);
+        console.error('[Backup] ❌ Save-to-disk error:', error);
         res.status(500).json({ message: error.message || 'Backup failed' });
     }
 };
@@ -391,16 +396,31 @@ export const downloadBackupFile = async (req: Request, res: Response) => {
         const zipPath = path.join(backupDir, filename);
 
         if (!fs.existsSync(zipPath)) {
+            console.error(`[Backup] Download failed: File not found at ${zipPath}`);
             return res.status(404).json({ message: `Backup file not found` });
         }
 
-        res.setHeader('Content-Type', 'application/zip');
-        res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+        const stats = fs.statSync(zipPath);
+        console.log(`[Backup] Streaming download: ${filename} (${(stats.size / 1024 / 1024).toFixed(2)} MB)`);
 
-        fs.createReadStream(zipPath).pipe(res);
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('Content-Length', stats.size);
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+        const stream = fs.createReadStream(zipPath);
+        stream.on('error', (err) => {
+            console.error('[Backup] ReadStream error during download:', err);
+            if (!res.headersSent) {
+                res.status(500).json({ message: 'Error streaming backup file' });
+            }
+        });
+
+        stream.pipe(res);
     } catch (error: any) {
-        console.error('[Backup] Download error:', error);
-        res.status(500).json({ message: error.message || 'Download failed' });
+        console.error('[Backup] ❌ Download error:', error);
+        if (!res.headersSent) {
+            res.status(500).json({ message: error.message || 'Download failed' });
+        }
     }
 };
 

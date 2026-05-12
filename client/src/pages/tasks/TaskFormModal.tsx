@@ -9,6 +9,7 @@ import { AlertCircle, Briefcase, FileText, Layers, RefreshCw, User, Calendar as 
 import { useAuthStore } from '../../store/authStore';
 import ClientFormModal from '../clients/ClientFormModal';
 import FormErrorAlert from '../../components/ui/FormErrorAlert';
+import Swal from 'sweetalert2';
 
 // Enhanced Schema with Phase 3 Logic (Mandatory Client for ALL)
 const schema = z.object({
@@ -178,12 +179,28 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
 
             return response;
         },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        onSuccess: async () => {
+            await queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            Swal.fire({
+                title: 'Success!',
+                text: initialData ? 'Task updated successfully.' : 'Task created successfully.',
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false
+            });
             reset();
             setFiles([]);
             setLinks([]);
             onClose();
+        },
+        onError: (error: any) => {
+            console.error("Mutation Error:", error);
+            Swal.fire({
+                title: 'Error!',
+                text: error?.response?.data?.message || error.message || 'Failed to process task',
+                icon: 'error',
+                confirmButtonColor: '#9333ea' // Purple
+            });
         }
     });
 

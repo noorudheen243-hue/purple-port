@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { AlertCircle, Briefcase, FileText, Layers, RefreshCw, User, Calendar as CalendarIcon, Check, Plus, Edit } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import FormErrorAlert from '../../components/ui/FormErrorAlert';
+import Swal from 'sweetalert2';
 
 // Schema for Updating
 const updateSchema = z.object({
@@ -71,12 +72,25 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({ isOpen, onClose, task }) 
             }
             return await api.put(`/tasks/${task.id}`, payload);
         },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        onSuccess: async () => {
+            await queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            Swal.fire({
+                title: 'Success!',
+                text: 'Task updated successfully.',
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false
+            });
             onClose();
         },
         onError: (err: any) => {
-            alert("Failed to update task: " + (err.response?.data?.message || err.message));
+            console.error("Mutation Error:", err);
+            Swal.fire({
+                title: 'Error!',
+                text: err.response?.data?.message || err.message || 'Failed to update task',
+                icon: 'error',
+                confirmButtonColor: '#2563eb' // Blue
+            });
         }
     });
 

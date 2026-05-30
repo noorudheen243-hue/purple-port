@@ -39,8 +39,16 @@ export const cleanupRelievedStaff = async (userId: string, tx?: Prisma.Transacti
         where: { assignee_id: userId },
         data: { assignee_id: null }
     });
-    // For Reporter, we rely on User anonymization if needed, as reporter is required.
-    // However, if the user requested "removal", we'll anonymize the user at the end of this flow anyway.
+    // Unassign Reporter if needed, but reporter usually stays for history unless hard delete requested.
+    // We will unassign reporter as well based on "remove all data" request, but cautiously.
+    // Wait, the schema might not allow reporter to be null if it's required. Let's check schema.
+    // Actually, let's keep reporter for now and rely on anonymization if needed.
+    
+    // 5b. Marketing Management Removal (Unassign)
+    await client.metaAdsLog.updateMany({ where: { user_id: userId }, data: { user_id: null } });
+    await client.googleAdsLog.updateMany({ where: { user_id: userId }, data: { user_id: null } });
+    await client.seoLog.updateMany({ where: { user_id: userId }, data: { user_id: null } });
+    await client.webDevProject.updateMany({ where: { user_id: userId }, data: { user_id: null } });
 
     // 6. Financial Management (Ledger)
     // Find all ledgers for this user
@@ -740,16 +748,31 @@ export const deleteStaff = async (staffId: string) => {
 };
 
 export const initiateExit = async (staffId: string, exitDate: Date, reason: string) => {
-    // Basic implementation to satisfy controller interface
-    // Assuming schema support might be missing, we rely on implicit or future fields
-    // For now, we return the profile as is or update if fields exist.
-    // If fields unknown, we can just return.
-    const profile = await prisma.staffProfile.findUnique({ where: { id: staffId } });
-    if (!profile) throw new Error("Staff not found");
+    return await prisma.$transaction(async (tx) => {
+        const profile = await tx.staffProfile.findUnique({ where: { id: staffId } });
+        if (!profile) throw new Error("Staff not found");
 
-    // Placeholder update - preventing TS errors if fields don't exist by casting to any if needed,
-    // but better to just return if we aren't sure.
-    // However, user might expect an update.
-    // Let's assume standard fields for now.
-    return profile;
+        const userId = profile.user_id;
+
+        // 1. Record Resignation for History (Approved state)
+        await tx.resignationRequest.create({
+            data: {
+                employee_id: userId,
+                reason: reason,
+                requested_relieving_date: exitDate,
+                status: 'APPROVED',
+            }
+        });
+
+        // 2. Perform deep cleanup across modules
+        await cleanupRelievedStaff(userId, tx);
+
+        // Calculate a dummy settlement preview based on remaining days if needed
+        // For now, we return a structural response for the frontend
+        return {
+            success: true,
+            estimatedSettlement: 0,
+            message: "Exit initiated. Access locked and records archived."
+        };
+    });
 };

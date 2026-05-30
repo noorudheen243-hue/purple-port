@@ -15,7 +15,7 @@ import Swal from 'sweetalert2';
 const schema = z.object({
     title: z.string().min(3, "Title is required"),
     description: z.string().optional(),
-    type: z.enum(['GRAPHIC', 'VIDEO', 'COPY', 'STRATEGY', 'DEV', 'CONTENT_SHOOTING', 'OTHER']),
+    type: z.enum(['GRAPHIC', 'VIDEO', 'COPY', 'STRATEGY', 'DEV', 'CONTENT_SHOOTING', 'OTHER', 'BRANDING']),
     priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']),
     category: z.enum(['CAMPAIGN', 'INTERNAL']),
     nature: z.enum(['NEW', 'REWORK']),
@@ -27,9 +27,49 @@ const schema = z.object({
     due_date: z.string().optional(), // Soft optional
     department: z.enum(['CREATIVE', 'DIGITAL_MARKETING']),
     campaign_type: z.string().optional(),
+    task_group: z.string().min(1, "Task Group is required"),
+    task_type: z.string().min(1, "Task Type is required"),
 });
 
 type TaskFormData = z.infer<typeof schema>;
+
+const TASK_GROUPS = [
+    'Graphics Work',
+    'Branding Works',
+    'Video Works',
+    'Printables',
+    'Edu Project'
+];
+
+const TASK_TYPES_MAPPING: Record<string, string[]> = {
+    'Graphics Work': ['Poster Design', 'Carausals', 'Web Images', 'other'],
+    'Branding Works': ['Logo Design', 'Brand Book', 'Brand Mockups', 'other'],
+    'Video Works': [
+        'Ai Generated Video',
+        'Motion Graphic Video',
+        'Logo Animation',
+        'Corporate Video',
+        'Reel Editing with Footages',
+        'Podcast/interview Video',
+        'Testimonial Video',
+        'Normal Video Content',
+        'other'
+    ],
+    'Printables': [
+        'Brochure',
+        'Flyer',
+        'Flex Design',
+        'Van Advertise',
+        'Business Card',
+        'Letter Head',
+        'ID Card Design',
+        'Corporate Profile',
+        'Catalogue',
+        'Menu Card',
+        'other'
+    ],
+    'Edu Project': ['Animated Videos', 'Shoot Videos', 'other']
+};
 
 interface NewTaskModalProps {
     isOpen: boolean;
@@ -64,7 +104,9 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
             nature: 'NEW',
             description: '',
             department: 'DIGITAL_MARKETING',
-            campaign_type: 'META_ADS'
+            campaign_type: 'META_ADS',
+            task_group: '',
+            task_type: ''
         }
     });
 
@@ -83,7 +125,9 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                 due_date: initialData.due_date ? new Date(initialData.due_date).toISOString().split('T')[0] : '',
                 content_type: initialData.content_type || '',
                 department: initialData.department || 'DIGITAL_MARKETING',
-                campaign_type: initialData.campaign_type || 'META_ADS'
+                campaign_type: initialData.campaign_type || 'META_ADS',
+                task_group: initialData.task_group || '',
+                task_type: initialData.task_type || ''
             });
             if (initialData.client_id) setValue('client_id', initialData.client_id);
             // Note: Attachments editing in Create Modal not supported yet, rely on Task Detail
@@ -95,7 +139,9 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                 nature: 'NEW',
                 description: '',
                 department: 'DIGITAL_MARKETING',
-                campaign_type: 'META_ADS'
+                campaign_type: 'META_ADS',
+                task_group: '',
+                task_type: ''
             });
             setFiles([]);
             setLinks([]);
@@ -308,7 +354,10 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => setValue('department', 'CREATIVE')}
+                                        onClick={() => {
+                                            setValue('department', 'CREATIVE');
+                                            setValue('campaign_type', ''); // Clear to prevent auto-reset to DIGITAL_MARKETING
+                                        }}
                                         className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg border transition-all ${departmentStr === 'CREATIVE' ? 'bg-purple-50 border-purple-500 text-purple-700 ring-1 ring-purple-500' : 'bg-background border-border text-muted-foreground hover:bg-muted/50'}`}
                                     >
                                         Creative / Design
@@ -360,6 +409,59 @@ const NewTaskModal: React.FC<NewTaskModalProps> = ({ isOpen, onClose, initialDat
                                 placeholder="e.g. Design Holiday Banner"
                             />
                             {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title.message}</p>}
+                        </div>
+
+                        {/* Task Group & Task Type Selection */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-1">
+                                <label className="text-sm font-medium text-foreground">Task Group <span className="text-red-500">*</span></label>
+                                <select
+                                    {...register('task_group')}
+                                    className="w-full px-4 py-2.5 border border-input rounded-lg bg-background text-foreground focus:ring-2 focus:ring-purple-200 outline-none"
+                                    onChange={(e) => {
+                                        setValue('task_group', e.target.value, { shouldValidate: true });
+                                        setValue('task_type', '', { shouldValidate: true }); // Reset task type when group changes
+                                        
+                                        // Auto-map the existing `type` field based on chosen group
+                                        const group = e.target.value;
+                                        if (group === 'Graphics Work') {
+                                            setValue('type', 'GRAPHIC');
+                                        } else if (group === 'Branding Works') {
+                                            setValue('type', 'BRANDING');
+                                        } else if (group === 'Video Works') {
+                                            setValue('type', 'VIDEO');
+                                        } else if (group === 'Printables') {
+                                            setValue('type', 'GRAPHIC'); // Map Printables to Graphics Work compatibility
+                                        } else if (group === 'Edu Project') {
+                                            setValue('type', 'VIDEO'); // Map Edu Project to Video compatibility
+                                        }
+                                    }}
+                                >
+                                    <option value="">-- Choose Task Group --</option>
+                                    {TASK_GROUPS.map(tg => (
+                                        <option key={tg} value={tg}>{tg}</option>
+                                    ))}
+                                </select>
+                                {errors.task_group && <p className="text-red-500 text-xs mt-1">{errors.task_group.message}</p>}
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="text-sm font-medium text-foreground">Task Type <span className="text-red-500">*</span></label>
+                                <select
+                                    {...register('task_type')}
+                                    disabled={!watch('task_group')}
+                                    className="w-full px-4 py-2.5 border border-input rounded-lg bg-background text-foreground focus:ring-2 focus:ring-purple-200 outline-none disabled:opacity-50"
+                                    onChange={(e) => {
+                                        setValue('task_type', e.target.value, { shouldValidate: true });
+                                    }}
+                                >
+                                    <option value="">-- Choose Task Type --</option>
+                                    {watch('task_group') && TASK_TYPES_MAPPING[watch('task_group') as string]?.map(tt => (
+                                        <option key={tt} value={tt}>{tt}</option>
+                                    ))}
+                                </select>
+                                {errors.task_type && <p className="text-red-500 text-xs mt-1">{errors.task_type.message}</p>}
+                            </div>
                         </div>
 
                         {/* Description Field */}

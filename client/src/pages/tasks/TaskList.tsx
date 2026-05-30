@@ -304,7 +304,7 @@ const TaskList: React.FC<TaskListProps> = ({ forcedFilters, hideTitle }) => {
                                                 <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase
                                                     ${task.type === 'GRAPHIC' ? 'bg-purple-100 text-purple-700' :
                                                         task.type === 'VIDEO' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}`}>
-                                                    {task.type}
+                                                    {task.task_group ? `${task.task_group} • ${task.task_type}` : task.type}
                                                 </span>
                                                 {task.client?.name && <span className="truncate max-w-[150px]">— {task.client.name}</span>}
                                             </div>

@@ -252,6 +252,11 @@ const TaskDetail = () => {
                                 }`}>
                                 {task.status.replace('_', ' ')}
                             </span>
+                            {task.task_group && (
+                                <span className="bg-purple-50 text-purple-700 dark:bg-purple-950/30 dark:text-purple-300 border border-purple-100 dark:border-purple-900/50 px-2 py-0.5 rounded-full font-semibold">
+                                    {task.task_group} / {task.task_type}
+                                </span>
+                            )}
                             {task.priority && <span className="uppercase">{task.priority} Priority</span>}
                             <span>• Created {format(new Date(task.createdAt), 'MMM d, yyyy')}</span>
                         </div>

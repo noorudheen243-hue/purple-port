@@ -39,6 +39,6 @@ cd $REMOTE_PATH/server
 npx prisma db push --accept-data-loss
 
 echo "-> Restarting PM2..."
-pm2 restart qix-ads-v2.7 || pm2 start dist/server.js --name qix-ads-v2.7
+pm2 restart qix-api || pm2 start dist/server.js --name qix-api
 
 echo "DEPLOYMENT COMPLETE"

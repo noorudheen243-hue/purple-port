@@ -22,6 +22,8 @@ const createTaskSchema = z.object({
     estimated_hours: z.number().optional(),
     department: z.enum(['CREATIVE', 'DIGITAL_MARKETING']).default('CREATIVE'),
     campaign_type: z.string().optional(),
+    task_group: z.string().optional(),
+    task_type: z.string().optional(),
 });
 
 const updateTaskSchema = createTaskSchema.partial().extend({

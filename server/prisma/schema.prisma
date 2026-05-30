@@ -524,6 +524,8 @@ model Task {
   // Extension for Digital Marketing
   department    String  @default("CREATIVE") // Enum: CREATIVE, DIGITAL_MARKETING
   campaign_type String? // Enum: META_ADS, GOOGLE_ADS, SEO, CONTENT_PLANNING, WEB_DEVELOPMENT
+  task_group    String?
+  task_type     String?
 
   // Advanced Task Fields
   sla_target        DateTime?

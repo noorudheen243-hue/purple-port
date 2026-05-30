@@ -832,6 +832,25 @@ export const syncBiometrics = async (method: 'MANUAL' | 'AUTO' = 'MANUAL') => {
         }
 
         // 1. FALLBACK TO SMART CHECK (Bridge Mode)
+        const status = await prisma.biometricDeviceStatus.findUnique({ where: { id: 'CURRENT' } });
+        const lastBridge = status?.last_bridge_heartbeat;
+        const isBridgeActive = lastBridge && (Date.now() - new Date(lastBridge).getTime() < 120000); // 2 mins
+
+        if (isBridgeActive) {
+            await prisma.biometricCommand.create({
+                data: {
+                    id: randomUUID(),
+                    command: 'FORCE_SYNC',
+                    params: null,
+                    status: 'PENDING'
+                }
+            });
+            return { 
+                message: 'Device is remote. Sync command queued for the Bridge Agent. Please wait up to 30 seconds for today\'s logs to be retrieved.',
+                queued: true 
+            };
+        }
+
         const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
         const recentLog = await prisma.attendanceRecord.findFirst({
             where: {
@@ -844,7 +863,6 @@ export const syncBiometrics = async (method: 'MANUAL' | 'AUTO' = 'MANUAL') => {
             return { message: 'Sync managed by Bridge Agent. Status: ACTIVE.' };
         }
 
-        const status = await prisma.biometricDeviceStatus.findUnique({ where: { id: 'CURRENT' } });
         if (!status?.last_office_ip) {
             return { message: 'OFFLINE: Office IP not yet registered today. Someone must login from office once.' };
         }

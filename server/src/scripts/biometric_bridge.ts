@@ -168,6 +168,13 @@ async function executeRemoteCommand(cmd: any) {
                 await zk.deleteUser(deleteUid);
                 resultJson = { message: `User ${params.userId} deleted.` };
                 break;
+            case 'FORCE_SYNC':
+                // Disconnect the temporary zk connection opened by executeRemoteCommand
+                // to avoid port conflict/busy device when sync() tries to connect
+                try { await zk.disconnect(); } catch (_) {}
+                await sync();
+                resultJson = { message: 'Force sync executed successfully.' };
+                break;
             default:
                 throw new Error(`Command "${command}" not implemented in bridge.`);
         }

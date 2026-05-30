@@ -10,16 +10,56 @@ import { useAuthStore } from '../../store/authStore';
 import FormErrorAlert from '../../components/ui/FormErrorAlert';
 import Swal from 'sweetalert2';
 
+// Constants for Task Group and Task Type
+const TASK_GROUPS = [
+    'Graphics Work',
+    'Branding Works',
+    'Video Works',
+    'Printables',
+    'Edu Project'
+];
+
+const TASK_TYPES_MAPPING: Record<string, string[]> = {
+    'Graphics Work': ['Poster Design', 'Carausals', 'Web Images', 'other'],
+    'Branding Works': ['Logo Design', 'Brand Book', 'Brand Mockups', 'other'],
+    'Video Works': [
+        'Ai Generated Video',
+        'Motion Graphic Video',
+        'Logo Animation',
+        'Corporate Video',
+        'Reel Editing with Footages',
+        'Podcast/interview Video',
+        'Testimonial Video',
+        'Normal Video Content',
+        'other'
+    ],
+    'Printables': [
+        'Brochure',
+        'Flyer',
+        'Flex Design',
+        'Van Advertise',
+        'Business Card',
+        'Letter Head',
+        'ID Card Design',
+        'Corporate Profile',
+        'Catalogue',
+        'Menu Card',
+        'other'
+    ],
+    'Edu Project': ['Animated Videos', 'Shoot Videos', 'other']
+};
+
 // Schema for Updating
 const updateSchema = z.object({
     title: z.string().min(3, "Title is required"),
     description: z.string().optional(),
-    type: z.enum(['GRAPHIC', 'VIDEO', 'COPY', 'STRATEGY', 'DEV']),
+    type: z.enum(['GRAPHIC', 'VIDEO', 'COPY', 'STRATEGY', 'DEV', 'BRANDING']),
     priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']),
     status: z.enum(['PLANNED', 'ASSIGNED', 'IN_PROGRESS', 'REVIEW', 'REVISION_REQUESTED', 'COMPLETED']),
     due_date: z.string().optional(),
     assignee_id: z.string().optional(),
-    // Client/Campaign usually not changed easily, but let's allow basic edits
+    task_group: z.string().optional(),
+    task_type: z.string().optional(),
 });
 
 type TaskEditData = z.infer<typeof updateSchema>;
@@ -37,13 +77,15 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({ isOpen, onClose, task }) 
     // Fetch Data for Selects
     const { data: staff } = useQuery({ queryKey: ['users'], queryFn: () => api.get('/users').then(res => res.data) });
 
-    const { register, handleSubmit, setValue, formState: { errors }, reset } = useForm<TaskEditData>({
+    const { register, handleSubmit, watch, setValue, formState: { errors }, reset } = useForm<TaskEditData>({
         resolver: zodResolver(updateSchema),
         defaultValues: {
             title: '',
             priority: 'MEDIUM',
             status: 'PLANNED',
-            type: 'GRAPHIC'
+            type: 'GRAPHIC',
+            task_group: '',
+            task_type: ''
         }
     });
 
@@ -56,7 +98,9 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({ isOpen, onClose, task }) 
                 priority: task.priority,
                 status: task.status,
                 assignee_id: task.assignee_id,
-                due_date: task.due_date ? new Date(task.due_date).toISOString().slice(0, 10) : ''
+                due_date: task.due_date ? new Date(task.due_date).toISOString().slice(0, 10) : '',
+                task_group: task.task_group || '',
+                task_type: task.task_type || ''
             });
         }
     }, [task, reset]);
@@ -116,6 +160,53 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({ isOpen, onClose, task }) 
                         <label className="text-sm font-medium text-gray-700">Task Title</label>
                         <input {...register('title')} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-200 outline-none" />
                         {errors.title && <p className="text-red-500 text-xs">{errors.title.message}</p>}
+                    </div>
+
+                    {/* Task Group & Task Type Selection */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <label className="text-sm font-medium text-gray-700">Task Group</label>
+                            <select
+                                {...register('task_group')}
+                                className="w-full px-4 py-2 border rounded-lg bg-white text-gray-800 focus:ring-2 focus:ring-blue-200 outline-none"
+                                onChange={(e) => {
+                                    setValue('task_group', e.target.value);
+                                    setValue('task_type', ''); // Reset task type when group changes
+                                    
+                                    // Auto-map type
+                                    const group = e.target.value;
+                                    if (group === 'Graphics Work') {
+                                        setValue('type', 'GRAPHIC');
+                                    } else if (group === 'Branding Works') {
+                                        setValue('type', 'BRANDING');
+                                    } else if (group === 'Video Works') {
+                                        setValue('type', 'VIDEO');
+                                    } else if (group === 'Printables') {
+                                        setValue('type', 'GRAPHIC');
+                                    } else if (group === 'Edu Project') {
+                                        setValue('type', 'VIDEO');
+                                    }
+                                }}
+                            >
+                                <option value="">-- Choose Task Group --</option>
+                                {TASK_GROUPS.map(tg => (
+                                    <option key={tg} value={tg}>{tg}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-sm font-medium text-gray-700">Task Type</label>
+                            <select
+                                {...register('task_type')}
+                                disabled={!watch('task_group')}
+                                className="w-full px-4 py-2 border rounded-lg bg-white text-gray-800 disabled:opacity-50 focus:ring-2 focus:ring-blue-200 outline-none"
+                            >
+                                <option value="">-- Choose Task Type --</option>
+                                {watch('task_group') && TASK_TYPES_MAPPING[watch('task_group') as string]?.map(tt => (
+                                    <option key={tt} value={tt}>{tt}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">

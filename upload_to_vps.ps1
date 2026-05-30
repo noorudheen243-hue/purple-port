@@ -128,7 +128,7 @@ echo "-> Running Content Management Migration..."
 npx ts-node scripts/migrate-content-types.ts
 
 echo "-> Restarting PM2..."
-pm2 restart qix-ads-v2.7 || pm2 start dist/server.js --name qix-ads-v2.7
+pm2 restart qix-api || pm2 start dist/server.js --name qix-api
 "@
 
 # Fix CRLF to LF for Linux

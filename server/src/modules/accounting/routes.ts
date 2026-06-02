@@ -53,6 +53,7 @@ router.get('/unified/ledgers/:id/balance', authorize(ROLES.ADMIN, ROLES.MANAGER,
 router.get('/unified/reports/expenses', authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN), AccountingController.getExpenseSummary);
 router.get('/unified/reports/income', authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN), AccountingController.getUnifiedIncomeSummary);
 router.get('/unified/transactions/category/:category', authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN), AccountingController.getCategoryTransactions);
+router.post('/unified/reports/financial', authorize(ROLES.ADMIN, ROLES.MANAGER, ROLES.DEVELOPER_ADMIN), AccountingController.getFinancialReports);
 router.get('/unified/status', AccountingController.checkUnifiedEnabled);
 
 export default router;

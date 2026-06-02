@@ -28,6 +28,7 @@ import UnifiedAccountStatement from './UnifiedAccountStatement';
 import UniversalTransactionRecorder from './UniversalTransactionRecorder';
 import UnifiedLedgerCreator from './UnifiedLedgerCreator';
 import InvoiceModule from '../finance';
+import FinancialReports from './FinancialReports';
 
 const FinancialDashboard = () => {
     const [activeTab, setActiveTab] = useState('overview');
@@ -41,6 +42,7 @@ const FinancialDashboard = () => {
         { id: 'expenses', name: 'Expenses', icon: Receipt },
         { id: 'transactions', name: 'History', icon: History },
         { id: 'statements', name: 'Account Statement', icon: FileText },
+        { id: 'reports', name: 'Financial Reports', icon: BarChart3 },
         { id: 'invoices', name: 'Invoices', icon: FilePlus },
     ];
 
@@ -89,6 +91,7 @@ const FinancialDashboard = () => {
                 {activeTab === 'expenses' && <ExpenseManagement />}
                 {activeTab === 'transactions' && <UnifiedTransactionHistory />}
                 {activeTab === 'statements' && <UnifiedAccountStatement />}
+                {activeTab === 'reports' && <FinancialReports />}
                 {activeTab === 'invoices' && <InvoiceModule />}
             </div>
 

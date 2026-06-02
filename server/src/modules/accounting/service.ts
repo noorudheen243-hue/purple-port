@@ -1162,3 +1162,72 @@ export const updateTransaction = async (entryId: string, data: any) => {
         return tx.journalEntry.update({ where: { id: entryId }, data: updates });
     });
 };
+
+export const getFinancialReportsData = async (startDate: Date, endDate: Date, reportType: string) => {
+    let whereClause: any = {
+        date: {
+            gte: startDate,
+            lte: endDate
+        }
+    };
+
+    if (reportType === 'STAFF_SALARY') {
+        whereClause.transaction_type = 'EXPENSE';
+        whereClause.ledger = {
+            entity_type: {
+                in: ['USER', 'TEAM']
+            }
+        };
+    } else if (reportType === 'EXPENDITURE') {
+        whereClause.transaction_type = 'EXPENSE';
+    } else if (reportType === 'INCOME') {
+        whereClause.transaction_type = 'INCOME';
+    } else if (reportType === 'INCOME_AND_EXPENDITURE') {
+        whereClause.transaction_type = {
+            in: ['INCOME', 'EXPENSE']
+        };
+    }
+
+    const transactions = await prisma.unifiedTransaction.findMany({
+        where: whereClause,
+        include: {
+            ledger: true
+        },
+        orderBy: {
+            date: 'asc'
+        }
+    });
+
+    let totalIncome = 0;
+    let totalExpense = 0;
+
+    const formattedTransactions = transactions.map((t: any) => {
+        if (t.transaction_type === 'INCOME') {
+            totalIncome += t.amount;
+        } else if (t.transaction_type === 'EXPENSE') {
+            totalExpense += t.amount;
+        }
+        
+        return {
+            id: t.id,
+            date: t.date,
+            description: t.description,
+            category: t.category || 'General',
+            transaction_type: t.transaction_type,
+            amount: t.amount,
+            ledger_name: t.ledger?.ledger_name || 'Unknown Ledger',
+            reference: t.reference
+        };
+    });
+
+    return {
+        transactions: formattedTransactions,
+        totalIncome,
+        totalExpense,
+        netTotal: totalIncome - totalExpense,
+        period: {
+            start: startDate,
+            end: endDate
+        }
+    };
+};

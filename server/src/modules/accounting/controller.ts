@@ -458,3 +458,28 @@ export const getCategoryTransactions = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Failed to fetch category transactions' });
     }
 };
+
+export const getFinancialReports = async (req: Request, res: Response) => {
+    try {
+        const { start_date, end_date, report_type } = req.body;
+        
+        if (!start_date || !end_date || !report_type) {
+            return res.status(400).json({ message: 'Missing required parameters' });
+        }
+        
+        const sDate = new Date(start_date);
+        const eDate = new Date(end_date);
+        
+        // Ensure endDate covers the entire day
+        if (!isNaN(eDate.getTime())) {
+            eDate.setHours(23, 59, 59, 999);
+        }
+
+        const data = await AccountingService.getFinancialReportsData(sDate, eDate, report_type);
+        res.json(data);
+    } catch (error) {
+        console.error('Failed to generate financial reports:', error);
+        res.status(500).json({ message: 'Failed to generate financial reports' });
+    }
+};
+

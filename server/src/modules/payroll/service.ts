@@ -122,7 +122,7 @@ export const calculateAutoLOP = async (userId: string, month: number, year: numb
         const record = attendanceMap[dateKey];
         if (record) {
             // Evaluated if record exists
-            if (record.status === 'ABSENT' || record.status === 'HALF_DAY') {
+            if (record.status === 'ABSENT' || record.status === 'HALF_DAY' || record.status === 'LOP') {
                 // Ignore LOP on Sundays or Holidays even if an ABSENT record exists
                 // Rule A4 determines if Sunday/Holiday skip is enabled
                 const shouldSkipLOP = ruleA4Enabled && (isSunday || holidaySet.has(dateKey));

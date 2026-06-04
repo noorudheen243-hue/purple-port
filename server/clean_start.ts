@@ -63,7 +63,7 @@ const cleanPorts = async () => {
     // Start the actual server
     const spawn = require('child_process').spawn;
     const command = process.platform === 'win32' ? 'npx.cmd' : 'npx';
-    const server = spawn(command, ['ts-node-dev', '--respawn', '--transpile-only', 'src/server.ts'], { stdio: 'inherit', shell: true });
+    const server = spawn(command, ['ts-node-dev', '--respawn', '--transpile-only', '--ignore-watch', 'uploads', '--ignore-watch', 'backups', '--ignore-watch', 'prisma', '--ignore-watch', 'dev.db', '--ignore-watch', 'extract-*', 'src/server.ts'], { stdio: 'inherit', shell: true });
 
     // Start the Biometric Bridge agent in parallel so data syncs to VPS automatically
     console.log('--- Starting Biometric Bridge to VPS ---');

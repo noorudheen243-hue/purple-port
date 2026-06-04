@@ -181,8 +181,8 @@ const PayrollCalendar = () => {
                             if (day.status === 'HOLIDAY') bgClass = 'bg-yellow-50 dark:bg-yellow-900/20';
                             else if (day.status === 'LEAVE') bgClass = 'bg-red-50 dark:bg-red-900/20';
                             else if (day.status === 'WEEKOFF') bgClass = 'bg-slate-50 dark:bg-slate-900/10';
-                            else if (day.status === 'PRESENT') bgClass = 'bg-green-50 dark:bg-green-900/20';
-                            else if (day.status === 'ABSENT' && new Date(day.date) < new Date()) bgClass = 'bg-red-50/50'; // Absent in past
+                            else if (day.status === 'PRESENT' || day.status === 'REGULARIZED') bgClass = 'bg-green-50 dark:bg-green-900/20';
+                            else if ((day.status === 'ABSENT' || day.status === 'LOP') && new Date(day.date) < new Date()) bgClass = 'bg-red-50/50'; // Absent/LOP in past
 
                             return (
                                 <div
@@ -192,7 +192,7 @@ const PayrollCalendar = () => {
                                 >
                                     <div className="flex justify-between items-start">
                                         <span className={`text-sm font-medium ${day.status === 'HOLIDAY' ? 'text-yellow-700' : ''}`}>{day.day}</span>
-                                        {day.status !== 'WEEKOFF' && day.status !== 'ABSENT' && (
+                                        {day.status !== 'WEEKOFF' && day.status !== 'ABSENT' && day.status !== 'LOP' && (
                                             <Badge variant="outline" className="text-[10px] uppercase">{day.status}</Badge>
                                         )}
                                     </div>
@@ -214,8 +214,8 @@ const PayrollCalendar = () => {
                                         {day.status === 'HOLIDAY' && (
                                             <div className="text-yellow-700 truncate font-medium" title={day.details?.name}>{day.details?.name}</div>
                                         )}
-                                        {day.status === 'LEAVE' && (
-                                            <div className="text-red-700 truncate" title={day.details?.reason}>{day.details?.type} - {day.details?.reason}</div>
+                                        {(day.status === 'LEAVE' || day.status === 'LOP') && (
+                                            <div className="text-red-700 truncate" title={day.details?.reason}>{day.details?.type || 'LOP'} - {day.details?.reason || 'Loss of Pay'}</div>
                                         )}
                                     </div>
 

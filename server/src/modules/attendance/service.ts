@@ -413,11 +413,17 @@ export class AttendanceService {
 
                         const statusResult = await this.computeStatus(staff, finalCheckIn, finalCheckOut, isPastDay);
 
+                        let workHours = existing.work_hours;
+                        if (finalCheckIn && finalCheckOut) {
+                            workHours = (finalCheckOut.getTime() - finalCheckIn.getTime()) / (1000 * 60 * 60);
+                        }
+
                         await db.attendanceRecord.update({
                             where: { id: existing.id },
                             data: {
                                 ...data,
                                 status: statusResult.status,
+                                work_hours: workHours,
                                 method: 'BIOMETRIC'
                             }
                         });
@@ -464,11 +470,17 @@ export class AttendanceService {
                 true // Always treat as past day analysis
             );
 
+            let workHours = record.work_hours;
+            if (record.check_in && record.check_out) {
+                workHours = (new Date(record.check_out).getTime() - new Date(record.check_in).getTime()) / (1000 * 60 * 60);
+            }
+
             // Update DB if different (or just force update to be safe)
             await db.attendanceRecord.update({
                 where: { id: record.id },
                 data: {
                     status: statusResult.status,
+                    work_hours: workHours,
                     shift_snapshot: `${statusResult.shift.start_time}-${statusResult.shift.end_time}`,
                     shift_id: statusResult.shift.id === 'LEGACY' || statusResult.shift.id === 'DEFAULT' ? null : statusResult.shift.id,
                     criteria_mode: statusResult.criteria,
@@ -487,6 +499,7 @@ export class AttendanceService {
     static async getTeamAttendance(startDate: Date, endDate: Date, requestor?: any) {
         // Fetch all active staff
         const whereClause: any = {
+            status: { not: 'RELIEVED' },
             role: { notIn: ['ADMIN', 'CLIENT'] },
             staffProfile: {
                 staff_number: { notIn: ['QIX0001', 'QIX0002'] }
@@ -698,10 +711,16 @@ export class AttendanceService {
                 true // Is Past Day
             );
 
+            let workHours = record.work_hours;
+            if (record.check_in && record.check_out) {
+                workHours = (new Date(record.check_out).getTime() - new Date(record.check_in).getTime()) / (1000 * 60 * 60);
+            }
+
             await db.attendanceRecord.update({
                 where: { id: record.id },
                 data: {
                     status: statusResult.status,
+                    work_hours: workHours,
                     shift_snapshot: `${statusResult.shift.start_time}-${statusResult.shift.end_time}`,
                     shift_id: statusResult.shift.id === 'LEGACY' || statusResult.shift.id === 'DEFAULT' ? null : statusResult.shift.id,
                     criteria_mode: statusResult.criteria,
@@ -799,7 +818,7 @@ export class AttendanceService {
                     }
                 },
                 update: {
-                    status: 'PRESENT', // Align with Rule A2 (Regularized = PRESENT)
+                    status: 'REGULARIZED',
                     method: 'REGULARISATION',
                     check_in: finalCheckIn,
                     check_out: finalCheckOut,
@@ -812,7 +831,7 @@ export class AttendanceService {
                 create: {
                     user_id: request.user_id,
                     date: normalizedDate,
-                    status: 'PRESENT',
+                    status: 'REGULARIZED',
                     check_in: finalCheckIn,
                     check_out: finalCheckOut,
                     work_hours: shift.id === 'RAMZAN' ? 7 : 8.5,
@@ -1220,7 +1239,9 @@ export class AttendanceService {
                         is_late,
                         check_in: record.check_in,
                         check_out: record.check_out,
-                        work_hours: record.work_hours || 0,
+                        work_hours: record.check_in && record.check_out
+                            ? (new Date(record.check_out).getTime() - new Date(record.check_in).getTime()) / (1000 * 60 * 60)
+                            : (record.work_hours || 0),
                         status: record.status,
                         method: record.method
                     });

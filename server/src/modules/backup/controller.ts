@@ -143,6 +143,20 @@ async function restoreFromZip(zipPath: string): Promise<void> {
             // 1. Disconnect Prisma to release file locks
             await prisma.$disconnect();
 
+            // 1.5 Kill Biometric Bridge which also holds a lock on the database
+            try {
+                if (process.platform === 'win32') {
+                    const { execSync } = require('child_process');
+                    execSync('wmic process where "commandline like \'%biometric_bridge.ts%\'" call terminate', { stdio: 'ignore' });
+                    console.log('[Backup] Killed Biometric Bridge process to release DB locks.');
+                }
+            } catch (e) {
+                console.warn('[Backup] Failed to kill biometric bridge process:', e);
+            }
+
+            // small delay to ensure locks are released
+            await new Promise(res => setTimeout(res, 1000));
+
             // 2. CRITICAL: Clean up SQLite WAL/SHM side-files before overwriting.
             // If the restored DB doesn't match the existing logs, SQLite will report corruption or crash.
             const sideFiles = [`${targetDb}-wal`, `${targetDb}-shm`];
@@ -552,7 +566,16 @@ export const uploadBackup = async (req: Request, res: Response) => {
         const destPath = path.join(backupDir, finalFilename);
 
         // Move file from temp to backup dir
-        fs.renameSync(req.file.path, destPath);
+        try {
+            fs.renameSync(req.file.path, destPath);
+        } catch (renameErr: any) {
+            if (renameErr.code === 'EXDEV') {
+                fs.copyFileSync(req.file.path, destPath);
+                fs.unlinkSync(req.file.path);
+            } else {
+                throw renameErr;
+            }
+        }
 
         const stats = fs.statSync(destPath);
         const sizeKB = (stats.size / 1024).toFixed(1);

@@ -130,6 +130,9 @@ export class LeaveService {
             const current = new Date(request.start_date);
             const end = new Date(request.end_date);
 
+            const isLOP = ['LOP', 'UNPAID'].includes(request.type);
+            const recordStatus = request.is_half_day ? 'PRESENT' : (isLOP ? 'LOP' : 'LEAVE');
+
             while (current <= end) {
                 // Normalize current date to IST midnight (18:30 UTC previous day)
                 const istDate = new Date(current.getTime() + IST_OFFSET);
@@ -144,13 +147,13 @@ export class LeaveService {
                         }
                     },
                     update: {
-                        status: request.is_half_day ? 'PRESENT' : 'LEAVE',
+                        status: recordStatus,
                         work_hours: request.is_half_day ? undefined : 0
                     },
                     create: {
                         user_id: request.user_id,
                         date: normalizedDate,
-                        status: request.is_half_day ? 'PRESENT' : 'LEAVE',
+                        status: recordStatus,
                         check_in: null,
                         check_out: null,
                         work_hours: request.is_half_day ? undefined : 0
@@ -212,7 +215,7 @@ export class LeaveService {
             await db.attendanceRecord.deleteMany({
                 where: {
                     user_id: request.user_id,
-                    status: 'LEAVE',
+                    status: { in: ['LEAVE', 'LOP'] },
                     date: {
                         gte: searchStart,
                         lte: request.end_date
@@ -244,7 +247,7 @@ export class LeaveService {
             await db.attendanceRecord.deleteMany({
                 where: {
                     user_id: request.user_id,
-                    status: 'LEAVE',
+                    status: { in: ['LEAVE', 'LOP'] },
                     date: {
                         gte: searchStart,
                         lte: request.end_date

@@ -571,7 +571,7 @@ export const getUnifiedSummary = async (month?: number, year?: number) => {
         _sum: { amount: true }
     });
 
-    // 2. Opening Balance (Flow before startDate)
+    // 2. Opening Balance (True Liquidity Flow)
     const incomeBefore = await prisma.unifiedTransaction.aggregate({
         where: { transaction_type: 'INCOME', date: { lt: startDate } },
         _sum: { amount: true }
@@ -581,30 +581,12 @@ export const getUnifiedSummary = async (month?: number, year?: number) => {
         _sum: { amount: true }
     });
 
-    // Include Legacy Mappings for Opening Balance
-    const mappings = await prisma.legacyLedgerMapping.findMany();
-    let legacyOpeningBalance = 0;
-    for (const m of mappings) {
-        const effectiveDate = startDate < m.migration_date ? startDate : m.migration_date;
-        if (m.old_income_ledger_id) {
-            const agg = await prisma.journalLine.aggregate({
-                where: { ledger_id: m.old_income_ledger_id, entry: { date: { lt: effectiveDate } } },
-                _sum: { debit: true, credit: true }
-            });
-            legacyOpeningBalance += Math.abs((agg._sum.debit || 0) - (agg._sum.credit || 0));
-        }
-        if (m.old_expense_ledger_id) {
-            const agg = await prisma.journalLine.aggregate({
-                where: { ledger_id: m.old_expense_ledger_id, entry: { date: { lt: effectiveDate } } },
-                _sum: { debit: true, credit: true }
-            });
-            legacyOpeningBalance -= Math.abs((agg._sum.debit || 0) - (agg._sum.credit || 0));
-        }
-    }
-
-    const openingBalance = (incomeBefore._sum.amount || 0) - (expenseBefore._sum.amount || 0) + legacyOpeningBalance;
+    // We no longer add legacyOpeningBalance because all legacy transactions
+    // are now fully synced into unifiedTransaction (double-counting bug fix).
+    const openingBalance = (incomeBefore._sum.amount || 0) - (expenseBefore._sum.amount || 0);
     const netIncome = incomeCurrent._sum.amount || 0;
     const netExpense = expenseCurrent._sum.amount || 0;
+    
     const grossIncome = openingBalance + netIncome;
     const monthBalance = netIncome - netExpense;
     const cashBankBalance = grossIncome - netExpense;

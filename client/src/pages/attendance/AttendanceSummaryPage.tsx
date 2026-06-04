@@ -175,6 +175,7 @@ const AttendanceSummaryPage = () => {
                             if (record.status === 'ABSENT') return 'AB';
                             if (record.status === 'LEAVE') return 'L';
                             if (record.status === 'HOLIDAY') return 'H';
+                            if (record.status === 'LOP') return 'LOP';
                             return '?';
                         })
                     ];
@@ -218,7 +219,7 @@ const AttendanceSummaryPage = () => {
 
                 let code = <X className={`h-4 w-4 ${iconColor}`} />;
                 if (record.leave_type) {
-                    const typeMap: Record<string, string> = { 'CASUAL': 'CL', 'SICK': 'SL', 'EARNED': 'EL', 'UNPAID': 'LOP', 'MATERNITY': 'ML', 'PATERNITY': 'PL', 'COMPENSATORY': 'CO' };
+                    const typeMap: Record<string, string> = { 'CASUAL': 'CL', 'SICK': 'SL', 'EARNED': 'EL', 'UNPAID': 'LOP', 'LOP': 'LOP', 'MATERNITY': 'ML', 'PATERNITY': 'PL', 'COMPENSATORY': 'CO' };
                     const shortCode = typeMap[record.leave_type] || 'L';
                     code = <span className={`text-[10px] font-bold ${colorClass}`}>{shortCode}</span>;
                 }
@@ -228,9 +229,8 @@ const AttendanceSummaryPage = () => {
             // 2b. Regularized
             if (record.status === 'REGULARIZED') {
                 return (
-                    <div className="flex flex-col items-center justify-center h-full">
-                        <span className="text-[10px] font-bold text-purple-600">REG</span>
-                        <CheckSquare className="h-3 w-3 text-purple-600" />
+                    <div className="flex items-center justify-center h-full relative w-full" title="Regularized">
+                        <span className="text-green-600 font-bold text-sm">R</span>
                     </div>
                 );
             }
@@ -253,6 +253,14 @@ const AttendanceSummaryPage = () => {
 
             if (status === 'ABSENT') {
                 return <div className="w-full h-full bg-red-100 flex items-center justify-center rounded text-red-600 font-bold text-xs">AB</div>;
+            }
+
+            if (status === 'LOP') {
+                return (
+                    <div className="w-full h-full bg-red-100 flex items-center justify-center rounded border border-red-200" title="Loss of Pay">
+                        <span className="text-[10px] font-bold text-red-700">LOP</span>
+                    </div>
+                );
             }
 
             return <span>{status}</span>;
@@ -314,7 +322,7 @@ const AttendanceSummaryPage = () => {
                     totalHalfDaysCount++;
                     totalPresentValue += value;
                     totalLOP += 0.5; // Count half-day as 0.5 LOP
-                } else if (status === 'ABSENT') {
+                } else if (status === 'ABSENT' || status === 'LOP') {
                     totalLOP++;
                 } else {
                     // PRESENT, LATE, REGULARIZED
@@ -552,7 +560,7 @@ const AttendanceSummaryPage = () => {
                                                     if (dateObj < new Date()) absent++;
                                                 } else if (record) {
                                                     if (record.status === 'LEAVE') leaves++;
-                                                    else if (record.status === 'ABSENT') absent++;
+                                                    else if (record.status === 'ABSENT' || record.status === 'LOP') absent++;
                                                     else if (['PRESENT', 'LATE', 'REGULARIZED', 'HALF_DAY'].includes(record.status)) present += (record.status === 'HALF_DAY' ? 0.5 : 1);
                                                 }
                                             });

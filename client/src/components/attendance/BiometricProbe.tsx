@@ -23,25 +23,28 @@ export const BiometricProbe = () => {
                 // Silent Probe: Try to reach the biometric device's local IP
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 1500);
+                const startTime = Date.now();
 
-                // Use a no-cors fetch to avoid CORS preflight issues on a raw TCP port (though fetch usually fails for raw TCP)
-                // However, many ZKTeco devices have a tiny web server on port 80/4370 for info.
-                // Even if it fails with "Connection Refused", that's often enough to prove we're in the same subnet
-                // compared to a "Timeout" which happens on outside networks.
-                
                 try {
                     await fetch('http://192.168.1.201', { 
                         mode: 'no-cors', 
                         signal: controller.signal 
                     });
-                    // If it doesn't throw a Timeout, we are likely in the office!
+                    clearTimeout(timeoutId);
+                    // If it doesn't throw, we are likely in the office!
+                    console.log("[Biometric] Local device responded. Registering Office IP...");
                     await register();
                 } catch (e: any) {
-                    // In many browsers, a "Connection Refused" (office) is distinguishable from "Timeout" (home)
-                    // but we'll be optimistic: if it's not an AbortError, it might be a connectivity proof.
-                    if (e.name !== 'AbortError') {
-                        console.log("[Biometric] Local device sensed. Registering Office IP...");
+                    clearTimeout(timeoutId);
+                    const duration = Date.now() - startTime;
+                    const isTimeout = e.name === 'AbortError' || duration >= 1400;
+
+                    if (!isTimeout) {
+                        // Connection Refused or CORS error - indicates host is active in local subnet!
+                        console.log("[Biometric] Local device probed (Connection Refused/Instantly Failed in " + duration + "ms). Registering Office IP...");
                         await register();
+                    } else {
+                        console.log("[Biometric] Local device probe timed out (" + duration + "ms). Likely outside office network:", e.name || e.message || e);
                     }
                 }
             } catch (err) {

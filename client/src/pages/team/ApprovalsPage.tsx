@@ -19,15 +19,17 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Check, X, Edit2, Trash2, Calendar, Clock, AlertCircle, History, RotateCcw, LogOut } from 'lucide-react';
+import { Check, X, Edit2, Trash2, Calendar, Clock, AlertCircle, History, RotateCcw, LogOut, Search } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 const ApprovalsPage = () => {
     const queryClient = useQueryClient();
     const [editModalOpen, setEditModalOpen] = useState(false);
     const [editingRequest, setEditingRequest] = useState<any>(null);
+    const [activeTab, setActiveTab] = useState<'leave' | 'regularization' | 'resignation' | 'history'>('leave');
 
     // Filter States
+    const [staffFilter, setStaffFilter] = useState('');
     const [historyMonth, setHistoryMonth] = useState<string>((new Date().getMonth() + 1).toString());
     const [historyYear, setHistoryYear] = useState<string>(new Date().getFullYear().toString());
     const [historyStatus, setHistoryStatus] = useState<string>('ALL');
@@ -45,12 +47,12 @@ const ApprovalsPage = () => {
 
     const { data: leaveHistory = [], isLoading: lhLoading } = useQuery({
         queryKey: ['leave-history', historyMonth, historyYear, historyStatus],
-        queryFn: async () => (await api.get(`/leave/history`, { params: { month: historyMonth, year: historyYear, status: historyStatus } })).data,
+        queryFn: async () => (await api.get(`/leave/history`, { params: { month: historyMonth === 'ALL' ? undefined : historyMonth, year: historyYear === 'ALL' ? undefined : historyYear, status: historyStatus } })).data,
     });
 
     const { data: regHistory = [], isLoading: rhLoading } = useQuery({
         queryKey: ['regularisation-history', historyMonth, historyYear, historyStatus],
-        queryFn: async () => (await api.get(`/attendance/regularisation/history`, { params: { month: historyMonth, year: historyYear, status: historyStatus } })).data,
+        queryFn: async () => (await api.get(`/attendance/regularisation/history`, { params: { month: historyMonth === 'ALL' ? undefined : historyMonth, year: historyYear === 'ALL' ? undefined : historyYear, status: historyStatus } })).data,
     });
 
     const { data: resignation = [], isLoading: resLoading } = useQuery({
@@ -270,6 +272,62 @@ const ApprovalsPage = () => {
         editMutation.mutate(data);
     };
 
+    // --- LOCAL FILTERING ---
+    const filterStaffAndDate = (req: any, dateField: string, employeeField: string = 'user') => {
+        const employee = req[employeeField];
+        const staffName = (employee?.full_name || '').toLowerCase();
+        if (staffFilter && !staffName.includes(staffFilter.toLowerCase())) return false;
+
+        const dStr = req[dateField];
+        if (dStr) {
+            const d = new Date(dStr);
+            const m = (d.getMonth() + 1).toString();
+            const y = d.getFullYear().toString();
+            if (historyMonth !== 'ALL' && m !== historyMonth) return false;
+            if (historyYear !== 'ALL' && y !== historyYear) return false;
+        }
+        return true;
+    };
+
+    const filteredLeaves = leaves.filter((l: any) => l.status === 'PENDING' && filterStaffAndDate(l, 'start_date', 'user'));
+    const filteredRegs = regularisation.filter((r: any) => filterStaffAndDate(r, 'date', 'user'));
+    const filteredResignations = resignation.filter((r: any) => r.status === 'APPLIED' && filterStaffAndDate(r, 'applied_date', 'employee'));
+
+    const filteredLeaveHistory = leaveHistory.filter((l: any) => filterStaffAndDate(l, 'start_date', 'user'));
+    const filteredRegHistory = regHistory.filter((r: any) => filterStaffAndDate(r, 'date', 'user'));
+    const filteredResignationHistory = resignation.filter((r: any) => r.status !== 'APPLIED' && filterStaffAndDate(r, 'applied_date', 'employee'));
+
+    const activeTabsConfig = [
+        { 
+            id: 'leave', label: 'Leave Requests', icon: Calendar, count: filteredLeaves.length, 
+            btnActive: 'bg-yellow-50/80 border-yellow-500 text-yellow-700 shadow-md ring-4 ring-yellow-500/10 scale-[1.02]', 
+            btnInactive: 'bg-white border-slate-200 text-slate-600 shadow-sm hover:shadow-md hover:border-yellow-300 hover:bg-yellow-50', 
+            iconActive: 'text-yellow-600 scale-110', 
+            iconInactive: 'text-slate-400 group-hover:text-yellow-500 group-hover:-translate-y-1' 
+        },
+        { 
+            id: 'regularization', label: 'Regularization', icon: Clock, count: filteredRegs.length, 
+            btnActive: 'bg-purple-50/80 border-purple-500 text-purple-700 shadow-md ring-4 ring-purple-500/10 scale-[1.02]', 
+            btnInactive: 'bg-white border-slate-200 text-slate-600 shadow-sm hover:shadow-md hover:border-purple-300 hover:bg-purple-50', 
+            iconActive: 'text-purple-600 scale-110', 
+            iconInactive: 'text-slate-400 group-hover:text-purple-500 group-hover:-translate-y-1' 
+        },
+        { 
+            id: 'resignation', label: 'Resignation', icon: LogOut, count: filteredResignations.length, 
+            btnActive: 'bg-red-50/80 border-red-500 text-red-700 shadow-md ring-4 ring-red-500/10 scale-[1.02]', 
+            btnInactive: 'bg-white border-slate-200 text-slate-600 shadow-sm hover:shadow-md hover:border-red-300 hover:bg-red-50', 
+            iconActive: 'text-red-600 scale-110', 
+            iconInactive: 'text-slate-400 group-hover:text-red-500 group-hover:-translate-y-1' 
+        },
+        { 
+            id: 'history', label: 'Approval History', icon: History, count: 0, 
+            btnActive: 'bg-blue-50/80 border-blue-500 text-blue-700 shadow-md ring-4 ring-blue-500/10 scale-[1.02]', 
+            btnInactive: 'bg-white border-slate-200 text-slate-600 shadow-sm hover:shadow-md hover:border-blue-300 hover:bg-blue-50', 
+            iconActive: 'text-blue-600 scale-110', 
+            iconInactive: 'text-slate-400 group-hover:text-blue-500 group-hover:-translate-y-1' 
+        },
+    ];
+
     // --- RENDER HELPERS ---
 
     const RequestTable = ({ requests, type, isHistory = false }: { requests: any[], type: 'LEAVE' | 'REGULARISATION', isHistory?: boolean }) => (
@@ -419,81 +477,155 @@ const ApprovalsPage = () => {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500" >
-            <Card>
-                <CardHeader className="pb-3">
-                    <div className="flex justify-between items-center">
+            <Card className="border-none shadow-xl bg-white/50 backdrop-blur-sm">
+                <CardHeader className="pb-6 border-b bg-white rounded-t-xl">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
-                            <CardTitle>Approvals Management</CardTitle>
-                            <CardDescription>Process pending requests or review history.</CardDescription>
+                            <CardTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Approvals Management</CardTitle>
+                            <CardDescription className="text-gray-500 mt-1">Review and process team requests seamlessly.</CardDescription>
                         </div>
                     </div>
                 </CardHeader>
-                <CardContent>
-                    <Tabs defaultValue="pending" className="w-full">
-                        <TabsList className="grid w-full grid-cols-2 mb-6 gap-2 bg-transparent h-auto p-0">
-                            <TabsTrigger value="pending" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:bg-white border rounded-md py-2 font-bold shadow-sm">Pending Actions</TabsTrigger>
-                            <TabsTrigger value="history" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white data-[state=inactive]:bg-white border rounded-md py-2 font-bold shadow-sm">Approval History</TabsTrigger>
-                        </TabsList>
-
-                        <TabsContent value="pending" className="space-y-6">
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <h3 className="font-semibold flex items-center gap-2">
-                                        <Calendar className="h-4 w-4 text-yellow-600" /> Leave Requests
-                                        {leaves.filter((l: any) => l.status === 'PENDING').length > 0 && (
-                                            <Badge variant="destructive" className="ml-1 rounded-full px-1.5 py-0.5 text-[10px] h-auto min-w-[20px] justify-center">{leaves.filter((l: any) => l.status === 'PENDING').length}</Badge>
-                                        )}
-                                    </h3>
-                                    <RequestTable requests={leaves.filter((l: any) => l.status === 'PENDING')} type="LEAVE" />
+                <CardContent className="p-6">
+                    <div className="space-y-8">
+                        
+                        {/* Unified Filter Bar */}
+                        <div className="flex flex-col md:flex-row gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100 shadow-sm">
+                            <div className="flex-1 space-y-1">
+                                <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Search Staff</Label>
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                                    <Input 
+                                        placeholder="Type a name to filter..." 
+                                        className="pl-10 bg-white border-slate-200 focus-visible:ring-blue-500 rounded-lg shadow-sm"
+                                        value={staffFilter}
+                                        onChange={(e) => setStaffFilter(e.target.value)}
+                                    />
                                 </div>
-                                <div className="space-y-2">
-                                    <h3 className="font-semibold flex items-center gap-2">
-                                        <Clock className="h-4 w-4 text-purple-600" /> Regularization Requests
-                                        {regularisation.length > 0 && (
-                                            <Badge variant="destructive" className="ml-1 rounded-full px-1.5 py-0.5 text-[10px] h-auto min-w-[20px] justify-center">{regularisation.length}</Badge>
-                                        )}
-                                    </h3>
-                                    <RequestTable requests={regularisation} type="REGULARISATION" />
+                            </div>
+                            <div className="w-full md:w-[160px] space-y-1">
+                                <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Month</Label>
+                                <Select value={historyMonth} onValueChange={setHistoryMonth}>
+                                    <SelectTrigger className="bg-white border-slate-200 rounded-lg shadow-sm focus:ring-blue-500"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="ALL" className="font-semibold text-blue-600">All Months</SelectItem>
+                                        {Array.from({ length: 12 }, (_, i) => (
+                                            <SelectItem key={i + 1} value={(i + 1).toString()}>{format(new Date(2000, i, 1), 'MMMM')}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="w-full md:w-[130px] space-y-1">
+                                <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Year</Label>
+                                <Select value={historyYear} onValueChange={setHistoryYear}>
+                                    <SelectTrigger className="bg-white border-slate-200 rounded-lg shadow-sm focus:ring-blue-500"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="ALL" className="font-semibold text-blue-600">All Years</SelectItem>
+                                        <SelectItem value="2024">2024</SelectItem>
+                                        <SelectItem value="2025">2025</SelectItem>
+                                        <SelectItem value="2026">2026</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            {activeTab === 'history' && (
+                                <div className="w-full md:w-[160px] space-y-1 animate-in slide-in-from-right-2 fade-in">
+                                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Status</Label>
+                                    <Select value={historyStatus} onValueChange={setHistoryStatus}>
+                                        <SelectTrigger className="bg-white border-slate-200 rounded-lg shadow-sm focus:ring-blue-500"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="ALL" className="font-semibold text-blue-600">All Status</SelectItem>
+                                            <SelectItem value="APPROVED">Approved</SelectItem>
+                                            <SelectItem value="REJECTED">Rejected</SelectItem>
+                                            <SelectItem value="PENDING">Pending</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
+                            )}
+                        </div>
 
-                                {/* Resignation Section */}
-                                <div className="space-y-2 col-span-1 lg:col-span-2">
-                                    <h3 className="font-semibold flex items-center gap-2">
-                                        <LogOut className="h-4 w-4 text-red-600" /> Resignation Requests
-                                        {resignation.filter((r: any) => r.status === 'APPLIED').length > 0 && (
-                                            <Badge variant="destructive" className="ml-1 rounded-full px-1.5 py-0.5 text-[10px] h-auto min-w-[20px] justify-center">{resignation.filter((r: any) => r.status === 'APPLIED').length}</Badge>
-                                        )}
-                                    </h3>
+                        {/* Navigation Buttons Grid */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {activeTabsConfig.map(tab => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id as any)}
+                                    className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all duration-300 relative overflow-hidden group ${
+                                        activeTab === tab.id ? tab.btnActive : tab.btnInactive
+                                    }`}
+                                >
+                                    <tab.icon className={`w-8 h-8 mb-3 transition-transform duration-300 ${activeTab === tab.id ? tab.iconActive : tab.iconInactive}`} />
+                                    <span className="font-bold text-sm tracking-wide">{tab.label}</span>
+                                    {tab.count > 0 && (
+                                        <span className="absolute top-3 right-3 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-bounce">
+                                            {tab.count}
+                                        </span>
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Content Area */}
+                        <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                            
+                            {activeTab === 'leave' && (
+                                <div className="p-6 animate-in slide-in-from-bottom-4 fade-in duration-500">
+                                    <div className="mb-4 flex items-center justify-between">
+                                        <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                                            <Calendar className="h-5 w-5 text-yellow-500" /> Pending Leave Requests
+                                        </h3>
+                                    </div>
+                                    <RequestTable requests={filteredLeaves} type="LEAVE" />
+                                </div>
+                            )}
+
+                            {activeTab === 'regularization' && (
+                                <div className="p-6 animate-in slide-in-from-bottom-4 fade-in duration-500">
+                                    <div className="mb-4 flex items-center justify-between">
+                                        <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                                            <Clock className="h-5 w-5 text-purple-500" /> Pending Regularization
+                                        </h3>
+                                    </div>
+                                    <RequestTable requests={filteredRegs} type="REGULARISATION" />
+                                </div>
+                            )}
+
+                            {activeTab === 'resignation' && (
+                                <div className="p-6 animate-in slide-in-from-bottom-4 fade-in duration-500">
+                                    <div className="mb-4 flex items-center justify-between">
+                                        <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                                            <LogOut className="h-5 w-5 text-red-500" /> Pending Resignations
+                                        </h3>
+                                    </div>
                                     <div className="rounded-md border">
                                         <Table>
-                                            <TableHeader>
+                                            <TableHeader className="bg-slate-50">
                                                 <TableRow>
-                                                    <TableHead>Employee</TableHead>
-                                                    <TableHead>Applied Date</TableHead>
-                                                    <TableHead>Reason</TableHead>
-                                                    <TableHead>Status</TableHead>
-                                                    <TableHead className="text-right">Actions</TableHead>
+                                                    <TableHead className="font-semibold">Employee</TableHead>
+                                                    <TableHead className="font-semibold">Applied Date</TableHead>
+                                                    <TableHead className="font-semibold">Reason</TableHead>
+                                                    <TableHead className="font-semibold">Status</TableHead>
+                                                    <TableHead className="text-right font-semibold">Actions</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
-                                                {resignation.filter((r: any) => r.status === 'APPLIED').length === 0 ? (
+                                                {filteredResignations.length === 0 ? (
                                                     <TableRow>
-                                                        <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">No pending resignations.</TableCell>
+                                                        <TableCell colSpan={5} className="text-center h-32 text-muted-foreground">No pending resignations found.</TableCell>
                                                     </TableRow>
                                                 ) : (
-                                                    resignation.filter((r: any) => r.status === 'APPLIED').map((req: any) => (
-                                                        <TableRow key={req.id}>
+                                                    filteredResignations.map((req: any) => (
+                                                        <TableRow key={req.id} className="hover:bg-slate-50/50 transition-colors">
                                                             <TableCell>
-                                                                <div className="font-medium">{req.employee.full_name}</div>
-                                                                <div className="text-xs text-muted-foreground">{req.employee.role}</div>
+                                                                <div className="font-medium text-slate-900">{req.employee.full_name}</div>
+                                                                <div className="text-xs text-slate-500">{req.employee.role}</div>
                                                             </TableCell>
-                                                            <TableCell>{format(new Date(req.applied_date), 'dd MMM yyyy')}</TableCell>
-                                                            <TableCell className="max-w-[300px] truncate" title={req.reason}>{req.reason}</TableCell>
-                                                            <TableCell><Badge variant="outline">{req.status}</Badge></TableCell>
+                                                            <TableCell className="text-slate-600">{format(new Date(req.applied_date), 'dd MMM yyyy')}</TableCell>
+                                                            <TableCell className="max-w-[300px] truncate text-slate-600" title={req.reason}>{req.reason}</TableCell>
+                                                            <TableCell><Badge variant="outline" className="bg-white">{req.status}</Badge></TableCell>
                                                             <TableCell className="text-right">
                                                                 <div className="flex justify-end gap-2">
                                                                     <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => handleResignationAction(req, 'REJECT')}>Reject</Button>
-                                                                    <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => handleResignationAction(req, 'APPROVE')}>Approve</Button>
+                                                                    <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white shadow-sm" onClick={() => handleResignationAction(req, 'APPROVE')}>Approve</Button>
                                                                 </div>
                                                             </TableCell>
                                                         </TableRow>
@@ -503,65 +635,36 @@ const ApprovalsPage = () => {
                                         </Table>
                                     </div>
                                 </div>
-                            </div>
-                        </TabsContent>
+                            )}
 
-                        <TabsContent value="history" className="space-y-4">
-                            <div className="flex gap-4 items-end bg-muted/50 p-4 rounded-lg">
-                                <div className="space-y-1">
-                                    <Label>Month</Label>
-                                    <Select value={historyMonth} onValueChange={setHistoryMonth}>
-                                        <SelectTrigger className="w-[150px] bg-white"><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            {Array.from({ length: 12 }, (_, i) => (
-                                                <SelectItem key={i + 1} value={(i + 1).toString()}>{format(new Date(2000, i, 1), 'MMMM')}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                            {activeTab === 'history' && (
+                                <div className="p-6 animate-in slide-in-from-bottom-4 fade-in duration-500">
+                                    <div className="mb-4 flex items-center justify-between">
+                                        <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                                            <History className="h-5 w-5 text-blue-500" /> Approval History
+                                        </h3>
+                                    </div>
+                                    <Tabs defaultValue="hist-leave" className="w-full">
+                                        <TabsList className="w-full justify-start border-b pb-0 mb-6 bg-transparent p-0 flex gap-6 h-auto">
+                                            <TabsTrigger value="hist-leave" className="data-[state=active]:border-b-2 data-[state=active]:border-amber-500 data-[state=active]:text-amber-600 data-[state=inactive]:text-slate-500 bg-transparent rounded-none px-2 py-3 font-semibold transition-all">Leave History</TabsTrigger>
+                                            <TabsTrigger value="hist-reg" className="data-[state=active]:border-b-2 data-[state=active]:border-indigo-500 data-[state=active]:text-indigo-600 data-[state=inactive]:text-slate-500 bg-transparent rounded-none px-2 py-3 font-semibold transition-all">Regularization History</TabsTrigger>
+                                            <TabsTrigger value="hist-res" className="data-[state=active]:border-b-2 data-[state=active]:border-rose-500 data-[state=active]:text-rose-600 data-[state=inactive]:text-slate-500 bg-transparent rounded-none px-2 py-3 font-semibold transition-all">Resignation History</TabsTrigger>
+                                        </TabsList>
+                                        <TabsContent value="hist-leave" className="mt-0 focus-visible:ring-0">
+                                            <RequestTable requests={filteredLeaveHistory} type="LEAVE" isHistory={true} />
+                                        </TabsContent>
+                                        <TabsContent value="hist-reg" className="mt-0 focus-visible:ring-0">
+                                            <RequestTable requests={filteredRegHistory} type="REGULARISATION" isHistory={true} />
+                                        </TabsContent>
+                                        <TabsContent value="hist-res" className="mt-0 focus-visible:ring-0">
+                                            <ResignationHistoryTable requests={filteredResignationHistory} />
+                                        </TabsContent>
+                                    </Tabs>
                                 </div>
-                                <div className="space-y-1">
-                                    <Label>Year</Label>
-                                    <Select value={historyYear} onValueChange={setHistoryYear}>
-                                        <SelectTrigger className="w-[100px] bg-white"><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="2024">2024</SelectItem>
-                                            <SelectItem value="2025">2025</SelectItem>
-                                            <SelectItem value="2026">2026</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-1">
-                                    <Label>Status</Label>
-                                    <Select value={historyStatus} onValueChange={setHistoryStatus}>
-                                        <SelectTrigger className="w-[150px] bg-white"><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="ALL">All Status</SelectItem>
-                                            <SelectItem value="APPROVED">Approved</SelectItem>
-                                            <SelectItem value="REJECTED">Rejected</SelectItem>
-                                            <SelectItem value="PENDING">Pending</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
+                            )}
+                        </div>
 
-                            <Tabs defaultValue="hist-leave" className="w-full">
-                                <TabsList className="w-full justify-start border-b pb-2 mb-2 bg-transparent p-0 flex flex-wrap gap-2 h-auto">
-                                    <TabsTrigger value="hist-leave" className="data-[state=active]:bg-amber-500 data-[state=active]:text-white data-[state=inactive]:bg-white border rounded-md px-4 py-2 font-semibold shadow-sm text-sm">Leave History</TabsTrigger>
-                                    <TabsTrigger value="hist-reg" className="data-[state=active]:bg-indigo-500 data-[state=active]:text-white data-[state=inactive]:bg-white border rounded-md px-4 py-2 font-semibold shadow-sm text-sm">Regularization History</TabsTrigger>
-                                    <TabsTrigger value="hist-res" className="data-[state=active]:bg-rose-500 data-[state=active]:text-white data-[state=inactive]:bg-white border rounded-md px-4 py-2 font-semibold shadow-sm text-sm">Resignation History</TabsTrigger>
-                                </TabsList>
-                                <TabsContent value="hist-leave" className="mt-4">
-                                    <RequestTable requests={leaveHistory} type="LEAVE" isHistory={true} />
-                                </TabsContent>
-                                <TabsContent value="hist-reg" className="mt-4">
-                                    <RequestTable requests={regHistory} type="REGULARISATION" isHistory={true} />
-                                </TabsContent>
-                                <TabsContent value="hist-res" className="mt-4">
-                                    <ResignationHistoryTable requests={resignation.filter((r: any) => r.status !== 'APPLIED')} />
-                                </TabsContent>
-                            </Tabs>
-                        </TabsContent>
-                    </Tabs>
+                    </div>
                 </CardContent>
             </Card>
 

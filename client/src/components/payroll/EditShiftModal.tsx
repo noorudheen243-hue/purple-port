@@ -29,7 +29,13 @@ const EditShiftModal = ({ isOpen, onClose, dayData, userId, onSuccess }: EditShi
 
     useEffect(() => {
         if (dayData) {
-            setValue('status', dayData.status === 'HOLIDAY' || dayData.status === 'LEAVE' || dayData.status === 'WEEKOFF' ? 'PRESENT' : dayData.status);
+            let defaultStatus = dayData.status;
+            if (['HOLIDAY', 'LEAVE', 'WEEKOFF', 'REGULARIZED'].includes(dayData.status)) {
+                defaultStatus = 'PRESENT';
+            } else if (dayData.status === 'LOP') {
+                defaultStatus = 'ABSENT';
+            }
+            setValue('status', defaultStatus);
 
             if (dayData.details?.check_in) {
                 // Convert UTC iso string to local time input format HH:mm

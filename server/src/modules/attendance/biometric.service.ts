@@ -33,6 +33,12 @@ export class BiometricControlService {
     constructor() { }
 
     private async resolveTargetIp(): Promise<string> {
+        // If configured directly in .env (static public IP or DDNS hostname), use it!
+        const configuredIp = process.env.BIOMETRIC_DEVICE_IP;
+        if (configuredIp && configuredIp !== '192.168.1.201') {
+            return configuredIp;
+        }
+
         // Try to reach the device on the local network first
         const localIp = '192.168.1.201';
         const isLocalReachable = await this.probeDevice(localIp, 200);

@@ -181,12 +181,15 @@ export class BiometricController {
         }
     }
 
-    // Register Office IP (Called from Client when in Office)
+    // Register Office IP (Called from Client when in Office or manually overridden)
     static async registerOfficeIP(req: Request, res: Response) {
         try {
-            // req.ip usually captures Public IP if proxy is configured
-            const publicIp = req.ip || req.socket.remoteAddress || 'unknown';
-            const cleanIp = publicIp.replace(/^.*:/, '');
+            // Support passing IP explicitly in the body for manual settings changes
+            const { ip } = req.body;
+            const publicIp = ip || req.ip || req.socket.remoteAddress || 'unknown';
+            const cleanIp = publicIp.startsWith('::ffff:') 
+                ? publicIp.substring(7) 
+                : (publicIp === '::1' ? '127.0.0.1' : publicIp);
 
             await prisma.biometricDeviceStatus.upsert({
                 where: { id: 'CURRENT' },
@@ -216,7 +219,9 @@ export class BiometricController {
     static async bridgeHeartbeat(req: Request, res: Response) {
         try {
             const publicIp = req.ip || req.socket.remoteAddress || 'unknown';
-            const cleanIp = publicIp.replace(/^.*:/, '');
+            const cleanIp = publicIp.startsWith('::ffff:') 
+                ? publicIp.substring(7) 
+                : (publicIp === '::1' ? '127.0.0.1' : publicIp);
 
             // Update Status with Heartbeat and IP
             await prisma.biometricDeviceStatus.upsert({

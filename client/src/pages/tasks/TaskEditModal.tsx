@@ -60,6 +60,7 @@ const updateSchema = z.object({
     assignee_id: z.string().optional(),
     task_group: z.string().optional(),
     task_type: z.string().optional(),
+    content_type: z.string().optional(),
 });
 
 type TaskEditData = z.infer<typeof updateSchema>;
@@ -76,6 +77,8 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({ isOpen, onClose, task }) 
 
     // Fetch Data for Selects
     const { data: staff } = useQuery({ queryKey: ['users'], queryFn: () => api.get('/users').then(res => res.data) });
+    const { data: clients } = useQuery({ queryKey: ['clients'], queryFn: () => api.get('/clients').then(res => res.data) });
+    const { data: globalContentTypes } = useQuery({ queryKey: ['content-types'], queryFn: () => api.get('/content-types').then(res => res.data) });
 
     const { register, handleSubmit, watch, setValue, formState: { errors }, reset } = useForm<TaskEditData>({
         resolver: zodResolver(updateSchema),
@@ -85,7 +88,8 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({ isOpen, onClose, task }) 
             status: 'PLANNED',
             type: 'GRAPHIC',
             task_group: '',
-            task_type: ''
+            task_type: '',
+            content_type: ''
         }
     });
 
@@ -100,7 +104,8 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({ isOpen, onClose, task }) 
                 assignee_id: task.assignee_id,
                 due_date: task.due_date ? new Date(task.due_date).toISOString().slice(0, 10) : '',
                 task_group: task.task_group || '',
-                task_type: task.task_type || ''
+                task_type: task.task_type || '',
+                content_type: task.content_type || ''
             });
         }
     }, [task, reset]);
@@ -208,6 +213,51 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({ isOpen, onClose, task }) 
                             </select>
                         </div>
                     </div>
+
+                    {/* Content Type (Strategy) Section */}
+                    {task?.category === 'INTERNAL' && (
+                        <div className="space-y-1">
+                            <label className="text-sm font-medium text-gray-700">Content Type (Strategy) <span className="text-red-500">*</span></label>
+                            <select {...register('content_type')} className="w-full px-4 py-2 border rounded-lg bg-white focus:ring-2 focus:ring-blue-200 outline-none">
+                                <option value="">-- Select Content Type --</option>
+                                {globalContentTypes?.map((ct: any) => (
+                                    <option key={ct.id} value={ct.id}>{ct.name}</option>
+                                ))}
+                                <option value="General">General / Other</option>
+                            </select>
+                        </div>
+                    )}
+                    
+                    {( (task?.client_id || task?.client?.id) && task?.category === 'CAMPAIGN') && (
+                        <div className="space-y-1">
+                            <label className="text-sm font-medium text-gray-700">Content Type (Strategy) <span className="text-red-500">*</span></label>
+                            <div className="relative">
+                                <Layers className="absolute left-3 top-3 text-gray-400" size={18} />
+                                <select
+                                    {...register('content_type')}
+                                    className="w-full pl-10 pr-4 py-2 border rounded-lg bg-white focus:ring-2 focus:ring-blue-200 outline-none"
+                                >
+                                    <option value="">-- Select Content Type --</option>
+                                    {clients?.find((c: any) => c.id === (task.client_id || task.client?.id))?.content_strategies?.map((strategy: any) => {
+                                        const typeId = strategy.content_type_id;
+                                        const matchingType = globalContentTypes?.find((ct: any) => ct.id === typeId);
+                                        const typeName = matchingType ? matchingType.name : strategy.type;
+                                        const valueToSave = typeId || strategy.type;
+                                        const target = strategy.monthly_target !== undefined ? strategy.monthly_target : strategy.quantity;
+
+                                        if (!typeName) return null;
+
+                                        return (
+                                            <option key={valueToSave} value={valueToSave}>
+                                                {typeName} (Target: {target})
+                                            </option>
+                                        );
+                                    })}
+                                    <option value="General">General / Other</option>
+                                </select>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">

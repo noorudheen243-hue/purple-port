@@ -51,7 +51,7 @@ export class CriteriaService {
         // Rule A2: Regularization approved
         const ruleA2 = findRule('A2');
         if (ruleA2 && context.approvedRegularization) {
-            return { status: 'PRESENT', rule_applied: 'A2' };
+            return { status: 'REGULARIZED', rule_applied: 'A2' };
         }
 
         // --- CALCULATION HELPERS ---
@@ -59,8 +59,16 @@ export class CriteriaService {
             ? Math.max(0, (context.checkOut.getTime() - context.checkIn.getTime()) / (1000 * 60 * 60))
             : 0;
             
-        const isLate = context.checkIn ? this.isLate(context.shift.start_time, context.checkIn, 15) : true; // Default grace 15
+        const isLate = context.checkIn ? this.isLate(context.shift.start_time, context.checkIn, context.shift.default_grace_time ?? 15) : true;
         const isEarlyExit = context.checkOut ? this.isEarlyDeparture(context.shift.end_time, context.checkOut) : true;
+        
+        // Unconditional Late Punch or Early Punch-Out = HALF_DAY
+        if (context.checkIn && isLate) {
+            return { status: 'HALF_DAY', rule_applied: 'LATE_PUNCH' };
+        }
+        if (context.checkOut && isEarlyExit) {
+            return { status: 'HALF_DAY', rule_applied: 'EARLY_EXIT' };
+        }
         
         // 3. Present Rules
         
@@ -86,9 +94,6 @@ export class CriteriaService {
         if (ruleC1 && context.checkIn && !context.checkOut && context.isPastDay) {
             const params = JSON.parse(ruleC1.parameters);
             const threshold = params.min_hours || minHalfDayHours;
-            // Since checkout is missing, workHours is effectively what they did until they left.
-            // Biometric or System might have a recorded check_out even if user missed it? 
-            // In case of truly missing punch, workHours is 0 unless system estiminated.
             if (workHours >= threshold) return { status: 'HALF_DAY', rule_applied: 'C1' };
         }
 
@@ -108,17 +113,19 @@ export class CriteriaService {
             }
         }
 
-        // Rule C5: Late Punch-In (after Grace Time)
+        // Rule C5: Extreme Late Arrival
         const ruleC5 = findRule('C5');
-        if (ruleC5 && context.checkIn && !context.checkOut && isLate) {
+        if (ruleC5 && context.checkIn && isLate) {
              return { status: 'HALF_DAY', rule_applied: 'C5' };
         }
 
-        // Rule C6: Early Punch-Out AND Worked Hours >= 4
+        // Rule C6: Early Punch-Out
         const ruleC6 = findRule('C6');
         if (ruleC6 && context.checkIn && context.checkOut && isEarlyExit) {
              if (workHours >= (JSON.parse(ruleC6.parameters).min_hours || minHalfDayHours)) {
                  return { status: 'HALF_DAY', rule_applied: 'C6' };
+             } else if (context.isPastDay) {
+                 return { status: 'ABSENT', rule_applied: 'C6_FAIL' }; // Did not meet min hours for half day
              }
         }
 
@@ -138,8 +145,21 @@ export class CriteriaService {
             return { status: 'ABSENT', rule_applied: 'B1' };
         }
 
-        // Final Default: If no rules matched, it's either Present (if logs exist) or something else.
-        // We'll return PRESENT by default, letting specific rules handle the exceptions.
+        // Final Default: If no rules matched and it's a past day, it means they violated some rule 
+        // (like Late In or Early Out but workHours were very low). We should not mark PRESENT if they missed A1.
+        // Wait, if it's today and they just punched in normally, they should be PRESENT.
+        if (!context.isPastDay && context.checkIn && !isLate) {
+            return { status: 'PRESENT', rule_applied: 'DEFAULT' };
+        }
+        
+        if (context.isPastDay && context.checkIn) {
+             // If it's a past day and A1 didn't match (meaning they were late or left early or missing punch)
+             // but somehow fell through all C rules, default to ABSENT to be safe.
+             // Actually, if they were not late, and not early exit, and had both punches, A1 would have caught them.
+             // If they fell through, they must be missing a punch or didn't meet min hours.
+             return { status: 'ABSENT', rule_applied: 'DEFAULT_PAST' };
+        }
+
         return { status: 'PRESENT', rule_applied: 'DEFAULT' };
     }
 

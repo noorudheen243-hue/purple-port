@@ -45,8 +45,14 @@ const getStaffList = async () => (await api.get('/team/staff')).data;
 const BiometricManagerPage = () => {
     const queryClient = useQueryClient();
     const [actionLog, setActionLog] = useState<string[]>([]);
-    const [activeTab, setActiveTab] = useState<'console' | 'audit' | 'policies' | 'shifts' | 'link_users'>('console');
+    const [activeTab, setActiveTab] = useState<'console' | 'audit' | 'policies' | 'shifts' | 'link_users' | 'logs'>('console');
     const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
+
+    // State for Logs tab
+    const [logDateRange, setLogDateRange] = useState({
+        start: format(new Date(), 'yyyy-MM-dd'),
+        end: format(new Date(), 'yyyy-MM-dd')
+    });
 
     // State for Link Users tab
     const [selectedStaffForLink, setSelectedStaffForLink] = useState<Record<string, string>>({});
@@ -110,6 +116,13 @@ const BiometricManagerPage = () => {
         queryFn: getAuditData,
         enabled: false,
         staleTime: Infinity
+    });
+
+    // 5. Fetch Biometric Logs
+    const { data: biometricLogs, isLoading: logsLoading, refetch: refetchLogs } = useQuery({
+        queryKey: ['biometric-logs', logDateRange],
+        queryFn: async () => (await api.get(`/attendance/biometric-logs?start=${logDateRange.start}&end=${logDateRange.end}`)).data,
+        enabled: activeTab === 'logs'
     });
 
     const addToLog = (msg: string) => setActionLog(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev]);
@@ -245,6 +258,7 @@ const BiometricManagerPage = () => {
                     <div className="flex bg-gray-100 rounded-lg p-1 mr-4">
                         {[
                             { id: 'console', label: 'CONSOLE' },
+                            { id: 'logs', label: 'Synced Logs' },
                             { id: 'link_users', label: 'Link Users' },
                             { id: 'audit', label: 'Audit' },
                             { id: 'shifts', label: 'Create Shift' },
@@ -455,6 +469,84 @@ const BiometricManagerPage = () => {
                         )}
                     </div>
                 </>
+            )}
+
+            {activeTab === 'logs' && (
+                <div className="space-y-6">
+                    <Card className="p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-800">Biometric Attendance Logs</h3>
+                                <p className="text-sm text-gray-500">View synchronized biometric punch records</p>
+                            </div>
+                            <div className="flex gap-3">
+                                <input
+                                    type="date"
+                                    className="border border-gray-300 rounded px-3 py-1.5 text-sm"
+                                    value={logDateRange.start}
+                                    onChange={(e) => setLogDateRange({ ...logDateRange, start: e.target.value })}
+                                />
+                                <input
+                                    type="date"
+                                    className="border border-gray-300 rounded px-3 py-1.5 text-sm"
+                                    value={logDateRange.end}
+                                    onChange={(e) => setLogDateRange({ ...logDateRange, end: e.target.value })}
+                                />
+                                <Button onClick={() => refetchLogs()} disabled={logsLoading}>
+                                    <RefreshCw className={`w-4 h-4 mr-2 ${logsLoading ? 'animate-spin' : ''}`} />
+                                    Refresh
+                                </Button>
+                            </div>
+                        </div>
+
+                        {logsLoading ? (
+                            <div className="p-8 text-center text-gray-400">Loading synchronized logs...</div>
+                        ) : biometricLogs?.length === 0 ? (
+                            <div className="p-8 text-center bg-gray-50 rounded border border-gray-100 shadow-inner">
+                                <AlertCircle className="w-10 h-10 text-gray-400 mx-auto mb-2" />
+                                <h4 className="font-bold text-gray-600">No Logs Found</h4>
+                                <p className="text-sm text-gray-500">No biometric attendance logs found for the selected dates.</p>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto border rounded-md shadow-sm">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="bg-gray-50 text-gray-500 uppercase text-xs">
+                                        <tr>
+                                            <th className="px-4 py-3 border-b">Date</th>
+                                            <th className="px-4 py-3 border-b">Staff</th>
+                                            <th className="px-4 py-3 border-b">Check In</th>
+                                            <th className="px-4 py-3 border-b">Check Out</th>
+                                            <th className="px-4 py-3 border-b">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {biometricLogs?.map((log: any) => (
+                                            <tr key={log.id} className="hover:bg-gray-50 transition-colors">
+                                                <td className="px-4 py-4 font-medium">{format(new Date(log.date), 'MMM dd, yyyy')}</td>
+                                                <td className="px-4 py-4">
+                                                    <div className="font-medium">{log.user?.full_name || 'Unknown'}</div>
+                                                    <div className="text-xs text-gray-500">{log.user?.staffProfile?.staff_number || '-'}</div>
+                                                </td>
+                                                <td className="px-4 py-4">{log.check_in ? format12(new Date(log.check_in).toLocaleTimeString('en-US', { hour12: false })) : '-'}</td>
+                                                <td className="px-4 py-4">{log.check_out ? format12(new Date(log.check_out).toLocaleTimeString('en-US', { hour12: false })) : '-'}</td>
+                                                <td className="px-4 py-4">
+                                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                                        log.status === 'PRESENT' ? 'bg-green-100 text-green-700' :
+                                                        log.status === 'ABSENT' ? 'bg-red-100 text-red-700' :
+                                                        log.status === 'HALF_DAY' ? 'bg-yellow-100 text-yellow-700' :
+                                                        'bg-gray-100 text-gray-700'
+                                                    }`}>
+                                                        {log.status}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </Card>
+                </div>
             )}
 
             {activeTab === 'audit' && (

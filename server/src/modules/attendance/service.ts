@@ -104,8 +104,8 @@ export class AttendanceService {
                 where: {
                     user_id: staff.user_id,
                     status: 'APPROVED',
-                    start_date: { lte: checkIn },
-                    end_date: { gte: checkIn }
+                    start_date: { lte: endOfDay },
+                    end_date: { gte: startOfDay }
                 }
             }),
             db.regularisationRequest.findFirst({

@@ -119,49 +119,16 @@ const SalaryCalculator = () => {
             (Number(values.allowances) || 0) +
             (Number(values.incentives) || 0);
 
-        // Note: Logic for Gross Total update needs to match backend if we want real-time client side calc.
-        // But since 'Gross Total' is complex (Till Date vs Monthly), we rely on Backend 'values.gross_total'
-        // OR we just use the 'Net Pay' which IS (Gross - Deductions).
-        // Wait, 'earnings' calculated here is SUM OF COMPONENTS. 
-        // For 'Monthly', Gross = Sum Of Components.
-        // For 'Till Date', Gross != Sum Of Components (it is Time Based).
-        // So we should NOT overwrite 'net_pay' using 'earnings' sum if it is TILL_DATE?
-        // Actually, the form values `basic_salary` etc are populated.
-        // If Till Date, does `basic_salary` represent the Full Month Basic or Prorated?
-        // Service returns `basic_salary` as the FULL MONTH value (from profile).
-        // And `gross_total` as the prorated value.
-        // So `net_pay` calc here: `earnings - deductions` is WRONG for Till Date if earnings are full month.
-        // We should use `gross_total` from values!
+        const dailyWage = earnings / 30;
+        const computedLopDeduction = Math.round(dailyWage * (Number(values.lop_days) || 0));
 
-        // Correct Logic:
-        const gross = Number(values.gross_total) || 0;
-
-        // Wait, if user EDITS 'Incentives', does Gross Update?
-        // If Monthly: Gross = Fixed + NewIncentives.
-        // If Till Date: Gross = ProratedFixed + NewIncentives.
-        // We need to handle this. 
-        // For now, let's assume 'gross_total' is derived. 
-        // If user changes Incentives, we might need to Recalculate Gross.
-        // Simple fix: Net Pay = Gross - Deductions. 
-        // But Gross needs to update if components change.
-        // Let's rely on `values.gross_total` being accurate OR update it?
-        // Ideally, we should trigger a backend Recalc on change? Or replicate logic.
-        // Replicating 'Till Date' logic here is complex (need working days etc).
-        // Monthly logic is easy.
-
-        // For implementation speed/robustness: 
-        // 1. If Monthly: Gross = Sum(Components).
-        // 2. If Till Date: Gross = (Sum(Fixed)/TotalDays * DaysWorked) + Incentives.
-        // We have `total_working_days` (which is actually `days_in_period` for Till Date?)
-        // Service sends `total_working_days`.
-        // Let's trust Service `gross_total` initially.
-        // If user edits, we might drift. 
-        // Requirement 6: "Dynamic recalculation button".
-        // Maybe we just allow fetching? 
-        // Or we update logic here to be smart.
+        if (Number(values.lop_deduction) !== computedLopDeduction) {
+            setValue('lop_deduction', computedLopDeduction);
+            return;
+        }
 
         const deductions =
-            (Number(values.lop_deduction) || 0) +
+            computedLopDeduction +
             (Number(values.advance_salary) || 0) +
             (Number(values.other_deductions) || 0) +
             (Number(values.advance_incentives) || 0);
@@ -171,31 +138,7 @@ const SalaryCalculator = () => {
 
         // If Monthly, sync Gross to Sum
         if (payrollType === 'MONTHLY') {
-            currentGross =
-                (Number(values.basic_salary) || 0) +
-                (Number(values.hra) || 0) +
-                (Number(values.conveyance_allowance) || 0) +
-                (Number(values.accommodation_allowance) || 0) +
-                (Number(values.allowances) || 0) +
-                (Number(values.incentives) || 0);
-        } else {
-            // Till Date: We assume `gross_total` from backend is correct for the fixed part.
-            // If user adds Incentives, we should add them?
-            // Service Logic: Gross = BaseTillDate + Incentives.
-            // So if `values.incentives` changes, Gross should change by Delta?
-            // Or we just recalculate:
-            // We don't have `BaseTillDate` stored separately.
-            // But we know `DailyWage * Days`.
-            // Let's use `daily_wage` (which is per day fixed) * `total_working_days` (days elapsed) + `incentives` + `allowances`?
-            // Wait, Service: `grossTotal = BaseSalaryTillDate + Incentives`.
-            // BaseSalaryTillDate = PerDayFixed * DaysTillDate.
-            // Allowance (Misc) is added on top in Service? "Gross Earnings = StandardEarnings + Allowances".
-            // Actually my service implementation: `monthlyFixed = basic+hra+...`. `PreDay = MonthlyFixed/TotalDays`.
-            // `Base = PerDay * Days`.
-            // `Gross = Base + Incentives`.
-            // `standardEarnings` INCLUDED `allowances` (Misc).
-            // So default logic: Gross = (Fixed+Misc+Inc)/30 * Days?
-            // Use Backend `gross_total` as source of truth.
+            currentGross = earnings;
         }
 
         const net = currentGross - deductions;
@@ -207,15 +150,14 @@ const SalaryCalculator = () => {
             if (values.gross_total !== currentGross) setValue('gross_total', currentGross);
             if (values.net_pay !== net) setValue('net_pay', net);
         } else {
-            const net = (Number(values.gross_total) || 0) - deductions;
-            if (values.net_pay !== net) setValue('net_pay', net);
+            const netVal = (Number(values.gross_total) || 0) - deductions;
+            if (values.net_pay !== netVal) setValue('net_pay', netVal);
         }
 
     }, [
         values.basic_salary, values.hra, values.conveyance_allowance, values.accommodation_allowance,
-        values.allowances, values.incentives, values.lop_deduction, values.advance_salary, values.other_deductions,
-        values.advance_incentives,
-        values.gross_total, payrollType,
+        values.allowances, values.incentives, values.lop_days, values.lop_deduction, values.advance_salary,
+        values.other_deductions, values.advance_incentives, values.gross_total, payrollType,
         setValue
     ]);
 
@@ -480,6 +422,15 @@ const SalaryCalculator = () => {
                                             <input type="hidden" {...register('total_working_days')} />
                                         </div>
 
+                                        <div className="p-4 bg-green-100 dark:bg-green-900/30 rounded-lg flex justify-between items-center">
+                                            <div>
+                                                <span className="block font-semibold text-green-900 dark:text-green-200">Paid Days</span>
+                                                <span className="text-xs text-green-700 dark:text-green-300">Worked days (Total Days - LOP Days)</span>
+                                            </div>
+                                            <div className="text-2xl font-bold text-green-700 dark:text-green-400">
+                                                {Number(watch('total_working_days') || 30) - Number(watch('lop_days') || 0)}
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-4">

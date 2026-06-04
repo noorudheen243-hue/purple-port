@@ -66,6 +66,27 @@ async function main() {
   for (const r of rules) {
     console.log(`Rule: ${r.rule_code} (${r.name}) - Enabled: ${r.is_enabled}`);
   }
+
+  const fathomUser = await db.user.findFirst({
+    where: { staffProfile: { staff_number: 'QIX0013' } }
+  });
+  if (fathomUser) {
+    const fathomRecords = await db.attendanceRecord.findMany({
+      where: {
+        user_id: fathomUser.id,
+        date: {
+          gte: new Date('2026-05-01T00:00:00Z'),
+          lte: new Date('2026-05-31T23:59:59Z')
+        }
+      },
+      orderBy: { date: 'asc' }
+    });
+    console.log(`\n--- Attendance Records for Fathima (QIX0013) in May 2026 ---`);
+    for (const r of fathomRecords) {
+      const localDate = new Date(r.date.getTime() + 330 * 60000).toISOString().split('T')[0];
+      console.log(`[${localDate}] Status: ${r.status}, Criteria: ${r.criteria_mode}`);
+    }
+  }
 }
 
 main().catch(console.error).finally(() => db.$disconnect());

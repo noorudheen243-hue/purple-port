@@ -131,10 +131,20 @@ const CalendarPage = () => {
                                         icon = <Check className="h-4 w-4 text-green-600" />;
                                         statusText = 'Present';
                                         break;
+                                    case 'REGULARIZED':
+                                        statusColor = 'bg-green-50 hover:bg-green-100 border-green-100';
+                                        icon = <Check className="h-4 w-4 text-green-600" />;
+                                        statusText = 'Regularized';
+                                        break;
                                     case 'ABSENT':
                                         statusColor = 'bg-red-50 hover:bg-red-100 border-red-100';
                                         icon = <X className="h-4 w-4 text-red-600" />;
                                         statusText = 'Absent';
+                                        break;
+                                    case 'LOP':
+                                        statusColor = 'bg-red-50 hover:bg-red-100 border-red-100';
+                                        icon = <X className="h-4 w-4 text-red-600" />;
+                                        statusText = 'LOP';
                                         break;
                                     case 'LEAVE':
                                         statusColor = 'bg-purple-50 hover:bg-purple-100 border-purple-100';

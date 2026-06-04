@@ -212,7 +212,7 @@ const AttendanceSummaryPage = () => {
 
             // 2. Leave
             if (record.status === 'LEAVE') {
-                const isGreenLeave = ['CASUAL', 'SICK', 'EARNED'].includes(record.leave_type);
+                const isGreenLeave = !record.leave_type || !['LOP', 'UNPAID'].includes(record.leave_type);
                 const colorClass = isGreenLeave ? 'text-green-700' : 'text-red-700';
                 const bgClass = isGreenLeave ? 'bg-green-100 border-green-200' : 'bg-red-100 border-red-200';
                 const iconColor = isGreenLeave ? 'text-green-600' : 'text-red-600';

@@ -40,7 +40,7 @@ export class CriteriaService {
             const isLOP = ['LOP', 'UNPAID'].includes(context.approvedLeave.type);
             
             if (isLOP && ruleB2) {
-                return { status: 'ABSENT', rule_applied: 'B2' };
+                return { status: 'LOP', rule_applied: 'B2' };
             } else if (!isLOP && ruleA3) {
                 return { status: 'LEAVE', rule_applied: 'A3' };
             }

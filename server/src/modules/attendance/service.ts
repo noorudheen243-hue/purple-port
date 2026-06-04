@@ -1004,8 +1004,16 @@ export class AttendanceService {
 
             if (record) {
                 status = record.status; // PRESENT, HALF_DAY, etc.
-                details = record;
-                stats.present++;
+                details = { ...record } as any;
+                if (status === 'LEAVE' || status === 'LOP') {
+                    stats.leaves++;
+                    if (leave) {
+                        details.type = leave.type;
+                        details.reason = leave.reason;
+                    }
+                } else if (status !== 'ABSENT') {
+                    stats.present++;
+                }
                 uniqueAttendanceDates.add(dateStr);
             } else if (leave) {
                 status = 'LEAVE';

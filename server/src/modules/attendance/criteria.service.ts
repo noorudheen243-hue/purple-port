@@ -173,17 +173,17 @@ export class CriteriaService {
 
     private static isLate(shiftStart24h: string, checkIn: Date, graceMinutes: number): boolean {
         const istDate = new Date(checkIn.getTime() + (330 * 60 * 1000));
-        const checkInMins = istDate.getUTCHours() * 60 + istDate.getUTCMinutes();
+        const checkInSeconds = istDate.getUTCHours() * 3600 + istDate.getUTCMinutes() * 60 + istDate.getUTCSeconds();
         const [sh, sm] = shiftStart24h.split(':').map(Number);
-        const shiftMins = sh * 60 + sm;
-        return checkInMins > (shiftMins + graceMinutes);
+        const shiftSeconds = (sh * 60 + sm + graceMinutes) * 60;
+        return checkInSeconds > shiftSeconds;
     }
 
     private static isEarlyDeparture(shiftEnd24h: string, checkOut: Date): boolean {
         const istDate = new Date(checkOut.getTime() + (330 * 60 * 1000));
-        const checkOutMins = istDate.getUTCHours() * 60 + istDate.getUTCMinutes();
+        const checkOutSeconds = istDate.getUTCHours() * 3600 + istDate.getUTCMinutes() * 60 + istDate.getUTCSeconds();
         const [eh, em] = shiftEnd24h.split(':').map(Number);
-        const shiftMins = eh * 60 + em;
-        return checkOutMins < shiftMins;
+        const shiftSeconds = (eh * 60 + em) * 60;
+        return checkOutSeconds < shiftSeconds;
     }
 }

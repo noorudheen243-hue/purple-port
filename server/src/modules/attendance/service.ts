@@ -424,6 +424,10 @@ export class AttendanceService {
                                 ...data,
                                 status: statusResult.status,
                                 work_hours: workHours,
+                                shift_snapshot: `${statusResult.shift.start_time}-${statusResult.shift.end_time}`,
+                                shift_id: (statusResult.shift.id === 'LEGACY' || statusResult.shift.id === 'DEFAULT') ? null : statusResult.shift.id,
+                                criteria_mode: statusResult.criteria,
+                                grace_time_applied: statusResult.shift.default_grace_time,
                                 method: 'BIOMETRIC'
                             }
                         });

@@ -59,7 +59,11 @@ export class CriteriaService {
             ? Math.max(0, (context.checkOut.getTime() - context.checkIn.getTime()) / (1000 * 60 * 60))
             : 0;
             
-        const isLate = context.checkIn ? this.isLate(context.shift.start_time, context.checkIn, context.shift.default_grace_time ?? 15) : true;
+        const ruleA1 = findRule('A1');
+        const ruleA1Params = ruleA1 ? JSON.parse(ruleA1.parameters) : {};
+        const graceMinutes = context.shift.default_grace_time ?? ruleA1Params.grace_minutes ?? 15;
+
+        const isLate = context.checkIn ? this.isLate(context.shift.start_time, context.checkIn, graceMinutes) : true;
         const isEarlyExit = context.checkOut ? this.isEarlyDeparture(context.shift.end_time, context.checkOut) : true;
         
         // Unconditional Late Punch or Early Punch-Out = HALF_DAY
@@ -73,14 +77,8 @@ export class CriteriaService {
         // 3. Present Rules
         
         // Rule A1: Punch-In AND Punch-Out within shift time
-        const ruleA1 = findRule('A1');
         if (ruleA1 && context.checkIn && context.checkOut) {
-            const params = JSON.parse(ruleA1.parameters);
-            const graceMinutes = params.grace_minutes || 15;
-            const actualLate = this.isLate(context.shift.start_time, context.checkIn, graceMinutes);
-            const actualEarly = this.isEarlyDeparture(context.shift.end_time, context.checkOut);
-            
-            if (!actualLate && !actualEarly) {
+            if (!isLate && !isEarlyExit) {
                 return { status: 'PRESENT', rule_applied: 'A1' };
             }
         }

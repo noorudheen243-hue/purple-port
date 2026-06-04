@@ -60,6 +60,12 @@ async function main() {
     console.log(`  Reason: ${l.reason}`);
     console.log("-----------------------------------------");
   }
+
+  const rules = await db.attendanceCriteriaConfig.findMany();
+  console.log("\n--- Attendance Criteria Config Rules ---");
+  for (const r of rules) {
+    console.log(`Rule: ${r.rule_code} (${r.name}) - Enabled: ${r.is_enabled}`);
+  }
 }
 
 main().catch(console.error).finally(() => db.$disconnect());

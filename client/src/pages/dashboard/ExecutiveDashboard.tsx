@@ -80,14 +80,15 @@ const ExecutiveDashboard = () => {
                                         <TableHead className="font-bold">Staff Name</TableHead>
                                         <TableHead className="font-bold">Client</TableHead>
                                         <TableHead className="font-bold">Task Type</TableHead>
+                                        <TableHead className="font-bold">Assigned Date</TableHead>
                                         <TableHead className="font-bold">Assigned By</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {isCreativeLoading ? (
-                                        <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted-foreground animate-pulse font-medium">Synchronizing today's assignments...</TableCell></TableRow>
+                                        <TableRow><TableCell colSpan={6} className="h-32 text-center text-muted-foreground animate-pulse font-medium">Synchronizing today's assignments...</TableCell></TableRow>
                                     ) : creativeDashboard?.dailyTasks?.length === 0 ? (
-                                        <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic font-medium">No new creative tasks assigned yet today.</TableCell></TableRow>
+                                        <TableRow><TableCell colSpan={6} className="h-32 text-center text-muted-foreground italic font-medium">No new creative tasks assigned yet today.</TableCell></TableRow>
                                     ) : (
                                         creativeDashboard?.dailyTasks?.map((task: any) => (
                                             <TableRow
@@ -99,6 +100,9 @@ const ExecutiveDashboard = () => {
                                                 <TableCell className="font-bold text-gray-900">{task.staff_name}</TableCell>
                                                 <TableCell className="font-bold text-indigo-600">{task.client_name}</TableCell>
                                                 <TableCell><Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-100 font-bold">{task.task_type}</Badge></TableCell>
+                                                <TableCell className="text-sm text-gray-600 font-medium">
+                                                    {task.assigned_date ? new Date(task.assigned_date).toLocaleDateString() : 'N/A'}
+                                                </TableCell>
                                                 <TableCell className="text-gray-600 font-medium">{task.assigned_by}</TableCell>
                                             </TableRow>
                                         ))

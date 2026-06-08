@@ -42,7 +42,11 @@ export const getAttendanceStats = async (req: Request, res: Response) => {
 
 export const getCreativeMetrics = async (req: Request, res: Response) => {
     try {
-        const stats = await analyticsService.getCreativeTeamMetrics();
+        const { month, year } = req.query;
+        const stats = await analyticsService.getCreativeTeamMetrics(
+            month ? parseInt(month as string, 10) : undefined,
+            year ? parseInt(year as string, 10) : undefined
+        );
         res.json(stats);
     } catch (error: any) {
         res.status(500).json({ message: error.message });

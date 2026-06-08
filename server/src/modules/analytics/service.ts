@@ -282,7 +282,7 @@ export const getAttendanceStats = async () => {
     ];
 };
 
-export const getCreativeTeamMetrics = async () => {
+export const getCreativeTeamMetrics = async (month?: number, year?: number) => {
     // 1. Creative Team Users
     const creatives = await prisma.user.findMany({
         where: { department: 'CREATIVE', status: 'ACTIVE' },
@@ -290,14 +290,62 @@ export const getCreativeTeamMetrics = async () => {
     });
     const creativeIds = creatives.map(c => c.id);
 
+    // Determine the date range for the selected month/year
+    const now = new Date();
+    // month is 1-indexed (1-12) from front-end
+    const targetMonth = month !== undefined ? month - 1 : now.getMonth();
+    const targetYear = year !== undefined ? year : now.getFullYear();
+
+    const startOfPeriod = new Date(targetYear, targetMonth, 1);
+    const endOfPeriod = new Date(targetYear, targetMonth + 1, 0, 23, 59, 59, 999);
+
+    const isCurrentMonth = targetMonth === now.getMonth() && targetYear === now.getFullYear();
+
     // 2. Task Counts
     // 2. Task Counts (Parallelized)
     const [totalTasks, completedTasks, wipTasks, reviewTasks, plannedTasks] = await Promise.all([
-        prisma.task.count({ where: { assignee_id: { in: creativeIds } } }),
-        prisma.task.count({ where: { assignee_id: { in: creativeIds }, status: 'COMPLETED' } }),
-        prisma.task.count({ where: { assignee_id: { in: creativeIds }, status: 'IN_PROGRESS' } }),
-        prisma.task.count({ where: { assignee_id: { in: creativeIds }, status: 'REVIEW' } }),
-        prisma.task.count({ where: { assignee_id: { in: creativeIds }, status: 'PLANNED' } })
+        prisma.task.count({
+            where: {
+                assignee_id: { in: creativeIds },
+                createdAt: { gte: startOfPeriod, lte: endOfPeriod }
+            }
+        }),
+        prisma.task.count({
+            where: {
+                assignee_id: { in: creativeIds },
+                status: 'COMPLETED',
+                OR: [
+                    { completed_date: { gte: startOfPeriod, lte: endOfPeriod } },
+                    {
+                        AND: [
+                            { completed_date: null },
+                            { updatedAt: { gte: startOfPeriod, lte: endOfPeriod } }
+                        ]
+                    }
+                ]
+            }
+        }),
+        prisma.task.count({
+            where: {
+                assignee_id: { in: creativeIds },
+                status: 'IN_PROGRESS',
+                ...(isCurrentMonth ? {} : { createdAt: { gte: startOfPeriod, lte: endOfPeriod } })
+            }
+        }),
+        prisma.task.count({
+            where: {
+                assignee_id: { in: creativeIds },
+                status: 'REVIEW',
+                createdAt: { gte: startOfPeriod, lte: endOfPeriod }
+            }
+        }),
+        prisma.task.count({
+            where: {
+                assignee_id: { in: creativeIds },
+                status: 'PLANNED',
+                createdAt: { gte: startOfPeriod, lte: endOfPeriod }
+            }
+        })
     ]);
 
     return {
@@ -368,7 +416,8 @@ export const getCreativeDashboardStats = async () => {
         client_name: t.client?.name || 'Internal',
         task_type: t.type || 'Generic',
         assigned_by: t.assigned_by?.full_name || 'System',
-        status: t.status
+        status: t.status,
+        assigned_date: t.createdAt
     }));
 
     // 4. Helper to calculate efficiency from the CACHED task list

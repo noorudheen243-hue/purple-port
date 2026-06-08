@@ -4,13 +4,14 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Moon, Sun, Bell, Users } from 'lucide-react';
+import { Moon, Sun, Bell, Users, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import PendingRequestsModal from '@/components/attendance/PendingRequestsModalv2';
 import { getAssetUrl } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#94a3b8']; // Green, Blue, Yellow, Gray
 
@@ -26,12 +27,24 @@ const ManagerDashboard = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const highlightRequestId = searchParams.get('requestId'); // slate-200 (dark) vs slate-500 (light)
 
+    // Period Selection State for Creative Metrics
+    const now = new Date();
+    const [creativeMonth, setCreativeMonth] = useState((now.getMonth() + 1).toString());
+    const [creativeYear, setCreativeYear] = useState(now.getFullYear().toString());
+
+    const months = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    ];
+    const currentYear = new Date().getFullYear();
+    const years = Array.from({ length: 5 }, (_, i) => (currentYear - 2 + i).toString());
+
     // --- DATA FETCHING ---
 
     // 1. Creative Team Metrics (Cards + Pie)
     const { data: creativeMetrics } = useQuery({
-        queryKey: ['creative-metrics'],
-        queryFn: async () => (await api.get('/analytics/creative-metrics')).data
+        queryKey: ['creative-metrics', creativeMonth, creativeYear],
+        queryFn: async () => (await api.get(`/analytics/creative-metrics?month=${creativeMonth}&year=${creativeYear}`)).data
     });
 
     // 2. Attendance Stats
@@ -131,6 +144,53 @@ const ManagerDashboard = () => {
             </div>
 
             {/* --- SECTION 2: CREATIVE TEAM METRICS --- */}
+            {/* --- SECTION 2 HEADER: CREATIVE TEAM METRICS PERIOD SELECTOR --- */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-lg">
+                        <Users className="h-5 w-5" />
+                    </div>
+                    <div>
+                        <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100">Creative Team Workload Summary</h2>
+                        <p className="text-xs text-muted-foreground dark:text-slate-400">Select a month and year to view statistics.</p>
+                    </div>
+                </div>
+
+                {/* Dropdowns */}
+                <div className="flex items-center gap-2 bg-gray-50 dark:bg-slate-950 p-1.5 rounded-xl border border-gray-100 dark:border-slate-800">
+                    <div className="p-1.5 bg-white dark:bg-slate-900 rounded-lg shadow-sm text-indigo-600 dark:text-indigo-400">
+                        <Calendar className="h-4 w-4" />
+                    </div>
+                    <Select value={creativeMonth} onValueChange={setCreativeMonth}>
+                        <SelectTrigger className="w-[120px] bg-white dark:bg-slate-900 border-none shadow-none h-8 text-xs font-bold text-gray-700 dark:text-slate-300 capitalize focus:ring-0">
+                            <SelectValue placeholder="Month" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-gray-100 dark:border-slate-800 shadow-xl text-xs dark:bg-slate-900 dark:text-slate-300">
+                            {months.map((m, i) => (
+                                <SelectItem key={i} value={(i + 1).toString()} className="font-medium dark:hover:bg-slate-800">
+                                    {m}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    <div className="h-4 w-px bg-gray-200 dark:bg-slate-800" />
+
+                    <Select value={creativeYear} onValueChange={setCreativeYear}>
+                        <SelectTrigger className="w-[85px] bg-white dark:bg-slate-900 border-none shadow-none h-8 text-xs font-bold text-gray-700 dark:text-slate-300 focus:ring-0">
+                            <SelectValue placeholder="Year" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-gray-100 dark:border-slate-800 shadow-xl text-xs dark:bg-slate-900 dark:text-slate-300">
+                            {years.map(y => (
+                                <SelectItem key={y} value={y} className="font-medium dark:hover:bg-slate-800">
+                                    {y}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                 {/* Metric Cards - Taking less space */}
                 <div className="lg:col-span-1 grid grid-cols-1 gap-4">
@@ -166,15 +226,16 @@ const ManagerDashboard = () => {
                                             <TableHead className="text-xs font-bold">Staff Name</TableHead>
                                             <TableHead className="text-xs font-bold">Client</TableHead>
                                             <TableHead className="text-xs font-bold">Task Type</TableHead>
+                                            <TableHead className="text-xs font-bold">Assigned Date</TableHead>
                                             <TableHead className="text-xs font-bold">Assigned By</TableHead>
                                             <TableHead className="text-xs font-bold text-right">Status</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {isCreativeLoading ? (
-                                            <TableRow><TableCell colSpan={6} className="h-24 text-center text-xs text-muted-foreground animate-pulse">Loading today's tasks...</TableCell></TableRow>
+                                            <TableRow><TableCell colSpan={7} className="h-24 text-center text-xs text-muted-foreground animate-pulse">Loading today's tasks...</TableCell></TableRow>
                                         ) : creativeDashboard?.dailyTasks?.length === 0 ? (
-                                            <TableRow><TableCell colSpan={6} className="h-24 text-center text-xs text-muted-foreground italic">No tasks assigned yet today.</TableCell></TableRow>
+                                            <TableRow><TableCell colSpan={7} className="h-24 text-center text-xs text-muted-foreground italic">No tasks assigned yet today.</TableCell></TableRow>
                                         ) : (
                                             creativeDashboard?.dailyTasks?.map((task: any) => (
                                                 <TableRow
@@ -186,6 +247,9 @@ const ManagerDashboard = () => {
                                                     <TableCell className="text-xs font-bold text-gray-900">{task.staff_name}</TableCell>
                                                     <TableCell className="text-xs font-medium text-indigo-600">{task.client_name}</TableCell>
                                                     <TableCell className="text-xs font-medium"><Badge variant="outline" className="text-[10px] font-bold py-0">{task.task_type}</Badge></TableCell>
+                                                    <TableCell className="text-xs text-gray-600 font-medium">
+                                                        {task.assigned_date ? new Date(task.assigned_date).toLocaleDateString() : 'N/A'}
+                                                    </TableCell>
                                                     <TableCell className="text-xs text-gray-600">{task.assigned_by}</TableCell>
                                                     <TableCell className="text-right">
                                                         <Badge className={`

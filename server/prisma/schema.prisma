@@ -334,6 +334,8 @@ model Client {
   portalUser               User?                   @relation("ClientPortalUser")
   webDevProjects           WebDevProject[]
   assigned_staff           User[]                  @relation("ClientStaff")
+  crmUsers                 CrmUser[]
+  crmWorkspaces            CrmWorkspace[]
 
   @@index([status])
   @@index([account_manager_id])
@@ -401,6 +403,8 @@ model Task {
   start_date            DateTime?
   department            String             @default("CREATIVE")
   campaign_type         String?
+  task_group            String?
+  task_type             String?
   sla_target            DateTime?
   sla_status            String             @default("ON_TRACK")
   actual_start_date     DateTime?
@@ -665,6 +669,24 @@ model Lead {
   campaign_beta_id  String?
   createdAt         DateTime               @default(now())
   updatedAt         DateTime               @updatedAt
+
+  // Advanced CRM fields
+  assigned_to       String?
+  stage             String?                @default("New Lead")
+  conversion_val    Float?                 @default(0.0)
+  lost_reason       String?
+  tags              String?
+  city              String?
+  ad_group_name     String?
+  ad_group_id       String?
+  ad_creative_name  String?
+  ad_creative_id    String?
+  keyword           String?
+  landing_page      String?
+  form_name         String?
+  message_details   String?
+  last_contacted_at DateTime?
+
   aiSuggestions     AiFollowupSuggestion[]
   aiScore           AiLeadScore?
   deal              Deal?
@@ -673,6 +695,8 @@ model Lead {
   marketingCampaign MarketingCampaign?     @relation(fields: [campaignId], references: [id])
   client            Client                 @relation(fields: [client_id], references: [id], onDelete: Cascade)
   follow_ups        LeadFollowUp[]
+  leadNotes         LeadNote[]
+  activities        LeadActivity[]
 
   @@index([client_id])
   @@index([campaignId])
@@ -689,6 +713,29 @@ model LeadFollowUp {
   updatedAt        DateTime @updatedAt
   channel          String?  @default("Phone Call")
   lead             Lead     @relation(fields: [lead_id], references: [id], onDelete: Cascade)
+
+  @@index([lead_id])
+}
+
+model LeadNote {
+  id        String   @id @default(uuid())
+  lead_id   String
+  content   String
+  user_id   String
+  createdAt DateTime @default(now())
+  lead      Lead     @relation(fields: [lead_id], references: [id], onDelete: Cascade)
+
+  @@index([lead_id])
+}
+
+model LeadActivity {
+  id        String   @id @default(uuid())
+  lead_id   String
+  action    String
+  details   String?
+  user_id   String?
+  createdAt DateTime @default(now())
+  lead      Lead     @relation(fields: [lead_id], references: [id], onDelete: Cascade)
 
   @@index([lead_id])
 }
@@ -998,6 +1045,7 @@ model MarketingGroup {
   client                 Client                  @relation(fields: [client_id], references: [id])
   metaLogs               MetaAdsLog[]
   seoLogs                SeoLog[]
+  crmUsers               CrmUser[]
 
   @@unique([name, client_id])
 }
@@ -1716,4 +1764,79 @@ model LegacyLedgerMapping {
   migration_date        DateTime     @default(now())
   createdAt             DateTime     @default(now())
   ledger                LedgerMaster @relation(fields: [new_ledger_id], references: [id])
+}
+
+model CrmUser {
+  id                String               @id @default(uuid())
+  full_name         String
+  designation       String?
+  email             String?              @unique
+  mobile            String?
+  user_id           String               @unique
+  password_hash     String
+  status            String               @default("ACTIVE")
+  client_id         String
+  campaign_group_id String?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  client            Client               @relation(fields: [client_id], references: [id], onDelete: Cascade)
+  campaign_group    MarketingGroup?      @relation(fields: [campaign_group_id], references: [id], onDelete: SetNull)
+  permissions       CrmUserPermission[]
+  activityLogs      CrmActivityLog[]
+  userGroups        CrmUserGroup[]       @relation("UserGroups")
+
+  @@index([client_id])
+  @@index([campaign_group_id])
+}
+
+model CrmWorkspace {
+  id          String         @id @default(uuid())
+  name        String
+  client_id   String
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  client      Client         @relation(fields: [client_id], references: [id], onDelete: Cascade)
+  userGroups  CrmUserGroup[]
+
+  @@index([client_id])
+}
+
+model CrmUserGroup {
+  id           String        @id @default(uuid())
+  name         String
+  workspace_id String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  workspace    CrmWorkspace  @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  users        CrmUser[]     @relation("UserGroups")
+
+  @@index([workspace_id])
+}
+
+model CrmUserPermission {
+  id          String   @id @default(uuid())
+  crm_user_id String
+  module      String   // e.g., "leads", "kanban", "followups", "activities", "reports"
+  action      String   // e.g., "read", "write", "all"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  crmUser     CrmUser  @relation(fields: [crm_user_id], references: [id], onDelete: Cascade)
+
+  @@index([crm_user_id])
+}
+
+model CrmActivityLog {
+  id          String   @id @default(uuid())
+  crm_user_id String
+  action      String
+  details     String?
+  createdAt   DateTime @default(now())
+
+  crmUser     CrmUser  @relation(fields: [crm_user_id], references: [id], onDelete: Cascade)
+
+  @@index([crm_user_id])
 }

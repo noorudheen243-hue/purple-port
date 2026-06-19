@@ -4,6 +4,8 @@ import app from './app';
 import { syncBiometrics, BiometricDaemon } from './modules/attendance/biometric.service';
 import { initAIEngine } from './cron/aiNotificationEngine';
 import { waEngine } from './modules/whatsapp/WhatsAppEngine';
+import { initMetaLeadsSync } from './cron/metaLeadsSync';
+import './cron/marketingSync';
 
 const PORT = process.env.PORT || 4001;
 
@@ -44,6 +46,9 @@ const runningServer = server.listen(PORT, async () => {
 
     // 3. Initialize AI Engine
     initAIEngine();
+
+    // 4. Initialize Meta Leads Sync Cron
+    initMetaLeadsSync();
 });
 
 const shutdown = async () => {

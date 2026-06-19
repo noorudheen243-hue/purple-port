@@ -4,7 +4,7 @@ import { useAuthStore } from '../../store/authStore';
 import {
     Send, Paperclip, Search, MoreVertical, Phone, Video,
     Check, CheckCheck, Smile, Plus, Image as ImageIcon, FileText,
-    Mic, Video as VideoIcon, X
+    Mic, Video as VideoIcon, X, ArrowLeft
 } from 'lucide-react';
 import { format } from 'date-fns';
 import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
@@ -26,16 +26,26 @@ const ChatLayout = () => {
         conversations,
         activeConversation,
         messages,
-        // isLoading, 
-        // onlineUsers,
         fetchConversations,
         selectConversation,
-        sendMessage
+        sendMessage,
+        deselectConversation
     } = useChatStore();
 
     const [inputText, setInputText] = useState('');
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [showAttachMenu, setShowAttachMenu] = useState(false);
+
+    // Responsive Mobile state
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // New Chat State
     const [showNewChatModal, setShowNewChatModal] = useState(false);
@@ -141,7 +151,8 @@ const ChatLayout = () => {
             <div className="z-10 w-full h-full max-w-[1600px] mx-auto flex shadow-lg overflow-hidden bg-white xl:top-5 xl:h-[calc(100vh-40px)] xl:rounded-lg relative">
 
                 {/* --- LEFT SIDEBAR --- */}
-                <div className="w-[400px] flex flex-col bg-white border-r border-[#d1d7db]">
+                {(!isMobile || !activeConversation) && (
+                    <div className={`${isMobile ? 'w-full' : 'w-[400px]'} flex flex-col bg-white border-r border-[#d1d7db]`}>
                     {/* Header */}
                     <div className="h-16 bg-[#f0f2f5] flex items-center justify-between px-4 border-b border-[#d1d7db]">
                         <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-300">
@@ -215,16 +226,26 @@ const ChatLayout = () => {
                         })}
                     </div>
                 </div>
+            )}
 
                 {/* --- MAIN CHAT AREA --- */}
                 {activeConversation ? (
-                    <div className="flex-1 flex flex-col relative bg-[#efeae2]">
+                    <div className="flex-1 flex flex-col relative bg-[#efeae2] z-10">
                         {/* Chat Background Pattern Image/Overlay could go here */}
                         <div className="absolute inset-0 opacity-[0.06] pointer-events-none" style={{ backgroundImage: 'url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png")' }}></div>
 
                         {/* Header */}
                         <div className="h-16 bg-[#f0f2f5] border-b border-[#d1d7db] flex items-center justify-between px-4 z-10">
                             <div className="flex items-center gap-4">
+                                {isMobile && (
+                                    <button
+                                        onClick={deselectConversation}
+                                        className="p-1 -ml-1 text-[#54656f] hover:bg-gray-200 rounded-full transition-colors mr-1"
+                                        title="Back"
+                                    >
+                                        <ArrowLeft size={20} />
+                                    </button>
+                                )}
                                 <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden">
                                     {activeConversation.name?.charAt(0) || activeConversation.participants.find(p => p.user.id !== user?.id)?.user.full_name.charAt(0)}
                                 </div>
@@ -234,7 +255,7 @@ const ChatLayout = () => {
                                     <p className="text-xs text-[#667781]">click here for contact info</p>
                                 </div>
                             </div>
-                            <div className="flex gap-6 text-[#54656f]">
+                            <div className="flex gap-6 text-[#54656f] items-center">
                                 <Search size={22} className="cursor-pointer" />
                                 <MoreVertical size={22} className="cursor-pointer" />
                             </div>
@@ -342,7 +363,8 @@ const ChatLayout = () => {
                             )}
                         </div>
                     </div>
-                ) : (
+            ) : (
+                !isMobile && (
                     <div className="flex-1 flex flex-col items-center justify-center bg-[#f0f2f5] border-b-[6px] border-[#25d366]">
                         <div className="max-w-md text-center">
                             <h2 className="text-[#41525d] text-2xl font-light mb-4">WhatsApp Web (Native)</h2>
@@ -352,7 +374,8 @@ const ChatLayout = () => {
                             </div>
                         </div>
                     </div>
-                )}
+                )
+            )}
 
                 {/* --- NEW CHAT MODAL --- */}
                 {showNewChatModal && (

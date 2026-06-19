@@ -4,7 +4,7 @@ import { useAuthStore } from '../../store/authStore';
 import {
     Send, Paperclip, Search, MoreVertical,
     Check, CheckCheck, Smile, Plus, Image as ImageIcon, FileText,
-    Mic, Video as VideoIcon, X, Maximize2, Minimize2
+    Mic, Video as VideoIcon, X, Maximize2, Minimize2, ArrowLeft
 } from 'lucide-react';
 import { format } from 'date-fns';
 import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
@@ -30,7 +30,8 @@ export const ChatPopup = ({ onClose }: { onClose: () => void }) => {
         fetchConversations,
         selectConversation,
         openDirectConversation,
-        sendMessage
+        sendMessage,
+        deselectConversation
     } = useChatStore();
 
     const [inputText, setInputText] = useState('');
@@ -44,6 +45,17 @@ export const ChatPopup = ({ onClose }: { onClose: () => void }) => {
     const [contactSearch, setContactSearch] = useState('');
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    // Responsive Mobile state
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     useEffect(() => {
         fetchConversations();
@@ -181,22 +193,25 @@ export const ChatPopup = ({ onClose }: { onClose: () => void }) => {
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            style={{ width: size.width, height: size.height }}
-            className="fixed bottom-24 right-4 bg-[#f0f2f5] rounded-xl shadow-2xl z-[50] overflow-hidden flex border border-[#d1d7db] font-sans"
+            style={isMobile ? { width: '100vw', height: '100vh', bottom: 0, right: 0, borderRadius: 0 } : { width: size.width, height: size.height }}
+            className={`fixed bg-[#f0f2f5] shadow-2xl z-[50] overflow-hidden flex border border-[#d1d7db] font-sans ${isMobile ? 'inset-0' : 'bottom-24 right-4 rounded-xl'}`}
         >
-            {/* Resize Handle (Top-Left Corner) */}
-            <div
-                onMouseDown={startResize}
-                className="absolute top-0 left-0 w-6 h-6 cursor-nw-resize z-[100] group flex items-start justify-start p-1"
-                title="Resize"
-            >
-                <div className="w-3 h-3 border-t-2 border-l-2 border-gray-400 group-hover:border-gray-600 rounded-tl-sm transition-colors" />
-            </div>
+            {/* Resize Handle (Top-Left Corner) - Desktop Only */}
+            {!isMobile && (
+                <div
+                    onMouseDown={startResize}
+                    className="absolute top-0 left-0 w-6 h-6 cursor-nw-resize z-[100] group flex items-start justify-start p-1"
+                    title="Resize"
+                >
+                    <div className="w-3 h-3 border-t-2 border-l-2 border-gray-400 group-hover:border-gray-600 rounded-tl-sm transition-colors" />
+                </div>
+            )}
             {/* Header / Top Bar (Green Strip for whole app) */}
             <div className="absolute top-0 w-full h-16 bg-[#00a884] -z-0"></div>
 
             {/* --- LEFT SIDEBAR --- */}
-            <div className="w-[30%] flex flex-col bg-white border-r border-[#d1d7db] z-10 relative">
+            {(!isMobile || !activeConversation) && (
+                <div className={`${isMobile ? 'w-full' : 'w-[30%]'} flex flex-col bg-white border-r border-[#d1d7db] z-10 relative`}>
                 {/* Header */}
                 <div className="h-16 bg-[#f0f2f5] flex items-center justify-between px-3 border-b border-[#d1d7db]">
                     <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-300 cursor-pointer">
@@ -268,13 +283,23 @@ export const ChatPopup = ({ onClose }: { onClose: () => void }) => {
                     })}
                 </div>
             </div>
+            )}
 
             {/* --- MAIN CHAT AREA --- */}
             {activeConversation ? (
-                <div className="flex-1 flex flex-col relative bg-[#efeae2] z-10 w-[70%]">
+                <div className={`flex-1 flex flex-col relative bg-[#efeae2] z-10 ${isMobile ? 'w-full' : 'w-[70%]'}`}>
                     {/* Header */}
-                    <div className="h-16 bg-[#f0f2f5] border-b border-[#d1d7db] flex items-center justify-between px-3">
+                    <div className="h-16 bg-[#f0f2f5] border-b border-[#d1d7db] flex items-center justify-between px-3 z-10">
                         <div className="flex items-center gap-3">
+                            {isMobile && (
+                                <button
+                                    onClick={deselectConversation}
+                                    className="p-1 -ml-1 text-[#54656f] hover:bg-gray-200 rounded-full transition-colors mr-1"
+                                    title="Back"
+                                >
+                                    <ArrowLeft size={20} />
+                                </button>
+                            )}
                             <div className="w-9 h-9 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden">
                                 {activeConversation.name?.charAt(0) || activeConversation.participants.find(p => p.user.id !== user?.id)?.user.full_name.charAt(0)}
                             </div>
@@ -402,16 +427,18 @@ export const ChatPopup = ({ onClose }: { onClose: () => void }) => {
                     </div>
                 </div>
             ) : (
-                <div className="flex-1 flex flex-col items-center justify-center bg-[#f0f2f5] border-b-[6px] border-[#25d366] z-10 relative">
-                    <button onClick={onClose} className="absolute top-4 right-4 text-gray-500"><X size={24} /></button>
-                    <div className="max-w-[250px] text-center">
-                        <h2 className="text-[#41525d] text-xl font-light mb-2">WhatsApp Web</h2>
-                        <p className="text-[#667781] text-xs">Send and receive messages without keeping your phone online.</p>
-                        <div className="mt-6 flex items-center justify-center text-[#8696a0] text-[10px] gap-1">
-                            Encrypted
+                !isMobile && (
+                    <div className="flex-1 flex flex-col items-center justify-center bg-[#f0f2f5] border-b-[6px] border-[#25d366] z-10 relative">
+                        <button onClick={onClose} className="absolute top-4 right-4 text-gray-500"><X size={24} /></button>
+                        <div className="max-w-[250px] text-center">
+                            <h2 className="text-[#41525d] text-xl font-light mb-2">WhatsApp Web</h2>
+                            <p className="text-[#667781] text-xs">Send and receive messages without keeping your phone online.</p>
+                            <div className="mt-6 flex items-center justify-center text-[#8696a0] text-[10px] gap-1">
+                                Encrypted
+                            </div>
                         </div>
                     </div>
-                </div>
+                )
             )}
 
             {/* --- NEW CHAT POPUP (INSIDE) --- */}

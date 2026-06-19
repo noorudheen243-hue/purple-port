@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/api';
 import { Facebook, Loader2, Filter, ChevronRight, CheckCircle2, AlertCircle, Users, Check } from 'lucide-react';
 import { format } from 'date-fns';
+import { CampaignLeadsPanel } from './CampaignLeadsPanel';
 
 const GoogleIcon = () => (
     <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor">
@@ -26,6 +27,8 @@ export const SyncedCampaignTable: React.FC<SyncedCampaignTableProps> = ({ client
     const [searchQuery, setSearchQuery] = useState('');
     const [assigningCampaigns, setAssigningCampaigns] = useState<string[]>([]);
     const [targetGroupId, setTargetGroupId] = useState('');
+    const [showOnlyActive, setShowOnlyActive] = useState(false);
+    const [selectedCampaign, setSelectedCampaign] = useState<any | null>(null);
 
     const { data: groups } = useQuery({
         queryKey: ['marketing-groups', clientId],
@@ -37,27 +40,38 @@ export const SyncedCampaignTable: React.FC<SyncedCampaignTableProps> = ({ client
         queryKey: ['synced-campaigns', clientId, fromDate, toDate],
         queryFn: async () => {
             const res = await api.get(`/marketing/metrics?clientId=${clientId}&from=${fromDate}&to=${toDate}&status=all`);
-            const campaignMap: Record<string, any> = {};
 
-            (res.data.campaigns || []).forEach((c: any) => {
-                campaignMap[c.id] = {
-                    ...c,
-                    metrics: { spend: 0, results: 0, impressions: 0, reach: 0, clicks: 0, leads: c._count?.leads || 0 }
+            // Use server's pre-aggregated campaign metrics directly (already date-filtered)
+            // and apply leads fallback: for Meta campaigns, use results or conversations as leads
+            return (res.data.campaigns || []).map((camp: any) => {
+                const serverMetrics = camp.metrics || {};
+                const spend = serverMetrics.spend || 0;
+                const results = serverMetrics.results || 0;
+                const conversations = serverMetrics.conversations || 0;
+                const impressions = serverMetrics.impressions || 0;
+                const reach = serverMetrics.reach || 0;
+                const clicks = serverMetrics.clicks || 0;
+
+                let leads = camp.leadsCount || 0;
+                if (camp.platform === 'meta') {
+                    leads = results || conversations || camp.leadsCount || 0;
+                } else {
+                    leads = camp.leadsCount || results || 0;
+                }
+
+                return {
+                    ...camp,
+                    metrics: {
+                        spend,
+                        results,
+                        conversations,
+                        impressions,
+                        reach,
+                        clicks,
+                        leads
+                    }
                 };
             });
-
-            (res.data.data || []).forEach((m: any) => {
-                const id = m.campaignId;
-                if (campaignMap[id]) {
-                    campaignMap[id].metrics.spend += m.spend || 0;
-                    campaignMap[id].metrics.results += m.results || 0;
-                    campaignMap[id].metrics.impressions += m.impressions || 0;
-                    campaignMap[id].metrics.reach += m.reach || 0;
-                    campaignMap[id].metrics.clicks += m.clicks || 0;
-                }
-            });
-
-            return Object.values(campaignMap);
         },
         enabled: !!clientId
     });
@@ -72,7 +86,7 @@ export const SyncedCampaignTable: React.FC<SyncedCampaignTableProps> = ({ client
         }
     });
 
-    const filteredCampaigns = campaigns?.filter(c => {
+    const filteredCampaigns = (campaigns as any[])?.filter((c: any) => {
         // Search filter
         const matchesSearch = !searchQuery || 
             c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -81,9 +95,21 @@ export const SyncedCampaignTable: React.FC<SyncedCampaignTableProps> = ({ client
         if (!matchesSearch) return false;
 
         // Group filter
-        if (selectedGroupId === 'all') return true;
-        if (selectedGroupId === 'unassigned') return !c.group_id;
-        return c.group_id === selectedGroupId;
+        if (selectedGroupId !== 'all') {
+            if (selectedGroupId === 'unassigned') {
+                if (c.group_id) return false;
+            } else if (c.group_id !== selectedGroupId) {
+                return false;
+            }
+        }
+
+        // Active status filter
+        if (showOnlyActive) {
+            const isActive = ['ACTIVE', 'Active', 'ENABLED'].includes(c.status);
+            if (!isActive) return false;
+        }
+
+        return true;
     }) || [];
 
     const handleSelectCampaign = (id: string) => {
@@ -107,6 +133,7 @@ export const SyncedCampaignTable: React.FC<SyncedCampaignTableProps> = ({ client
     }
 
     return (
+        <>
         <div className="space-y-4">
             {/* Filters & Actions Bar */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl border border-gray-100 dark:border-gray-800">
@@ -141,6 +168,21 @@ export const SyncedCampaignTable: React.FC<SyncedCampaignTableProps> = ({ client
                             onChange={e => setSearchQuery(e.target.value)}
                         />
                     </div>
+
+                    <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 hidden md:block"></div>
+
+                    {/* Active Ads Filter Button */}
+                    <button
+                        onClick={() => setShowOnlyActive(!showOnlyActive)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 border shadow-sm ${
+                            showOnlyActive
+                                ? 'bg-green-600 border-green-600 text-white hover:bg-green-700 shadow-green-200/50'
+                                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-700'
+                        }`}
+                    >
+                        <span className={`w-2 h-2 rounded-full ${showOnlyActive ? 'bg-white animate-pulse' : 'bg-green-500'}`} />
+                        {showOnlyActive ? 'Active Ads Only' : 'Filter Active Ads'}
+                    </button>
                 </div>
 
                 {assigningCampaigns.length > 0 && (
@@ -180,13 +222,15 @@ export const SyncedCampaignTable: React.FC<SyncedCampaignTableProps> = ({ client
                                         type="checkbox"
                                         className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                                         onChange={e => {
-                                            if (e.target.checked) setAssigningCampaigns(filteredCampaigns.map(c => c.id));
+                                            if (e.target.checked) setAssigningCampaigns((filteredCampaigns as any[]).map((c: any) => c.id));
                                             else setAssigningCampaigns([]);
                                         }}
                                     />
                                 </th>
-                                <th className="px-6 py-5">Campaign & Status</th>
+                                <th className="px-6 py-5">Campaign</th>
+                                <th className="px-6 py-5">Status</th>
                                 <th className="px-6 py-5">Started</th>
+                                <th className="px-6 py-5">Ends</th>
                                 <th className="px-6 py-5">Platform</th>
                                 <th className="px-6 py-5">Group</th>
                                 <th className="px-6 py-5 text-right">Spend</th>
@@ -199,23 +243,23 @@ export const SyncedCampaignTable: React.FC<SyncedCampaignTableProps> = ({ client
                         <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
                             {filteredCampaigns.length === 0 ? (
                                 <tr>
-                                    <td colSpan={10} className="px-6 py-12 text-center text-gray-400 italic text-sm">
+                                    <td colSpan={12} className="px-6 py-12 text-center text-gray-400 italic text-sm">
                                         No campaigns found matching your filters.
                                     </td>
                                 </tr>
                             ) : (
                                 Object.entries(
-                                    filteredCampaigns.reduce((acc: Record<string, any[]>, camp) => {
+                                    (filteredCampaigns as any[]).reduce((acc: Record<string, any[]>, camp: any) => {
                                         const groupName = camp.group?.name || 'Unassigned Campaigns';
                                         if (!acc[groupName]) acc[groupName] = [];
                                         acc[groupName].push(camp);
                                         return acc;
                                     }, {})
-                                ).map(([groupName, groupCampaigns]) => (
+                                ).map(([groupName, groupCampaigns]: [string, any[]]) => (
                                     <React.Fragment key={groupName}>
                                         {/* Group Header Row */}
                                         <tr className="bg-gray-100/50 dark:bg-gray-900/50">
-                                            <td colSpan={10} className="px-6 py-2">
+                                            <td colSpan={12} className="px-6 py-2">
                                                 <div className="flex items-center gap-2">
                                                     <div className="h-4 w-1 bg-purple-600 rounded-full"></div>
                                                     <span className="text-xs font-black text-purple-900 dark:text-purple-100 uppercase tracking-widest">
@@ -227,13 +271,16 @@ export const SyncedCampaignTable: React.FC<SyncedCampaignTableProps> = ({ client
                                                 </div>
                                             </td>
                                         </tr>
-                                        {groupCampaigns.map(camp => {
+                                        {groupCampaigns.map((camp: any) => {
                                             const costPerLead = camp.metrics.leads > 0 ? camp.metrics.spend / camp.metrics.leads : 0;
                                             const isSelected = assigningCampaigns.includes(camp.id);
                                             const isActive = ['ACTIVE', 'Active', 'ENABLED'].includes(camp.status);
-                                            const startedDate = camp.createdAt
-                                                ? format(new Date(camp.createdAt), 'dd MMM yyyy')
+                                            const startedDate = camp.startDate
+                                                ? format(new Date(camp.startDate), 'dd MMM yyyy')
                                                 : '—';
+                                            const endsDate = isActive 
+                                                ? 'Running' 
+                                                : (camp.ends ? format(new Date(camp.ends), 'dd MMM yyyy') : '—');
 
                                             return (
                                                 <tr key={camp.id} className={`group text-sm transition-colors hover:bg-purple-50/20 dark:hover:bg-purple-900/5 ${isSelected ? 'bg-purple-50/30 dark:bg-purple-900/10' : ''}`}>
@@ -246,25 +293,32 @@ export const SyncedCampaignTable: React.FC<SyncedCampaignTableProps> = ({ client
                                                             className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                                                         />
                                                     </td>
-                                                    {/* Campaign Name + Status */}
+                                                    {/* Campaign Name */}
                                                     <td className="px-6 py-4">
-                                                        <div className="flex flex-col">
-                                                            <span className="font-bold text-gray-900 dark:text-gray-100 group-hover:text-purple-600 transition-colors">
-                                                                {camp.name}
+                                                        <span className="font-bold text-gray-900 dark:text-gray-100 group-hover:text-purple-600 transition-colors">
+                                                            {camp.name}
+                                                        </span>
+                                                    </td>
+                                                    {/* Status */}
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-1.5">
+                                                            {isActive
+                                                                ? <CheckCircle2 className="w-3 h-3 text-green-500" />
+                                                                : <AlertCircle className="w-3 h-3 text-gray-400" />}
+                                                            <span className={`text-[10px] font-bold uppercase ${isActive ? 'text-green-600' : 'text-gray-400'}`}>
+                                                                {camp.status}
                                                             </span>
-                                                            <div className="flex items-center gap-1.5 mt-1">
-                                                                {isActive
-                                                                    ? <CheckCircle2 className="w-3 h-3 text-green-500" />
-                                                                    : <AlertCircle className="w-3 h-3 text-gray-400" />}
-                                                                <span className={`text-[10px] font-bold uppercase ${isActive ? 'text-green-600' : 'text-gray-400'}`}>
-                                                                    {camp.status}
-                                                                </span>
-                                                            </div>
                                                         </div>
                                                     </td>
                                                     {/* Started Date */}
                                                     <td className="px-6 py-4">
                                                         <span className="text-xs font-medium text-gray-500 whitespace-nowrap">{startedDate}</span>
+                                                    </td>
+                                                    {/* Ends Date */}
+                                                    <td className="px-6 py-4">
+                                                        <span className={`text-xs font-semibold whitespace-nowrap ${endsDate === 'Running' ? 'text-green-600 dark:text-green-400' : 'text-gray-500'}`}>
+                                                            {endsDate}
+                                                        </span>
                                                     </td>
                                                     {/* Platform */}
                                                     <td className="px-6 py-4">
@@ -317,11 +371,11 @@ export const SyncedCampaignTable: React.FC<SyncedCampaignTableProps> = ({ client
                                                     {/* Actions */}
                                                     <td className="px-6 py-4">
                                                         <button
-                                                            onClick={() => onViewLeads(camp.id)}
-                                                            className="p-2 hover:bg-white dark:hover:bg-gray-700 rounded-lg text-gray-400 hover:text-purple-600 transition-all shadow-sm hover:shadow"
+                                                            onClick={() => setSelectedCampaign(camp)}
+                                                            className="p-2 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg text-gray-400 hover:text-purple-600 transition-all shadow-sm hover:shadow group/btn"
                                                             title="View Leads"
                                                         >
-                                                            <ChevronRight className="w-4 h-4" />
+                                                            <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-0.5 transition-transform" />
                                                         </button>
                                                     </td>
                                                 </tr>
@@ -335,5 +389,15 @@ export const SyncedCampaignTable: React.FC<SyncedCampaignTableProps> = ({ client
                 </div>
             </div>
         </div>
+
+        {/* Campaign Leads Slide-over Panel */}
+        {selectedCampaign && (
+            <CampaignLeadsPanel
+                campaign={selectedCampaign}
+                clientId={clientId}
+                onClose={() => setSelectedCampaign(null)}
+            />
+        )}
+        </>
     );
 };

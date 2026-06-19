@@ -95,6 +95,7 @@ import payrollRoutes from './modules/payroll/routes';
 import backupRoutes from './modules/backup/routes';
 import clientPortalRoutes from './modules/client_portal/routes';
 import marketingRoutes from './modules/marketing-tasks/routes';
+import crmUserRoutes from './modules/marketing-tasks/crmUserRoutes';
 import settingsRoutes from './modules/settings/routes';
 import whatsappRoutes from './modules/whatsapp/routes';
 import intelCoreRoutes from './modules/intel_core/intelCore.routes';
@@ -129,6 +130,7 @@ app.use('/api/deployment', deploymentRoutes); // Registered here
 
 app.use('/api/client-portal', clientPortalRoutes);
 app.use('/api/marketing', marketingRoutes);
+app.use('/api/crm', crmUserRoutes);
 
 app.use('/api/payroll', payrollRoutes);
 app.use('/api/backup', backupRoutes);

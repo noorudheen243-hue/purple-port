@@ -102,7 +102,7 @@ export const MarketingDashboard: React.FC<MarketingDashboardProps> = ({ external
         setSyncSuccess(null);
         setError(null);
         try {
-            await api.post('/marketing/sync');
+            await api.post('/marketing/sync', { clientId: selectedClientId, daysBack: 35 });
             setSyncSuccess('Data sync completed');
             fetchMetrics(fromDate, toDate);
             // Hide notification after 5 seconds

@@ -2,6 +2,7 @@ import prisma from '../../../utils/prisma';
 import { MarketingDataNormalizer, ExternalMarketingMetric } from '../normalizer/marketingNormalizer';
 import { MetaAdsService } from '../services/metaAdsService';
 import { GoogleAdsService } from '../services/googleAdsService';
+import { syncCrmCampaignData } from '../crm.controller';
 
 import { MetaLeadsService } from '../services/metaLeadsService';
 const metaService = new MetaAdsService();
@@ -51,8 +52,8 @@ export class MarketingSyncWorker {
                         objective: ext.objective || 'UNKNOWN',
                         budget: budgetValue,
                         bid_strategy: ext.bid_strategy,
-                        startDate: ext.start_time ? new Date(ext.start_time) : null,
-                        ends: ext.stop_time ? new Date(ext.stop_time) : null
+                        startDate: (ext.start_time || ext.startDate || ext.start_date) ? new Date(ext.start_time || ext.startDate || ext.start_date) : null,
+                        ends: (ext.stop_time || ext.end_date || ext.endDate) ? new Date(ext.stop_time || ext.end_date || ext.endDate) : null
                     };
 
                     if (!existing) {
@@ -85,6 +86,13 @@ export class MarketingSyncWorker {
             } catch (err: any) {
                 console.error(`[SyncWorker] Account sync failed for ${acc.externalAccountId}:`, err.message);
             }
+        }
+
+        // Trigger CRM campaign data sync to map leads to their groups/campaigns
+        try {
+            await syncCrmCampaignData(clientId);
+        } catch (crmErr: any) {
+            console.error(`[SyncWorker] CRM client campaign sync error:`, crmErr.message);
         }
     }
 
@@ -450,6 +458,18 @@ export class MarketingSyncWorker {
                         console.error(`Lead sync failed for account ${acc.externalAccountId}:`, leadErr);
                     }
                 }
+            }
+
+            // Sync CRM Campaign data for all active clients
+            try {
+                const activeClientIds = Array.from(new Set(allAccounts.map((a: any) => a.clientId))) as string[];
+                for (const clientIdx of activeClientIds) {
+                    if (clientIdx) {
+                        await syncCrmCampaignData(clientIdx);
+                    }
+                }
+            } catch (crmErr: any) {
+                console.error(`[SyncWorker] CRM Global Sync error:`, crmErr.message);
             }
 
 

@@ -592,21 +592,54 @@ export const getUnifiedSummary = async (month?: number, year?: number) => {
     const cashBankBalance = grossIncome - netExpense;
 
     // 3. Distribution Queries (Period-Filtered)
-    const expenseCategories = await prisma.unifiedTransaction.groupBy({
-        by: ['category'],
+    const allExpenses = await prisma.unifiedTransaction.findMany({
         where: { transaction_type: 'EXPENSE', date: { gte: startDate, lte: endDate } },
-        _sum: { amount: true },
-        orderBy: { _sum: { amount: 'desc' } },
-        take: 5
+        include: { ledger: true }
     });
 
-    const revenueCategories = await prisma.unifiedTransaction.groupBy({
-        by: ['category'],
+    const expenseMap: Record<string, number> = {};
+    for (const tx of allExpenses) {
+        let cat = tx.category || 'General';
+        const isPayroll = 
+            cat === 'Staff Salary' || 
+            cat === 'Monthly Payroll' || 
+            cat === 'Salary' || 
+            cat === 'Salary Advance' || 
+            cat === 'Advance Salary' || 
+            cat === 'Payroll' ||
+            (tx.description && tx.description.toLowerCase().includes('payroll payout')) ||
+            (tx.ledger?.ledger_name === 'SALARY_EXPENSE') ||
+            (tx.ledger?.entity_type === 'USER' && tx.description && tx.description.toLowerCase().includes('salary'));
+
+        if (isPayroll) {
+            cat = 'Salary';
+        }
+        expenseMap[cat] = (expenseMap[cat] || 0) + tx.amount;
+    }
+
+    const expenseDistribution = Object.entries(expenseMap)
+        .map(([label, value]) => ({ label, value }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5);
+
+    const allIncomes = await prisma.unifiedTransaction.findMany({
         where: { transaction_type: 'INCOME', date: { gte: startDate, lte: endDate } },
-        _sum: { amount: true },
-        orderBy: { _sum: { amount: 'desc' } },
-        take: 5
+        include: { ledger: true }
     });
+
+    const revenueMap: Record<string, number> = {};
+    for (const tx of allIncomes) {
+        let cat = tx.category || 'General';
+        if (tx.ledger?.entity_type === 'CLIENT') {
+            cat = 'Income From Client';
+        }
+        revenueMap[cat] = (revenueMap[cat] || 0) + tx.amount;
+    }
+
+    const revenueDistribution = Object.entries(revenueMap)
+        .map(([label, value]) => ({ label, value }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5);
 
     return {
         openingBalance,
@@ -615,8 +648,8 @@ export const getUnifiedSummary = async (month?: number, year?: number) => {
         grossIncome,
         monthBalance,
         cashBankBalance,
-        expenseDistribution: expenseCategories.map(c => ({ label: c.category || 'General', value: c._sum.amount || 0 })),
-        revenueDistribution: revenueCategories.map(c => ({ label: c.category || 'General', value: c._sum.amount || 0 })),
+        expenseDistribution,
+        revenueDistribution,
         netCashFlow: monthBalance, // Running month flow
         totalIncome: netIncome,
         totalExpense: netExpense

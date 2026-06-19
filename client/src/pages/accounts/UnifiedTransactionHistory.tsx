@@ -78,7 +78,7 @@ const UnifiedTransactionHistory = () => {
 
     const filteredData = (transactions || []).filter((t: any) => {
         const matchesSearch = t.description.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                             t.ledger?.ledger_name.toLowerCase().includes(searchTerm.toLowerCase());
+                             (t.ledger_name || '').toLowerCase().includes(searchTerm.toLowerCase());
         const matchesType = filterType === 'ALL' || t.transaction_type === filterType;
         return matchesSearch && matchesType;
     });
@@ -149,8 +149,8 @@ const UnifiedTransactionHistory = () => {
                                         <div className="flex items-center gap-3">
                                             <div className={`w-2 h-8 rounded-full ${tx.transaction_type === 'INCOME' ? 'bg-emerald-400' : 'bg-rose-400'}`}></div>
                                             <div>
-                                                <div className="font-black text-slate-900 group-hover:text-purple-600 transition-colors">{tx.ledger?.ledger_name || 'System Account'}</div>
-                                                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">{tx.ledger?.entity_type || 'GENERAL'}</div>
+                                                <div className="font-black text-slate-900 group-hover:text-purple-600 transition-colors">{tx.ledger_name || 'System Account'}</div>
+                                                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">{tx.entity_type || 'GENERAL'}</div>
                                             </div>
                                         </div>
                                     </td>

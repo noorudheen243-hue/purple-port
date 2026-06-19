@@ -1,7 +1,8 @@
 import { useEffect, Suspense, lazy } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuthStore } from './store/authStore'
+import { useCrmAuthStore } from './store/crmAuthStore'
 import ErrorBoundary from './components/ErrorBoundary';
 import AutoLogoutHandler from './components/auth/AutoLogoutHandler';
 import { BiometricProbe } from './components/attendance/BiometricProbe';
@@ -12,6 +13,9 @@ const Register = lazy(() => import('./pages/auth/Register'));
 const Dashboard = lazy(() => import('./pages/dashboard'));
 const StrategyReportView = lazy(() => import('./pages/portal/StrategyWizard/StrategyReportView'));
 const CategoryTransactionsView = lazy(() => import('./pages/accounts/CategoryTransactionsView'));
+const PerformanceTaskDetails = lazy(() => import('./pages/tasks/PerformanceTaskDetails'));
+const CrmLogin = lazy(() => import('./pages/crm/CrmLogin'));
+const CrmUserDashboard = lazy(() => import('./pages/crm/CrmUserDashboard'));
 
 
 const queryClient = new QueryClient()
@@ -22,6 +26,18 @@ const LoadingFallback = () => (
     </div>
 );
 
+function MetaPixelTracker() {
+    const location = useLocation();
+
+    useEffect(() => {
+        if (typeof (window as any).fbq === 'function') {
+            (window as any).fbq('track', 'PageView');
+        }
+    }, [location.pathname, location.search]);
+
+    return null;
+}
+
 const ProtectedRoute = () => {
     const { isAuthenticated, isLoading } = useAuthStore();
 
@@ -30,11 +46,21 @@ const ProtectedRoute = () => {
     return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
 };
 
+const ProtectedCrmRoute = () => {
+    const { isAuthenticated, isLoading } = useCrmAuthStore();
+
+    if (isLoading) return <LoadingFallback />;
+
+    return isAuthenticated ? <Outlet /> : <Navigate to="/crm-login" replace />;
+};
+
 function App() {
     const { checkAuth } = useAuthStore();
+    const { checkAuth: checkCrmAuth } = useCrmAuthStore();
 
     useEffect(() => {
         checkAuth();
+        checkCrmAuth();
 
         // Auto-Reload on Version Mismatch (Chunk Load Error)
         const handleChunkError = (event: ErrorEvent) => {
@@ -57,12 +83,13 @@ function App() {
         window.addEventListener('error', handleChunkError);
         return () => window.removeEventListener('error', handleChunkError);
 
-    }, [checkAuth]);
+    }, [checkAuth, checkCrmAuth]);
 
     return (
         <QueryClientProvider client={queryClient}>
             <ErrorBoundary>
                 <BrowserRouter>
+                    <MetaPixelTracker />
                     <AutoLogoutHandler>
                         <div className="min-h-screen bg-background text-foreground font-sans antialiased relative">
                             <BiometricProbe />
@@ -70,12 +97,18 @@ function App() {
                                 <Routes>
                                     <Route path="/login" element={<Login />} />
                                     <Route path="/register" element={<Register />} />
+                                    <Route path="/crm-login" element={<CrmLogin />} />
 
                                     <Route element={<ProtectedRoute />}>
                                         <Route path="/dashboard/*" element={<Dashboard />} />
                                         <Route path="/strategy/report/:id" element={<StrategyReportView />} />
                                         <Route path="/accounts/category-transactions/:category" element={<CategoryTransactionsView />} />
+                                        <Route path="/tasks/performance/details" element={<PerformanceTaskDetails />} />
                                         <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                                    </Route>
+
+                                    <Route element={<ProtectedCrmRoute />}>
+                                        <Route path="/crm-dashboard/*" element={<CrmUserDashboard />} />
                                     </Route>
                                 </Routes>
                             </Suspense>

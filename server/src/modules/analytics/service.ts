@@ -95,6 +95,8 @@ export const getTeamPerformanceStats = async (department?: string, startDate?: D
             nature: true,
             sla_status: true,
             type: true,
+            task_group: true,
+            task_type: true,
             estimated_hours: true,
             actual_time_minutes: true,
             priority: true
@@ -129,6 +131,46 @@ export const getTeamPerformanceStats = async (department?: string, startDate?: D
         const completedTaskTypes: Record<string, number> = {};
         userTasks.forEach(t => {
             if (t.status === 'COMPLETED') {
+                let group = t.task_group;
+                let taskType = t.task_type;
+
+                // Legacy task mapping fallback
+                if (!group) {
+                    const type = t.type;
+                    if (type === 'GRAPHIC' || type === 'Graphic Design' || type === 'Design') {
+                        group = 'Graphics Work';
+                        taskType = 'Poster Design';
+                    } else if (type === 'BRANDING' || type === 'Branding') {
+                        group = 'Branding Works';
+                        taskType = 'Logo Design';
+                    } else if (type === 'VIDEO' || type === 'Video Editing' || type === 'Video') {
+                        group = 'Video Works';
+                        taskType = 'Normal Video Content';
+                    } else if (type === 'REEL_EDITING') {
+                        group = 'Video Works';
+                        taskType = 'Reel Editing with Footages';
+                    } else if (type === 'MOTION') {
+                        group = 'Video Works';
+                        taskType = 'Motion Graphic Video';
+                    } else if (type === 'CONTENT_SHOOTING' || type === 'Content shooting' || type === 'Content Shooting' || type === 'Shooting') {
+                        group = 'Edu Project';
+                        taskType = 'Shoot Videos';
+                    } else if (type === 'PRINT' || type === 'Printables') {
+                        group = 'Printables';
+                        taskType = 'other';
+                    } else {
+                        group = 'Graphics Work';
+                        taskType = 'other';
+                    }
+                }
+
+                if (group && taskType) {
+                    const compoundKey = `${group}:${taskType}`;
+                    completedTaskTypes[compoundKey] = (completedTaskTypes[compoundKey] || 0) + 1;
+                    completedTaskTypes[group] = (completedTaskTypes[group] || 0) + 1;
+                    completedTaskTypes[taskType] = (completedTaskTypes[taskType] || 0) + 1;
+                }
+
                 const type = t.type || 'Generic';
                 completedTaskTypes[type] = (completedTaskTypes[type] || 0) + 1;
             }

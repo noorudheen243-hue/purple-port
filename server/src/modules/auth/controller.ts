@@ -62,37 +62,40 @@ export const registerUser = async (req: Request, res: Response) => {
 };
 
 export const loginUser = async (req: Request, res: Response) => {
-    let { email, password } = req.body;
-
+    const { email, password } = req.body;
+    // Basic validation
+    if (!email || !password) {
+        return res.status(400).json({ message: 'Email and password are required' });
+    }
     // Normalize inputs
-    if (email) email = email.trim().toLowerCase();
-    if (password) password = password.trim();
-    console.log(`[LOGIN ATTEMPT] Email: ${email}, Password Provided: ${!!password}`);
-
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedPassword = password.trim();
+    console.log(`[LOGIN ATTEMPT] Email: ${normalizedEmail}, Password Provided: ${!!normalizedPassword}`);
     try {
-        const user = await userService.findUserByEmail(email);
+        const user = await userService.findUserByEmail(normalizedEmail);
         console.log(`[LOGIN DEBUG] User found: ${!!user}`);
-
         if (user) {
-            const isMatch = await bcrypt.compare(password, user.password_hash);
+            const isMatch = await bcrypt.compare(normalizedPassword, user.password_hash);
             console.log(`[LOGIN DEBUG] Password Match: ${isMatch}`);
-
             if (isMatch) {
-                const token = generateToken(res, user.id, user.role);
-                res.json({
-                    token,
-                    id: user.id,
-                    full_name: user.full_name,
-                    email: user.email,
-                    role: user.role,
-                    department: user.department,
-                    avatar_url: user.avatar_url,
-                    linked_client_id: user.linked_client_id,
-                });
-                return;
+                try {
+                    const token = generateToken(res, user.id, user.role);
+                    res.json({
+                        token,
+                        id: user.id,
+                        full_name: user.full_name,
+                        email: user.email,
+                        role: user.role,
+                        department: user.department,
+                        avatar_url: user.avatar_url,
+                        linked_client_id: user.linked_client_id,
+                    });
+                    return;
+                } catch (tokenError) {
+                    throw new Error('Token generation failed');
+                }
             }
         }
-
         console.log('[LOGIN FAILED] Invalid credentials');
         res.status(401).json({ message: 'Invalid email or password' });
     } catch (error: any) {

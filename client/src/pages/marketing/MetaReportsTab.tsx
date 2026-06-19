@@ -96,7 +96,7 @@ export default function MetaReportsTab() {
             campaignMap.set(m.campaignId, {
                 name: m.campaign?.name || m.campaignId,
                 status: m.campaign?.status || 'ACTIVE',
-                impressions: 0, clicks: 0, spend: 0, results: 0, leads: 0
+                impressions: 0, clicks: 0, spend: 0, results: 0, leads: 0, conversations: 0
             });
         }
         const entry = campaignMap.get(m.campaignId);
@@ -104,8 +104,15 @@ export default function MetaReportsTab() {
         entry.clicks += m.clicks || 0;
         entry.spend += m.spend || 0;
         entry.results += m.results || 0;
+        entry.conversations += m.conversations || 0;
     });
-    const campaignRows = Array.from(campaignMap.values());
+    const campaignRows = Array.from(campaignMap.values()).map((c: any) => {
+        const leads = c.results || c.conversations || 0;
+        return {
+            ...c,
+            leads
+        };
+    });
 
     // ── PDF generation & send ─────────────────────────────────────────────
 

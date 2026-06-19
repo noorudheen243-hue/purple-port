@@ -65,7 +65,18 @@ export const createTask = async (req: Request, res: Response) => {
 
 export const getTasks = async (req: Request, res: Response) => {
     try {
-        const { campaign_id, assignee_id, client_id, status, priority, start_date, end_date, department, campaign_type } = req.query;
+        const { campaign_id, assignee_id, client_id, status, priority, start_date, end_date, department, campaign_type, task_group, task_type } = req.query;
+
+        let parsedStart: Date | undefined;
+        let parsedEnd: Date | undefined;
+        if (start_date && start_date !== 'undefined' && start_date !== 'null') {
+            const d = new Date(start_date as string);
+            if (!isNaN(d.getTime())) parsedStart = d;
+        }
+        if (end_date && end_date !== 'undefined' && end_date !== 'null') {
+            const d = new Date(end_date as string);
+            if (!isNaN(d.getTime())) parsedEnd = d;
+        }
 
         const tasks = await taskService.getTasks({
             campaign_id: campaign_id as string,
@@ -75,8 +86,10 @@ export const getTasks = async (req: Request, res: Response) => {
             priority: priority as any,
             department: department as string,
             campaign_type: campaign_type as string,
-            startDate: start_date ? new Date(start_date as string) : undefined,
-            endDate: end_date ? new Date(end_date as string) : undefined
+            startDate: parsedStart,
+            endDate: parsedEnd,
+            task_group: task_group as string,
+            task_type: task_type as string
         });
 
         res.json(tasks);

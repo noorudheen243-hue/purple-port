@@ -375,7 +375,11 @@ export const GroupDetailWindow: React.FC<GroupDetailWindowProps> = ({ group, cli
                                                     <td className="px-6 py-8 font-black text-indigo-600">{formatINR(c.metrics?.conversations > 0 ? (c.metrics.spend / c.metrics.conversations) : 0)}</td>
                                                     <td className="px-6 py-8">
                                                         <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center border border-amber-100">
-                                                            <span className="text-xs font-black text-amber-600">{c.leadsCount || 0}</span>
+                                                            <span className="text-xs font-black text-amber-600">
+                                                                {c.platform === 'meta'
+                                                                    ? (c.metrics?.results || c.metrics?.conversations || c.leadsCount || 0)
+                                                                    : (c.leadsCount || c.metrics?.results || 0)}
+                                                            </span>
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-8 text-slate-500 font-bold">{(c.metrics?.reach || 0).toLocaleString()}</td>

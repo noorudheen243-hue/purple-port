@@ -162,7 +162,7 @@ export class MetaAdsService {
 
             // Meta usually declares the Primary Action explicitly in cost_per_result
             if (day.cost_per_result && Array.isArray(day.cost_per_result) && day.cost_per_result.length > 0) {
-                primaryResultType = day.cost_per_result[0].action_type;
+                primaryResultType = day.cost_per_result[0].action_type || '';
             }
 
             let resultsCost = parseFloat(day.cost_per_result?.[0]?.value || '0');
@@ -173,7 +173,7 @@ export class MetaAdsService {
                     const primaryAction = day.actions.find((a: any) => 
                         a.action_type === primaryResultType ||
                         a.action_type === `onsite_conversion.${primaryResultType}` ||
-                        (primaryResultType.includes('messaging_conversation_started') && a.action_type.includes('messaging_conversation_started'))
+                        (primaryResultType.includes('messaging_conversation_started') && a.action_type && a.action_type.includes('messaging_conversation_started'))
                     );
                     if (primaryAction) {
                         totalResults = parseInt(primaryAction.value || '0', 10);
@@ -184,13 +184,13 @@ export class MetaAdsService {
                     const val = parseInt(action.value || '0', 10);
                     const type = action.action_type;
 
-                    if (type.includes('lead')) maxLeads = Math.max(maxLeads, val);
-                    if (type.includes('messaging_conversation_started') || type.includes('onsite_conversion.messaging_conversation_started_7d')) {
+                    if (type && type.includes('lead')) maxLeads = Math.max(maxLeads, val);
+                    if (type && (type.includes('messaging_conversation_started') || type.includes('onsite_conversion.messaging_conversation_started_7d'))) {
                         maxMessages = Math.max(maxMessages, val);
                     }
-                    if (type.includes('purchase')) maxPurchases = Math.max(maxPurchases, val);
+                    if (type && type.includes('purchase')) maxPurchases = Math.max(maxPurchases, val);
                     if (type === 'link_click') maxLinkClicks = Math.max(maxLinkClicks, val);
-                    if (type.includes('engagement') || type === 'post_engagement') maxEngagements = Math.max(maxEngagements, val);
+                    if (type && (type.includes('engagement') || type === 'post_engagement')) maxEngagements = Math.max(maxEngagements, val);
                 }
 
                 // If Meta didn't give us a primary result, we use our own heuristic priority
@@ -208,18 +208,18 @@ export class MetaAdsService {
             }
             
             let parsedType = 'Results';
-            if (primaryResultType.includes('purchase')) parsedType = 'Purchases';
-            else if (primaryResultType.includes('lead')) parsedType = 'Leads';
-            else if (primaryResultType.includes('message') || primaryResultType.includes('messaging')) parsedType = 'Messaging Conversations';
-            else if (primaryResultType.includes('link_click')) parsedType = 'Link Clicks';
-            else if (primaryResultType.includes('engagement')) parsedType = 'Engagements';
-            else if (primaryResultType.includes('thruplay')) parsedType = 'ThruPlays';
-            else if (primaryResultType.includes('video_view')) parsedType = 'Video Views';
+            if (primaryResultType && primaryResultType.includes('purchase')) parsedType = 'Purchases';
+            else if (primaryResultType && primaryResultType.includes('lead')) parsedType = 'Leads';
+            else if (primaryResultType && (primaryResultType.includes('message') || primaryResultType.includes('messaging'))) parsedType = 'Messaging Conversations';
+            else if (primaryResultType && primaryResultType.includes('link_click')) parsedType = 'Link Clicks';
+            else if (primaryResultType && primaryResultType.includes('engagement')) parsedType = 'Engagements';
+            else if (primaryResultType && primaryResultType.includes('thruplay')) parsedType = 'ThruPlays';
+            else if (primaryResultType && primaryResultType.includes('video_view')) parsedType = 'Video Views';
             else if (primaryResultType) parsedType = primaryResultType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 
             let purchaseCost = 0;
             if (day.cost_per_action_type && Array.isArray(day.cost_per_action_type)) {
-                const purchaseAction = day.cost_per_action_type.find((a: any) => a.action_type.includes('purchase'));
+                const purchaseAction = day.cost_per_action_type.find((a: any) => a.action_type && a.action_type.includes('purchase'));
                 if (purchaseAction) purchaseCost = parseFloat(purchaseAction.value || '0');
             }
 

@@ -119,6 +119,8 @@ export const getTasks = async (filters: {
     campaign_type?: string;
     startDate?: Date;
     endDate?: Date;
+    task_group?: string;
+    task_type?: string;
 }) => {
     let whereClause: Prisma.TaskWhereInput = {};
 
@@ -142,6 +144,81 @@ export const getTasks = async (filters: {
     if (filters?.priority) whereClause.priority = filters.priority;
     if (filters?.department) (whereClause as any).department = filters.department;
     if (filters?.campaign_type) (whereClause as any).campaign_type = filters.campaign_type;
+
+    // Task Group & Task Type Filtering (including legacy task fallbacks)
+    if (filters?.task_group || filters?.task_type) {
+        const group = filters.task_group;
+        const taskType = filters.task_type;
+        const legacyConditions: Prisma.TaskWhereInput[] = [];
+
+        if (group === 'Graphics Work' && taskType === 'Poster Design') {
+            legacyConditions.push({
+                task_group: null,
+                type: { in: ['GRAPHIC', 'Graphic Design', 'Design'] }
+            });
+        }
+        if (group === 'Branding Works' && taskType === 'Logo Design') {
+            legacyConditions.push({
+                task_group: null,
+                type: { in: ['BRANDING', 'Branding'] }
+            });
+        }
+        if (group === 'Video Works') {
+            if (taskType === 'Normal Video Content') {
+                legacyConditions.push({
+                    task_group: null,
+                    type: { in: ['VIDEO', 'Video Editing', 'Video'] }
+                });
+            } else if (taskType === 'Reel Editing with Footages') {
+                legacyConditions.push({
+                    task_group: null,
+                    type: 'REEL_EDITING'
+                });
+            } else if (taskType === 'Motion Graphic Video') {
+                legacyConditions.push({
+                    task_group: null,
+                    type: 'MOTION'
+                });
+            }
+        }
+        if (group === 'Edu Project' && taskType === 'Shoot Videos') {
+            legacyConditions.push({
+                task_group: null,
+                type: { in: ['CONTENT_SHOOTING', 'Content shooting', 'Content Shooting', 'Shooting'] }
+            });
+        }
+        if (group === 'Printables' && taskType === 'other') {
+            legacyConditions.push({
+                task_group: null,
+                type: { in: ['PRINT', 'Printables'] }
+            });
+        }
+        if (group === 'Graphics Work' && taskType === 'other') {
+            legacyConditions.push({
+                task_group: null,
+                type: { notIn: [
+                    'GRAPHIC', 'Graphic Design', 'Design',
+                    'BRANDING', 'Branding',
+                    'VIDEO', 'Video Editing', 'Video', 'REEL_EDITING', 'MOTION',
+                    'CONTENT_SHOOTING', 'Content shooting', 'Content Shooting', 'Shooting',
+                    'PRINT', 'Printables'
+                ] }
+            });
+        }
+
+        whereClause.AND = [
+            ...(whereClause.AND as any || []),
+            {
+                OR: [
+                    {
+                        task_group: group || undefined,
+                        task_type: taskType || undefined
+                    },
+                    ...legacyConditions
+                ]
+            }
+        ];
+    }
 
     // Date Range Filtering (Mixed: Due Date OR Created At OR Start Date)
     if (filters.startDate && filters.endDate) {

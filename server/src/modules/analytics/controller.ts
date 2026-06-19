@@ -17,8 +17,14 @@ export const getTeamPerformanceStats = async (req: Request, res: Response) => {
         let start: Date | undefined;
         let end: Date | undefined;
 
-        if (startDate) start = new Date(startDate as string);
-        if (endDate) end = new Date(endDate as string);
+        if (startDate && startDate !== 'undefined' && startDate !== 'null') {
+            const parsedStart = new Date(startDate as string);
+            if (!isNaN(parsedStart.getTime())) start = parsedStart;
+        }
+        if (endDate && endDate !== 'undefined' && endDate !== 'null') {
+            const parsedEnd = new Date(endDate as string);
+            if (!isNaN(parsedEnd.getTime())) end = parsedEnd;
+        }
 
         const stats = await analyticsService.getTeamPerformanceStats(
             department as string,

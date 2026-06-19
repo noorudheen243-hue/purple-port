@@ -5,12 +5,15 @@ const api = axios.create({
     withCredentials: true,
 });
 
-// Request Interceptor to add Token
 api.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('auth_token');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
+        }
+        const crmToken = localStorage.getItem('crm_auth_token');
+        if (crmToken) {
+            config.headers['crm-auth-token'] = crmToken;
         }
         return config;
     },

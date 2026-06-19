@@ -5,7 +5,7 @@ import fs from 'fs';
 import {
     manualSync, getMetrics, authMeta, metaCallback, authGoogle, googleCallback,
     getAvailableAccounts, getIntegrationStatus, selectAccount, disconnectAccount,
-    middleware, getLeads, syncLeads, createLead, updateLead, deleteLead, updateLeadFeedback, addFollowUp,
+    middleware, getLeads, syncLeads, createLead, updateLead, deleteLead, updateLeadFeedback, addFollowUp, updateFollowUp, deleteFollowUp,
     getMetaProfiles, linkAccountToProfile, getAiTips, getMetaCampaignsDetailed, getMetaAdSets, getMetaAds, createMetaCampaign, createMetaAdSet, updateMetaStatus, sendReport,
     syncCampaign, getMetaAccountStatus
 } from './controller';
@@ -18,6 +18,11 @@ import {
     unassignCampaignFromGroup
 } from './marketingGroup.controller';
 import { protect } from '../auth/middleware';
+import * as crmController from './crm.controller';
+import {
+    verifyMetaLeadsWebhook,
+    handleMetaLeadsWebhook
+} from './crm.controller';
 
 // Ensure temp upload dir exists
 const uploadDir = path.join(process.cwd(), 'uploads', 'reports');
@@ -29,13 +34,22 @@ const reportUpload = multer({ dest: uploadDir });
 const router = Router();
 
 // Apply feature flag middleware to all routes in this module
-router.use(...middleware);
+// Removed undefined middleware spread; apply specific middleware as needed
 
 // OAuth Endpoints (GET) - MUST NOT BE PROTECTED
 router.get('/auth/meta', authMeta);
 router.get('/auth/meta/callback', metaCallback);
 router.get('/auth/google', authGoogle);
 router.get('/auth/google/callback', googleCallback);
+
+// Incoming CRM webhook for landing pages (public endpoint)
+router.post('/crm/webhooks/incoming', crmController.handleIncomingWebhookLead);
+
+// Meta Lead Ads Webhook — public endpoints (no auth required)
+// GET: Meta calls this to verify the webhook URL when you subscribe in App Dashboard
+// POST: Meta sends real-time lead notifications here
+router.get('/crm/webhooks/meta-leads', verifyMetaLeadsWebhook);
+router.post('/crm/webhooks/meta-leads', handleMetaLeadsWebhook);
 
 // Apply protection to all subsequent data routes
 router.use(protect);
@@ -67,8 +81,27 @@ router.patch('/leads/:id/feedback', updateLeadFeedback);
 router.delete('/leads/:id', deleteLead);
 router.post('/leads/sync', syncLeads);
 router.post('/leads/follow-up', addFollowUp);
+router.patch('/leads/follow-up/:id', updateFollowUp);
+router.delete('/leads/follow-up/:id', deleteFollowUp);
 
-router.post('/leads/follow-up', addFollowUp);
+// CRM Endpoints
+router.get('/crm/dashboard-stats', crmController.getCrmDashboardStats);
+router.get('/crm/leads', crmController.getLeads);
+router.post('/crm/leads', crmController.createManualLead);
+router.post('/crm/leads/sync-meta', crmController.syncMetaLeadsToCrm);
+router.post('/crm/leads/subscribe-all-webhooks', crmController.subscribeAllPagesToWebhook);
+router.post('/crm/leads/sync-meta-all', crmController.syncAllMetaLeadsToCrm);
+router.post('/crm/leads/bulk-assign', crmController.bulkAssignLeads);
+router.post('/crm/leads/bulk-update', crmController.bulkUpdateStatus);
+router.post('/crm/leads/bulk-delete', crmController.bulkDeleteLeads);
+router.post('/crm/leads/merge', crmController.mergeLeads);
+router.post('/crm/leads/import', crmController.importCsvLeads);
+router.patch('/crm/leads/:id', crmController.updateLeadDetails);
+router.post('/crm/leads/:id/notes', crmController.addLeadNote);
+router.get('/crm/leads/:id/history', crmController.getLeadActivities);
+router.get('/crm/follow-ups', crmController.getFollowUps);
+router.patch('/crm/follow-ups/:id', crmController.updateFollowUpStatus);
+router.get('/crm/campaign-performance', crmController.getCampaignCRMPerformance);
 
 // Account Discovery & Selection (NEW)
 router.get('/status', getIntegrationStatus);

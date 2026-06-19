@@ -19,7 +19,11 @@ export const getAuthUrl = (formattedRedirectUri: string, clientId: string, state
         'ads_management',
         'ads_read',
         'read_insights',
-        'business_management' // Optional, for client linking
+        'business_management', // Optional, for client linking
+        'leads_retrieval',
+        'pages_read_engagement',
+        'pages_show_list',
+        'pages_manage_ads'
     ];
 
     return `https://www.facebook.com/${META_API_VERSION}/dialog/oauth?client_id=${clientId}&redirect_uri=${formattedRedirectUri}&state=${state}&scope=${scopes.join(',')}`;

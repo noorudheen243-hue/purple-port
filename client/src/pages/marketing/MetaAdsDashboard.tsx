@@ -229,6 +229,9 @@ export const MetaAdsDashboard: React.FC<MetaAdsDashboardProps> = ({ clientId, fr
                                 <th className="px-6 py-4 cursor-pointer hover:text-purple-600" onClick={() => requestSort('name')}>
                                     <div className="flex items-center gap-1">Campaign {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3"/> : <ChevronDown className="w-3 h-3"/>)}</div>
                                 </th>
+                                <th className="px-6 py-4 cursor-pointer hover:text-purple-600" onClick={() => requestSort('status')}>
+                                    <div className="flex items-center gap-1">Status {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3"/> : <ChevronDown className="w-3 h-3"/>)}</div>
+                                </th>
                                 <th className="px-6 py-4 text-right cursor-pointer hover:text-purple-600" onClick={() => requestSort('spend')}>
                                     <div className="flex items-center justify-end gap-1">Spend {sortConfig.key === 'spend' && (sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3"/> : <ChevronDown className="w-3 h-3"/>)}</div>
                                 </th>
@@ -250,26 +253,35 @@ export const MetaAdsDashboard: React.FC<MetaAdsDashboardProps> = ({ clientId, fr
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                            {sortedCampaigns.map((camp, idx) => (
-                                <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group">
-                                    <td className="px-6 py-4">
-                                        <div className="flex flex-col">
+                            {sortedCampaigns.map((camp, idx) => {
+                                const isActive = ['ACTIVE', 'Active', 'ENABLED'].includes(camp.status);
+                                return (
+                                    <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group">
+                                        <td className="px-6 py-4">
                                             <span className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-purple-600 transition-colors">{camp.name}</span>
-                                            <span className="text-[10px] text-gray-400 font-medium uppercase mt-0.5">{camp.status}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 text-right font-bold text-gray-800 dark:text-gray-200 text-sm">{"\u20B9"}{camp.spend.toLocaleString()}</td>
-                                    <td className="px-6 py-4 text-right text-gray-500 dark:text-gray-400 text-sm">{camp.impressions.toLocaleString()}</td>
-                                    <td className="px-6 py-4 text-right text-gray-500 dark:text-gray-400 text-sm">{camp.clicks.toLocaleString()}</td>
-                                    <td className="px-6 py-4 text-right text-sm">
-                                        <span className={`font-bold ${camp.ctr > 1.5 ? 'text-green-600' : camp.ctr < 0.8 ? 'text-orange-500' : 'text-gray-700 dark:text-gray-300'}`}>
-                                            {camp.ctr.toFixed(2)}%
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-right text-purple-600 dark:text-purple-400 font-bold text-sm">{camp.results.toLocaleString()}</td>
-                                    <td className="px-6 py-4 text-right text-emerald-600 dark:text-emerald-400 font-bold text-sm">{camp.conversations.toLocaleString()}</td>
-                                </tr>
-                            ))}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-full ${
+                                                isActive 
+                                                    ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400' 
+                                                    : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
+                                            }`}>
+                                                {camp.status}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-right font-bold text-gray-800 dark:text-gray-200 text-sm">{"\u20B9"}{camp.spend.toLocaleString()}</td>
+                                        <td className="px-6 py-4 text-right text-gray-500 dark:text-gray-400 text-sm">{camp.impressions.toLocaleString()}</td>
+                                        <td className="px-6 py-4 text-right text-gray-500 dark:text-gray-400 text-sm">{camp.clicks.toLocaleString()}</td>
+                                        <td className="px-6 py-4 text-right text-sm">
+                                            <span className={`font-bold ${camp.ctr > 1.5 ? 'text-green-600' : camp.ctr < 0.8 ? 'text-orange-500' : 'text-gray-700 dark:text-gray-300'}`}>
+                                                {camp.ctr.toFixed(2)}%
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-right text-purple-600 dark:text-purple-400 font-bold text-sm">{camp.results.toLocaleString()}</td>
+                                        <td className="px-6 py-4 text-right text-emerald-600 dark:text-emerald-400 font-bold text-sm">{camp.conversations.toLocaleString()}</td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>

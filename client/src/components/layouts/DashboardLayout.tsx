@@ -57,7 +57,7 @@ const HeaderMeetingsButton = () => {
     return (
         <Link
             to="/dashboard/meetings"
-            className="group relative flex items-center gap-2 px-6 py-2.5 text-sm font-bold text-white bg-purple-600 hover:bg-purple-500 rounded-lg transition-all duration-150 transform hover:-translate-y-1 shadow-[0_5px_0_0_#581c87] active:shadow-none active:translate-y-[4px]"
+            className="group relative flex items-center gap-2 px-3 py-2 md:px-6 md:py-2.5 text-sm font-bold text-white bg-purple-600 hover:bg-purple-500 rounded-lg transition-all duration-150 transform hover:-translate-y-1 shadow-[0_5px_0_0_#581c87] active:shadow-none active:translate-y-[4px]"
             title="Meetings"
         >
             <Calendar size={18} className="drop-shadow-sm" />
@@ -186,8 +186,14 @@ const SidebarItem = ({ item, isActive, depth = 0, closeSidebar, index }: { item:
 };
 
 const Sidebar = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
-    const { user } = useAuthStore();
+    const { user, logout } = useAuthStore();
     const location = useLocation();
+    const navigate = useNavigate();
+
+    const handleLogout = async () => {
+        await logout();
+        navigate('/login');
+    };
 
     const isActive = (path: string) => path === location.pathname || (path !== '/dashboard' && location.pathname.startsWith(path));
 
@@ -236,7 +242,7 @@ const Sidebar = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) 
                     </button>
                 </div>
 
-                <nav className="flex-1 px-4 space-y-2 pb-20">
+                <nav className="flex-1 px-4 space-y-2 pb-6">
                     {menuItems.map((item, index) => (
                         <SidebarItem
                             key={index}
@@ -247,6 +253,25 @@ const Sidebar = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) 
                         />
                     ))}
                 </nav>
+
+                {/* Sidebar Footer - Settings and Logout (Touch-friendly for mobile) */}
+                <div className="p-4 border-t border-border bg-card space-y-1 shrink-0">
+                    <Link
+                        to="/dashboard/settings"
+                        onClick={onClose}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-md hover:bg-muted text-gray-700 transition-all"
+                    >
+                        <Settings size={18} />
+                        <span>Settings</span>
+                    </Link>
+                    <button
+                        onClick={handleLogout}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-md hover:bg-red-50 text-red-600 transition-all text-left"
+                    >
+                        <LogOut size={18} />
+                        <span>Logout</span>
+                    </button>
+                </div>
             </aside>
         </>
     );
@@ -428,9 +453,9 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
 
                             <HeaderMeetingsButton />
 
-                            <Link
+                             <Link
                                 to="/dashboard/settings"
-                                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-md transition-colors"
+                                className="hidden md:flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-md transition-colors"
                                 title="Settings"
                             >
                                 <Settings size={18} />
@@ -439,7 +464,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
 
                             <button
                                 onClick={handleLogout}
-                                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
+                                className="hidden md:flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
                                 title="Logout"
                             >
                                 <LogOut size={18} />

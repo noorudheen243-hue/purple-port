@@ -66,19 +66,19 @@ const FinancialDashboard = () => {
             </div>
 
             {/* Navigation Tabs */}
-            <div className="flex flex-wrap gap-2 bg-white/50 backdrop-blur-sm p-2 rounded-[2rem] w-fit border border-slate-200 shadow-sm">
+            <div className="flex flex-col md:flex-row md:flex-wrap gap-2 bg-white/50 backdrop-blur-sm p-2 rounded-2xl md:rounded-[2rem] w-full md:w-fit border border-slate-200 shadow-sm">
                 {tabs.map((tab) => (
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-bold transition-all duration-300 ${
+                        className={`flex items-center justify-start md:justify-center gap-3 px-6 py-3 rounded-2xl text-sm font-bold transition-all duration-300 w-full md:w-auto ${
                             activeTab === tab.id 
                                 ? 'bg-purple-600 text-white shadow-lg' 
                                 : 'text-slate-500 hover:text-slate-900 hover:bg-white'
                         }`}
                     >
-                        <tab.icon className="w-4 h-4" />
-                        {tab.name}
+                        <tab.icon className="w-4 h-4 shrink-0" />
+                        <span>{tab.name}</span>
                     </button>
                 ))}
             </div>

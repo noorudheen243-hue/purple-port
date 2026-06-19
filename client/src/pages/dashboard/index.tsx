@@ -20,6 +20,8 @@ const MarketingDashboard = lazy(() => import('../../pages/marketing/MarketingDas
 const MarketingIntegrations = lazy(() => import('../../pages/marketing/MarketingIntegrations'));
 const SalesIntelligenceManager = lazy(() => import('../../pages/marketing/SalesIntelligenceManager'));
 const AiCommandCenter = lazy(() => import('../../pages/portal/Intelligence/AiCommandCenter'));
+const ClientCrmSelector = lazy(() => import('../crm/ClientCrmSelector'));
+const ClientCrmWorkspace = lazy(() => import('../crm/ClientCrmWorkspace'));
 
 
 const MarketingCoreBeta = lazy(() => import('../../pages/MarketingCoreBeta'));
@@ -233,6 +235,10 @@ const Dashboard = () => {
                         <Route path="reports" element={<ReportsView />} />
                         <Route path="manage-services" element={<ManageServicesView />} />
                     </Route>
+
+                    {/* Client CRM Routes */}
+                    <Route path="crm" element={<ClientCrmSelector />} />
+                    <Route path="crm/:clientId" element={<ClientCrmWorkspace />} />
 
                     {/* Admin Tools */}
 

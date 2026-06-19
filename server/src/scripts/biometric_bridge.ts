@@ -18,9 +18,12 @@ async function sync() {
     // 1. Connect to Device
     const zk = new ZKLib(DEVICE_IP, DEVICE_PORT, 10000, 4000);
     try {
-        // Robust TCP Connection
+        // Robust TCP Connection with 10s Timeout
         await (zk as any).ztcp.createSocket();
-        await (zk as any).ztcp.connect();
+        await Promise.race([
+            (zk as any).ztcp.connect(),
+            new Promise((_, rej) => setTimeout(() => rej(new Error('Connection Timeout')), 10000))
+        ]);
         (zk as any).connectionType = 'tcp';
 
         consecutiveFailures = 0; // Reset on success
@@ -137,8 +140,12 @@ async function executeRemoteCommand(cmd: any) {
     let resultJson: any = {};
 
     try {
+        // Robust TCP Connection with 10s Timeout
         await (zk as any).ztcp.createSocket();
-        await (zk as any).ztcp.connect();
+        await Promise.race([
+            (zk as any).ztcp.connect(),
+            new Promise((_, rej) => setTimeout(() => rej(new Error('Connection Timeout')), 10000))
+        ]);
         (zk as any).connectionType = 'tcp';
 
         const params = paramsStr ? JSON.parse(paramsStr) : {};

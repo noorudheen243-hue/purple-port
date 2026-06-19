@@ -257,3 +257,55 @@
     @apply px-4 py-3 text-sm;
   }
 }
+
+/* --- Touch & Mobile Responsiveness Optimizations --- */
+
+/* 1. Global Touch Action for Clickable Elements (reduces 300ms delay) */
+a, button, select, input, textarea, [role="button"] {
+  touch-action: manipulation;
+}
+
+/* 2. Mobile Specific Adjustments */
+@media (max-width: 767px) {
+  /* Prevent iOS input focus zoom by enforcing min 16px font-size */
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+  
+  /* Ensure all tables are natively scrollable on touch devices, blocking layout breaks */
+  table {
+    display: block !important;
+    width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  /* Prevent horizontal scroll leakage on mobile layout */
+  body, html, #root {
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    position: relative;
+    -webkit-tap-highlight-color: transparent; /* Remove blue tap highlight on iOS */
+  }
+
+  /* Make sweetalert dialogs mobile friendly */
+  .swal2-popup {
+    font-size: 0.85rem !important;
+    width: 90% !important;
+    padding: 1rem !important;
+  }
+}
+
+/* 3. Smooth scrolling on scroll containers */
+.overflow-y-auto, .overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}

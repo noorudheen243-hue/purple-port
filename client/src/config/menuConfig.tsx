@@ -48,6 +48,12 @@ export const ADMIN_MANAGER_MENU: MenuItem[] = [
         highlight: true
     },
     {
+        label: "Client CRM",
+        path: "/dashboard/crm",
+        icon: UsersIcon,
+        highlight: true
+    },
+    {
         label: "Financial Management",
         path: "/dashboard/finance",
         icon: Wallet,
@@ -75,6 +81,11 @@ export const STAFF_MENU: MenuItem[] = [
         label: "Marketing Management",
         path: "/dashboard/marketing-management",
         icon: Megaphone
+    },
+    {
+        label: "Client CRM",
+        path: "/dashboard/crm",
+        icon: UsersIcon
     },
     {
         label: "Task Management",
@@ -114,6 +125,11 @@ export const CLIENT_MENU: MenuItem[] = [
         label: "Service Portal",
         path: "/dashboard/client-portal",
         icon: TrendingUp
+    },
+    {
+        label: "Client CRM",
+        path: "/dashboard/crm",
+        icon: UsersIcon
     },
     {
         label: "Lead Management",

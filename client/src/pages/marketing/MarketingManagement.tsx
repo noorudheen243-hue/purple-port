@@ -15,8 +15,6 @@ import { Label } from "@/components/ui/label";
 import { Input } from '@/components/ui/input';
 
 // Components
-import ManageServicesView from '../portal/ManageServicesView';
-import MarketingDashboard from './MarketingDashboard';
 import MarketingCoreBeta from '../MarketingCoreBeta';
 import StrategyManager from '../portal/StrategyWizard/StrategyManager';
 
@@ -24,7 +22,7 @@ const MarketingManagement = () => {
     const { user } = useAuthStore();
     const [searchParams, setSearchParams] = useSearchParams();
     const queryClient = useQueryClient();
-    const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'services');
+    const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'strategy');
     const [isCreating, setIsCreating] = useState(false);
 
     const clientId = useMemo(() => {
@@ -63,18 +61,6 @@ const MarketingManagement = () => {
     };
 
     const tabs = [
-        { 
-            id: 'services', 
-            label: 'Client-Marketing Services', 
-            icon: TrendingUp, 
-            activeClass: 'data-[state=active]:bg-purple-600 data-[state=active]:text-white data-[state=active]:border-purple-600' 
-        },
-        { 
-            id: 'campaigns', 
-            label: 'Client-Campaign Management', 
-            icon: BarChart3, 
-            activeClass: 'data-[state=active]:bg-yellow-400 data-[state=active]:text-purple-900 data-[state=active]:border-purple-600' 
-        },
         { 
             id: 'strategy', 
             label: 'Strategy', 
@@ -166,12 +152,6 @@ const MarketingManagement = () => {
                         </div>
                     ) : (
                         <>
-                            <TabsContent value="services" className="mt-0 focus-visible:outline-none animate-in fade-in duration-300">
-                                <ManageServicesView externalClientId={clientId} />
-                            </TabsContent>
-                            <TabsContent value="campaigns" className="mt-0 focus-visible:outline-none animate-in fade-in duration-300">
-                                <MarketingDashboard externalClientId={clientId} />
-                            </TabsContent>
                             <TabsContent value="strategy" className="mt-0 focus-visible:outline-none animate-in fade-in duration-300">
                                 <StrategyManager clientId={clientId} selectedClient={selectedClient} clients={clients} />
                             </TabsContent>

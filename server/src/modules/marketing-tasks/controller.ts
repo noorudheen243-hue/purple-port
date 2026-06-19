@@ -485,8 +485,8 @@ export async function authMeta(req: Request, res: Response) {
         return res.status(400).send('Meta App ID is not configured properly in Settings. Current value: ' + appId);
     }
 
-    // Redirect to Facebook Dialog with reauthenticate to allow switching accounts easily
-    const authUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&state=${state}&scope=public_profile,ads_management,ads_read,business_management&auth_type=reauthenticate`;
+    // Redirect to Facebook Dialog with rerequest to force showing the Page selection checklist again
+    const authUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&state=${state}&scope=public_profile,ads_management,ads_read,business_management,leads_retrieval,pages_read_engagement,pages_show_list,pages_manage_ads&auth_type=rerequest`;
     
     console.log(`[MetaAuth] Redirecting to: ${authUrl}`);
     res.redirect(authUrl);
@@ -624,7 +624,39 @@ export async function metaCallback(req: Request, res: Response) {
             }
         }
 
+        // ── Auto-subscribe all accessible pages to the Meta Lead Ads Webhook ──────
+        // This ensures leads from these pages are pushed to us in real-time going forward
+        try {
+            const pagesRes = await axios.get(`https://graph.facebook.com/v19.0/me/accounts`, {
+                params: { access_token: longToken, fields: 'id,name,access_token', limit: 100 }
+            });
+            const pages: any[] = pagesRes.data?.data || [];
+            console.log(`[MetaCallback] Subscribing ${pages.length} pages to leadgen webhook...`);
+
+            for (const page of pages) {
+                try {
+                    // Subscribe the app to this page's leadgen events
+                    await axios.post(
+                        `https://graph.facebook.com/v19.0/${page.id}/subscribed_apps`,
+                        null,
+                        {
+                            params: {
+                                access_token: page.access_token,
+                                subscribed_fields: 'leadgen'
+                            }
+                        }
+                    );
+                    console.log(`[MetaCallback] ✓ Page "${page.name}" (${page.id}) subscribed to leadgen webhook`);
+                } catch (subErr: any) {
+                    console.warn(`[MetaCallback] Could not subscribe page ${page.id}:`, subErr.response?.data?.error?.message || subErr.message);
+                }
+            }
+        } catch (pageSubErr: any) {
+            console.warn('[MetaCallback] Page subscription step failed (non-fatal):', pageSubErr.message);
+        }
+
         res.redirect(`${baseUrl}/dashboard/marketing-integrations?success=meta`);
+
     } catch (e: any) {
         console.error('Meta OAuth Error:', e.response?.data || e.message);
         const fbError = e.response?.data?.error;
@@ -1186,6 +1218,71 @@ export async function addFollowUp(req: Request, res: Response) {
     } catch (e: any) {
         console.error('addFollowUp error:', e.message);
         res.status(500).json({ message: 'Failed to add follow up', error: e.message });
+    }
+}
+
+export async function updateFollowUp(req: Request, res: Response) {
+    const { id } = req.params;
+    const { channel, status, notes, date } = req.body;
+
+    try {
+        const existingFollowUp = await (prisma as any).leadFollowUp.findUnique({
+            where: { id }
+        });
+
+        if (!existingFollowUp) {
+            return res.status(404).json({ message: 'Follow up not found' });
+        }
+
+        const followUp = await (prisma as any).leadFollowUp.update({
+            where: { id },
+            data: {
+                channel,
+                status,
+                notes,
+                date: date ? new Date(date) : undefined,
+                updatedAt: new Date()
+            }
+        });
+
+        if (status) {
+            await (prisma as any).lead.update({
+                where: { id: existingFollowUp.lead_id },
+                data: { status, updatedAt: new Date() }
+            });
+        }
+
+        AiSalesEngineService.calculateLeadScore(existingFollowUp.lead_id).catch(err => console.error('AI Lead Scoring Error:', err));
+
+        res.json(followUp);
+    } catch (e: any) {
+        console.error('updateFollowUp error:', e.message);
+        res.status(500).json({ message: 'Failed to update follow up', error: e.message });
+    }
+}
+
+export async function deleteFollowUp(req: Request, res: Response) {
+    const { id } = req.params;
+
+    try {
+        const existingFollowUp = await (prisma as any).leadFollowUp.findUnique({
+            where: { id }
+        });
+
+        if (!existingFollowUp) {
+            return res.status(404).json({ message: 'Follow up not found' });
+        }
+
+        await (prisma as any).leadFollowUp.delete({
+            where: { id }
+        });
+
+        AiSalesEngineService.calculateLeadScore(existingFollowUp.lead_id).catch(err => console.error('AI Lead Scoring Error:', err));
+
+        res.json({ message: 'Follow up deleted successfully' });
+    } catch (e: any) {
+        console.error('deleteFollowUp error:', e.message);
+        res.status(500).json({ message: 'Failed to delete follow up', error: e.message });
     }
 }
 

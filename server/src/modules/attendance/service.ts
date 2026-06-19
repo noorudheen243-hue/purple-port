@@ -296,17 +296,58 @@ export class AttendanceService {
         return request;
     }
 
+    // Helper to normalize biometric timestamp depending on its format/origin
+    static normalizeBiometricTimestamp(timestamp: Date | string): Date {
+        let tsStr = '';
+        if (timestamp instanceof Date) {
+            // Get the local digits that the Date object was constructed with
+            const pad = (n: number) => n.toString().padStart(2, '0');
+            tsStr = `${timestamp.getFullYear()}-${pad(timestamp.getMonth()+1)}-${pad(timestamp.getDate())}T${pad(timestamp.getHours())}:${pad(timestamp.getMinutes())}:${pad(timestamp.getSeconds())}`;
+        } else {
+            tsStr = String(timestamp).trim();
+            // If the string contains 'Z', it treated the device's local time as UTC. Strip 'Z'.
+            if (tsStr.includes('Z')) {
+                tsStr = tsStr.replace('Z', '');
+            } else if (/GMT|UTC|\+00:?00/i.test(tsStr)) {
+                // Strip UTC markers
+                tsStr = tsStr.replace(/GMT|UTC|\+00:?00/ig, '').trim();
+            } else if (/\+05:?30|India Standard Time/i.test(tsStr)) {
+                // Already has IST marker, let's keep it but parse directly
+                const d = new Date(tsStr);
+                if (!isNaN(d.getTime())) return d;
+            }
+        }
+
+        // Force it to be interpreted as IST by appending +05:30
+        const formatted = tsStr.replace(' ', 'T');
+        // Ensure there's no trailing timezone info before appending +05:30
+        const cleanStr = formatted.replace(/(Z|[+-]\d{2}:\d{2})$/, '');
+        
+        const parsed = new Date(`${cleanStr}+05:30`);
+        if (!isNaN(parsed.getTime())) {
+            return parsed;
+        }
+
+        return new Date(timestamp); // Last fallback
+    }
+
     // Biometric Sync (Sanitized & Idempotent)
     static async processBiometricLogs(logs: { staff_number: string; timestamp: string | Date; type?: string }[]) {
         const results = { success: 0, failed: 0, errors: [] as string[] };
 
         for (const log of logs) {
             try {
-                const timestamp = new Date(log.timestamp);
+                const timestamp = AttendanceService.normalizeBiometricTimestamp(log.timestamp);
                 const IST_OFFSET = 330 * 60 * 1000;
-                const istDate = new Date(timestamp.getTime() + IST_OFFSET);
-                istDate.setUTCHours(0, 0, 0, 0);
-                const dateKeyIST = new Date(istDate.getTime() - IST_OFFSET); // IST Midnight key
+                
+                // Get punch time in IST to extract the actual hour of the punch in IST
+                const punchTimeIST = new Date(timestamp.getTime() + IST_OFFSET);
+                const istHours = punchTimeIST.getUTCHours(); // actual punch hour in IST (0 to 23)
+
+                // Date key represents IST Midnight (stored as UTC at 18:30 of previous day)
+                const dateKeyIST = new Date(punchTimeIST.getTime());
+                dateKeyIST.setUTCHours(0, 0, 0, 0);
+                dateKeyIST.setTime(dateKeyIST.getTime() - IST_OFFSET);
 
                 // Fallback check for old UTC keys
                 const dateKeyUTC = new Date(timestamp);
@@ -339,7 +380,6 @@ export class AttendanceService {
                 // --- OVERNIGHT LOOKBACK ---
                 // If punch is between 12 AM and 7 AM IST, and today has no record, 
                 // check if yesterday has an incomplete record (to assign check-out)
-                const istHours = istDate.getUTCHours();
                 if (!existing && istHours < 7) {
                     const yesterdayKey = new Date(dateKeyIST.getTime() - (24 * 60 * 60 * 1000));
                     const yesterdayRecord = await db.attendanceRecord.findFirst({

@@ -12,6 +12,7 @@ export class BiometricController {
             fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
             
             // 1. Clear old biometric logs
+            const db = require('../../utils/prisma').default;
             const { count } = await db.attendanceRecord.deleteMany({
                 where: { method: 'BIOMETRIC', status: { not: 'REGULARIZED' }, date: { gte: fourteenDaysAgo } }
             });

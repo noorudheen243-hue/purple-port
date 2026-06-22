@@ -41,18 +41,25 @@ async function sync() {
         }
 
         // 3. Map logs — handle ALL possible field name variations from zkteco-js
-        const cleanLogs = data.map((l: any) => ({
-            // Try every known field name for user identifier
-            user_id: String(
-                l.user_id ??  // node-zklib  (old)
-                l.userId ??  // zkteco-js   (new)
-                l.deviceUserId ?? // zkteco-js alternate
-                l.uid ??  // fallback
-                ''
-            ),
-            // Try every known field for timestamp
-            record_time: l.recordTime || l.record_time || l.time || new Date().toISOString(),
-        })).filter((l: any) => l.user_id && l.user_id !== '');
+        const cleanLogs = data.map((l: any) => {
+            let rt = l.recordTime || l.record_time || l.time || new Date();
+            if (rt instanceof Date) {
+                const pad = (n: number) => n.toString().padStart(2, '0');
+                rt = `${rt.getFullYear()}-${pad(rt.getMonth() + 1)}-${pad(rt.getDate())}T${pad(rt.getHours())}:${pad(rt.getMinutes())}:${pad(rt.getSeconds())}`;
+            }
+            return {
+                // Try every known field name for user identifier
+                user_id: String(
+                    l.user_id ??  // node-zklib  (old)
+                    l.userId ??  // zkteco-js   (new)
+                    l.deviceUserId ?? // zkteco-js alternate
+                    l.uid ??  // fallback
+                    ''
+                ),
+                // Send explicit local digits without timezone marker
+                record_time: rt,
+            };
+        }).filter((l: any) => l.user_id && l.user_id !== '');
 
         console.log(`[${ts()}] 📤 Found ${data.length} raw logs (${cleanLogs.length} valid). Uploading...`);
 

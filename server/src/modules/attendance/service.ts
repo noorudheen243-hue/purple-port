@@ -298,37 +298,43 @@ export class AttendanceService {
 
     // Helper to normalize biometric timestamp depending on its format/origin
     static normalizeBiometricTimestamp(timestamp: Date | string): Date {
-        let tsStr = '';
+        let year, month, date, hours, minutes, seconds;
+
         if (timestamp instanceof Date) {
-            // Get the local digits that the Date object was constructed with
-            const pad = (n: number) => n.toString().padStart(2, '0');
-            tsStr = `${timestamp.getFullYear()}-${pad(timestamp.getMonth()+1)}-${pad(timestamp.getDate())}T${pad(timestamp.getHours())}:${pad(timestamp.getMinutes())}:${pad(timestamp.getSeconds())}`;
+            year = timestamp.getFullYear();
+            month = timestamp.getMonth();
+            date = timestamp.getDate();
+            hours = timestamp.getHours();
+            minutes = timestamp.getMinutes();
+            seconds = timestamp.getSeconds();
         } else {
-            tsStr = String(timestamp).trim();
-            // If the string contains 'Z', it treated the device's local time as UTC. Strip 'Z'.
-            if (tsStr.includes('Z')) {
-                tsStr = tsStr.replace('Z', '');
-            } else if (/GMT|UTC|\+00:?00/i.test(tsStr)) {
-                // Strip UTC markers
-                tsStr = tsStr.replace(/GMT|UTC|\+00:?00/ig, '').trim();
-            } else if (/\+05:?30|India Standard Time/i.test(tsStr)) {
-                // Already has IST marker, let's keep it but parse directly
-                const d = new Date(tsStr);
+            const str = String(timestamp).trim();
+            
+            // Check if string is already explicitly UTC (ends with Z) and it was sent by Bridge Agent via toISOString
+            if (/Z$/i.test(str)) {
+                const d = new Date(str);
                 if (!isNaN(d.getTime())) return d;
+            }
+
+            const match = str.match(/(\d{4})[-/]?(\d{2})[-/]?(\d{2})[T ]?(\d{2}):(\d{2}):(\d{2})/);
+            if (match) {
+                year = parseInt(match[1], 10);
+                month = parseInt(match[2], 10) - 1;
+                date = parseInt(match[3], 10);
+                hours = parseInt(match[4], 10);
+                minutes = parseInt(match[5], 10);
+                seconds = parseInt(match[6], 10);
+            } else {
+                return new Date(timestamp);
             }
         }
 
-        // Force it to be interpreted as IST by appending +05:30
-        const formatted = tsStr.replace(' ', 'T');
-        // Ensure there's no trailing timezone info before appending +05:30
-        const cleanStr = formatted.replace(/(Z|[+-]\d{2}:\d{2})$/, '');
+        // Convert the extracted local IST digits directly to UTC
+        const utcDateOfDigits = new Date(Date.UTC(year, month, date, hours, minutes, seconds));
         
-        const parsed = new Date(`${cleanStr}+05:30`);
-        if (!isNaN(parsed.getTime())) {
-            return parsed;
-        }
-
-        return new Date(timestamp); // Last fallback
+        // Subtract 5 hours and 30 minutes to get the actual UTC time representing those IST digits
+        const IST_OFFSET_MS = 19800000; // 5.5 * 60 * 60 * 1000
+        return new Date(utcDateOfDigits.getTime() - IST_OFFSET_MS);
     }
 
     // Biometric Sync (Sanitized & Idempotent)

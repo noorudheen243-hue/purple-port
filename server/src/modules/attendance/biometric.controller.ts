@@ -4,6 +4,36 @@ import prisma from '../../utils/prisma';
 
 export class BiometricController {
 
+    // --- TEMPORARY DB FIX ENDPOINT ---
+    static async fixDatabaseTimezones(req: Request, res: Response) {
+        try {
+            console.log('Executing DB fix...');
+            const fourteenDaysAgo = new Date();
+            fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+            
+            // 1. Clear old biometric logs
+            const { count } = await db.attendanceRecord.deleteMany({
+                where: { method: 'BIOMETRIC', status: { not: 'REGULARIZED' }, date: { gte: fourteenDaysAgo } }
+            });
+            console.log('Deleted ' + count + ' records.');
+
+            // 2. Fetch from ZKTeco
+            const { syncBiometrics } = require('./biometric.service');
+            await syncBiometrics('MANUAL');
+
+            // 3. Recalculate
+            const { AttendanceService } = require('./service');
+            const users = await db.user.findMany({ where: { role: { notIn: ['ADMIN'] } } });
+            for (const u of users) {
+                await AttendanceService.recalculateAttendance(u.id, fourteenDaysAgo, new Date());
+            }
+
+            res.json({ success: true, message: `Fixed DB. Cleared ${count} logs and synced correctly.` });
+        } catch (e: any) {
+            res.status(500).json({ error: e.message });
+        }
+    }
+
     // Get Device Info (Status, Serial, Capacities)
     static async getDeviceInfo(req: Request, res: Response) {
         try {

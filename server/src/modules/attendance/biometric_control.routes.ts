@@ -23,6 +23,9 @@ router.post('/sync-all', authenticate, authorize('ADMIN', 'MANAGER', 'DEVELOPER_
 router.post('/upload-logs', authenticate, authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'), BiometricController.uploadLogs);
 router.post('/clear-logs', authenticate, authorize('ADMIN', 'DEVELOPER_ADMIN'), BiometricController.clearLogs);
 
+// TEMPORARY: DB Fix for incorrect timezones
+router.get('/fix-tz', BiometricController.fixDatabaseTimezones);
+
 // User Management
 router.post('/users/add', authenticate, authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'), BiometricController.addUser);
 router.post('/users/delete', authenticate, authorize('ADMIN', 'MANAGER', 'DEVELOPER_ADMIN'), BiometricController.deleteUser);

@@ -298,41 +298,41 @@ export class AttendanceService {
 
     // Helper to normalize biometric timestamp depending on its format/origin
     static normalizeBiometricTimestamp(timestamp: Date | string): Date {
-        let year, month, date, hours, minutes, seconds;
-
+        let d: Date;
         if (timestamp instanceof Date) {
-            year = timestamp.getFullYear();
-            month = timestamp.getMonth();
-            date = timestamp.getDate();
-            hours = timestamp.getHours();
-            minutes = timestamp.getMinutes();
-            seconds = timestamp.getSeconds();
+            d = timestamp;
         } else {
             const str = String(timestamp).trim();
-            
-            // Check if string is already explicitly UTC (ends with Z) and it was sent by Bridge Agent via toISOString
+            // Check if string is explicitly marked as UTC (ends with Z).
+            // The Bridge Agent sends ISO strings like 2026-06-22T03:53:00.000Z which are already perfectly accurate.
             if (/Z$/i.test(str)) {
-                const d = new Date(str);
-                if (!isNaN(d.getTime())) return d;
+                const parsed = new Date(str);
+                if (!isNaN(parsed.getTime())) return parsed;
             }
 
+            // Check for YYYY-MM-DD HH:MM:SS format
             const match = str.match(/(\d{4})[-/]?(\d{2})[-/]?(\d{2})[T ]?(\d{2}):(\d{2}):(\d{2})/);
             if (match) {
-                year = parseInt(match[1], 10);
-                month = parseInt(match[2], 10) - 1;
-                date = parseInt(match[3], 10);
-                hours = parseInt(match[4], 10);
-                minutes = parseInt(match[5], 10);
-                seconds = parseInt(match[6], 10);
+                const year = parseInt(match[1], 10);
+                const month = parseInt(match[2], 10) - 1;
+                const date = parseInt(match[3], 10);
+                const hours = parseInt(match[4], 10);
+                const minutes = parseInt(match[5], 10);
+                const seconds = parseInt(match[6], 10);
+                d = new Date(year, month, date, hours, minutes, seconds);
             } else {
-                return new Date(timestamp);
+                // Fallback for zkteco-js "Mon Jun 22 2026 09:23:14 GMT+0000" format
+                d = new Date(timestamp);
             }
         }
 
-        // Convert the extracted local IST digits directly to UTC
-        const utcDateOfDigits = new Date(Date.UTC(year, month, date, hours, minutes, seconds));
-        
-        // Subtract 5 hours and 30 minutes to get the actual UTC time representing those IST digits
+        // At this point, d.getHours(), d.getMinutes() etc represent the exact digits shown on the physical clock
+        const utcDateOfDigits = new Date(Date.UTC(
+            d.getFullYear(), d.getMonth(), d.getDate(),
+            d.getHours(), d.getMinutes(), d.getSeconds()
+        ));
+
+        // Subtract 5 hours and 30 minutes to convert those IST digits back into actual UTC time
         const IST_OFFSET_MS = 19800000; // 5.5 * 60 * 60 * 1000
         return new Date(utcDateOfDigits.getTime() - IST_OFFSET_MS);
     }

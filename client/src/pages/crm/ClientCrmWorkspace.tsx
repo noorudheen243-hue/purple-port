@@ -54,6 +54,7 @@ interface Lead {
     location: string | null;
     campaign_name: string | null;
     campaignId: string | null;
+    group_id?: string | null;
     quality: string | null;
     status: string;
     feedback: string | null;
@@ -401,13 +402,13 @@ const ClientCrmWorkspace: React.FC = () => {
                             <CrmCampaignGroupsTab clientId={clientId!} />
                         )}
                         {activeTab === 'generated_leads' && (
-                            <CrmLeadsTab clientId={clientId!} startDate={startDate} endDate={endDate} groupId={selectedGroupId} hasMetaAccount={hasMetaAccount} forcedSource="GENERATED" />
+                            <CrmLeadsTab clientId={clientId!} startDate={startDate} endDate={endDate} groupId={selectedGroupId} hasMetaAccount={hasMetaAccount} forcedSource="GENERATED" groups={groups} />
                         )}
                         {activeTab === 'manual_leads' && (
-                            <CrmLeadsTab clientId={clientId!} startDate={startDate} endDate={endDate} groupId={selectedGroupId} hasMetaAccount={hasMetaAccount} forcedSource="MANUAL" />
+                            <CrmLeadsTab clientId={clientId!} startDate={startDate} endDate={endDate} groupId={selectedGroupId} hasMetaAccount={hasMetaAccount} forcedSource="MANUAL" groups={groups} />
                         )}
                         {activeTab === 'leads' && (
-                            <CrmLeadsTab clientId={clientId!} startDate={startDate} endDate={endDate} groupId={selectedGroupId} hasMetaAccount={hasMetaAccount} />
+                            <CrmLeadsTab clientId={clientId!} startDate={startDate} endDate={endDate} groupId={selectedGroupId} hasMetaAccount={hasMetaAccount} groups={groups} />
                         )}
                         {activeTab === 'pipeline' && (
                             <CrmPipelineTab clientId={clientId!} groupId={selectedGroupId} />
@@ -754,9 +755,10 @@ const CrmLeadsTab: React.FC<{
     startDate: string; 
     endDate: string; 
     groupId: string | null; 
-    hasMetaAccount: boolean;
+    hasMetaAccount: boolean; 
     forcedSource?: 'GENERATED' | 'MANUAL';
-}> = ({ clientId, startDate, endDate, groupId, hasMetaAccount, forcedSource }) => {
+    groups?: any[];
+}> = ({ clientId, startDate, endDate, groupId, hasMetaAccount, forcedSource, groups }) => {
     const queryClient = useQueryClient();
     const { user: currentUser } = useAuthStore();
     
@@ -828,6 +830,29 @@ const CrmLeadsTab: React.FC<{
     useEffect(() => {
         setSelectedLeads([]);
     }, [leads]);
+
+    // Group leads by Campaign Group and then Campaign Name for the "Generated Leads" view
+    const groupedLeads = React.useMemo(() => {
+        if (forcedSource !== 'GENERATED' || !groups) return null;
+        
+        const grouped: Record<string, { groupName: string; campaigns: Record<string, Lead[]> }> = {};
+        
+        leads.forEach(lead => {
+            const groupId = lead.group_id;
+            const groupName = groups.find(g => g.id === groupId)?.name || 'Unassigned';
+            const campaignName = lead.campaign_name || 'Direct Lead (No Campaign)';
+            
+            if (!grouped[groupName]) {
+                grouped[groupName] = { groupName, campaigns: {} };
+            }
+            if (!grouped[groupName].campaigns[campaignName]) {
+                grouped[groupName].campaigns[campaignName] = [];
+            }
+            grouped[groupName].campaigns[campaignName].push(lead);
+        });
+        
+        return grouped;
+    }, [leads, groups, forcedSource]);
 
     // Fetch Lead Details when selected
     const fetchLeadDetails = async (leadId: string) => {
@@ -1283,99 +1308,213 @@ const CrmLeadsTab: React.FC<{
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader className="bg-slate-50">
-                                <TableRow className="border-slate-200">
-                                    <TableHead className="w-10">
-                                        <input 
-                                            type="checkbox" 
-                                            checked={selectedLeads.length === leads.length} 
-                                            onChange={toggleSelectAll}
-                                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                                        />
-                                    </TableHead>
-                                    <TableHead className="font-bold text-slate-700 text-xs uppercase">Name & Details</TableHead>
-                                    <TableHead className="font-bold text-slate-700 text-xs uppercase">Source & Campaign</TableHead>
-                                    <TableHead className="font-bold text-slate-700 text-xs uppercase">CRM Stage</TableHead>
-                                    <TableHead className="font-bold text-slate-700 text-xs uppercase">Quality</TableHead>
-                                    <TableHead className="font-bold text-slate-700 text-xs uppercase">Assigned To</TableHead>
-                                    <TableHead className="font-bold text-slate-700 text-xs uppercase text-right">Value</TableHead>
-                                    <TableHead className="w-16" />
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {leads.map((lead) => {
-                                    const assigneeUser: any = null;
-                                    return (
-                                        <TableRow key={lead.id} className="border-slate-100 hover:bg-slate-50/50 transition-colors">
-                                            <TableCell>
-                                                <input 
-                                                    type="checkbox" 
-                                                    checked={selectedLeads.includes(lead.id)} 
-                                                    onChange={() => toggleSelectLead(lead.id)}
-                                                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                                                />
-                                            </TableCell>
-                                            <TableCell className="py-3.5">
-                                                <div className="flex flex-col">
-                                                    <span className="font-bold text-slate-900 text-sm hover:text-indigo-600 cursor-pointer" onClick={() => fetchLeadDetails(lead.id)}>
-                                                        {lead.name || 'Unnamed Lead'}
-                                                    </span>
-                                                    <span className="text-slate-400 text-xs font-semibold mt-0.5">{lead.phone || lead.email || 'No Contact Info'}</span>
+                        {groupedLeads ? (
+                            <div className="flex flex-col gap-6 p-4">
+                                {Object.values(groupedLeads).map((groupBlock: any, idx: number) => (
+                                    <div key={idx} className="border border-indigo-100 rounded-xl overflow-hidden bg-white shadow-sm">
+                                        <div className="bg-indigo-50/50 px-4 py-3 border-b border-indigo-100 flex items-center gap-2">
+                                            <Folder className="h-5 w-5 text-indigo-500" />
+                                            <h3 className="font-bold text-indigo-900">{groupBlock.groupName}</h3>
+                                        </div>
+                                        <div className="divide-y divide-slate-100">
+                                            {Object.entries(groupBlock.campaigns).map(([campaignName, campaignLeads]: [string, any], cIdx: number) => (
+                                                <div key={cIdx} className="p-4 bg-white">
+                                                    <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 pl-2 border-l-2 border-indigo-200">
+                                                        Campaign: <span className="text-slate-700">{campaignName}</span> 
+                                                        <span className="ml-2 font-normal lowercase bg-slate-100 px-2 py-0.5 rounded text-[10px]">
+                                                            {campaignLeads.length} leads
+                                                        </span>
+                                                    </h4>
+                                                    <Table>
+                                                        <TableHeader className="bg-slate-50/50">
+                                                            <TableRow className="border-slate-100">
+                                                                <TableHead className="w-10">
+                                                                    <input 
+                                                                        type="checkbox" 
+                                                                        checked={campaignLeads.every((l: Lead) => selectedLeads.includes(l.id))} 
+                                                                        onChange={(e) => {
+                                                                            if (e.target.checked) {
+                                                                                setSelectedLeads(prev => Array.from(new Set([...prev, ...campaignLeads.map((l: Lead) => l.id)])));
+                                                                            } else {
+                                                                                setSelectedLeads(prev => prev.filter(id => !campaignLeads.some((l: Lead) => l.id === id)));
+                                                                            }
+                                                                        }}
+                                                                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                                                    />
+                                                                </TableHead>
+                                                                <TableHead className="font-bold text-slate-700 text-xs uppercase">Name & Details</TableHead>
+                                                                <TableHead className="font-bold text-slate-700 text-xs uppercase">Source</TableHead>
+                                                                <TableHead className="font-bold text-slate-700 text-xs uppercase">CRM Stage</TableHead>
+                                                                <TableHead className="font-bold text-slate-700 text-xs uppercase">Quality</TableHead>
+                                                                <TableHead className="font-bold text-slate-700 text-xs uppercase text-right">Value</TableHead>
+                                                                <TableHead className="w-16" />
+                                                            </TableRow>
+                                                        </TableHeader>
+                                                        <TableBody>
+                                                            {campaignLeads.map((lead: Lead) => {
+                                                                return (
+                                                                    <TableRow key={lead.id} className="border-slate-50 hover:bg-slate-50/50 transition-colors">
+                                                                        <TableCell>
+                                                                            <input 
+                                                                                type="checkbox" 
+                                                                                checked={selectedLeads.includes(lead.id)} 
+                                                                                onChange={() => toggleSelectLead(lead.id)}
+                                                                                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                                                            />
+                                                                        </TableCell>
+                                                                        <TableCell className="py-2.5">
+                                                                            <div className="flex flex-col">
+                                                                                <span className="font-bold text-slate-900 text-sm hover:text-indigo-600 cursor-pointer" onClick={() => fetchLeadDetails(lead.id)}>
+                                                                                    {lead.name || 'Unnamed Lead'}
+                                                                                </span>
+                                                                                <span className="text-slate-400 text-[10px] font-semibold mt-0.5">{lead.phone || lead.email || 'No Contact Info'}</span>
+                                                                            </div>
+                                                                        </TableCell>
+                                                                        <TableCell>
+                                                                            <Badge className="bg-slate-100 text-slate-600 font-bold border-none text-[10px] w-fit" variant="outline">
+                                                                                {lead.source}
+                                                                            </Badge>
+                                                                        </TableCell>
+                                                                        <TableCell>
+                                                                            <Badge className={`border-none font-bold text-[10px]
+                                                                                ${lead.stage === 'Converted' ? 'bg-green-100 text-green-700' :
+                                                                                  lead.stage === 'Lost' || lead.stage === 'Not Qualified' ? 'bg-red-100 text-red-700' :
+                                                                                  lead.stage === 'Proposal Sent' || lead.stage === 'Meeting Scheduled' ? 'bg-amber-100 text-amber-700' :
+                                                                                  'bg-blue-100 text-blue-700'}
+                                                                            `} variant="outline">
+                                                                                {lead.stage || 'New Lead'}
+                                                                            </Badge>
+                                                                        </TableCell>
+                                                                        <TableCell>
+                                                                            <span className={`inline-flex items-center gap-1 text-xs font-bold
+                                                                                ${lead.quality === 'HIGH' ? 'text-red-500' :
+                                                                                  lead.quality === 'MEDIUM' ? 'text-amber-500' : 'text-slate-500'}
+                                                                            `}>
+                                                                                <span className={`h-2.5 w-2.5 rounded-full
+                                                                                    ${lead.quality === 'HIGH' ? 'bg-red-500' :
+                                                                                      lead.quality === 'MEDIUM' ? 'bg-amber-500' : 'bg-slate-400'}
+                                                                                `} />
+                                                                                {lead.quality || 'MEDIUM'}
+                                                                            </span>
+                                                                        </TableCell>
+                                                                        <TableCell className="text-right font-bold text-sm text-slate-800">
+                                                                            {lead.conversion_val ? `₹${lead.conversion_val.toLocaleString('en-IN')}` : '₹0'}
+                                                                        </TableCell>
+                                                                        <TableCell>
+                                                                            <Button 
+                                                                                onClick={() => fetchLeadDetails(lead.id)}
+                                                                                variant="ghost" 
+                                                                                className="h-8 w-8 p-0 text-slate-500 hover:text-indigo-600 rounded-lg"
+                                                                            >
+                                                                                <Eye className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </TableCell>
+                                                                    </TableRow>
+                                                                );
+                                                            })}
+                                                        </TableBody>
+                                                    </Table>
                                                 </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="flex flex-col">
-                                                    <Badge className="bg-slate-100 text-slate-600 font-bold border-none text-[10px] w-fit" variant="outline">
-                                                        {lead.source}
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <Table>
+                                <TableHeader className="bg-slate-50">
+                                    <TableRow className="border-slate-200">
+                                        <TableHead className="w-10">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={selectedLeads.length === leads.length} 
+                                                onChange={toggleSelectAll}
+                                                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                            />
+                                        </TableHead>
+                                        <TableHead className="font-bold text-slate-700 text-xs uppercase">Name & Details</TableHead>
+                                        <TableHead className="font-bold text-slate-700 text-xs uppercase">Source & Campaign</TableHead>
+                                        <TableHead className="font-bold text-slate-700 text-xs uppercase">CRM Stage</TableHead>
+                                        <TableHead className="font-bold text-slate-700 text-xs uppercase">Quality</TableHead>
+                                        <TableHead className="font-bold text-slate-700 text-xs uppercase">Assigned To</TableHead>
+                                        <TableHead className="font-bold text-slate-700 text-xs uppercase text-right">Value</TableHead>
+                                        <TableHead className="w-16" />
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {leads.map((lead) => {
+                                        const assigneeUser: any = null;
+                                        return (
+                                            <TableRow key={lead.id} className="border-slate-100 hover:bg-slate-50/50 transition-colors">
+                                                <TableCell>
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={selectedLeads.includes(lead.id)} 
+                                                        onChange={() => toggleSelectLead(lead.id)}
+                                                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                                    />
+                                                </TableCell>
+                                                <TableCell className="py-3.5">
+                                                    <div className="flex flex-col">
+                                                        <span className="font-bold text-slate-900 text-sm hover:text-indigo-600 cursor-pointer" onClick={() => fetchLeadDetails(lead.id)}>
+                                                            {lead.name || 'Unnamed Lead'}
+                                                        </span>
+                                                        <span className="text-slate-400 text-xs font-semibold mt-0.5">{lead.phone || lead.email || 'No Contact Info'}</span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex flex-col">
+                                                        <Badge className="bg-slate-100 text-slate-600 font-bold border-none text-[10px] w-fit" variant="outline">
+                                                            {lead.source}
+                                                        </Badge>
+                                                        {lead.campaign_name && (
+                                                            <span className="text-slate-400 text-xs font-semibold mt-1 truncate max-w-[150px]">{lead.campaign_name}</span>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge className={`border-none font-bold text-[10px]
+                                                        ${lead.stage === 'Converted' ? 'bg-green-100 text-green-700' :
+                                                          lead.stage === 'Lost' || lead.stage === 'Not Qualified' ? 'bg-red-100 text-red-700' :
+                                                          lead.stage === 'Proposal Sent' || lead.stage === 'Meeting Scheduled' ? 'bg-amber-100 text-amber-700' :
+                                                          'bg-blue-100 text-blue-700'}
+                                                    `} variant="outline">
+                                                        {lead.stage || 'New Lead'}
                                                     </Badge>
-                                                    {lead.campaign_name && (
-                                                        <span className="text-slate-400 text-xs font-semibold mt-1 truncate max-w-[150px]">{lead.campaign_name}</span>
-                                                    )}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge className={`border-none font-bold text-[10px]
-                                                    ${lead.stage === 'Converted' ? 'bg-green-100 text-green-700' :
-                                                      lead.stage === 'Lost' || lead.stage === 'Not Qualified' ? 'bg-red-100 text-red-700' :
-                                                      lead.stage === 'Proposal Sent' || lead.stage === 'Meeting Scheduled' ? 'bg-amber-100 text-amber-700' :
-                                                      'bg-blue-100 text-blue-700'}
-                                                `} variant="outline">
-                                                    {lead.stage || 'New Lead'}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell>
-                                                <span className={`inline-flex items-center gap-1 text-xs font-bold
-                                                    ${lead.quality === 'HIGH' ? 'text-red-500' :
-                                                      lead.quality === 'MEDIUM' ? 'text-amber-500' : 'text-slate-500'}
-                                                `}>
-                                                    <span className={`h-2.5 w-2.5 rounded-full
-                                                        ${lead.quality === 'HIGH' ? 'bg-red-500' :
-                                                          lead.quality === 'MEDIUM' ? 'bg-amber-500' : 'bg-slate-400'}
-                                                    `} />
-                                                    {lead.quality || 'MEDIUM'}
-                                                </span>
-                                            </TableCell>
-                                            <TableCell className="text-sm font-semibold text-slate-700">
-                                                {assigneeUser ? assigneeUser.full_name : <span className="text-slate-400 italic">Unassigned</span>}
-                                            </TableCell>
-                                            <TableCell className="text-right font-bold text-sm text-slate-800">
-                                                {lead.conversion_val ? `₹${lead.conversion_val.toLocaleString('en-IN')}` : '₹0'}
-                                            </TableCell>
-                                            <TableCell>
-                                                <Button 
-                                                    onClick={() => fetchLeadDetails(lead.id)}
-                                                    variant="ghost" 
-                                                    className="h-8 w-8 p-0 text-slate-500 hover:text-indigo-600 rounded-lg"
-                                                >
-                                                    <Eye className="h-4 w-4" />
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })}
-                            </TableBody>
-                        </Table>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <span className={`inline-flex items-center gap-1 text-xs font-bold
+                                                        ${lead.quality === 'HIGH' ? 'text-red-500' :
+                                                          lead.quality === 'MEDIUM' ? 'text-amber-500' : 'text-slate-500'}
+                                                    `}>
+                                                        <span className={`h-2.5 w-2.5 rounded-full
+                                                            ${lead.quality === 'HIGH' ? 'bg-red-500' :
+                                                              lead.quality === 'MEDIUM' ? 'bg-amber-500' : 'bg-slate-400'}
+                                                        `} />
+                                                        {lead.quality || 'MEDIUM'}
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell className="text-sm font-semibold text-slate-700">
+                                                    {assigneeUser ? assigneeUser.full_name : <span className="text-slate-400 italic">Unassigned</span>}
+                                                </TableCell>
+                                                <TableCell className="text-right font-bold text-sm text-slate-800">
+                                                    {lead.conversion_val ? `₹${lead.conversion_val.toLocaleString('en-IN')}` : '₹0'}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Button 
+                                                        onClick={() => fetchLeadDetails(lead.id)}
+                                                        variant="ghost" 
+                                                        className="h-8 w-8 p-0 text-slate-500 hover:text-indigo-600 rounded-lg"
+                                                    >
+                                                        <Eye className="h-4 w-4" />
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
+                                </TableBody>
+                            </Table>
+                        )}
                     </div>
                 )}
             </div>

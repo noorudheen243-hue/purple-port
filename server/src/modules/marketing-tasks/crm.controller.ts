@@ -292,7 +292,13 @@ export const getLeads = async (req: Request, res: Response) => {
         if (groupId) where.group_id = groupId as string;
         if (stage) where.stage = stage as string;
         if (quality) where.quality = quality as string;
-        if (source) where.source = source as string;
+        if (source) {
+            if (source === 'GENERATED') {
+                where.source = { not: 'MANUAL' };
+            } else {
+                where.source = source as string;
+            }
+        }
         if (assignee) {
             if (assignee === 'unassigned') {
                 where.assigned_to = null;

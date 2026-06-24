@@ -9,7 +9,7 @@ import {
     User, DollarSign, Award, Percent, Users, ChevronRight, Check, 
     X, Phone, MessageCircle, Mail, MapPin, Tag, PlusCircle, 
     Sliders, Download, Upload, Trash, GitMerge, FileSpreadsheet, Eye, Play, CheckCircle,
-    BarChart3, UserPlus, Edit2, Trash2
+    BarChart3, UserPlus, Edit2, Trash2, Folder, CheckCircle2, TrendingUp
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -81,7 +81,10 @@ const ClientCrmWorkspace: React.FC = () => {
     const queryClient = useQueryClient();
     const { user: currentUser } = useAuthStore();
     
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'leads' | 'pipeline' | 'followups' | 'campaigns' | 'integrations' | 'reports' | 'settings' | 'campaign-mgmt' | 'sales-team' | 'meta-ads'>('dashboard');
+    const [activeTab, setActiveTab] = useState<
+        'dashboard' | 'active_campaigns' | 'campaign_groups' | 'generated_leads' | 'manual_leads' | 'leads' | 'followups' | 'pipeline' | 'roas_report' | 'sales-team' | 'reports' |
+        'campaign-mgmt' | 'meta-ads' | 'integrations' | 'settings'
+    >('dashboard');
     
     // Group Selection State
     const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
@@ -264,124 +267,177 @@ const ClientCrmWorkspace: React.FC = () => {
                 </div>
             </div>
 
-            {/* TAB Navigation */}
-            <div className="flex items-center gap-1 overflow-x-auto bg-slate-100 p-1 rounded-xl border border-slate-200/60 scrollbar-none">
-                <button 
-                    onClick={() => handleTabChange('dashboard')}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all shrink-0 ${activeTab === 'dashboard' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-                >
-                    <LayoutDashboard className="h-4 w-4" />
-                    Dashboard
-                </button>
-                <button 
-                    onClick={() => handleTabChange('leads')}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all shrink-0 ${activeTab === 'leads' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-                >
-                    <List className="h-4 w-4" />
-                    Leads list
-                </button>
-                <button 
-                    onClick={() => handleTabChange('pipeline')}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all shrink-0 ${activeTab === 'pipeline' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-                >
-                    <KanbanSquare className="h-4 w-4" />
-                    Kanban Board
-                </button>
-                <button 
-                    onClick={() => handleTabChange('followups')}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all shrink-0 ${activeTab === 'followups' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-                >
-                    <Calendar className="h-4 w-4" />
-                    Follow-ups
-                </button>
-                <button 
-                    onClick={() => handleTabChange('campaigns')}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all shrink-0 ${activeTab === 'campaigns' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-                >
-                    <Megaphone className="h-4 w-4" />
-                    ROAS Report
-                </button>
-                <button 
-                    onClick={() => handleTabChange('campaign-mgmt')}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all shrink-0 ${activeTab === 'campaign-mgmt' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-                >
-                    <BarChart3 className="h-4 w-4" />
-                    Client-Campaign Management
-                </button>
-                <button 
-                    onClick={() => handleTabChange('meta-ads')}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all shrink-0 ${activeTab === 'meta-ads' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-                >
-                    <Megaphone className="h-4 w-4" />
-                    Meta Ads Manager
-                </button>
-                <button 
-                    onClick={() => handleTabChange('integrations')}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all shrink-0 ${activeTab === 'integrations' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-                >
-                    <Link2 className="h-4 w-4" />
-                    Webhooks
-                </button>
-                <button 
-                    onClick={() => handleTabChange('reports')}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all shrink-0 ${activeTab === 'reports' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-                >
-                    <FileText className="h-4 w-4" />
-                    Downloads
-                </button>
-                <button 
-                    onClick={() => handleTabChange('settings')}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all shrink-0 ${activeTab === 'settings' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-                >
-                    <Settings className="h-4 w-4" />
-                    Settings
-                </button>
-                <button 
-                    onClick={() => handleTabChange('sales-team')}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all shrink-0 ${activeTab === 'sales-team' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-                >
-                    <Users className="h-4 w-4" />
-                    Sales Team
-                </button>
-            </div>
+            {/* Sidebar + Main Content Split */}
+            <div className="flex flex-col md:flex-row gap-6 w-full">
+                
+                {/* SIDEBAR NAVIGATION */}
+                <aside className="w-full md:w-64 bg-white border border-slate-200 rounded-2xl p-4 flex flex-col gap-1 shrink-0 self-start shadow-sm">
+                    <div className="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        Client CRM
+                    </div>
+                    <button 
+                        onClick={() => handleTabChange('dashboard')}
+                        className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${activeTab === 'dashboard' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                    >
+                        <LayoutDashboard className="h-4 w-4" />
+                        <span>Dashboard</span>
+                    </button>
+                    <button 
+                        onClick={() => handleTabChange('active_campaigns')}
+                        className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${activeTab === 'active_campaigns' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                    >
+                        <Megaphone className="h-4 w-4" />
+                        <span>Campaigns</span>
+                    </button>
+                    <button 
+                        onClick={() => handleTabChange('campaign_groups')}
+                        className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${activeTab === 'campaign_groups' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                    >
+                        <Folder className="h-4 w-4" />
+                        <span>Campaign Groups</span>
+                    </button>
+                    <button 
+                        onClick={() => handleTabChange('generated_leads')}
+                        className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${activeTab === 'generated_leads' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                    >
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span>Generated Leads</span>
+                    </button>
+                    <button 
+                        onClick={() => handleTabChange('manual_leads')}
+                        className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${activeTab === 'manual_leads' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                    >
+                        <Plus className="h-4 w-4" />
+                        <span>Manual Leads</span>
+                    </button>
+                    <button 
+                        onClick={() => handleTabChange('leads')}
+                        className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${activeTab === 'leads' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                    >
+                        <List className="h-4 w-4" />
+                        <span>Lead List</span>
+                    </button>
+                    <button 
+                        onClick={() => handleTabChange('followups')}
+                        className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${activeTab === 'followups' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                    >
+                        <Calendar className="h-4 w-4" />
+                        <span>Follow-Ups</span>
+                    </button>
+                    <button 
+                        onClick={() => handleTabChange('pipeline')}
+                        className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${activeTab === 'pipeline' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                    >
+                        <KanbanSquare className="h-4 w-4" />
+                        <span>Lead Board</span>
+                    </button>
+                    <button 
+                        onClick={() => handleTabChange('roas_report')}
+                        className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${activeTab === 'roas_report' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                    >
+                        <TrendingUp className="h-4 w-4" />
+                        <span>Campaign Spend vs Conversion Value</span>
+                    </button>
+                    <button 
+                        onClick={() => handleTabChange('sales-team')}
+                        className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${activeTab === 'sales-team' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                    >
+                        <User className="h-4 w-4" />
+                        <span>CRM Team Assignment</span>
+                    </button>
+                    <button 
+                        onClick={() => handleTabChange('reports')}
+                        className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${activeTab === 'reports' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                    >
+                        <BarChart3 className="h-4 w-4" />
+                        <span>Reports</span>
+                    </button>
 
-            {/* TAB CONTENTS */}
-            <div className="space-y-6">
-                <>
-                    {activeTab === 'dashboard' && (
-                        <CrmDashboardTab clientId={clientId!} startDate={startDate} endDate={endDate} groupId={selectedGroupId} />
-                    )}
-                    {activeTab === 'leads' && (
-                        <CrmLeadsTab clientId={clientId!}  startDate={startDate} endDate={endDate} groupId={selectedGroupId} hasMetaAccount={hasMetaAccount} />
-                    )}
-                    {activeTab === 'pipeline' && (
-                        <CrmPipelineTab clientId={clientId!}  groupId={selectedGroupId} />
-                    )}
-                    {activeTab === 'followups' && (
-                        <CrmFollowUpsTab clientId={clientId!}  groupId={selectedGroupId} />
-                    )}
-                    {activeTab === 'campaigns' && (
-                        <CrmCampaignsTab clientId={clientId!} groupId={selectedGroupId} />
-                    )}
-                    {activeTab === 'campaign-mgmt' && (
-                        <MarketingDashboard externalClientId={clientId!} />
-                    )}
-                    {activeTab === 'meta-ads' && (
-                        <CrmMetaAdsManager clientId={clientId!} />
-                    )}
-                    {activeTab === 'integrations' && (
-                        <CrmIntegrationsTab clientId={clientId!} />
-                    )}
-                    {activeTab === 'reports' && (
-                        <CrmReportsTab clientId={clientId!} clientName={clientDetails?.name || 'Client'} startDate={startDate} endDate={endDate} groupId={selectedGroupId} />
-                    )}
-                    {activeTab === 'settings' && (
-                        <CrmSettingsTab clientId={clientId!}  />
-                    )}
-                    {activeTab === 'sales-team' && (
-                        <CrmSalesTeamTab clientId={clientId!} />
-                    )}
-                </>
+                    <div className="h-px bg-slate-200 my-2" />
+                    
+                    <div className="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        Agency Admin Tools
+                    </div>
+                    <button 
+                        onClick={() => handleTabChange('campaign-mgmt')}
+                        className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${activeTab === 'campaign-mgmt' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                    >
+                        <Sliders className="h-4 w-4" />
+                        <span>Client-Campaign Management</span>
+                    </button>
+                    <button 
+                        onClick={() => handleTabChange('meta-ads')}
+                        className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${activeTab === 'meta-ads' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                    >
+                        <Play className="h-4 w-4" />
+                        <span>Meta Ads Manager</span>
+                    </button>
+                    <button 
+                        onClick={() => handleTabChange('integrations')}
+                        className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${activeTab === 'integrations' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                    >
+                        <Link2 className="h-4 w-4" />
+                        <span>Webhooks</span>
+                    </button>
+                    <button 
+                        onClick={() => handleTabChange('settings')}
+                        className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${activeTab === 'settings' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                    >
+                        <Settings className="h-4 w-4" />
+                        <span>Settings</span>
+                    </button>
+                </aside>
+
+                {/* MAIN CONTENT AREA */}
+                <main className="flex-1 min-w-0">
+                    <div className="space-y-6">
+                        {activeTab === 'dashboard' && (
+                            <CrmDashboardTab clientId={clientId!} startDate={startDate} endDate={endDate} groupId={selectedGroupId} />
+                        )}
+                        {activeTab === 'active_campaigns' && (
+                            <CrmActiveCampaignsTab clientId={clientId!} groupId={selectedGroupId} />
+                        )}
+                        {activeTab === 'campaign_groups' && (
+                            <CrmCampaignGroupsTab clientId={clientId!} />
+                        )}
+                        {activeTab === 'generated_leads' && (
+                            <CrmLeadsTab clientId={clientId!} startDate={startDate} endDate={endDate} groupId={selectedGroupId} hasMetaAccount={hasMetaAccount} forcedSource="GENERATED" />
+                        )}
+                        {activeTab === 'manual_leads' && (
+                            <CrmLeadsTab clientId={clientId!} startDate={startDate} endDate={endDate} groupId={selectedGroupId} hasMetaAccount={hasMetaAccount} forcedSource="MANUAL" />
+                        )}
+                        {activeTab === 'leads' && (
+                            <CrmLeadsTab clientId={clientId!} startDate={startDate} endDate={endDate} groupId={selectedGroupId} hasMetaAccount={hasMetaAccount} />
+                        )}
+                        {activeTab === 'pipeline' && (
+                            <CrmPipelineTab clientId={clientId!} groupId={selectedGroupId} />
+                        )}
+                        {activeTab === 'followups' && (
+                            <CrmFollowUpsTab clientId={clientId!} groupId={selectedGroupId} />
+                        )}
+                        {activeTab === 'roas_report' && (
+                            <CrmCampaignsTab clientId={clientId!} groupId={selectedGroupId} />
+                        )}
+                        {activeTab === 'sales-team' && (
+                            <CrmSalesTeamTab clientId={clientId!} />
+                        )}
+                        {activeTab === 'reports' && (
+                            <CrmReportsTab clientId={clientId!} clientName={clientDetails?.name || 'Client'} startDate={startDate} endDate={endDate} groupId={selectedGroupId} />
+                        )}
+                        {activeTab === 'campaign-mgmt' && (
+                            <MarketingDashboard externalClientId={clientId!} />
+                        )}
+                        {activeTab === 'meta-ads' && (
+                            <CrmMetaAdsManager clientId={clientId!} />
+                        )}
+                        {activeTab === 'integrations' && (
+                            <CrmIntegrationsTab clientId={clientId!} />
+                        )}
+                        {activeTab === 'settings' && (
+                            <CrmSettingsTab clientId={clientId!} />
+                        )}
+                    </div>
+                </main>
             </div>
         </div>
     );
@@ -693,7 +749,14 @@ const CrmDashboardTab: React.FC<{ clientId: string; startDate: string; endDate: 
 // ==========================================
 // 2. LEADS LIST TAB COMPONENT
 // ==========================================
-const CrmLeadsTab: React.FC<{ clientId: string; startDate: string; endDate: string; groupId: string | null; hasMetaAccount: boolean }> = ({ clientId, startDate, endDate, groupId, hasMetaAccount }) => {
+const CrmLeadsTab: React.FC<{ 
+    clientId: string; 
+    startDate: string; 
+    endDate: string; 
+    groupId: string | null; 
+    hasMetaAccount: boolean;
+    forcedSource?: 'GENERATED' | 'MANUAL';
+}> = ({ clientId, startDate, endDate, groupId, hasMetaAccount, forcedSource }) => {
     const queryClient = useQueryClient();
     const { user: currentUser } = useAuthStore();
     
@@ -701,8 +764,16 @@ const CrmLeadsTab: React.FC<{ clientId: string; startDate: string; endDate: stri
     const [search, setSearch] = useState('');
     const [stage, setStage] = useState('ALL');
     const [quality, setQuality] = useState('ALL');
-    const [source, setSource] = useState('ALL');
+    const [source, setSource] = useState(forcedSource || 'ALL');
     const [assignee, setAssignee] = useState('ALL');
+
+    React.useEffect(() => {
+        if (forcedSource) {
+            setSource(forcedSource);
+        } else {
+            setSource('ALL');
+        }
+    }, [forcedSource]);
 
     // Selection state for bulk operations
     const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
@@ -2767,5 +2838,259 @@ const CrmSalesTeamTab: React.FC<{ clientId: string }> = ({ clientId }) => {
                 </table>
             </div>
         </Card>
+    );
+};
+
+
+// ==========================================
+// 11. ACTIVE CAMPAIGNS LIST TAB COMPONENT
+// ==========================================
+const CrmActiveCampaignsTab: React.FC<{ clientId: string; groupId: string | null }> = ({ clientId, groupId }) => {
+    const { data: report = [], isLoading, refetch } = useQuery<CampaignPerformance[]>({
+        queryKey: ['crm-campaigns', clientId, groupId],
+        queryFn: async () => {
+            const params: any = { clientId };
+            if (groupId) params.groupId = groupId;
+            const { data } = await api.get('/marketing/crm/campaign-performance', { params });
+            return data;
+        }
+    });
+
+    return (
+        <Card className="border border-slate-200/80 bg-white rounded-2xl overflow-hidden shadow-sm">
+            <CardHeader className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <CardTitle className="text-lg font-bold text-slate-800">Currently Active Campaigns</CardTitle>
+                    <CardDescription className="text-xs">Real-time view of running marketing campaigns and live generated lead counts.</CardDescription>
+                </div>
+                <Button 
+                    onClick={() => refetch()}
+                    variant="outline"
+                    className="border-slate-200 hover:bg-slate-50 font-bold text-xs flex items-center gap-1.5"
+                >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    Refresh
+                </Button>
+            </CardHeader>
+            <CardContent className="p-0">
+                {isLoading ? (
+                    <div className="p-12 text-center text-slate-500 animate-pulse font-medium">Loading campaigns...</div>
+                ) : report.length === 0 ? (
+                    <div className="p-16 text-center text-slate-400 italic font-medium">
+                        No campaigns found in this client workspace.
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader className="bg-slate-50">
+                                <TableRow>
+                                    <TableHead className="font-bold text-slate-700 text-xs uppercase">Campaign Name</TableHead>
+                                    <TableHead className="font-bold text-slate-700 text-xs uppercase">Platform</TableHead>
+                                    <TableHead className="font-bold text-slate-700 text-xs uppercase text-right">Generated Leads (Live)</TableHead>
+                                    <TableHead className="font-bold text-slate-700 text-xs uppercase text-center">Status</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {report.map((c) => (
+                                    <TableRow key={c.campaignId} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                                        <TableCell className="font-bold text-slate-850 py-3.5">
+                                            <div className="flex items-center gap-2">
+                                                <Megaphone className="h-4 w-4 text-indigo-500 shrink-0" />
+                                                <span>{c.name}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge className="bg-blue-50 text-blue-700 font-bold border-none text-[9px]">
+                                                {c.platform}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-right font-extrabold text-indigo-600 text-sm">{c.leads}</TableCell>
+                                        <TableCell className="text-center">
+                                            <Badge className={`border-none font-bold text-[10px] px-2 py-0.5
+                                                ${c.status?.toUpperCase() === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-650'}
+                                            `}>
+                                                {c.status?.toUpperCase() || 'UNKNOWN'}
+                                            </Badge>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
+};
+
+// ==========================================
+// 12. CAMPAIGN GROUPS TAB COMPONENT
+// ==========================================
+const CrmCampaignGroupsTab: React.FC<{ clientId: string }> = ({ clientId }) => {
+    const queryClient = useQueryClient();
+    
+    const { data: groups = [], isLoading } = useQuery<any[]>({
+        queryKey: ['client-groups', clientId],
+        queryFn: async () => {
+            const { data } = await api.get('/marketing/groups', { params: { clientId } });
+            return data;
+        },
+        enabled: !!clientId
+    });
+
+    const [isAddGroupOpen, setIsAddGroupOpen] = useState(false);
+    const [newGroupName, setNewGroupName] = useState('');
+
+    const createGroupMutation = useMutation({
+        mutationFn: async (name: string) => {
+            return api.post('/marketing/groups', { name, client_id: clientId });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['client-groups'] });
+            setIsAddGroupOpen(false);
+            setNewGroupName('');
+            Swal.fire('Created', 'Campaign group created successfully', 'success');
+        },
+        onError: (err: any) => {
+            Swal.fire('Error', err.response?.data?.error || err.message, 'error');
+        }
+    });
+
+    const deleteGroupMutation = useMutation({
+        mutationFn: async (groupId: string) => {
+            return api.delete(`/marketing/groups/${groupId}`);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['client-groups'] });
+            Swal.fire('Deleted', 'Campaign group deleted successfully', 'success');
+        },
+        onError: (err: any) => {
+            Swal.fire('Error', err.response?.data?.error || err.message, 'error');
+        }
+    });
+
+    const handleDeleteGroup = (groupId: string, groupName: string) => {
+        Swal.fire({
+            title: 'Delete Campaign Group?',
+            text: `Are you sure you want to delete "${groupName}"? Campaigns in this group will be unassigned.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#EF4444',
+            confirmButtonText: 'Yes, delete it!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                deleteGroupMutation.mutate(groupId);
+            }
+        });
+    };
+
+    return (
+        <div className="space-y-6">
+            <Card className="border border-slate-200/80 bg-white rounded-2xl overflow-hidden shadow-sm">
+                <CardHeader className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <CardTitle className="text-lg font-bold text-slate-800">Campaign Groups</CardTitle>
+                        <CardDescription className="text-xs">Organize marketing campaigns into distinct client segments or groups.</CardDescription>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button 
+                            onClick={() => setIsAddGroupOpen(true)}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs h-9 rounded-lg px-4 flex items-center gap-1.5"
+                        >
+                            <Plus className="h-4 w-4" />
+                            Create Group
+                        </Button>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                    {isLoading ? (
+                        <div className="p-12 text-center text-slate-500 animate-pulse font-medium">Loading groups...</div>
+                    ) : groups.length === 0 ? (
+                        <div className="p-16 text-center text-slate-400 italic font-medium">
+                            No campaign groups found. Create one to get started.
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <Table>
+                                <TableHeader className="bg-slate-50">
+                                    <TableRow>
+                                        <TableHead className="font-bold text-slate-700 text-xs uppercase">Group Name</TableHead>
+                                        <TableHead className="font-bold text-slate-700 text-xs uppercase text-right">Campaigns Count</TableHead>
+                                        <TableHead className="font-bold text-slate-700 text-xs uppercase text-right">Leads Count</TableHead>
+                                        <TableHead className="font-bold text-slate-700 text-xs uppercase text-center">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {groups.map((g: any) => (
+                                        <TableRow key={g.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                                            <TableCell className="font-bold text-slate-850 py-3.5">
+                                                <div className="flex items-center gap-2">
+                                                    <Folder className="h-4 w-4 text-indigo-500 shrink-0" />
+                                                    <span>{g.name}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-right font-semibold text-slate-700">{g._count?.campaigns || 0}</TableCell>
+                                            <TableCell className="text-right font-semibold text-slate-700">{g._count?.leads || 0}</TableCell>
+                                            <TableCell className="text-center">
+                                                <Button 
+                                                    onClick={() => handleDeleteGroup(g.id, g.name)}
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Create Group Dialog */}
+            <Dialog open={isAddGroupOpen} onOpenChange={setIsAddGroupOpen}>
+                <DialogContent className="bg-white rounded-2xl border border-slate-200">
+                    <DialogHeader>
+                        <DialogTitle className="text-lg font-bold text-slate-900">Create Campaign Group</DialogTitle>
+                        <DialogDescription className="text-sm">Group your marketing campaigns and leads under a custom segment.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="groupName" className="font-semibold text-xs text-slate-600">Group Name</Label>
+                            <Input
+                                id="groupName"
+                                placeholder="e.g. Real Estate Project A"
+                                value={newGroupName}
+                                onChange={(e) => setNewGroupName(e.target.value)}
+                                className="rounded-lg text-xs"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button 
+                            variant="outline" 
+                            onClick={() => setIsAddGroupOpen(false)}
+                            className="rounded-lg font-bold text-xs"
+                        >
+                            Cancel
+                        </Button>
+                        <Button 
+                            onClick={() => {
+                                if (newGroupName.trim()) {
+                                    createGroupMutation.mutate(newGroupName);
+                                }
+                            }}
+                            disabled={createGroupMutation.isPending}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-xs"
+                        >
+                            {createGroupMutation.isPending ? 'Creating...' : 'Create'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div>
     );
 };

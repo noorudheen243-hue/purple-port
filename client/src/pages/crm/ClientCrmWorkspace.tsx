@@ -2837,6 +2837,8 @@ const CrmSalesTeamTab: React.FC<{ clientId: string }> = ({ clientId }) => {
 // 11. ACTIVE CAMPAIGNS LIST TAB COMPONENT
 // ==========================================
 const CrmActiveCampaignsTab: React.FC<{ clientId: string; groupId: string | null }> = ({ clientId, groupId: initialGroupId }) => {
+    const queryClient = useQueryClient();
+    
     const { data: groups = [] } = useQuery<any[]>({
         queryKey: ['client-groups', clientId],
         queryFn: async () => {
@@ -2860,6 +2862,22 @@ const CrmActiveCampaignsTab: React.FC<{ clientId: string; groupId: string | null
             setSelectedGroup('ALL');
         }
     }, [initialGroupId]);
+
+    const assignGroupMutation = useMutation({
+        mutationFn: async (data: { groupId: string | null; campaignId: string }) => {
+            if (!data.groupId) {
+                return api.post('/marketing/groups/unassign', { campaignId: data.campaignId });
+            }
+            return api.post('/marketing/groups/assign', { groupId: data.groupId, campaignIds: [data.campaignId] });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['crm-campaigns'] });
+            Swal.fire({ title: 'Assigned', text: 'Campaign group updated successfully', icon: 'success', timer: 1500, showConfirmButton: false });
+        },
+        onError: (err: any) => {
+            Swal.fire('Error', err.response?.data?.error || err.message, 'error');
+        }
+    });
 
     const { data: report = [], isLoading, refetch } = useQuery<any[]>({
         queryKey: ['crm-campaigns', clientId, selectedGroup !== 'ALL' ? selectedGroup : null],
@@ -3056,12 +3074,44 @@ const CrmActiveCampaignsTab: React.FC<{ clientId: string; groupId: string | null
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {filteredReport.map((c) => (
-                                        <TableRow key={c.campaignId} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
-                                            <TableCell className="font-semibold text-slate-650 py-3.5">
-                                                <Badge className="bg-indigo-50 text-indigo-750 font-bold border-none text-[10px]">
-                                                    {c.groupName || 'Unassigned'}
-                                                </Badge>
+                                    {Object.entries(
+                                        filteredReport.reduce((acc: any, c: any) => {
+                                            const groupName = c.groupName || 'Unassigned';
+                                            if (!acc[groupName]) acc[groupName] = [];
+                                            acc[groupName].push(c);
+                                            return acc;
+                                        }, {})
+                                    ).map(([groupName, groupCampaigns]: [string, any]) => (
+                                        <React.Fragment key={groupName}>
+                                            <TableRow className="bg-indigo-50/50 hover:bg-indigo-50/50 border-y border-indigo-100">
+                                                <TableCell colSpan={9} className="font-bold text-indigo-900 py-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <Folder className="h-4 w-4 text-indigo-500" />
+                                                        <span>{groupName}</span>
+                                                        <Badge className="ml-2 bg-white text-indigo-700 hover:bg-white border border-indigo-100 shadow-sm">{groupCampaigns.length} Campaigns</Badge>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                            {groupCampaigns.map((c: any) => (
+                                                <TableRow key={c.campaignId} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                                            <TableCell className="font-semibold py-3.5">
+                                                <Select 
+                                                    value={c.groupId || 'UNASSIGNED'} 
+                                                    onValueChange={(val) => {
+                                                        const targetGroupId = val === 'UNASSIGNED' ? null : val;
+                                                        assignGroupMutation.mutate({ groupId: targetGroupId, campaignId: c.campaignId });
+                                                    }}
+                                                >
+                                                    <SelectTrigger className="w-36 text-[10px] h-7 rounded-md border-slate-200 bg-indigo-50 text-indigo-750 font-bold border-none">
+                                                        <SelectValue placeholder="Unassigned" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="UNASSIGNED" className="text-[10px] font-bold text-slate-500 italic">Unassigned</SelectItem>
+                                                        {groups.map((group: any) => (
+                                                            <SelectItem key={group.id} value={group.id} className="text-[10px] font-bold text-slate-700">{group.name}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
                                             </TableCell>
                                             <TableCell className="font-bold text-slate-850">
                                                 <div className="flex items-center gap-2">
@@ -3096,6 +3146,8 @@ const CrmActiveCampaignsTab: React.FC<{ clientId: string; groupId: string | null
                                                 ₹{c.cpl > 0 ? c.cpl.toFixed(0) : '0'}
                                             </TableCell>
                                         </TableRow>
+                                            ))}
+                                        </React.Fragment>
                                     ))}
                                 </TableBody>
                             </Table>

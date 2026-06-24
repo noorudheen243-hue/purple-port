@@ -911,6 +911,7 @@ export const getCampaignCRMPerformance = async (req: Request, res: Response) => 
                 status: c.status || 'ACTIVE',
                 startDate: c.startDate,
                 endDate: c.ends,
+                groupId: c.group_id,
                 groupName: c.group?.name || 'Unassigned'
             };
         });

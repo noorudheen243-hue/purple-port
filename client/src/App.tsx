@@ -85,6 +85,30 @@ function App() {
 
     }, [checkAuth, checkCrmAuth]);
 
+    const isCrmSubdomain = window.location.hostname.startsWith('crm.') || window.location.hostname.startsWith('crm-');
+
+    if (isCrmSubdomain) {
+        return (
+            <QueryClientProvider client={queryClient}>
+                <ErrorBoundary>
+                    <BrowserRouter>
+                        <div className="min-h-screen bg-background text-foreground font-sans antialiased relative">
+                            <Suspense fallback={<LoadingFallback />}>
+                                <Routes>
+                                    <Route path="/login" element={<CrmLogin />} />
+                                    <Route element={<ProtectedCrmRoute />}>
+                                        <Route path="/*" element={<CrmUserDashboard />} />
+                                    </Route>
+                                    <Route path="*" element={<Navigate to="/" replace />} />
+                                </Routes>
+                            </Suspense>
+                        </div>
+                    </BrowserRouter>
+                </ErrorBoundary>
+            </QueryClientProvider>
+        );
+    }
+
     return (
         <QueryClientProvider client={queryClient}>
             <ErrorBoundary>
@@ -110,6 +134,7 @@ function App() {
                                     <Route element={<ProtectedCrmRoute />}>
                                         <Route path="/crm-dashboard/*" element={<CrmUserDashboard />} />
                                     </Route>
+                                    <Route path="*" element={<Navigate to="/dashboard" replace />} />
                                 </Routes>
                             </Suspense>
                         </div>

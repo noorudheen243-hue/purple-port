@@ -1,0 +1,34 @@
+import { PrismaClient } from '@prisma/client';
+import { AttendanceService } from '../src/modules/attendance/service';
+const prisma = new PrismaClient();
+
+async function run() {
+    const fourteenDaysAgo = new Date();
+    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+    
+    console.log('Deleting BIOMETRIC records since', fourteenDaysAgo);
+    
+    // We only delete non-regularized biometric records. Regularized ones we leave alone.
+    const { count } = await prisma.attendanceRecord.deleteMany({
+        where: { 
+            method: 'BIOMETRIC',
+            status: { not: 'REGULARIZED' },
+            date: { gte: fourteenDaysAgo } 
+        }
+    });
+    console.log('Deleted ' + count + ' records.');
+
+    console.log('Syncing from device...');
+    const { syncBiometrics } = require('../src/modules/attendance/biometric.service');
+    await syncBiometrics('MANUAL');
+    console.log('Sync complete.');
+
+    console.log('Recalculating statuses...');
+    const users = await prisma.user.findMany({ where: { role: { notIn: ['ADMIN'] } } });
+    for (const u of users) {
+        await AttendanceService.recalculateAttendance(u.id, fourteenDaysAgo, new Date());
+    }
+    console.log('Done!');
+}
+
+run().catch(console.error).finally(() => prisma.$disconnect());

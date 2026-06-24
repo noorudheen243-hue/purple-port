@@ -1,0 +1,1 @@
+const { AttendanceService } = require('./src/modules/attendance/service'); console.log(AttendanceService.normalizeBiometricTimestamp('2026-06-22T09:23:00Z').toISOString()); console.log(AttendanceService.normalizeBiometricTimestamp('2026-06-22T09:23:00+00:00').toISOString()); console.log(AttendanceService.normalizeBiometricTimestamp('2026-06-22T09:23:00').toISOString());

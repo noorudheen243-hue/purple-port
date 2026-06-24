@@ -1,0 +1,34 @@
+const { Client } = require('ssh2');
+const conn = new Client();
+const serverIp = '66.116.224.221';
+const username = 'root';
+const password = 'EzdanAdam@243';
+
+conn.on('ready', () => {
+    console.log('SSH connection established!');
+    
+    const cmd = `
+        echo "=== ALL LEADS REQUESTS IN ACCESS LOGS ==="
+        grep -i "leads" /var/log/nginx/access.log* | tail -n 50 || echo "No matches"
+    `;
+    
+    conn.exec(cmd, (err, stream) => {
+        if (err) {
+            console.error('Execution error:', err);
+            conn.end();
+            return;
+        }
+        stream.on('close', () => {
+            conn.end();
+            console.log('\nSSH connection closed.');
+        });
+        stream.on('data', (data) => {
+            process.stdout.write(data.toString());
+        });
+        stream.stderr.on('data', (data) => {
+            process.stderr.write(data.toString());
+        });
+    });
+}).on('error', (err) => {
+    console.error('Connection error:', err);
+}).connect({ host: serverIp, port: 22, username, password });

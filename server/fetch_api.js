@@ -1,0 +1,1 @@
+const axios = require('axios'); async function fetch() { try { const resp = await axios.get('https://qixport.com/api/attendance/biometric-logs', { headers: { Authorization: 'Bearer placeholder' } }); console.log(resp.data); } catch (e) { console.error(e.response?.status, e.response?.data); } } fetch();

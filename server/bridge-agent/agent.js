@@ -72,7 +72,7 @@ async function uploadToServer(logs) {
     yesterday.setDate(yesterday.getDate() - 1);
 
     const recentLogs = logs.filter(l => {
-        const t = new Date(l.recordTime);
+        const t = new Date(l.recordTime || l.record_time);
         return t > yesterday;
     });
 

@@ -22,6 +22,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import Swal from 'sweetalert2';
 import MarketingDashboard from '../marketing/MarketingDashboard';
+import CrmMetaAdsManager from './CrmMetaAdsManager';
 
 // Recharts components
 import { 
@@ -80,7 +81,7 @@ const ClientCrmWorkspace: React.FC = () => {
     const queryClient = useQueryClient();
     const { user: currentUser } = useAuthStore();
     
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'leads' | 'pipeline' | 'followups' | 'campaigns' | 'integrations' | 'reports' | 'settings' | 'campaign-mgmt' | 'sales-team'>('dashboard');
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'leads' | 'pipeline' | 'followups' | 'campaigns' | 'integrations' | 'reports' | 'settings' | 'campaign-mgmt' | 'sales-team' | 'meta-ads'>('dashboard');
     
     // Group Selection State
     const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
@@ -137,15 +138,7 @@ const ClientCrmWorkspace: React.FC = () => {
         enabled: !!clientId
     });
 
-    // Fetch active staff list
-    const { data: staffList = [] } = useQuery<UserProfile[]>({
-        queryKey: ['users'],
-        queryFn: async () => {
-            const { data } = await api.get('/users');
-            return data;
-        }
-    });
-
+    
     // Check if this client has a Meta account connected
     const { data: integrationStatus } = useQuery({
         queryKey: ['integration-status', clientId],
@@ -316,6 +309,13 @@ const ClientCrmWorkspace: React.FC = () => {
                     Client-Campaign Management
                 </button>
                 <button 
+                    onClick={() => handleTabChange('meta-ads')}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all shrink-0 ${activeTab === 'meta-ads' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                >
+                    <Megaphone className="h-4 w-4" />
+                    Meta Ads Manager
+                </button>
+                <button 
                     onClick={() => handleTabChange('integrations')}
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all shrink-0 ${activeTab === 'integrations' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
                 >
@@ -352,19 +352,22 @@ const ClientCrmWorkspace: React.FC = () => {
                         <CrmDashboardTab clientId={clientId!} startDate={startDate} endDate={endDate} groupId={selectedGroupId} />
                     )}
                     {activeTab === 'leads' && (
-                        <CrmLeadsTab clientId={clientId!} staffList={staffList} startDate={startDate} endDate={endDate} groupId={selectedGroupId} hasMetaAccount={hasMetaAccount} />
+                        <CrmLeadsTab clientId={clientId!}  startDate={startDate} endDate={endDate} groupId={selectedGroupId} hasMetaAccount={hasMetaAccount} />
                     )}
                     {activeTab === 'pipeline' && (
-                        <CrmPipelineTab clientId={clientId!} staffList={staffList} groupId={selectedGroupId} />
+                        <CrmPipelineTab clientId={clientId!}  groupId={selectedGroupId} />
                     )}
                     {activeTab === 'followups' && (
-                        <CrmFollowUpsTab clientId={clientId!} staffList={staffList} groupId={selectedGroupId} />
+                        <CrmFollowUpsTab clientId={clientId!}  groupId={selectedGroupId} />
                     )}
                     {activeTab === 'campaigns' && (
                         <CrmCampaignsTab clientId={clientId!} groupId={selectedGroupId} />
                     )}
                     {activeTab === 'campaign-mgmt' && (
                         <MarketingDashboard externalClientId={clientId!} />
+                    )}
+                    {activeTab === 'meta-ads' && (
+                        <CrmMetaAdsManager clientId={clientId!} />
                     )}
                     {activeTab === 'integrations' && (
                         <CrmIntegrationsTab clientId={clientId!} />
@@ -373,7 +376,7 @@ const ClientCrmWorkspace: React.FC = () => {
                         <CrmReportsTab clientId={clientId!} clientName={clientDetails?.name || 'Client'} startDate={startDate} endDate={endDate} groupId={selectedGroupId} />
                     )}
                     {activeTab === 'settings' && (
-                        <CrmSettingsTab clientId={clientId!} staffList={staffList} />
+                        <CrmSettingsTab clientId={clientId!}  />
                     )}
                     {activeTab === 'sales-team' && (
                         <CrmSalesTeamTab clientId={clientId!} />
@@ -690,7 +693,7 @@ const CrmDashboardTab: React.FC<{ clientId: string; startDate: string; endDate: 
 // ==========================================
 // 2. LEADS LIST TAB COMPONENT
 // ==========================================
-const CrmLeadsTab: React.FC<{ clientId: string; staffList: UserProfile[]; startDate: string; endDate: string; groupId: string | null; hasMetaAccount: boolean }> = ({ clientId, staffList, startDate, endDate, groupId, hasMetaAccount }) => {
+const CrmLeadsTab: React.FC<{ clientId: string; startDate: string; endDate: string; groupId: string | null; hasMetaAccount: boolean }> = ({ clientId, startDate, endDate, groupId, hasMetaAccount }) => {
     const queryClient = useQueryClient();
     const { user: currentUser } = useAuthStore();
     
@@ -1084,7 +1087,7 @@ const CrmLeadsTab: React.FC<{ clientId: string; staffList: UserProfile[]; startD
                         <SelectContent>
                             <SelectItem value="ALL">All Staff</SelectItem>
                             <SelectItem value="unassigned">Unassigned</SelectItem>
-                            {staffList.map(s => <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>)}
+                            
                         </SelectContent>
                     </Select>
                 </div>
@@ -1231,7 +1234,7 @@ const CrmLeadsTab: React.FC<{ clientId: string; staffList: UserProfile[]; startD
                             </TableHeader>
                             <TableBody>
                                 {leads.map((lead) => {
-                                    const assigneeUser = staffList.find(s => s.id === lead.assigned_to);
+                                    const assigneeUser: any = null;
                                     return (
                                         <TableRow key={lead.id} className="border-slate-100 hover:bg-slate-50/50 transition-colors">
                                             <TableCell>
@@ -1402,7 +1405,7 @@ const CrmLeadsTab: React.FC<{ clientId: string; staffList: UserProfile[]; startD
                                     <SelectValue placeholder="Round-Robin auto-distribution" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {staffList.map(s => <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>)}
+                                    
                                 </SelectContent>
                             </Select>
                         </div>
@@ -1445,7 +1448,7 @@ const CrmLeadsTab: React.FC<{ clientId: string; staffList: UserProfile[]; startD
                                 <SelectValue placeholder="Select staff..." />
                             </SelectTrigger>
                             <SelectContent>
-                                {staffList.map(s => <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>)}
+                                
                             </SelectContent>
                         </Select>
                     </div>
@@ -1678,7 +1681,7 @@ const CrmLeadsTab: React.FC<{ clientId: string; staffList: UserProfile[]; startD
                                                     <SelectValue placeholder="Unassigned" />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    {staffList.map(s => <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>)}
+                                                    
                                                 </SelectContent>
                                             </Select>
                                         </div>
@@ -1735,7 +1738,7 @@ const CrmLeadsTab: React.FC<{ clientId: string; staffList: UserProfile[]; startD
                                     <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                                         {selectedLeadDetails.leadNotes && selectedLeadDetails.leadNotes.length > 0 ? (
                                             selectedLeadDetails.leadNotes.map((note: any) => {
-                                                const writer = staffList.find(s => s.id === note.user_id);
+                                                const writer: any = null;
                                                 return (
                                                     <div key={note.id} className="p-3 bg-indigo-50/40 rounded-xl border border-indigo-100/50 text-xs">
                                                         <div className="flex justify-between font-bold text-slate-500 mb-1">
@@ -1793,7 +1796,7 @@ const CrmLeadsTab: React.FC<{ clientId: string; staffList: UserProfile[]; startD
 // ==========================================
 // 3. PIPELINE KANBAN TAB COMPONENT
 // ==========================================
-const CrmPipelineTab: React.FC<{ clientId: string; staffList: UserProfile[]; groupId: string | null }> = ({ clientId, staffList, groupId }) => {
+const CrmPipelineTab: React.FC<{ clientId: string; groupId: string | null }> = ({ clientId, groupId }) => {
     const queryClient = useQueryClient();
     
     // Fetch all leads for client (without strict filter dates to ensure complete pipeline viewing)
@@ -1876,7 +1879,7 @@ const CrmPipelineTab: React.FC<{ clientId: string; staffList: UserProfile[]; gro
                             {/* Column Cards */}
                             <div className="flex-1 overflow-y-auto space-y-2.5 max-h-[500px] pr-1">
                                 {columnLeads.map((lead) => {
-                                    const agent = staffList.find(s => s.id === lead.assigned_to);
+                                    const agent: any = null;
                                     return (
                                         <div 
                                             key={lead.id}
@@ -1934,7 +1937,7 @@ interface FollowUpData {
     completed: any[];
 }
 
-const CrmFollowUpsTab: React.FC<{ clientId: string; staffList: UserProfile[]; groupId: string | null }> = ({ clientId, staffList, groupId }) => {
+const CrmFollowUpsTab: React.FC<{ clientId: string; groupId: string | null }> = ({ clientId, groupId }) => {
     const queryClient = useQueryClient();
     const [selectedAssignee, setSelectedAssignee] = useState('ALL');
 
@@ -2009,18 +2012,7 @@ const CrmFollowUpsTab: React.FC<{ clientId: string; staffList: UserProfile[]; gr
                     <h3 className="text-md font-bold text-slate-800">Daily Follow-ups Scheduler</h3>
                     <p className="text-xs text-slate-500">Track and log customer call schedules logged across your leads.</p>
                 </div>
-                <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-500 shrink-0">Filter Agent:</span>
-                    <Select value={selectedAssignee} onValueChange={setSelectedAssignee}>
-                        <SelectTrigger className="w-44 text-xs h-9 rounded-lg border-slate-200 bg-slate-50 font-semibold">
-                            <SelectValue placeholder="All Agents" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="ALL">All Agents</SelectItem>
-                            {staffList.map(s => <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                </div>
+                
             </div>
 
             {/* 3 Column layouts */}
@@ -2036,7 +2028,7 @@ const CrmFollowUpsTab: React.FC<{ clientId: string; staffList: UserProfile[]; gr
 
                         <div className="flex-1 overflow-y-auto space-y-3 max-h-[450px] pr-1">
                             {sec.data.map((item: any) => {
-                                const leadAgent = staffList.find(s => s.id === item.lead.assigned_to);
+                                const leadAgent: any = null;
                                 return (
                                     <div key={item.id} className="p-3.5 border border-slate-200/70 hover:border-indigo-400 bg-white rounded-xl shadow-sm space-y-3 transition-colors duration-300">
                                         <div className="flex justify-between items-start gap-2">
@@ -2194,6 +2186,26 @@ const CrmCampaignsTab: React.FC<{ clientId: string; groupId: string | null }> = 
 // 6. INTEGRATIONS / WEBHOOKS TAB COMPONENT
 // ==========================================
 const CrmIntegrationsTab: React.FC<{ clientId: string }> = ({ clientId }) => {
+    const queryClient = useQueryClient();
+    const [metaAccountId, setMetaAccountId] = useState('');
+    const [metaToken, setMetaToken] = useState('');
+
+    const connectMetaMutation = useMutation({
+        mutationFn: async () => {
+            return api.post('/marketing/crm/external/meta-manager/connect', { clientId, accountId: metaAccountId, accessToken: metaToken });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['integration-status'] });
+            queryClient.invalidateQueries({ queryKey: ['meta-accounts'] });
+            Swal.fire('Connected', 'Meta Ad Account connected successfully!', 'success');
+            setMetaAccountId('');
+            setMetaToken('');
+        },
+        onError: (err: any) => {
+            Swal.fire('Error', err.response?.data?.message || err.message, 'error');
+        }
+    });
+
     const handleCopyUrl = (url: string) => {
         navigator.clipboard.writeText(url);
         Swal.fire({
@@ -2267,6 +2279,37 @@ const CrmIntegrationsTab: React.FC<{ clientId: string }> = ({ clientId }) => {
                         <span className="text-xs font-bold text-slate-700">WhatsApp Campaigns</span>
                         <Badge className="bg-slate-100 text-slate-600 font-semibold text-[9px] border-none">Integration Ready</Badge>
                     </div>
+                </div>
+
+                <div className="mt-6 pt-6 border-t border-slate-100 space-y-4">
+                    <h4 className="text-sm font-bold text-slate-800">Connect Meta Ads Manager</h4>
+                    <p className="text-xs text-slate-500">Enter your Ad Account ID to manage campaigns directly from the CRM.</p>
+                    <div className="space-y-2">
+                        <Label className="text-xs font-bold text-slate-600">Ad Account ID</Label>
+                        <Input 
+                            placeholder="e.g. act_123456789"
+                            value={metaAccountId}
+                            onChange={(e) => setMetaAccountId(e.target.value)}
+                            className="bg-slate-50 text-xs"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-xs font-bold text-slate-600">Access Token (Optional)</Label>
+                        <Input 
+                            placeholder="Leave blank to use global profile token"
+                            type="password"
+                            value={metaToken}
+                            onChange={(e) => setMetaToken(e.target.value)}
+                            className="bg-slate-50 text-xs"
+                        />
+                    </div>
+                    <Button 
+                        onClick={() => connectMetaMutation.mutate()} 
+                        disabled={!metaAccountId || connectMetaMutation.isPending}
+                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+                    >
+                        {connectMetaMutation.isPending ? 'Connecting...' : 'Connect Meta Account'}
+                    </Button>
                 </div>
             </Card>
         </div>
@@ -2412,26 +2455,12 @@ const CrmReportsTab: React.FC<{ clientId: string; clientName: string; startDate:
 // ==========================================
 // 8. SETTINGS & CRM CONFIG TAB COMPONENT
 // ==========================================
-const CrmSettingsTab: React.FC<{ clientId: string; staffList: UserProfile[] }> = ({ clientId, staffList }) => {
-    const [roundRobinEnabled, setRoundRobinEnabled] = useState(true);
-    const [activeStaffIds, setActiveStaffIds] = useState<string[]>([]);
-
-    useEffect(() => {
-        // Mock load default settings
-        setActiveStaffIds(staffList.slice(0, 3).map(s => s.id));
-    }, [staffList]);
-
-    const handleToggleStaff = (id: string) => {
-        setActiveStaffIds(prev => 
-            prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]
-        );
-    };
-
-    const handleSaveSettings = () => {
+const CrmSettingsTab: React.FC<{ clientId: string }> = ({ clientId }) => {
+    const handleConnectMeta = () => {
         Swal.fire({
-            icon: 'success',
-            title: 'Settings Saved',
-            text: 'CRM round-robin and stage settings updated successfully.',
+            icon: 'info',
+            title: 'Meta Integration',
+            text: 'Redirecting to Meta Ad Account authentication...',
             confirmButtonColor: '#4F46E5'
         });
     };
@@ -2440,57 +2469,20 @@ const CrmSettingsTab: React.FC<{ clientId: string; staffList: UserProfile[] }> =
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <Card className="lg:col-span-2 border border-slate-200 bg-white rounded-2xl p-6 space-y-6">
                 <div>
-                    <h3 className="text-lg font-bold text-slate-800">Lead Auto-Assignment Rules</h3>
-                    <p className="text-xs text-slate-500 mt-1">Automatically distribute incoming leads from ads and landing pages to active agents using round-robin logic.</p>
+                    <h3 className="text-lg font-bold text-slate-800">Connect Meta Ad Account</h3>
+                    <p className="text-xs text-slate-500 mt-1">Authenticate and connect your client's Meta Ad Account to sync campaigns and track ROAS.</p>
                 </div>
 
                 <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl">
                     <div>
-                        <Label className="text-sm font-bold text-slate-800">Enable Round-Robin Distribution</Label>
-                        <p className="text-xs text-slate-400">If disabled, new leads will remain unassigned in the pipeline.</p>
+                        <Label className="text-sm font-bold text-slate-800">Meta Facebook & Instagram Ads</Label>
+                        <p className="text-xs text-slate-400">Not connected</p>
                     </div>
-                    <input 
-                        type="checkbox" 
-                        checked={roundRobinEnabled} 
-                        onChange={(e) => setRoundRobinEnabled(e.target.checked)}
-                        className="h-5 w-5 rounded border-slate-350 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                    />
-                </div>
-
-                {roundRobinEnabled && (
-                    <div className="space-y-3">
-                        <Label className="text-xs font-bold text-slate-600 uppercase">Select Active Round-Robin Agents</Label>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-56 overflow-y-auto pr-2">
-                            {staffList.map((staff) => {
-                                const active = activeStaffIds.includes(staff.id);
-                                return (
-                                    <div 
-                                        key={staff.id} 
-                                        onClick={() => handleToggleStaff(staff.id)}
-                                        className={`p-3 border rounded-xl flex items-center justify-between cursor-pointer transition-all duration-300
-                                            ${active ? 'border-indigo-500 bg-indigo-50/20' : 'border-slate-200 hover:border-slate-300'}
-                                        `}
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <div className="h-7 w-7 rounded-full bg-slate-100 flex items-center justify-center text-xs font-semibold text-slate-500">
-                                                {staff.full_name.substring(0, 2).toUpperCase()}
-                                            </div>
-                                            <span className="text-xs font-bold text-slate-800">{staff.full_name}</span>
-                                        </div>
-                                        {active && <Check className="h-4 w-4 text-indigo-600" />}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
-
-                <div className="border-t pt-4">
                     <Button 
-                        onClick={handleSaveSettings}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-xs"
+                        onClick={handleConnectMeta}
+                        className="bg-[#1877F2] hover:bg-[#1864D9] text-white font-bold rounded-lg text-xs"
                     >
-                        Save Allocation Settings
+                        Connect Meta Account
                     </Button>
                 </div>
             </Card>

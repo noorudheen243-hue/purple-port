@@ -8,7 +8,7 @@ $Cred = New-Object System.Management.Automation.PSCredential($SSH_USER, $SecPass
 $localDist = "f:\Antigravity\client\dist"
 $localZip = "f:\Antigravity\client_deploy.zip"
 $remoteZip = "/tmp/client_deploy.zip"
-$remoteDest = "/var/www/purple-port/public"
+$remoteDest = "/var/www/purple-port/server/public"
 
 Write-Host "Zipping $localDist..."
 if (Test-Path $localZip) { Remove-Item $localZip }

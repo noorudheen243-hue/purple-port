@@ -1,51 +1,35 @@
 Import-Module Posh-SSH -Force
-$vpsIp = "66.116.224.221"
-$c = New-Object System.Management.Automation.PSCredential('root', (ConvertTo-SecureString 'EzdanAdam@243' -AsPlainText -Force))
+$SERVER_IP = "66.116.224.221"
+$SSH_USER = "root"
+$PASS = "EzdanAdam@243"
+$SecPass = ConvertTo-SecureString $PASS -AsPlainText -Force
+$Cred = New-Object System.Management.Automation.PSCredential($SSH_USER, $SecPass)
 
-# Step 1: Open SSH session to prepare target dir
-$s = New-SSHSession -ComputerName $vpsIp -Credential $c -AcceptKey -Force
-Write-Host "SSH connected (ID $($s.SessionId))" -ForegroundColor Cyan
+$localDist = "f:\Antigravity\client\dist"
+$localZip = "f:\Antigravity\client_deploy.zip"
+$remoteZip = "/tmp/client_deploy.zip"
+$remoteDest = "/var/www/purple-port/client/dist"
 
-# Ensure upload dir exists on VPS
-Invoke-SSHCommand -SSHSession $s -Command "mkdir -p /var/www/antigravity/client_upload" | Out-Null
+Write-Host "Zipping $localDist..."
+if (Test-Path $localZip) { Remove-Item $localZip }
+Compress-Archive -Path "$localDist\*" -DestinationPath $localZip
 
-# Step 2: Upload via SCP to an existing known dir
-Write-Host "Uploading via SCP to /var/www/antigravity/client_upload/..." -ForegroundColor Yellow
-# SCP to an existing directory - must NOT have trailing slash issue
-Set-SCPItem -ComputerName $vpsIp -Credential $c `
-    -Path "f:\Antigravity\client_dist.zip" `
-    -Destination "/var/www/antigravity/client_upload/client_dist.zip" `
-    -Force
+Write-Host "Creating SSH session..."
+$session = New-SSHSession -ComputerName $SERVER_IP -Credential $Cred -AcceptKey -Force
 
-Write-Host "Upload complete." -ForegroundColor Green
+Write-Host "Cleaning up old remote zip..."
+Invoke-SSHCommand -SSHSession $session -Command "rm -f $remoteZip"
 
-# Step 3: Verify file landed
-$rv = Invoke-SSHCommand -SSHSession $s -Command "ls -lh /var/www/antigravity/client_upload/client_dist.zip 2>/dev/null || echo 'NOT_FOUND'"
-Write-Host "VPS file: $($rv.Output -join '')"
+Write-Host "Uploading $localZip to $remoteZip..."
+$sftpSession = New-SFTPSession -ComputerName $SERVER_IP -Credential $Cred -AcceptKey -Force
+Set-SFTPItem -SFTPSession $sftpSession -Path $localZip -Destination "/tmp/"
+Remove-SFTPSession $sftpSession
 
-# Step 4: Extract to correct Nginx root
-Write-Host "`nExtracting to /var/www/antigravity/client/dist/..." -ForegroundColor Yellow
-$r1 = Invoke-SSHCommand -SSHSession $s -Command @"
-rm -rf /var/www/antigravity/client/dist
-mkdir -p /var/www/antigravity/client/dist
-unzip -o /var/www/antigravity/client_upload/client_dist.zip -d /var/www/antigravity/client/dist/
-echo EXTRACT_OK
-"@
-Write-Host ($r1.Output[-3..-1] -join "`n")
+Write-Host "Extracting on VPS to CORRECT path: $remoteDest"
+Invoke-SSHCommand -SSHSession $session -Command "mkdir -p $remoteDest && rm -rf $remoteDest/* && unzip -o $remoteZip -d $remoteDest && rm $remoteZip"
 
-# Step 5: Verify
-$r2 = Invoke-SSHCommand -SSHSession $s -Command "ls /var/www/antigravity/client/dist/ && echo DIR_OK"
-Write-Host "`nContents: $($r2.Output -join ' ')"
+Write-Host "Restarting Nginx..."
+Invoke-SSHCommand -SSHSession $session -Command "systemctl restart nginx"
 
-$r3 = Invoke-SSHCommand -SSHSession $s -Command "ls /var/www/antigravity/client/dist/assets/ | grep ManageServices"
-Write-Host "ManageServicesView: $($r3.Output -join ' ')" -ForegroundColor Green
-
-# Step 6: Reload nginx
-$r4 = Invoke-SSHCommand -SSHSession $s -Command "nginx -s reload && echo NGINX_OK"
-Write-Host "Nginx: $($r4.Output -join ' ')" -ForegroundColor Green
-
-# Cleanup
-Invoke-SSHCommand -SSHSession $s -Command "rm -rf /var/www/antigravity/client_upload" | Out-Null
-Remove-SSHSession -SSHSession $s | Out-Null
-Remove-Item "f:\Antigravity\client_dist.zip" -ErrorAction SilentlyContinue
-Write-Host "=== DEPLOYMENT DONE ===" -ForegroundColor Green
+Write-Host "Frontend Deployment to CORRECT path Complete!"
+Remove-SSHSession $session

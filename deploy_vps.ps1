@@ -26,7 +26,7 @@ Write-Host "Running deployment commands..." -ForegroundColor Yellow
 Write-Host ""
 
 # Try using ssh with relaxed security (for testing)
-$sshCommand = "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $VPS_USER@$VPS_IP `"$commandString`""
+$sshCommand = "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedKeyTypes=+ssh-rsa $VPS_USER@$VPS_IP `"$commandString`""
 
 try {
     Invoke-Expression $sshCommand

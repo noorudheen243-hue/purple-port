@@ -30,7 +30,7 @@ Invoke-SSHCommand -SSHSession $session -Command "unzip -o -q $remoteZip -d $remo
 
 Write-Host "Restarting PM2 Service..."
 # App name found earlier: qix-ads-v2.7
-Invoke-SSHCommand -SSHSession $session -Command "pm2 restart qix-ads-v2.7"
+Invoke-SSHCommand -SSHSession $session -Command "pm2 restart qix-api"
 
 Write-Host "Server Deployment Complete!"
 Remove-SSHSession $session

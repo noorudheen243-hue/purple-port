@@ -1,0 +1,1 @@
+const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); async function run() { const logs = await prisma.attendanceRecord.findMany({ where: { check_in: { not: null } }, take: 10, orderBy: { check_in: 'desc' } }); console.log(JSON.stringify(logs.map(l => ({ check_in: l.check_in })), null, 2)); } run();

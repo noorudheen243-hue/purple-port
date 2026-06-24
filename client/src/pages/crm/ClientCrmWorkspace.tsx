@@ -2836,81 +2836,274 @@ const CrmSalesTeamTab: React.FC<{ clientId: string }> = ({ clientId }) => {
 // ==========================================
 // 11. ACTIVE CAMPAIGNS LIST TAB COMPONENT
 // ==========================================
-const CrmActiveCampaignsTab: React.FC<{ clientId: string; groupId: string | null }> = ({ clientId, groupId }) => {
-    const { data: report = [], isLoading, refetch } = useQuery<CampaignPerformance[]>({
-        queryKey: ['crm-campaigns', clientId, groupId],
+const CrmActiveCampaignsTab: React.FC<{ clientId: string; groupId: string | null }> = ({ clientId, groupId: initialGroupId }) => {
+    const { data: groups = [] } = useQuery<any[]>({
+        queryKey: ['client-groups', clientId],
+        queryFn: async () => {
+            const { data } = await api.get('/marketing/groups', { params: { clientId } });
+            return data;
+        },
+        enabled: !!clientId
+    });
+
+    const [selectedGroup, setSelectedGroup] = useState<string>('ALL');
+    const [statusFilter, setStatusFilter] = useState<string>('ALL');
+    const [monthFilter, setMonthFilter] = useState<string>('ALL');
+    const [startDate, setStartDate] = useState<string>('');
+    const [endDate, setEndDate] = useState<string>('');
+
+    // Sync from parent groupId prop
+    useEffect(() => {
+        if (initialGroupId) {
+            setSelectedGroup(initialGroupId);
+        } else {
+            setSelectedGroup('ALL');
+        }
+    }, [initialGroupId]);
+
+    const { data: report = [], isLoading, refetch } = useQuery<any[]>({
+        queryKey: ['crm-campaigns', clientId, selectedGroup !== 'ALL' ? selectedGroup : null],
         queryFn: async () => {
             const params: any = { clientId };
-            if (groupId) params.groupId = groupId;
+            if (selectedGroup !== 'ALL') params.groupId = selectedGroup;
             const { data } = await api.get('/marketing/crm/campaign-performance', { params });
             return data;
         }
     });
 
+    // Month lists for the filter dropdown
+    const months = [
+        { value: '01', label: 'January' },
+        { value: '02', label: 'February' },
+        { value: '03', label: 'March' },
+        { value: '04', label: 'April' },
+        { value: '05', label: 'May' },
+        { value: '06', label: 'June' },
+        { value: '07', label: 'July' },
+        { value: '08', label: 'August' },
+        { value: '09', label: 'September' },
+        { value: '10', label: 'October' },
+        { value: '11', label: 'November' },
+        { value: '12', label: 'December' }
+    ];
+
+    // Client-side filtering for status, month, and date range
+    const filteredReport = report.filter((c: any) => {
+        // Status filter (Active/Paused/Stopped)
+        if (statusFilter !== 'ALL') {
+            const campaignStatus = c.status?.toUpperCase() || '';
+            if (statusFilter === 'ACTIVE' && campaignStatus !== 'ACTIVE' && campaignStatus !== 'RUNNING') return false;
+            if (statusFilter === 'PAUSED' && campaignStatus !== 'PAUSED') return false;
+            if (statusFilter === 'STOPPED' && (campaignStatus === 'ACTIVE' || campaignStatus === 'RUNNING' || campaignStatus === 'PAUSED')) return false;
+        }
+
+        // Date filters
+        const campaignDate = c.startDate ? new Date(c.startDate) : null;
+        if (campaignDate) {
+            // Month filter
+            if (monthFilter !== 'ALL') {
+                const campaignMonth = (campaignDate.getMonth() + 1).toString().padStart(2, '0');
+                if (campaignMonth !== monthFilter) return false;
+            }
+
+            // Date Range From-To
+            if (startDate) {
+                const fromDate = new Date(startDate);
+                if (campaignDate < fromDate) return false;
+            }
+            if (endDate) {
+                const toDate = new Date(endDate);
+                toDate.setHours(23, 59, 59, 999);
+                if (campaignDate > toDate) return false;
+            }
+        } else {
+            // If campaign has no start date, but date filters are active, filter it out
+            if (monthFilter !== 'ALL' || startDate || endDate) return false;
+        }
+
+        return true;
+    });
+
     return (
-        <Card className="border border-slate-200/80 bg-white rounded-2xl overflow-hidden shadow-sm">
-            <CardHeader className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <CardTitle className="text-lg font-bold text-slate-800">Currently Active Campaigns</CardTitle>
-                    <CardDescription className="text-xs">Real-time view of running marketing campaigns and live generated lead counts.</CardDescription>
-                </div>
-                <Button 
-                    onClick={() => refetch()}
-                    variant="outline"
-                    className="border-slate-200 hover:bg-slate-50 font-bold text-xs flex items-center gap-1.5"
-                >
-                    <RefreshCw className="h-3.5 w-3.5" />
-                    Refresh
-                </Button>
-            </CardHeader>
-            <CardContent className="p-0">
-                {isLoading ? (
-                    <div className="p-12 text-center text-slate-500 animate-pulse font-medium">Loading campaigns...</div>
-                ) : report.length === 0 ? (
-                    <div className="p-16 text-center text-slate-400 italic font-medium">
-                        No campaigns found in this client workspace.
-                    </div>
-                ) : (
-                    <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader className="bg-slate-50">
-                                <TableRow>
-                                    <TableHead className="font-bold text-slate-700 text-xs uppercase">Campaign Name</TableHead>
-                                    <TableHead className="font-bold text-slate-700 text-xs uppercase">Platform</TableHead>
-                                    <TableHead className="font-bold text-slate-700 text-xs uppercase text-right">Generated Leads (Live)</TableHead>
-                                    <TableHead className="font-bold text-slate-700 text-xs uppercase text-center">Status</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {report.map((c) => (
-                                    <TableRow key={c.campaignId} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
-                                        <TableCell className="font-bold text-slate-850 py-3.5">
-                                            <div className="flex items-center gap-2">
-                                                <Megaphone className="h-4 w-4 text-indigo-500 shrink-0" />
-                                                <span>{c.name}</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge className="bg-blue-50 text-blue-700 font-bold border-none text-[9px]">
-                                                {c.platform}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-right font-extrabold text-indigo-600 text-sm">{c.leads}</TableCell>
-                                        <TableCell className="text-center">
-                                            <Badge className={`border-none font-bold text-[10px] px-2 py-0.5
-                                                ${c.status?.toUpperCase() === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-650'}
-                                            `}>
-                                                {c.status?.toUpperCase() || 'UNKNOWN'}
-                                            </Badge>
-                                        </TableCell>
-                                    </TableRow>
+        <div className="space-y-6 animate-in fade-in duration-300">
+            {/* Filter Bar Panel */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-4">
+                <div className="flex flex-wrap items-center gap-3">
+                    {/* Campaign Group filter */}
+                    <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Campaign Group</label>
+                        <Select value={selectedGroup} onValueChange={setSelectedGroup}>
+                            <SelectTrigger className="w-48 text-xs h-9 rounded-lg border-slate-200 bg-slate-50 font-semibold text-slate-700">
+                                <SelectValue placeholder="All Groups" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white border">
+                                <SelectItem value="ALL" className="font-semibold text-slate-500 italic">All Groups</SelectItem>
+                                {groups.map((group: any) => (
+                                    <SelectItem key={group.id} value={group.id} className="font-semibold text-slate-750">{group.name}</SelectItem>
                                 ))}
-                            </TableBody>
-                        </Table>
+                            </SelectContent>
+                        </Select>
                     </div>
-                )}
-            </CardContent>
-        </Card>
+
+                    {/* Status filter */}
+                    <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Campaign Status</label>
+                        <Select value={statusFilter} onValueChange={setStatusFilter}>
+                            <SelectTrigger className="w-40 text-xs h-9 rounded-lg border-slate-200 bg-slate-50 font-semibold text-slate-700">
+                                <SelectValue placeholder="All Statuses" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white border">
+                                <SelectItem value="ALL" className="font-semibold text-slate-500">All Statuses</SelectItem>
+                                <SelectItem value="ACTIVE" className="font-semibold text-green-700">Active / Running</SelectItem>
+                                <SelectItem value="PAUSED" className="font-semibold text-amber-700">Paused</SelectItem>
+                                <SelectItem value="STOPPED" className="font-semibold text-slate-600">Stopped / Completed</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Month filter */}
+                    <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Month Wise</label>
+                        <Select value={monthFilter} onValueChange={setMonthFilter}>
+                            <SelectTrigger className="w-40 text-xs h-9 rounded-lg border-slate-200 bg-slate-50 font-semibold text-slate-700">
+                                <SelectValue placeholder="All Months" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white border">
+                                <SelectItem value="ALL" className="font-semibold text-slate-500">All Months</SelectItem>
+                                {months.map(m => (
+                                    <SelectItem key={m.value} value={m.value} className="font-semibold text-slate-750">{m.label}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Date wise range */}
+                    <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Started Date (From)</label>
+                        <input 
+                            type="date"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                            className="text-xs h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 font-semibold text-slate-700 focus:ring-1 focus:ring-indigo-500 outline-none"
+                        />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Started Date (To)</label>
+                        <input 
+                            type="date"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            className="text-xs h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 font-semibold text-slate-700 focus:ring-1 focus:ring-indigo-500 outline-none"
+                        />
+                    </div>
+
+                    {/* Clear Filters */}
+                    {(selectedGroup !== 'ALL' || statusFilter !== 'ALL' || monthFilter !== 'ALL' || startDate || endDate) && (
+                        <Button 
+                            onClick={() => {
+                                setSelectedGroup('ALL');
+                                setStatusFilter('ALL');
+                                setMonthFilter('ALL');
+                                setStartDate('');
+                                setEndDate('');
+                            }}
+                            variant="ghost"
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50 text-xs font-bold self-end h-9"
+                        >
+                            Reset
+                        </Button>
+                    )}
+                </div>
+            </div>
+
+            {/* Campaign Table Card */}
+            <Card className="border border-slate-200/80 bg-white rounded-2xl overflow-hidden shadow-sm">
+                <CardHeader className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <CardTitle className="text-lg font-bold text-slate-800">Campaigns Performance Tracker</CardTitle>
+                        <CardDescription className="text-xs">Detailed view of marketing campaigns, spend metrics, and CRM leads outcome.</CardDescription>
+                    </div>
+                    <Button 
+                        onClick={() => refetch()}
+                        variant="outline"
+                        className="border-slate-200 hover:bg-slate-50 font-bold text-xs flex items-center gap-1.5"
+                    >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        Refresh
+                    </Button>
+                </CardHeader>
+                <CardContent className="p-0">
+                    {isLoading ? (
+                        <div className="p-12 text-center text-slate-500 animate-pulse font-medium">Loading campaigns...</div>
+                    ) : filteredReport.length === 0 ? (
+                        <div className="p-16 text-center text-slate-400 italic font-medium">
+                            No campaigns matching the selected filters were found.
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <Table>
+                                <TableHeader className="bg-slate-50">
+                                    <TableRow>
+                                        <TableHead className="font-bold text-slate-700 text-xs uppercase">Campaign Group</TableHead>
+                                        <TableHead className="font-bold text-slate-700 text-xs uppercase">Campaign Name</TableHead>
+                                        <TableHead className="font-bold text-slate-700 text-xs uppercase text-center">Status</TableHead>
+                                        <TableHead className="font-bold text-slate-700 text-xs uppercase">Started Date</TableHead>
+                                        <TableHead className="font-bold text-slate-700 text-xs uppercase">End Date</TableHead>
+                                        <TableHead className="font-bold text-slate-700 text-xs uppercase text-right">Amount Spend</TableHead>
+                                        <TableHead className="font-bold text-slate-700 text-xs uppercase text-right">Result (Clicks)</TableHead>
+                                        <TableHead className="font-bold text-slate-700 text-xs uppercase text-right">Leads Generated</TableHead>
+                                        <TableHead className="font-bold text-slate-700 text-xs uppercase text-right">Lead Cost (CPL)</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {filteredReport.map((c) => (
+                                        <TableRow key={c.campaignId} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                                            <TableCell className="font-semibold text-slate-650 py-3.5">
+                                                <Badge className="bg-indigo-50 text-indigo-750 font-bold border-none text-[10px]">
+                                                    {c.groupName || 'Unassigned'}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="font-bold text-slate-850">
+                                                <div className="flex items-center gap-2">
+                                                    <Megaphone className="h-4 w-4 text-indigo-500 shrink-0" />
+                                                    <span>{c.name}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                <Badge className={`border-none font-bold text-[10px] px-2.5 py-0.5
+                                                    ${(c.status?.toUpperCase() === 'ACTIVE' || c.status?.toUpperCase() === 'RUNNING') ? 'bg-green-100 text-green-700' :
+                                                      c.status?.toUpperCase() === 'PAUSED' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}
+                                                `}>
+                                                    {c.status?.toUpperCase() || 'UNKNOWN'}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-xs font-semibold text-slate-500">
+                                                {c.startDate ? new Date(c.startDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
+                                            </TableCell>
+                                            <TableCell className="text-xs font-semibold text-slate-500">
+                                                {c.endDate ? new Date(c.endDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Continuous'}
+                                            </TableCell>
+                                            <TableCell className="text-right font-semibold text-slate-800">
+                                                ₹{c.spend.toLocaleString('en-IN')}
+                                            </TableCell>
+                                            <TableCell className="text-right font-medium text-slate-600">
+                                                {c.clicks.toLocaleString()}
+                                            </TableCell>
+                                            <TableCell className="text-right font-extrabold text-indigo-650">
+                                                {c.leads.toLocaleString()}
+                                            </TableCell>
+                                            <TableCell className="text-right font-semibold text-slate-800">
+                                                ₹{c.cpl > 0 ? c.cpl.toFixed(0) : '0'}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
     );
 };
 

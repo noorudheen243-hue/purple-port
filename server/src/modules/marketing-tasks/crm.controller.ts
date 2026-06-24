@@ -872,7 +872,8 @@ export const getCampaignCRMPerformance = async (req: Request, res: Response) => 
             },
             include: {
                 marketingMetrics: true,
-                leads: true
+                leads: true,
+                group: true
             }
         });
 
@@ -908,7 +909,9 @@ export const getCampaignCRMPerformance = async (req: Request, res: Response) => 
                 conversionRate,
                 roas,
                 status: c.status || 'ACTIVE',
-                startDate: c.startDate
+                startDate: c.startDate,
+                endDate: c.ends,
+                groupName: c.group?.name || 'Unassigned'
             };
         });
 

@@ -1384,9 +1384,8 @@ const CrmLeadsTab: React.FC<{
             {/* ADD MANUAL LEAD DIALOG */}
             {/* ===================================== */}
             <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-                <DialogContent className="max-w-lg bg-white rounded-2xl border p-6">
+                <DialogContent initialWidth={500} title="Add New CRM Lead">
                     <DialogHeader>
-                        <DialogTitle className="text-lg font-bold text-slate-900">Add New CRM Lead</DialogTitle>
                         <DialogDescription className="text-xs">Create a manual lead record. Round-robin assignment runs if unassigned.</DialogDescription>
                     </DialogHeader>
                     <div className="grid grid-cols-2 gap-4 my-4">
@@ -1507,9 +1506,8 @@ const CrmLeadsTab: React.FC<{
             {/* BULK ASSIGN DIALOG */}
             {/* ===================================== */}
             <Dialog open={isBulkAssignOpen} onOpenChange={setIsBulkAssignOpen}>
-                <DialogContent className="max-w-sm bg-white rounded-2xl border p-6">
+                <DialogContent initialWidth={380} title="Bulk Reassign Leads">
                     <DialogHeader>
-                        <DialogTitle className="text-lg font-bold text-slate-900">Bulk Reassign Leads</DialogTitle>
                         <DialogDescription className="text-xs">Assign {selectedLeads.length} leads to an agent.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-2 my-4">
@@ -1540,9 +1538,8 @@ const CrmLeadsTab: React.FC<{
             {/* BULK UPDATE STATUS DIALOG */}
             {/* ===================================== */}
             <Dialog open={isBulkUpdateOpen} onOpenChange={setIsBulkUpdateOpen}>
-                <DialogContent className="max-w-sm bg-white rounded-2xl border p-6">
+                <DialogContent initialWidth={380} title="Bulk Update Leads">
                     <DialogHeader>
-                        <DialogTitle className="text-lg font-bold text-slate-900">Bulk Update Leads</DialogTitle>
                         <DialogDescription className="text-xs">Modify CRM Stage or Quality for {selectedLeads.length} leads.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 my-4">
@@ -1589,11 +1586,8 @@ const CrmLeadsTab: React.FC<{
             {/* MERGE DUPLICATES DIALOG */}
             {/* ===================================== */}
             <Dialog open={isMergeOpen} onOpenChange={setIsMergeOpen}>
-                <DialogContent className="max-w-md bg-white rounded-2xl border p-6">
+                <DialogContent initialWidth={450} title="Merge Duplicate Leads">
                     <DialogHeader>
-                        <DialogTitle className="text-lg font-bold text-slate-900 flex items-center gap-1.5">
-                            <GitMerge className="h-5 w-5 text-indigo-600" /> Merge Duplicate Leads
-                        </DialogTitle>
                         <DialogDescription className="text-xs">
                             Select two leads. Notes, activity logs, and follow-ups from the duplicate lead will be combined into the primary lead.
                         </DialogDescription>
@@ -1643,11 +1637,8 @@ const CrmLeadsTab: React.FC<{
             {/* CSV IMPORT DIALOG */}
             {/* ===================================== */}
             <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
-                <DialogContent className="max-w-lg bg-white rounded-2xl border p-6">
+                <DialogContent initialWidth={550} title="Paste CSV Data to Import">
                     <DialogHeader>
-                        <DialogTitle className="text-lg font-bold text-slate-900 flex items-center gap-1.5">
-                            <FileSpreadsheet className="h-5 w-5 text-indigo-600" /> Paste CSV Data to Import
-                        </DialogTitle>
                         <DialogDescription className="text-xs">
                             Format requires a header row. Example: <br />
                             <code className="text-indigo-600 font-bold">name, phone, email, location, campaign, quality, stage, notes, tags</code>
@@ -1679,13 +1670,13 @@ const CrmLeadsTab: React.FC<{
             {/* LEAD DETAIL & LOGS SIDE DRAWER */}
             {/* ===================================== */}
             <Dialog open={!!selectedLeadDetails} onOpenChange={(open) => !open && setSelectedLeadDetails(null)}>
-                <DialogContent className="max-w-2xl bg-white rounded-2xl border p-6 h-[85vh] flex flex-col justify-between overflow-hidden">
+                <DialogContent initialWidth={650} initialHeight="85vh" title="Lead Details & History">
                     {selectedLeadDetails && (
                         <>
                             <DialogHeader className="border-b pb-4">
                                 <div className="flex justify-between items-start gap-4">
                                     <div className="space-y-1">
-                                        <DialogTitle className="text-xl font-extrabold text-slate-900">{selectedLeadDetails.name || 'Unnamed Lead'}</DialogTitle>
+                                        <h3 className="text-xl font-extrabold text-slate-900">{selectedLeadDetails.name || 'Unnamed Lead'}</h3>
                                         <DialogDescription className="text-xs font-bold text-slate-400">Captured on {new Date(selectedLeadDetails.date).toLocaleString()}</DialogDescription>
                                     </div>
                                     <Badge className="bg-slate-100 text-indigo-700 font-bold border-none text-[10px]" variant="outline">
@@ -3052,9 +3043,8 @@ const CrmCampaignGroupsTab: React.FC<{ clientId: string }> = ({ clientId }) => {
 
             {/* Create Group Dialog */}
             <Dialog open={isAddGroupOpen} onOpenChange={setIsAddGroupOpen}>
-                <DialogContent className="bg-white rounded-2xl border border-slate-200">
+                <DialogContent initialWidth={450} title="Create Campaign Group">
                     <DialogHeader>
-                        <DialogTitle className="text-lg font-bold text-slate-900">Create Campaign Group</DialogTitle>
                         <DialogDescription className="text-sm">Group your marketing campaigns and leads under a custom segment.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">

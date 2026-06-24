@@ -23,6 +23,16 @@ import {
     verifyMetaLeadsWebhook,
     handleMetaLeadsWebhook
 } from './crm.controller';
+import {
+    connectMetaAccount,
+    getMetaAccounts,
+    getMetaCampaigns,
+    getMetaAdSets as getCrmMetaAdSets,
+    getMetaAds as getCrmMetaAds,
+    createMetaCampaign as createCrmMetaCampaign,
+    createMetaAdSet as createCrmMetaAdSet,
+    updateMetaStatus as updateCrmMetaStatus
+} from './crmMeta.controller';
 
 // Ensure temp upload dir exists
 const uploadDir = path.join(process.cwd(), 'uploads', 'reports');
@@ -122,6 +132,16 @@ router.get('/meta/manager/ads', getMetaAds);
 router.post('/meta/manager/campaigns', createMetaCampaign);
 router.post('/meta/manager/adsets', createMetaAdSet);
 router.patch('/meta/manager/status', updateMetaStatus);
+
+// CRM Meta Ads Manager Operations for Client CRM Workspace
+router.post('/crm/external/meta-manager/connect', connectMetaAccount);
+router.get('/crm/external/meta-manager/accounts', getMetaAccounts);
+router.get('/crm/external/meta-manager/campaigns', getMetaCampaigns);
+router.get('/crm/external/meta-manager/campaigns/:id/adsets', getCrmMetaAdSets);
+router.get('/crm/external/meta-manager/adsets/:id/ads', getCrmMetaAds);
+router.post('/crm/external/meta-manager/campaigns', createCrmMetaCampaign);
+router.post('/crm/external/meta-manager/adsets', createCrmMetaAdSet);
+router.put('/crm/external/meta-manager/:id/status', updateCrmMetaStatus);
 
 // Report Generation & WhatsApp Dispatch
 router.post('/report/send', reportUpload.single('pdf'), sendReport);

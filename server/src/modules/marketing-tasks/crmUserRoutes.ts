@@ -49,4 +49,9 @@ router.get('/external/campaign-performance', protectCrmUser, getCampaignCRMPerfo
 router.post('/external/sync-meta', protectCrmUser, syncMetaLeadsToCrm);
 router.get('/external/meta-status', protectCrmUser, getMetaConnectionStatus);
 
+// ==========================================
+// 4. CRM META ADS MANAGER (FULL CONTROL)
+// ==========================================
+// Moved to main app routes to prevent CRM user access
+
 export default router;

@@ -6,7 +6,7 @@ import api from '../../lib/api';
 import { 
     LayoutDashboard, List, KanbanSquare, Calendar, BarChart3, LogOut, 
     RefreshCw, Search, Plus, Filter, MessageSquare, Phone, Mail, MapPin, 
-    User, ChevronRight, CheckCircle2, AlertCircle, Clock, TrendingUp, Megaphone
+    User, ChevronRight, CheckCircle2, AlertCircle, Clock, TrendingUp, Megaphone, Folder
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -37,7 +37,7 @@ const CrmUserDashboard = () => {
     const { crmUser, logout, checkAuth } = useCrmAuthStore();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
-    const [activeTab, setActiveTab] = useState<'overview' | 'leads' | 'kanban' | 'followups' | 'reports' | 'campaigns'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'campaigns' | 'campaign_groups' | 'generated_leads' | 'manual_leads' | 'leads' | 'followups' | 'kanban' | 'roas_report' | 'crm_team' | 'reports'>('overview');
     
     // Filters State
     const [searchTerm, setSearchTerm] = useState('');
@@ -421,21 +421,42 @@ const CrmUserDashboard = () => {
                         className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'overview' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
                     >
                         <LayoutDashboard className="h-4 w-4" />
-                        <span>Overview</span>
+                        <span>Dashboard</span>
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('campaigns')}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'campaigns' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                    >
+                        <Megaphone className="h-4 w-4" />
+                        <span>Campaigns</span>
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('campaign_groups')}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'campaign_groups' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                    >
+                        <Folder className="h-4 w-4" />
+                        <span>Campaign Groups</span>
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('generated_leads')}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'generated_leads' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                    >
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span>Generated Leads</span>
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('manual_leads')}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'manual_leads' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                    >
+                        <Plus className="h-4 w-4" />
+                        <span>Manual Leads</span>
                     </button>
                     <button 
                         onClick={() => setActiveTab('leads')}
                         className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'leads' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
                     >
                         <List className="h-4 w-4" />
-                        <span>Leads List</span>
-                    </button>
-                    <button 
-                        onClick={() => setActiveTab('kanban')}
-                        className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'kanban' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
-                    >
-                        <KanbanSquare className="h-4 w-4" />
-                        <span>Kanban Board</span>
+                        <span>Lead List</span>
                     </button>
                     <button 
                         onClick={() => setActiveTab('followups')}
@@ -445,18 +466,32 @@ const CrmUserDashboard = () => {
                         <span>Follow-Ups</span>
                     </button>
                     <button 
+                        onClick={() => setActiveTab('kanban')}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'kanban' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                    >
+                        <KanbanSquare className="h-4 w-4" />
+                        <span>Lead Board</span>
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('roas_report')}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'roas_report' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                    >
+                        <TrendingUp className="h-4 w-4" />
+                        <span>Campaign Spend vs Conversion Value</span>
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('crm_team')}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'crm_team' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                    >
+                        <User className="h-4 w-4" />
+                        <span>CRM Team Assignment</span>
+                    </button>
+                    <button 
                         onClick={() => setActiveTab('reports')}
                         className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'reports' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
                     >
                         <BarChart3 className="h-4 w-4" />
-                        <span>ROAS Report</span>
-                    </button>
-                    <button 
-                        onClick={() => setActiveTab('campaigns')}
-                        className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'campaigns' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
-                    >
-                        <Megaphone className="h-4 w-4" />
-                        <span>Active Campaigns</span>
+                        <span>Reports</span>
                     </button>
                 </aside>
 
@@ -857,7 +892,7 @@ const CrmUserDashboard = () => {
                     )}
 
                     {/* TAB: ROAS REPORT */}
-                    {activeTab === 'reports' && (
+                    {activeTab === 'roas_report' && (
                         <Card className="shadow-sm border-slate-200 overflow-hidden animate-in fade-in duration-300">
                             <CardHeader className="bg-slate-50 border-b border-slate-200">
                                 <CardTitle className="text-sm font-extrabold text-slate-900">Campaign Performance & ROI Report</CardTitle>
@@ -980,6 +1015,86 @@ const CrmUserDashboard = () => {
                             </Card>
                         </div>
                     )}
+                        {/* TAB: CAMPAIGN GROUPS */}
+                        {activeTab === 'campaign_groups' && (
+                            <div className="space-y-6 animate-in fade-in duration-300">
+                                <Card className="shadow-sm border-slate-200">
+                                    <CardHeader className="bg-slate-50 border-b border-slate-200">
+                                        <CardTitle className="text-base font-extrabold text-slate-900">Campaign Groups</CardTitle>
+                                        <CardDescription>Manage and view your grouped marketing campaigns.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="p-12 text-center text-slate-500">
+                                        <Folder className="h-12 w-12 mx-auto text-slate-300 mb-4" />
+                                        <p>Campaign Groups interface coming soon.</p>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        )}
+
+                        {/* TAB: GENERATED LEADS */}
+                        {activeTab === 'generated_leads' && (
+                            <div className="space-y-6 animate-in fade-in duration-300">
+                                <Card className="shadow-sm border-slate-200">
+                                    <CardHeader className="bg-slate-50 border-b border-slate-200">
+                                        <CardTitle className="text-base font-extrabold text-slate-900">Generated Leads</CardTitle>
+                                        <CardDescription>View leads automatically generated via Meta/Campaigns.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="p-12 text-center text-slate-500">
+                                        <CheckCircle2 className="h-12 w-12 mx-auto text-slate-300 mb-4" />
+                                        <p>Generated Leads interface coming soon.</p>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        )}
+
+                        {/* TAB: MANUAL LEADS */}
+                        {activeTab === 'manual_leads' && (
+                            <div className="space-y-6 animate-in fade-in duration-300">
+                                <Card className="shadow-sm border-slate-200">
+                                    <CardHeader className="bg-slate-50 border-b border-slate-200">
+                                        <CardTitle className="text-base font-extrabold text-slate-900">Manual Leads</CardTitle>
+                                        <CardDescription>Add and manage manually entered sales leads.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="p-12 text-center text-slate-500">
+                                        <Plus className="h-12 w-12 mx-auto text-slate-300 mb-4" />
+                                        <p>Manual Leads interface coming soon.</p>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        )}
+
+                        {/* TAB: CRM TEAM ASSIGNMENT */}
+                        {activeTab === 'crm_team' && (
+                            <div className="space-y-6 animate-in fade-in duration-300">
+                                <Card className="shadow-sm border-slate-200">
+                                    <CardHeader className="bg-slate-50 border-b border-slate-200">
+                                        <CardTitle className="text-base font-extrabold text-slate-900">CRM Team Assignment</CardTitle>
+                                        <CardDescription>Manage user assignments to campaign groups and leads.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="p-12 text-center text-slate-500">
+                                        <User className="h-12 w-12 mx-auto text-slate-300 mb-4" />
+                                        <p>CRM Team Assignment interface coming soon.</p>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        )}
+
+                        {/* TAB: REPORTS */}
+                        {activeTab === 'reports' && (
+                            <div className="space-y-6 animate-in fade-in duration-300">
+                                <Card className="shadow-sm border-slate-200">
+                                    <CardHeader className="bg-slate-50 border-b border-slate-200">
+                                        <CardTitle className="text-base font-extrabold text-slate-900">General Reports</CardTitle>
+                                        <CardDescription>View overall CRM performance reports and analytics.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="p-12 text-center text-slate-500">
+                                        <BarChart3 className="h-12 w-12 mx-auto text-slate-300 mb-4" />
+                                        <p>Reports interface coming soon.</p>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        )}
+
                 </main>
             </div>
         </div>

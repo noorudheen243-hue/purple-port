@@ -86,12 +86,15 @@ export class MetaLeadsService {
                         if (!leadsRes.data?.paging?.next) break;
                     } while (after);
                 } catch (formErr: any) {
-                    console.warn(`[MetaLeads] Form ${form.id} leads error: ${formErr.response?.data?.error?.message || formErr.message}`);
+                    const msg = formErr.response?.data?.error?.message || formErr.message;
+                    console.warn(`[MetaLeads] Form ${form.id} leads error: ${msg}`);
+                    throw new Error(`Failed to fetch leads for form ${form.name || form.id}: ${msg}`);
                 }
             }
         } catch (e: any) {
             const msg = e.response?.data?.error?.message || e.message;
             console.warn(`[MetaLeads] Page ${pageId} forms error: ${msg}`);
+            throw new Error(`Failed to fetch leadgen forms for page ${pageName || pageId}: ${msg}`);
         }
 
         return allLeads;
@@ -219,7 +222,7 @@ export class MetaLeadsService {
             const pages = await this.getPageTokens(userToken);
             if (pages.length === 0) {
                 console.warn(`[MetaLeads] No accessible Facebook Pages found for account ${accountId}`);
-                return { synced, skipped };
+                throw new Error('No accessible Facebook Pages found. Please ensure the Meta account has granted Page access permissions.');
             }
             console.log(`[MetaLeads] Accessible pages: ${pages.map(p => p.name).join(', ')}`);
 
@@ -240,6 +243,7 @@ export class MetaLeadsService {
                 ? `Meta API: ${metaError.message || metaError.error_user_msg || error.message}`
                 : (error.message || 'Unknown sync error');
             console.error('[MetaLeads] Global syncLeads error:', errorMsg);
+            throw new Error(errorMsg);
         }
 
         return { synced, skipped };

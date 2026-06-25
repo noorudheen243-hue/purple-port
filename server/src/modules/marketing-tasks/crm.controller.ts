@@ -294,7 +294,7 @@ export const getLeads = async (req: Request, res: Response) => {
         if (quality) where.quality = quality as string;
         if (source) {
             if (source === 'GENERATED') {
-                where.source = { not: 'MANUAL' };
+                where.source = { notIn: ['MANUAL', 'Manual', 'manual'] };
             } else {
                 where.source = source as string;
             }

@@ -1342,7 +1342,8 @@ const CrmLeadsTab: React.FC<{
                                                                         className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                                                                     />
                                                                 </TableHead>
-                                                                <TableHead className="font-bold text-slate-700 text-xs uppercase">Name & Details</TableHead>
+                                                                <TableHead className="font-bold text-slate-700 text-xs uppercase">Name</TableHead>
+                                                                <TableHead className="font-bold text-slate-700 text-xs uppercase">Contact Number</TableHead>
                                                                 <TableHead className="font-bold text-slate-700 text-xs uppercase">Source</TableHead>
                                                                 <TableHead className="font-bold text-slate-700 text-xs uppercase">CRM Stage</TableHead>
                                                                 <TableHead className="font-bold text-slate-700 text-xs uppercase">Quality</TableHead>
@@ -1367,7 +1368,12 @@ const CrmLeadsTab: React.FC<{
                                                                                 <span className="font-bold text-slate-900 text-sm hover:text-indigo-600 cursor-pointer" onClick={() => fetchLeadDetails(lead.id)}>
                                                                                     {lead.name || 'Unnamed Lead'}
                                                                                 </span>
-                                                                                <span className="text-slate-400 text-[10px] font-semibold mt-0.5">{lead.phone || lead.email || 'No Contact Info'}</span>
+                                                                            </div>
+                                                                        </TableCell>
+                                                                        <TableCell>
+                                                                            <div className="flex flex-col text-[11px] text-slate-600">
+                                                                                <span className="font-medium text-xs">{lead.phone || '—'}</span>
+                                                                                <span className="text-slate-400">{lead.email || '—'}</span>
                                                                             </div>
                                                                         </TableCell>
                                                                         <TableCell>
@@ -1432,7 +1438,8 @@ const CrmLeadsTab: React.FC<{
                                                 className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                                             />
                                         </TableHead>
-                                        <TableHead className="font-bold text-slate-700 text-xs uppercase">Name & Details</TableHead>
+                                        <TableHead className="font-bold text-slate-700 text-xs uppercase">Name</TableHead>
+                                        <TableHead className="font-bold text-slate-700 text-xs uppercase">Contact Number</TableHead>
                                         <TableHead className="font-bold text-slate-700 text-xs uppercase">Source & Campaign</TableHead>
                                         <TableHead className="font-bold text-slate-700 text-xs uppercase">CRM Stage</TableHead>
                                         <TableHead className="font-bold text-slate-700 text-xs uppercase">Quality</TableHead>
@@ -1459,7 +1466,12 @@ const CrmLeadsTab: React.FC<{
                                                         <span className="font-bold text-slate-900 text-sm hover:text-indigo-600 cursor-pointer" onClick={() => fetchLeadDetails(lead.id)}>
                                                             {lead.name || 'Unnamed Lead'}
                                                         </span>
-                                                        <span className="text-slate-400 text-xs font-semibold mt-0.5">{lead.phone || lead.email || 'No Contact Info'}</span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex flex-col text-[11px] text-slate-600">
+                                                        <span className="font-medium text-xs">{lead.phone || '—'}</span>
+                                                        <span className="text-slate-400">{lead.email || '—'}</span>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>

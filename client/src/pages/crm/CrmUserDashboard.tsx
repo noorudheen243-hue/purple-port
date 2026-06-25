@@ -703,7 +703,8 @@ const CrmUserDashboard = () => {
                                         <thead>
                                             <tr className="bg-slate-50 border-b border-slate-200">
                                                 <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Date</th>
-                                                <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Lead Info</th>
+                                                <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Name</th>
+                                                <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Contact Number</th>
                                                 <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Campaign</th>
                                                 <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Quality</th>
                                                 <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Stage</th>
@@ -727,9 +728,11 @@ const CrmUserDashboard = () => {
                                                         </td>
                                                         <td className="p-4">
                                                             <p className="font-bold text-sm text-slate-900">{lead.name || 'Anonymous'}</p>
-                                                            <div className="flex flex-col text-[11px] text-slate-400 mt-0.5">
-                                                                <span>{lead.phone || '—'}</span>
-                                                                <span>{lead.email || '—'}</span>
+                                                        </td>
+                                                        <td className="p-4">
+                                                            <div className="flex flex-col text-[11px] text-slate-600 mt-0.5">
+                                                                <span className="font-medium">{lead.phone || '—'}</span>
+                                                                <span className="text-slate-400">{lead.email || '—'}</span>
                                                             </div>
                                                         </td>
                                                         <td className="p-4">

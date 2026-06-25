@@ -1042,9 +1042,72 @@ const CrmUserDashboard = () => {
                                         <CardTitle className="text-base font-extrabold text-slate-900">Generated Leads</CardTitle>
                                         <CardDescription>View leads automatically generated via Meta/Campaigns.</CardDescription>
                                     </CardHeader>
-                                    <CardContent className="p-12 text-center text-slate-500">
-                                        <CheckCircle2 className="h-12 w-12 mx-auto text-slate-300 mb-4" />
-                                        <p>Generated Leads interface coming soon.</p>
+                                    <CardContent className="p-0">
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-left border-collapse">
+                                                <thead>
+                                                    <tr className="bg-slate-50 border-b border-slate-200">
+                                                        <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Date</th>
+                                                        <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Name</th>
+                                                        <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Contact Number</th>
+                                                        <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Campaign</th>
+                                                        <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Quality</th>
+                                                        <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Stage</th>
+                                                        <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-100">
+                                                    {leadsLoading ? (
+                                                        <tr>
+                                                            <td colSpan={7} className="p-8 text-center"><RefreshCw className="h-6 w-6 animate-spin mx-auto text-indigo-400" /></td>
+                                                        </tr>
+                                                    ) : leads.filter(l => l.source?.toUpperCase() !== 'MANUAL').length === 0 ? (
+                                                        <tr>
+                                                            <td colSpan={7} className="p-8 text-center text-slate-400 italic">No generated leads found.</td>
+                                                        </tr>
+                                                    ) : (
+                                                        leads.filter(l => l.source?.toUpperCase() !== 'MANUAL').map(lead => (
+                                                            <tr key={lead.id} className="hover:bg-slate-50/50 transition-colors">
+                                                                <td className="p-4 text-sm font-semibold text-slate-600">
+                                                                    {new Date(lead.date).toLocaleDateString()}
+                                                                </td>
+                                                                <td className="p-4">
+                                                                    <p className="font-bold text-sm text-slate-900">{lead.name || 'Anonymous'}</p>
+                                                                </td>
+                                                                <td className="p-4">
+                                                                    <div className="flex flex-col text-[11px] text-slate-600 mt-0.5">
+                                                                        <span className="font-medium">{lead.phone || '—'}</span>
+                                                                        <span className="text-slate-400">{lead.email || '—'}</span>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="p-4">
+                                                                    <p className="font-bold text-sm text-slate-800">{lead.campaign_name || 'Direct Input'}</p>
+                                                                    <span className="text-[10px] text-slate-400 uppercase font-semibold">{lead.source}</span>
+                                                                </td>
+                                                                <td className="p-4">
+                                                                    <Badge className={`border-none font-bold text-[9px] uppercase ${lead.quality === 'HIGH' ? 'bg-amber-100 text-amber-700' : lead.quality === 'LOW' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'}`}>
+                                                                        {lead.quality || 'MEDIUM'}
+                                                                    </Badge>
+                                                                </td>
+                                                                <td className="p-4">
+                                                                    <Badge className={`border-none font-bold text-[9px] uppercase ${lead.stage === 'Converted' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                                        {lead.stage || 'New Lead'}
+                                                                    </Badge>
+                                                                </td>
+                                                                <td className="p-4 text-right">
+                                                                    <button 
+                                                                        onClick={() => viewLeadDetails(lead)}
+                                                                        className="px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 text-indigo-600 font-bold rounded-lg hover:bg-indigo-600 hover:text-white transition-colors"
+                                                                    >
+                                                                        Details
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        ))
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </CardContent>
                                 </Card>
                             </div>

@@ -132,6 +132,7 @@ app.use('/api/deployment', deploymentRoutes); // Registered here
 
 app.use('/api/client-portal', clientPortalRoutes);
 app.use('/api/marketing-tasks', marketingRoutes);
+app.use('/api/marketing', marketingRoutes);
 app.use('/api/crm/users', crmUserRoutes);
 app.use('/api/crm/v2', crmV2Routes);
 app.use('/api/settings', settingsRoutes);

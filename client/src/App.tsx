@@ -96,6 +96,7 @@ function App() {
                             <Suspense fallback={<LoadingFallback />}>
                                 <Routes>
                                     <Route path="/login" element={<CrmLogin />} />
+                                    <Route path="/crm-login" element={<CrmLogin />} />
                                     <Route element={<ProtectedCrmRoute />}>
                                         <Route path="/*" element={<CrmUserDashboard />} />
                                     </Route>

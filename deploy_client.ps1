@@ -1,32 +1,32 @@
 Import-Module Posh-SSH -Force
-$SERVER_IP = "66.116.224.221"
-$SSH_USER = "root"
-$PASS = "EzdanAdam@243"
-$SecPass = ConvertTo-SecureString $PASS -AsPlainText -Force
-$Cred = New-Object System.Management.Automation.PSCredential($SSH_USER, $SecPass)
+$VPS = "66.116.224.221"; $User = "root"; $Pass = "EzdanAdam@243"
+$SecPass = ConvertTo-SecureString $Pass -AsPlainText -Force
+$Cred = New-Object System.Management.Automation.PSCredential($User, $SecPass)
 
-$localDist = "f:\Antigravity\client\dist"
-$localZip = "f:\Antigravity\client_deploy.zip"
-$remoteZip = "/tmp/client_deploy.zip"
-$remoteDest = "/var/www/purple-port/server/public"
+try {
+    Write-Host ">>> Opening Sessions..."
+    $sftpSession = New-SFTPSession -ComputerName $VPS -Credential $Cred -AcceptKey -Force
+    $sshSession = New-SSHSession -ComputerName $VPS -Credential $Cred -AcceptKey -Force
+    
+    $sftpId = $sftpSession.SessionId
+    $sshId = $sshSession.SessionId
 
-Write-Host "Zipping $localDist..."
-if (Test-Path $localZip) { Remove-Item $localZip }
-Compress-Archive -Path "$localDist\*" -DestinationPath $localZip
+    Write-Host "Uploading client files..."
+    Set-SFTPItem -SessionId $sftpId -Path "f:\Antigravity\client\src\pages\tasks\TeamPerformance\TaskMonetaryCalculator.tsx" -Destination "/var/www/purple-port/client/src/pages/tasks/TeamPerformance" -Force
 
-Write-Host "Creating SSH session..."
-$session = New-SSHSession -ComputerName $SERVER_IP -Credential $Cred -AcceptKey -Force
+    Write-Host "Rebuilding client..."
+    $RemoteCMD3 = @"
+cd /var/www/purple-port/client
+npm run build
+pm2 restart qix-client
+"@
+    $r3 = Invoke-SSHCommand -SessionId $sshId -Command $RemoteCMD3
+    Write-Host $r3.Output
 
-Write-Host "Cleaning up old remote zip..."
-Invoke-SSHCommand -SSHSession $session -Command "rm -f $remoteZip"
-
-Write-Host "Uploading $localZip to $remoteZip..."
-$sftpSession = New-SFTPSession -ComputerName $SERVER_IP -Credential $Cred -AcceptKey -Force
-Set-SFTPItem -SFTPSession $sftpSession -Path $localZip -Destination "/tmp/"
-Remove-SFTPSession $sftpSession
-
-Write-Host "Extracting on VPS..."
-Invoke-SSHCommand -SSHSession $session -Command "mkdir -p $remoteDest && rm -rf $remoteDest/* && unzip -o $remoteZip -d $remoteDest && rm $remoteZip"
-
-Write-Host "Frontend Deployment Complete!"
-Remove-SSHSession $session
+    Write-Host "✅ DEPLOYMENT SUCCESSFUL!"
+} catch {
+    Write-Error "❌ Deployment failed: $($_.Exception.Message)"
+} finally {
+    if ($sftpSession) { Remove-SFTPSession -SessionId $sftpId | Out-Null }
+    if ($sshSession) { Remove-SSHSession -SessionId $sshId | Out-Null }
+}

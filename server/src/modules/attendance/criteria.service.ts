@@ -66,6 +66,15 @@ export class CriteriaService {
         const isLate = context.checkIn ? this.isLate(context.shift.start_time, context.checkIn, graceMinutes) : true;
         const isEarlyExit = context.checkOut ? this.isEarlyDeparture(context.shift.end_time, context.checkOut) : true;
         
+        // Rule C7: Late In OR Early Out OR Work Hours < 7.45
+        const ruleC7 = findRule('C7');
+        if (ruleC7 && context.checkIn && context.checkOut) {
+            const reqHours = JSON.parse(ruleC7.parameters).min_hours || 7.45;
+            if (isLate || isEarlyExit || workHours < reqHours) {
+                return { status: 'HALF_DAY', rule_applied: 'C7' };
+            }
+        }
+
         // Unconditional Late Punch or Early Punch-Out = HALF_DAY (unless worked >= 7.5 hours)
         if (context.checkIn && isLate) {
             if (workHours >= 7.5) {

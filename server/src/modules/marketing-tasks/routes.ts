@@ -21,7 +21,9 @@ import { protect } from '../auth/middleware';
 import * as crmController from './crm.controller';
 import {
     verifyMetaLeadsWebhook,
-    handleMetaLeadsWebhook
+    handleMetaLeadsWebhook,
+    verifyWhatsAppWebhook,
+    handleWhatsAppWebhook
 } from './crm.controller';
 import {
     connectMetaAccount,
@@ -60,6 +62,10 @@ router.post('/crm/webhooks/incoming', crmController.handleIncomingWebhookLead);
 // POST: Meta sends real-time lead notifications here
 router.get('/crm/webhooks/meta-leads', verifyMetaLeadsWebhook);
 router.post('/crm/webhooks/meta-leads', handleMetaLeadsWebhook);
+
+// Meta WhatsApp Cloud API Webhook — public endpoints (no auth required)
+router.get('/crm/webhooks/whatsapp', verifyWhatsAppWebhook);
+router.post('/crm/webhooks/whatsapp', handleWhatsAppWebhook);
 
 // Apply protection to all subsequent data routes
 router.use(protect);

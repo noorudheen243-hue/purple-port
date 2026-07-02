@@ -6,6 +6,10 @@ import { getAssetUrl } from '../../lib/utils';
 import { Filter, Search, Calendar, AlertTriangle, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import { useAuthStore } from '../../store/authStore';
+import TaskMonetaryCalculator from './TeamPerformance/TaskMonetaryCalculator';
+import CreativeServiceRateMaster from './TeamPerformance/CreativeServiceRateMaster';
 
 // --- Types ---
 interface TeamMetric {
@@ -99,20 +103,39 @@ const TeamPerformance = ({ defaultDept = 'ALL' }: TeamPerformanceProps) => {
         );
     };
 
+    const { user } = useAuthStore();
+    const isManagerOrAdmin = ['DEVELOPER_ADMIN', 'ADMIN', 'MANAGER'].includes(user?.role || '');
+
     if (error) return <div className="p-8 text-center text-red-500">Failed to load performance data.</div>;
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h2 className="text-2xl font-bold tracking-tight">Team Performance Analytics</h2>
-                    <p className="text-muted-foreground">Task-based performance insights and productivity scores.</p>
+            <Tabs defaultValue="analytics" className="w-full space-y-6">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <h2 className="text-2xl font-bold tracking-tight">Team Performance</h2>
+                        <p className="text-muted-foreground">Insights, monetary contributions, and service rates.</p>
+                    </div>
+                    <div className="bg-muted/40 p-1 rounded-lg border overflow-x-auto">
+                        <TabsList className="bg-transparent gap-2 h-auto p-0 min-w-max justify-start">
+                            <TabsTrigger value="analytics" className="data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm px-4 py-2 rounded-md font-medium transition-all">
+                                Performance Analytics
+                            </TabsTrigger>
+                            <TabsTrigger value="monetary" className="data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm px-4 py-2 rounded-md font-medium transition-all">
+                                Monetary Calculator
+                            </TabsTrigger>
+                            {isManagerOrAdmin && (
+                                <TabsTrigger value="rates" className="data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm px-4 py-2 rounded-md font-medium transition-all">
+                                    Service Rate Master
+                                </TabsTrigger>
+                            )}
+                        </TabsList>
+                    </div>
                 </div>
-                {/* Global Actions if needed */}
-            </div>
 
-            {/* Filters */}
-            <Card>
+                <TabsContent value="analytics" className="space-y-6 mt-0">
+                    {/* Filters */}
+                    <Card>
                 <CardContent className="p-4 flex flex-col md:flex-row gap-4 items-center">
                     <div className="relative flex-1 w-full">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
@@ -530,6 +553,18 @@ const TeamPerformance = ({ defaultDept = 'ALL' }: TeamPerformanceProps) => {
                     </table>
                 </div>
             </Card>
+                </TabsContent>
+
+                <TabsContent value="monetary" className="mt-0">
+                    <TaskMonetaryCalculator />
+                </TabsContent>
+
+                {isManagerOrAdmin && (
+                    <TabsContent value="rates" className="mt-0">
+                        <CreativeServiceRateMaster />
+                    </TabsContent>
+                )}
+            </Tabs>
         </div>
     );
 };

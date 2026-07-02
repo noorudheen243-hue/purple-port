@@ -57,6 +57,7 @@ const staffSchema = z.object({
     department: z.enum(['CREATIVE', 'MARKETING', 'WEB_SEO', 'WEB', 'MANAGEMENT', 'ADMIN']),
     date_of_joining: z.string().nullish().or(z.literal('')), // Optional
     reporting_manager_id: z.string().nullish().or(z.literal('')),
+    work_mode: z.string().nullish().or(z.literal('')),
 
     // Personal & Contact
     personal_email: z.string().email().nullish().or(z.literal('')),
@@ -147,6 +148,7 @@ const StaffFormModal = ({ isOpen, onClose, initialData }: StaffFormModalProps) =
             marital_status: 'SINGLE',
             staff_number: '',
             designation: '',
+            work_mode: 'Office (Full-Time)',
             ledger_options: { create: false, head_id: '' },
             payment_method: 'BANK_TRANSFER'
         }
@@ -177,6 +179,7 @@ const StaffFormModal = ({ isOpen, onClose, initialData }: StaffFormModalProps) =
                 reporting_manager_id: initialData.reporting_manager_id || '',
                 // Keep current role — don't let it be changed here
                 role: initialData.user?.role || 'DM_EXECUTIVE',
+                work_mode: initialData.user?.work_mode || initialData.work_mode || 'Office (Full-Time)',
                 password: undefined, // Don't pre-fill password
                 ledger_options: initialData.ledger_options || { create: false, head_id: '' },
             });
@@ -441,6 +444,16 @@ const StaffFormModal = ({ isOpen, onClose, initialData }: StaffFormModalProps) =
                                                 <option value="WEB_SEO">Web & SEO</option>
                                                 <option value="MANAGEMENT">Management</option>
                                                 <option value="ADMIN">Admin / HR</option>
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-foreground mb-1">Work Mode</label>
+                                            <select {...register('work_mode')} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all bg-white">
+                                                <option value="Office (Full-Time)">Office (Full-Time)</option>
+                                                <option value="Remote (Full-Time)">Remote (Full-Time)</option>
+                                                <option value="Hybrid">Hybrid</option>
+                                                <option value="Part-Time">Part-Time</option>
                                             </select>
                                         </div>
 

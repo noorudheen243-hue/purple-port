@@ -16,6 +16,7 @@ model User {
   department                String
   avatar_url                String?
   status                    String                       @default("ACTIVE")
+  work_mode                 String                       @default("Office (Full-Time)")
   createdAt                 DateTime                     @default(now())
   updatedAt                 DateTime                     @updatedAt
   linked_client_id          String?                      @unique
@@ -318,6 +319,7 @@ model Client {
   googleAdsLogs            GoogleAdsLog[]
   invoices                 Invoice[]
   leads                    Lead[]
+  creative_rate_overrides  CreativeRateOverride[]
   marketingAccounts        MarketingAccount[]
   marketingCampaigns       MarketingCampaign[]
   marketingCampaignsBeta   MarketingCampaignBeta[]
@@ -439,6 +441,7 @@ model Task {
   dependents            TaskDependency[]   @relation("TaskBlockedBy")
   dependencies          TaskDependency[]   @relation("TaskBlocking")
   timeLogs              TimeLog[]
+  creative_revenue      CreativeTaskRevenueSummary?
 
   @@index([status])
   @@index([priority])
@@ -1935,4 +1938,50 @@ model CrmPipeline {
   client Client @relation(fields: [client_id], references: [id], onDelete: Cascade)
 
   @@index([client_id])
+}
+
+model CreativeServiceRate {
+  id              String   @id @default(uuid())
+  task_type       String   @unique
+  standard_value  Float
+  effective_from  DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  history         CreativeServiceRateHistory[]
+}
+
+model CreativeServiceRateHistory {
+  id               String   @id @default(uuid())
+  task_type        String
+  standard_value   Float
+  effective_from   DateTime
+  effective_to     DateTime
+  rate_id          String
+  rate             CreativeServiceRate @relation(fields: [rate_id], references: [id], onDelete: Cascade)
+}
+
+model CreativeRateOverride {
+  id               String   @id @default(uuid())
+  client_id        String
+  task_type        String
+  override_value   Float
+  effective_from   DateTime @default(now())
+  effective_to     DateTime?
+  client           Client   @relation(fields: [client_id], references: [id], onDelete: Cascade)
+  
+  revenue_summaries CreativeTaskRevenueSummary[]
+
+  @@unique([client_id, task_type])
+}
+
+model CreativeTaskRevenueSummary {
+  id                 String   @id @default(uuid())
+  task_id            String   @unique
+  task               Task     @relation(fields: [task_id], references: [id], onDelete: Cascade)
+  applied_value      Float
+  effective_date     DateTime
+  rate_version       String?
+  client_override_id String?
+  override           CreativeRateOverride? @relation(fields: [client_override_id], references: [id])
 }

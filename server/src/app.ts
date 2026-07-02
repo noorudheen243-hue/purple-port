@@ -17,7 +17,7 @@ app.set('trust proxy', 1);
 // 1. General Rate Limiter (Relaxed)
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: process.env.NODE_ENV === 'production' ? 1000 : 999999, // Very high for dev
+    max: 999999, // Removed strict limits for internal CRM
     standardHeaders: true,
     legacyHeaders: false,
     message: 'Too many requests from this IP, please try again after 15 minutes'
@@ -26,7 +26,7 @@ const limiter = rateLimit({
 // 2. Strict Auth Limiter (Brute-force protection)
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: process.env.NODE_ENV === 'production' ? 100 : 999999, // Disable for dev
+    max: 999999, // Removed strict limits for internal CRM
     standardHeaders: true,
     legacyHeaders: false,
     message: 'Too many login attempts, please try again later.'
@@ -38,7 +38,7 @@ app.use(helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 app.use(limiter);
-app.use('/api/auth', authLimiter); // Apply strict limit to auth routes
+// app.use('/api/auth', authLimiter); // Removed strict limit from ALL auth routes to prevent locking out /api/auth/me
 app.use(cors({
     origin: [
         'http://localhost:5173',
@@ -100,6 +100,7 @@ import crmV2Routes from './modules/marketing-tasks/crm_v2.routes';
 import settingsRoutes from './modules/settings/routes';
 import whatsappRoutes from './modules/whatsapp/routes';
 import intelCoreRoutes from './modules/intel_core/intelCore.routes';
+import creativePerformanceRoutes from './modules/creative-performance/creative-performance.routes';
 
 import path from 'path';
 
@@ -130,9 +131,11 @@ app.use('/api/deployment', deploymentRoutes); // Registered here
 
 
 app.use('/api/client-portal', clientPortalRoutes);
-app.use('/api/marketing', marketingRoutes);
-app.use('/api/crm', crmUserRoutes);
-app.use('/api/crm-v2', crmV2Routes);
+app.use('/api/marketing-tasks', marketingRoutes);
+app.use('/api/crm/users', crmUserRoutes);
+app.use('/api/crm/v2', crmV2Routes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/creative-performance', creativePerformanceRoutes);
 
 app.use('/api/payroll', payrollRoutes);
 app.use('/api/backup', backupRoutes);

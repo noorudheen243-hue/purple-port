@@ -21,6 +21,8 @@ import Swal from 'sweetalert2';
 import { ShiftConfigurationModal } from '../../components/attendance/ShiftConfigurationModal';
 import { ShiftAssignmentModal } from '../../components/attendance/ShiftAssignmentModal';
 import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { formatIST } from '../../lib/utils';
 import { Card } from '../../components/ui/card';
 import { format } from 'date-fns';
 
@@ -522,7 +524,7 @@ const BiometricManagerPage = () => {
                                     <tbody className="divide-y divide-gray-100">
                                         {biometricLogs?.map((log: any) => (
                                             <tr key={log.id} className="hover:bg-gray-50 transition-colors">
-                                                <td className="px-4 py-4 font-medium">{format(new Date(log.date), 'MMM dd, yyyy')}</td>
+                                                <td className="px-4 py-4 font-medium">{formatIST(log.date, { month: 'short', day: '2-digit', year: 'numeric' })}</td>
                                                 <td className="px-4 py-4">
                                                     <div className="font-medium">{log.user?.full_name || 'Unknown'}</div>
                                                     <div className="text-xs text-gray-500">{log.user?.staffProfile?.staff_number || '-'}</div>

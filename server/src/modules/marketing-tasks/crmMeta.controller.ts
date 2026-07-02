@@ -37,7 +37,8 @@ export const connectMetaAccount = async (req: Request, res: Response) => {
                 where: { id: marketingAccount.id },
                 data: {
                     externalAccountId: accountId,
-                    accessToken: accessToken || marketingAccount.accessToken
+                    accessToken: accessToken || marketingAccount.accessToken,
+                    metaTokenId: accessToken ? null : marketingAccount.metaTokenId
                 }
             });
         } else {

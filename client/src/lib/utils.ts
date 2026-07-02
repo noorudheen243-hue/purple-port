@@ -5,6 +5,15 @@ export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs))
 }
 
+export function formatIST(dateString: string | Date, options: Intl.DateTimeFormatOptions): string {
+    if (!dateString) return '-';
+    try {
+        return new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', ...options }).format(new Date(dateString));
+    } catch {
+        return '-';
+    }
+}
+
 export const getAssetUrl = (path?: string) => {
     if (!path) return '';
     if (path.startsWith('http') || path.startsWith('blob:')) return path; // Already full URL
@@ -24,3 +33,4 @@ export const getAssetUrl = (path?: string) => {
 
     return `${baseUrl}${cleanPath}`;
 }
+

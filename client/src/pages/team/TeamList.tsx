@@ -260,6 +260,7 @@ const TeamList = () => {
                                                         <th className="px-4 py-3 text-center">Ledger</th>
                                                         <th className="px-4 py-3">ID Number</th>
                                                         <th className="px-4 py-3">Designation</th>
+                                                        <th className="px-4 py-3">Work Mode</th>
                                                         <th className="px-4 py-3">Contact</th>
                                                         <th className="px-4 py-3">Date of Joining</th>
                                                         <th className="px-4 py-3 text-right pr-6">Actions</th>
@@ -298,6 +299,11 @@ const TeamList = () => {
                                                                 </td>
                                                                 <td className="px-4 py-3 text-gray-600 font-mono text-xs">{member.staff_number}</td>
                                                                 <td className="px-4 py-3 text-gray-600">{member.designation}</td>
+                                                                <td className="px-4 py-3">
+                                                                    <span className="px-2 py-1 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-100">
+                                                                        {user.work_mode || 'Office (Full-Time)'}
+                                                                    </span>
+                                                                </td>
                                                                 <td className="px-4 py-3">
                                                                     <div className="flex flex-col gap-0.5 text-xs text-gray-500">
                                                                         <div className="flex items-center gap-1.5">

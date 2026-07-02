@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/api';
+import Swal from 'sweetalert2';
 import { 
     Calendar, 
     Download, 
@@ -12,7 +13,12 @@ import {
     TrendingUp,
     TrendingDown,
     Wallet,
-    ArrowLeft
+    ArrowLeft,
+    Pencil,
+    Trash2,
+    X,
+    Loader2,
+    History
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../utils/format';
 import { useRef } from 'react';
@@ -27,6 +33,14 @@ const LedgerFullView = () => {
     const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]);
     const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
     const statementPrintRef = useRef<HTMLDivElement>(null);
+    const queryClient = useQueryClient();
+
+    // Edit State
+    const [editingTransaction, setEditingTransaction] = useState<any>(null);
+    const [editAmount, setEditAmount] = useState('');
+    const [editDescription, setEditDescription] = useState('');
+    const [editDate, setEditDate] = useState('');
+    const [editType, setEditType] = useState<'INCOME'|'EXPENSE'>('INCOME');
 
     const { data: ledgers } = useQuery({
         queryKey: ['unified-ledgers'],
@@ -47,6 +61,53 @@ const LedgerFullView = () => {
         },
         enabled: !!id
     });
+
+    const updateMutation = useMutation({
+        mutationFn: (data: any) => api.patch(`/accounting/unified/transactions/${editingTransaction.id}`, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['account-statement', id] });
+            queryClient.invalidateQueries({ queryKey: ['unified-ledgers'] });
+            setEditingTransaction(null);
+            Swal.fire({ title: 'Updated', text: 'Transaction updated successfully', icon: 'success', background: '#f8fafc', customClass: { popup: 'rounded-[2rem]' } });
+        },
+        onError: (err: any) => Swal.fire('Error', err.response?.data?.message || err.message, 'error')
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: (txId: string) => api.delete(`/accounting/unified/transactions/${txId}`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['account-statement', id] });
+            queryClient.invalidateQueries({ queryKey: ['unified-ledgers'] });
+            Swal.fire({ title: 'Deleted', text: 'Transaction removed from ledger', icon: 'success', background: '#f8fafc', customClass: { popup: 'rounded-[2rem]' } });
+        },
+        onError: (err: any) => Swal.fire('Error', err.response?.data?.message || err.message, 'error')
+    });
+
+    const handleDelete = (tx: any) => {
+        Swal.fire({
+            title: 'Delete Transaction?',
+            text: `Are you sure you want to remove this ${formatCurrency(tx.amount)} transaction? Any linked balances will be reverted.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#e11d48',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'Yes, delete it!',
+            background: '#f8fafc',
+            customClass: { popup: 'rounded-[2rem]' }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                deleteMutation.mutate(tx.id);
+            }
+        });
+    };
+
+    const handleEdit = (tx: any) => {
+        setEditingTransaction(tx);
+        setEditAmount(tx.amount);
+        setEditDescription(tx.description);
+        setEditDate(new Date(tx.date).toISOString().split('T')[0]);
+        setEditType(tx.transaction_type);
+    };
 
     const handlePrint = () => {
         if (statementPrintRef.current) {
@@ -195,6 +256,7 @@ const LedgerFullView = () => {
                                 <th className="px-10 py-6 text-right">Inflow</th>
                                 <th className="px-10 py-6 text-right">Outflow</th>
                                 <th className="px-10 py-6 text-right">Net Balance</th>
+                                <th className="px-10 py-6 text-center">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
@@ -204,6 +266,20 @@ const LedgerFullView = () => {
                                 <td className="px-10 py-5 font-black text-purple-600 text-[10px] uppercase tracking-widest italic">Brought Forward (Opening Balance)</td>
                                 <td colSpan={2}></td>
                                 <td className="px-10 py-5 text-right font-black text-slate-900">{formatCurrency(statement?.openingBalance || 0)}</td>
+                                <td className="px-10 py-5">
+                                    {statement?.openingBalance !== 0 && (
+                                        <div className="flex items-center justify-center">
+                                            <button 
+                                                onClick={() => setStartDate('2000-01-01')}
+                                                className="text-[9px] font-black bg-purple-50 text-purple-500 px-3 py-1.5 rounded-full hover:bg-purple-600 hover:text-white transition-all uppercase tracking-widest flex items-center gap-1.5"
+                                                title="Expand date range to see past transactions"
+                                            >
+                                                <History className="w-3 h-3" />
+                                                View Past
+                                            </button>
+                                        </div>
+                                    )}
+                                </td>
                             </tr>
 
                             {isLoading ? (
@@ -248,6 +324,24 @@ const LedgerFullView = () => {
                                     <td className="px-10 py-6 text-right font-black text-slate-900 bg-slate-50/30">
                                         {formatCurrency(t.running_balance)}
                                     </td>
+                                    <td className="px-10 py-6">
+                                        <div className="flex items-center justify-center gap-2">
+                                            <button 
+                                                onClick={() => handleEdit(t)}
+                                                className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-purple-100 hover:text-purple-600 transition-all"
+                                                title="Edit Transaction"
+                                            >
+                                                <Pencil className="w-4 h-4" />
+                                            </button>
+                                            <button 
+                                                onClick={() => handleDelete(t)}
+                                                className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-rose-100 hover:text-rose-600 transition-all"
+                                                title="Delete Transaction"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </td>
                                 </tr>
                             ))}
 
@@ -262,6 +356,77 @@ const LedgerFullView = () => {
                     </table>
                 </div>
             </div>
+
+            {/* Edit Modal */}
+            {editingTransaction && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-[3rem] w-full max-w-lg overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="bg-purple-900 p-8 text-white flex justify-between items-center">
+                            <div>
+                                <h2 className="text-2xl font-black tracking-tight">Modify Transaction</h2>
+                                <p className="text-purple-300 text-xs mt-1 uppercase font-black tracking-widest">Updating: {editingTransaction.id.toString().split('-').pop()}</p>
+                            </div>
+                            <button onClick={() => setEditingTransaction(null)} className="bg-white/10 p-2 rounded-xl hover:bg-white/20 transition-all">
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+                        <div className="p-10 space-y-6">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Type</label>
+                                    <select
+                                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 py-4 focus:border-purple-500 outline-none transition-all font-bold text-slate-800"
+                                        value={editType}
+                                        onChange={(e) => setEditType(e.target.value as any)}
+                                    >
+                                        <option value="INCOME">Income (Credit)</option>
+                                        <option value="EXPENSE">Expense (Debit)</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Date</label>
+                                    <input 
+                                        type="date"
+                                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 py-4 focus:border-purple-500 outline-none transition-all font-bold text-slate-800"
+                                        value={editDate}
+                                        onChange={(e) => setEditDate(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Amount</label>
+                                <input 
+                                    type="number"
+                                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 py-4 focus:border-purple-500 outline-none transition-all font-bold text-slate-800"
+                                    value={editAmount}
+                                    onChange={(e) => setEditAmount(e.target.value)}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Description</label>
+                                <textarea 
+                                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 py-4 focus:border-purple-500 outline-none transition-all font-medium text-slate-600 h-24"
+                                    value={editDescription}
+                                    onChange={(e) => setEditDescription(e.target.value)}
+                                    placeholder="Transaction details..."
+                                />
+                            </div>
+                            <button 
+                                onClick={() => updateMutation.mutate({ 
+                                    amount: parseFloat(editAmount), 
+                                    description: editDescription,
+                                    date: editDate,
+                                    transaction_type: editType
+                                })}
+                                disabled={updateMutation.isPending || !editAmount || !editDescription || !editDate}
+                                className="w-full bg-purple-900 text-white py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-black transition-all flex items-center justify-center gap-3 shadow-xl shadow-purple-100 disabled:opacity-50"
+                            >
+                                {updateMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Apply Updates'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Hidden Printable Template */}
             <div className="hidden">

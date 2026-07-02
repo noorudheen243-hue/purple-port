@@ -10,9 +10,12 @@ import {
     Tag, 
     CheckCircle2, 
     Loader2,
-    Search
+    Search,
+    Edit3,
+    Trash2,
+    X
 } from 'lucide-react';
-import { formatCurrency } from '../../utils/format';
+import { formatCurrency, formatDate } from '../../utils/format';
 import Swal from 'sweetalert2';
 
 const UniversalTransactionRecorder = () => {
@@ -217,6 +220,152 @@ const UniversalTransactionRecorder = () => {
                     </div>
                 </div>
             </form>
+            {ledgerId && <LedgerTransactions ledgerId={ledgerId} />}
+        </div>
+    );
+};
+
+const LedgerTransactions = ({ ledgerId }: { ledgerId: string }) => {
+    const queryClient = useQueryClient();
+    const [editingTx, setEditingTx] = useState<any>(null);
+
+    const { data: statement, isLoading } = useQuery({
+        queryKey: ['account-statement', ledgerId, '2000-01-01', '2100-12-31'],
+        queryFn: async () => {
+            if (!ledgerId) return null;
+            return (await api.post('/accounting/unified/reports/statement', {
+                ledger_id: ledgerId,
+                startDate: '2000-01-01',
+                endDate: '2100-12-31'
+            })).data;
+        },
+        enabled: !!ledgerId
+    });
+
+    const updateMutation = useMutation({
+        mutationFn: (data: any) => api.patch(`/accounting/unified/transactions/${data.id}`, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['account-statement', ledgerId] });
+            queryClient.invalidateQueries({ queryKey: ['unified-balance'] });
+            setEditingTx(null);
+            Swal.fire({ title: 'Updated', text: 'Transaction updated successfully', icon: 'success' });
+        }
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: (txId: string) => api.delete(`/accounting/unified/transactions/${txId}`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['account-statement', ledgerId] });
+            queryClient.invalidateQueries({ queryKey: ['unified-balance'] });
+            Swal.fire({ title: 'Deleted', text: 'Transaction removed', icon: 'success' });
+        }
+    });
+
+    const handleDelete = (tx: any) => {
+        if (tx.isLegacy) {
+            Swal.fire('Cannot Delete', 'Legacy transactions cannot be deleted from this view.', 'warning');
+            return;
+        }
+        Swal.fire({
+            title: 'Delete Transaction?',
+            text: `Remove this ${formatCurrency(tx.amount)} transaction?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#e11d48',
+            confirmButtonText: 'Yes, delete it!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                deleteMutation.mutate(tx.id);
+            }
+        });
+    };
+
+    if (isLoading) return <div className="p-8 text-center text-slate-400 font-bold animate-pulse">Loading transactions...</div>;
+
+    const txs = statement?.transactions?.filter((t: any) => !t.description?.includes('Opening Balance') && t.amount > 0) || [];
+
+    if (txs.length === 0) return null;
+
+    return (
+        <div className="bg-white p-8 rounded-[3rem] border-2 border-slate-100 shadow-xl mt-8">
+            <h3 className="text-xl font-black text-slate-900 mb-6">Recent Transactions</h3>
+            <div className="overflow-x-auto max-h-[400px] overflow-y-auto custom-scrollbar">
+                <table className="w-full text-left border-collapse">
+                    <thead className="sticky top-0 bg-white z-10">
+                        <tr className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                            <th className="px-6 py-4">Date</th>
+                            <th className="px-6 py-4">Description</th>
+                            <th className="px-6 py-4 text-right">Amount</th>
+                            <th className="px-6 py-4 text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                        {txs.slice().reverse().map((t: any) => (
+                            <tr key={t.id} className="hover:bg-slate-50/50 transition-colors group">
+                                <td className="px-6 py-4 whitespace-nowrap font-bold text-slate-800">{formatDate(t.date)}</td>
+                                <td className="px-6 py-4 font-bold text-slate-900">
+                                    {t.description}
+                                    <div className="text-[10px] text-slate-400 uppercase tracking-widest mt-1">{t.category || 'General'}</div>
+                                </td>
+                                <td className="px-6 py-4 text-right">
+                                    <span className={`font-black ${t.transaction_type === 'INCOME' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                        {t.transaction_type === 'INCOME' ? '+' : '-'}{formatCurrency(t.amount)}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        {!t.isLegacy && (
+                                            <>
+                                                <button type="button" onClick={() => setEditingTx({...t, date: t.date.split('T')[0]})} className="p-2 text-slate-400 hover:text-purple-600 hover:bg-purple-100 rounded-xl transition-all">
+                                                    <Edit3 className="w-4 h-4" />
+                                                </button>
+                                                <button type="button" onClick={() => handleDelete(t)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-100 rounded-xl transition-all">
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
+            {editingTx && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-[3rem] w-full max-w-lg overflow-hidden shadow-2xl p-8">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Edit Transaction</h2>
+                            <button type="button" onClick={() => setEditingTx(null)} className="text-slate-400 hover:text-slate-900 transition-all"><X className="w-6 h-6" /></button>
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Type</label>
+                                <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 font-bold" value={editingTx.transaction_type} onChange={(e) => setEditingTx({...editingTx, transaction_type: e.target.value})}>
+                                    <option value="INCOME">Income</option>
+                                    <option value="EXPENSE">Expense</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Amount</label>
+                                <input type="number" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 font-bold" value={editingTx.amount} onChange={(e) => setEditingTx({...editingTx, amount: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Description</label>
+                                <input type="text" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 font-bold" value={editingTx.description} onChange={(e) => setEditingTx({...editingTx, description: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</label>
+                                <input type="date" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 font-bold" value={editingTx.date} onChange={(e) => setEditingTx({...editingTx, date: e.target.value})} />
+                            </div>
+                            <button type="button" onClick={() => updateMutation.mutate({ ...editingTx, amount: parseFloat(editingTx.amount) })} disabled={updateMutation.isPending} className="w-full bg-purple-900 text-white py-4 rounded-2xl font-black uppercase tracking-widest mt-4">
+                                {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

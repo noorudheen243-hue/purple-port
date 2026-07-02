@@ -1,0 +1,1 @@
+import prisma from './src/utils/prisma'; async function main() { const a = await prisma.marketingAccount.findMany({ where: { clientId: '1f4f0934-9915-4fd9-b085-87e71208cbe8' } }); console.log(a); } main().finally(() => prisma.$disconnect());

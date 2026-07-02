@@ -17,6 +17,7 @@ import {
 import { Badge } from '../../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Clock, RefreshCw } from 'lucide-react';
+import { formatIST } from '../../lib/utils';
 import { useAuthStore } from '../../store/authStore';
 import { Button } from '../../components/ui/button';
 import { useQueryClient } from '@tanstack/react-query';
@@ -28,7 +29,9 @@ export default function BiometricDetailsPage() {
     const queryClient = useQueryClient();
     const isAdminOrManager = user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'DEVELOPER_ADMIN';
 
-    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const defaultStart = new Date();
+    defaultStart.setDate(defaultStart.getDate() - 7);
+    const [date, setDate] = useState(defaultStart.toISOString().split('T')[0]);
     const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
     const [search, setSearch] = useState('');
     const [selectedStaff, setSelectedStaff] = useState<string>('ALL');
@@ -223,7 +226,7 @@ export default function BiometricDetailsPage() {
                                 ) : (
                                     filteredLogs.map((log: any) => (
                                         <TableRow key={log.id}>
-                                            <TableCell>{format(new Date(log.date), 'MMM dd, yyyy')}</TableCell>
+                                            <TableCell>{formatIST(log.date, { month: 'short', day: '2-digit', year: 'numeric' })}</TableCell>
                                             <TableCell className="font-medium">{log.user_name}</TableCell>
                                             <TableCell>{log.staff_number}</TableCell>
                                             <TableCell>
@@ -236,14 +239,14 @@ export default function BiometricDetailsPage() {
                                             <TableCell>
                                                 {log.check_in ? (
                                                     <span className="text-green-600 font-mono">
-                                                        {format(new Date(log.check_in), 'hh:mm aa')}
+                                                        {formatIST(log.check_in, { hour: '2-digit', minute: '2-digit', hour12: true })}
                                                     </span>
                                                 ) : '-'}
                                             </TableCell>
                                             <TableCell>
                                                 {log.check_out ? (
                                                     <span className="text-red-600 font-mono">
-                                                        {format(new Date(log.check_out), 'hh:mm aa')}
+                                                        {formatIST(log.check_out, { hour: '2-digit', minute: '2-digit', hour12: true })}
                                                     </span>
                                                 ) : '-'}
                                             </TableCell>

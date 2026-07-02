@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
+import { formatIST } from '../../lib/utils';
 import { ChevronLeft, ChevronRight, Check, X, Clock, HelpCircle, User } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../lib/api';
@@ -173,7 +174,12 @@ const CalendarPage = () => {
                                             {statusText && <span className="text-xs font-semibold block mb-1">{statusText}</span>}
                                             {record?.check_in && (
                                                 <div className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                                    <span className="text-green-600">IN:</span> {format(new Date(record.check_in), 'HH:mm')}
+                                                    <span className="text-green-600">IN:</span> {formatIST(record.check_in, { hour: '2-digit', minute: '2-digit', hour12: false })}
+                                                </div>
+                                            )}
+                                            {record?.check_out && (
+                                                <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                                    <span className="text-red-600">OUT:</span> {formatIST(record.check_out, { hour: '2-digit', minute: '2-digit', hour12: false })}
                                                 </div>
                                             )}
                                         </div>

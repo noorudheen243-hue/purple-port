@@ -134,9 +134,52 @@ export const getCrmDashboardStats = async (req: Request, res: Response) => {
             include: { follow_ups: true }
         });
 
+        // Fetch all marketing metrics for the client's campaigns
+        const campaignMetrics = await prisma.marketingMetric.findMany({
+            where: {
+                campaign: { 
+                    clientId,
+                    ...(groupId ? { group_id: groupId as string } : {})
+                },
+                ...(startDate || endDate ? {
+                    date: {
+                        ...(startDate ? { gte: new Date(startDate as string) } : {}),
+                        ...(endDate ? { lte: new Date(endDate as string) } : {})
+                    }
+                } : {})
+            },
+            include: { campaign: true }
+        });
+
+        // Calculate unmapped Meta leads (for historical campaigns)
+        const metaLeadsByCampaign: Record<string, number> = {};
+        campaignMetrics.forEach(m => {
+            const obj = (m as any).campaign?.objective;
+            const leads = (obj === 'OUTCOME_ENGAGEMENT' || obj === 'MESSAGES') 
+                ? (m.messaging_conversations || 0) 
+                : (m.results || 0);
+            metaLeadsByCampaign[m.campaignId] = (metaLeadsByCampaign[m.campaignId] || 0) + leads;
+        });
+
+        const dbLeadsByCampaign: Record<string, number> = {};
+        leads.forEach(l => {
+            if (l.campaignId) {
+                dbLeadsByCampaign[l.campaignId] = (dbLeadsByCampaign[l.campaignId] || 0) + 1;
+            }
+        });
+
+        let missingMetaLeads = 0;
+        Object.keys(metaLeadsByCampaign).forEach(campId => {
+            if (!dbLeadsByCampaign[campId]) {
+                missingMetaLeads += metaLeadsByCampaign[campId];
+            }
+        });
+
+        const totalAdjustedLeads = leads.length + missingMetaLeads;
+
         // Stage counts
         const stages = {
-            total: leads.length,
+            total: totalAdjustedLeads,
             new: leads.filter(l => l.stage === 'New Lead' || l.status === 'NEW').length,
             contacted: leads.filter(l => l.stage === 'Contacted' || l.status === 'CONTACTED').length,
             qualified: leads.filter(l => l.stage === 'Qualified' || l.status === 'QUALIFIED').length,
@@ -157,7 +200,7 @@ export const getCrmDashboardStats = async (req: Request, res: Response) => {
         };
 
         // Platform breakdown
-        const platforms: Record<string, number> = { meta: 0, google: 0, seo: 0, website: 0, whatsapp: 0, manual: 0 };
+        const platforms: Record<string, number> = { meta: missingMetaLeads, google: 0, seo: 0, website: 0, whatsapp: 0, manual: 0 };
         leads.forEach(l => {
             const src = (l.source || 'manual').toLowerCase();
             if (src.includes('meta') || src.includes('facebook') || src.includes('instagram') || l.campaignId) {
@@ -176,31 +219,15 @@ export const getCrmDashboardStats = async (req: Request, res: Response) => {
         });
 
         // Spends and Conversions
-        // Fetch all marketing metrics for the client's campaigns
-        const campaignMetrics = await prisma.marketingMetric.findMany({
-            where: {
-                campaign: { 
-                    clientId,
-                    ...(groupId ? { group_id: groupId as string } : {})
-                },
-                ...(startDate || endDate ? {
-                    date: {
-                        ...(startDate ? { gte: new Date(startDate as string) } : {}),
-                        ...(endDate ? { lte: new Date(endDate as string) } : {})
-                    }
-                } : {})
-            }
-        });
-
         const totalSpend = campaignMetrics.reduce((acc, curr) => acc + (curr.spend || 0), 0);
         const totalConversions = campaignMetrics.reduce((acc, curr) => acc + (curr.conversions || curr.results || 0), 0);
         const conversionValueSum = leads
             .filter(l => l.stage === 'Converted' || l.status === 'CONVERTED' || l.status === 'CLOSED')
             .reduce((acc, curr) => acc + (curr.conversion_val || 0), 0);
 
-        const costPerLead = leads.length > 0 ? totalSpend / leads.length : 0;
+        const costPerLead = totalAdjustedLeads > 0 ? totalSpend / totalAdjustedLeads : 0;
         const costPerConversion = totalConversions > 0 ? totalSpend / totalConversions : 0;
-        const conversionRate = leads.length > 0 ? (stages.converted / leads.length) * 100 : 0;
+        const conversionRate = totalAdjustedLeads > 0 ? (stages.converted / totalAdjustedLeads) * 100 : 0;
         const roas = totalSpend > 0 ? conversionValueSum / totalSpend : 0;
 
         // Follow-up status summary
@@ -883,7 +910,13 @@ export const getCampaignCRMPerformance = async (req: Request, res: Response) => 
             const totalClicks = c.marketingMetrics.reduce((acc, curr) => acc + (curr.clicks || 0), 0);
             
             // CRM Outcomes
-            const totalLeads = c.leads.length;
+            let metaResults = 0;
+            if (c.objective === 'OUTCOME_ENGAGEMENT' || c.objective === 'MESSAGES') {
+                metaResults = c.marketingMetrics.reduce((acc, curr) => acc + (curr.messaging_conversations || 0), 0);
+            } else {
+                metaResults = c.marketingMetrics.reduce((acc, curr) => acc + (curr.results || 0), 0);
+            }
+            const totalLeads = c.leads.length > 0 ? c.leads.length : metaResults;
             const convertedLeads = c.leads.filter(l => l.stage === 'Converted' || l.status === 'CONVERTED' || l.status === 'CLOSED').length;
             const lostLeads = c.leads.filter(l => l.stage === 'Lost' || l.status === 'LOST').length;
             const conversionValue = c.leads
@@ -1400,3 +1433,164 @@ export const getMetaConnectionStatus = async (req: Request, res: Response) => {
     }
 };
 
+// 18. Meta WhatsApp Cloud API Webhook — Verification (GET)
+export const verifyWhatsAppWebhook = async (req: Request, res: Response) => {
+    const VERIFY_TOKEN = process.env.META_WEBHOOK_VERIFY_TOKEN || 'qixport_meta_leads_verify_2024';
+    const mode = req.query['hub.mode'];
+    const token = req.query['hub.verify_token'];
+    const challenge = req.query['hub.challenge'];
+
+    if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+        console.log('[WhatsAppWebhook] Verification successful');
+        return res.status(200).send(challenge);
+    }
+    console.warn('[WhatsAppWebhook] Verification failed — token mismatch');
+    return res.status(403).json({ message: 'Forbidden: invalid verify token' });
+};
+
+// 19. Meta WhatsApp Cloud API Webhook — Message Push Handler (POST)
+export const handleWhatsAppWebhook = async (req: Request, res: Response) => {
+    // Acknowledge receipt immediately
+    res.status(200).json({ received: true });
+
+    try {
+        const body = req.body;
+        const clientId = req.query.clientId as string;
+
+        if (!clientId) {
+            console.warn('[WhatsAppWebhook] Received payload but no clientId query parameter was provided.');
+            return;
+        }
+
+        if (body.object === 'whatsapp_business_account') {
+            for (const entry of (body.entry || [])) {
+                for (const change of (entry.changes || [])) {
+                    if (change.field === 'messages') {
+                        const contacts = change.value?.contacts || [];
+                        const messages = change.value?.messages || [];
+
+                        // We only process if there is a contact and a message
+                        if (contacts.length > 0 && messages.length > 0) {
+                            const customerName = contacts[0].profile?.name || 'Unknown WhatsApp User';
+                            const waId = contacts[0].wa_id;
+                            const customerPhone = waId ? (waId.startsWith('+') ? waId : `+${waId}`) : null;
+                            const messageBody = messages[0].text?.body || 'Sent an attachment or media';
+
+                            console.log(`[WhatsAppWebhook] Client ${clientId}: New message from ${customerName} (${customerPhone})`);
+
+                            // Check if client exists
+                            const client = await prisma.client.findUnique({ where: { id: clientId } });
+                            if (!client) {
+                                console.warn(`[WhatsAppWebhook] Client ${clientId} not found in DB.`);
+                                continue;
+                            }
+
+                            // Extract Meta Ad ID from the referral object if it was a click-to-WhatsApp ad
+                            const referral = messages[0].context?.referred_product || messages[0].referral || null;
+                            let dbCampaignId = null;
+                            let campaignName = 'WhatsApp Ads';
+                            let groupId = null;
+
+                            if (referral && referral.source_id) {
+                                const metaAdId = referral.source_id;
+                                console.log(`[WhatsAppWebhook] Message originated from Ad ID: ${metaAdId}`);
+                                
+                                try {
+                                    // 1. Get a valid token for this client
+                                    const account = await prisma.marketingAccount.findFirst({
+                                        where: { clientId, platform: 'meta' },
+                                        include: { metaToken: true }
+                                    });
+                                    const token = account?.metaToken?.access_token || account?.accessToken;
+
+                                    if (token) {
+                                        // 2. Fetch Ad details to get the campaign_id
+                                        const adRes = await axios.get(`https://graph.facebook.com/v19.0/${metaAdId}?fields=campaign_id&access_token=${token}`);
+                                        const metaCampaignId = adRes.data?.campaign_id;
+
+                                        if (metaCampaignId) {
+                                            // 3. Find the campaign in our DB
+                                            const campaign = await prisma.marketingCampaign.findFirst({
+                                                where: { clientId, externalCampaignId: metaCampaignId }
+                                            });
+
+                                            if (campaign) {
+                                                dbCampaignId = campaign.id;
+                                                campaignName = campaign.name;
+                                                groupId = campaign.group_id;
+                                                console.log(`[WhatsAppWebhook] Successfully matched Ad to Campaign: ${campaign.name}`);
+                                            } else {
+                                                console.warn(`[WhatsAppWebhook] Campaign ${metaCampaignId} not found in DB for client ${clientId}`);
+                                            }
+                                        }
+                                    } else {
+                                        console.warn(`[WhatsAppWebhook] No Meta access token found for client ${clientId} to resolve Ad ID.`);
+                                    }
+                                } catch (adErr: any) {
+                                    console.error(`[WhatsAppWebhook] Failed to resolve Ad ID ${metaAdId}:`, adErr.response?.data?.error?.message || adErr.message);
+                                }
+                            }
+
+                            // Auto-assignment round-robin pick
+                            let finalAssignee = null;
+                            const staffUsers = await prisma.user.findMany({
+                                where: { role: { not: 'CLIENT' } },
+                                select: { id: true }
+                            });
+                            if (staffUsers.length > 0) {
+                                const leadsCounts = await Promise.all(staffUsers.map(async u => {
+                                    const count = await prisma.lead.count({ where: { assigned_to: u.id, client_id: clientId } });
+                                    return { id: u.id, count };
+                                }));
+                                leadsCounts.sort((a, b) => a.count - b.count);
+                                finalAssignee = leadsCounts[0].id;
+                            }
+
+                            // Create the Lead
+                            const lead = await prisma.lead.create({
+                                data: {
+                                    client_id: clientId,
+                                    source: 'WEBHOOK',
+                                    name: customerName,
+                                    phone: customerPhone,
+                                    campaign_name: campaignName,
+                                    campaignId: dbCampaignId,
+                                    group_id: groupId,
+                                    quality: 'HIGH', // WhatsApp interactions are high intent
+                                    stage: 'New Lead',
+                                    status: 'NEW',
+                                    assigned_to: finalAssignee,
+                                    tags: 'whatsapp'
+                                }
+                            });
+
+                            // Add the message as a note
+                            await prisma.leadNote.create({
+                                data: {
+                                    lead_id: lead.id,
+                                    content: `WhatsApp Message: "${messageBody}"`,
+                                    user_id: 'SYSTEM'
+                                }
+                            });
+
+                            // Add Activity
+                            await prisma.leadActivity.create({
+                                data: {
+                                    lead_id: lead.id,
+                                    action: 'LEAD_CREATED',
+                                    details: `Lead captured via WhatsApp Webhook. Message: "${messageBody}". Assigned to ${finalAssignee || 'Unassigned'}.`,
+                                    user_id: null
+                                }
+                            });
+
+                            // Trigger AI scoring
+                            AiSalesEngineService.calculateLeadScore(lead.id).catch(err => console.error('AI Lead Scoring Error:', err));
+                        }
+                    }
+                }
+            }
+        }
+    } catch (error: any) {
+        console.error('[WhatsAppWebhook] Processing error:', error.message);
+    }
+};

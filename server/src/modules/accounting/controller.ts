@@ -377,8 +377,19 @@ export const getExpenseSummary = async (req: Request, res: Response) => {
 
 export const getUnifiedTransactions = async (req: Request, res: Response) => {
     try {
-        const { limit } = req.query;
-        const history = await AccountingService.getGlobalTransactionHistory(limit ? parseInt(limit as string) : 100);
+        const { limit, startDate, endDate } = req.query;
+        let finalLimit = limit ? parseInt(limit as string) : 100;
+        let sDate, eDate;
+        
+        if (startDate && endDate) {
+            sDate = new Date(startDate as string);
+            // Ensure end date includes the whole day
+            eDate = new Date(endDate as string);
+            eDate.setHours(23, 59, 59, 999);
+            finalLimit = 100000; // No limit if dates are selected
+        }
+
+        const history = await AccountingService.getGlobalTransactionHistory(finalLimit, sDate, eDate);
         res.json(history);
     } catch (error) {
         console.error('Failed to fetch transaction history:', error);

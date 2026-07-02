@@ -23,11 +23,19 @@ const UnifiedTransactionHistory = () => {
     const queryClient = useQueryClient();
     const [searchTerm, setSearchTerm] = useState('');
     const [filterType, setFilterType] = useState('ALL');
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
     const [editingTx, setEditingTx] = useState<any>(null);
 
     const { data: transactions, isLoading } = useQuery({
-        queryKey: ['unified-transactions-history'],
-        queryFn: async () => (await api.get('/accounting/unified/transactions')).data
+        queryKey: ['unified-transactions-history', startDate, endDate],
+        queryFn: async () => {
+            let url = '/accounting/unified/transactions';
+            if (startDate && endDate) {
+                url += `?startDate=${startDate}&endDate=${endDate}`;
+            }
+            return (await api.get(url)).data;
+        }
     });
 
     const deleteMutation = useMutation({
@@ -96,8 +104,37 @@ const UnifiedTransactionHistory = () => {
                     </div>
                 </div>
 
-                <div className="flex gap-2 w-full md:w-auto">
-                    <div className="relative flex-1 md:w-64">
+                <div className="flex flex-wrap gap-2 w-full md:w-auto">
+                    <div className="flex gap-2">
+                        <div className="relative">
+                            <input 
+                                type="date" 
+                                className="bg-white border-2 border-slate-100 rounded-2xl px-4 py-2.5 outline-none focus:border-purple-500 text-sm font-bold w-36"
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
+                                title="From Date"
+                            />
+                        </div>
+                        <div className="relative">
+                            <input 
+                                type="date" 
+                                className="bg-white border-2 border-slate-100 rounded-2xl px-4 py-2.5 outline-none focus:border-purple-500 text-sm font-bold w-36"
+                                value={endDate}
+                                onChange={(e) => setEndDate(e.target.value)}
+                                title="To Date"
+                            />
+                        </div>
+                        {(startDate || endDate) && (
+                            <button 
+                                onClick={() => { setStartDate(''); setEndDate(''); }}
+                                className="bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-2xl px-3 py-2.5 transition-colors"
+                                title="Clear Dates"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        )}
+                    </div>
+                    <div className="relative flex-1 md:w-48">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <input 
                             type="text" 

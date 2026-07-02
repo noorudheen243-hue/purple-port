@@ -438,15 +438,36 @@ export const deleteUnifiedTransaction = async (id: string) => {
 };
 
 export const updateUnifiedTransaction = async (id: string, data: any) => {
-    return prisma.unifiedTransaction.update({
-        where: { id },
-        data: {
-            amount: data.amount,
-            description: data.description,
-            category: data.category,
-            date: data.date ? new Date(data.date) : undefined,
-            transaction_type: data.transaction_type
+    return prisma.$transaction(async (tx) => {
+        const originalTransaction = await tx.unifiedTransaction.findUnique({
+            where: { id },
+            include: { ledger: true }
+        });
+        
+        if (!originalTransaction) throw new Error("Transaction not found");
+
+        const isAdvance = originalTransaction.sub_type === 'Advance Salary' || originalTransaction.category === 'Salary Advance' || originalTransaction.category === 'Advance';
+        
+        if (isAdvance && data.amount !== undefined) {
+            const delta = Number(data.amount) - originalTransaction.amount;
+            if (delta !== 0 && originalTransaction.ledger?.entity_id) {
+                await tx.user.update({
+                    where: { id: originalTransaction.ledger.entity_id },
+                    data: { advance_balance: { increment: delta } }
+                });
+            }
         }
+
+        return tx.unifiedTransaction.update({
+            where: { id },
+            data: {
+                amount: data.amount !== undefined ? Number(data.amount) : undefined,
+                description: data.description,
+                category: data.category,
+                date: data.date ? new Date(data.date) : undefined,
+                transaction_type: data.transaction_type
+            }
+        });
     });
 };
 
@@ -656,11 +677,25 @@ export const getUnifiedSummary = async (month?: number, year?: number) => {
     };
 };
 
-export const getGlobalTransactionHistory = async (limit: number = 100) => {
-    const unified = await prisma.unifiedTransaction.findMany({ take: limit, orderBy: { date: 'desc' }, include: { ledger: true } });
+export const getGlobalTransactionHistory = async (limit: number = 100, startDate?: Date, endDate?: Date) => {
+    const whereClause: any = {};
+    if (startDate && endDate) {
+        whereClause.date = {
+            gte: startDate,
+            lte: endDate
+        };
+    }
+
+    const unified = await prisma.unifiedTransaction.findMany({ 
+        where: whereClause,
+        take: limit, 
+        orderBy: { date: 'desc' }, 
+        include: { ledger: true } 
+    });
     
     // Fix: Use JournalEntry instead of JournalLine to avoid row duplication
     const legacyEntries = await prisma.journalEntry.findMany({ 
+        where: whereClause,
         take: limit, 
         orderBy: { date: 'desc' }, 
         include: { lines: { include: { ledger: { include: { head: true } } } } } 

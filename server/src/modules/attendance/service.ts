@@ -298,50 +298,66 @@ export class AttendanceService {
 
     // Helper to normalize biometric timestamp depending on its format/origin
     static normalizeBiometricTimestamp(timestamp: Date | string): Date {
-        let d: Date;
         if (timestamp instanceof Date) {
-            d = timestamp;
-        } else {
-            const str = String(timestamp).trim();
-            // Check if string is explicitly marked as UTC (ends with Z).
-            // The Bridge Agent sends ISO strings like 2026-06-22T03:53:00.000Z which are already perfectly accurate.
-            if (/Z$/i.test(str)) {
-                const parsed = new Date(str);
-                if (!isNaN(parsed.getTime())) return parsed;
-            }
+            const year = timestamp.getFullYear();
+            const month = timestamp.getMonth();
+            const date = timestamp.getDate();
+            const hours = timestamp.getHours();
+            const minutes = timestamp.getMinutes();
+            const seconds = timestamp.getSeconds();
 
-            // Check for YYYY-MM-DD HH:MM:SS format
-            const match = str.match(/(\d{4})[-/]?(\d{2})[-/]?(\d{2})[T ]?(\d{2}):(\d{2}):(\d{2})/);
-            if (match) {
-                const year = parseInt(match[1], 10);
-                const month = parseInt(match[2], 10) - 1;
-                const date = parseInt(match[3], 10);
-                const hours = parseInt(match[4], 10);
-                const minutes = parseInt(match[5], 10);
-                const seconds = parseInt(match[6], 10);
-                d = new Date(year, month, date, hours, minutes, seconds);
-            } else {
-                // Fallback for zkteco-js "Mon Jun 22 2026 09:23:14 GMT+0000" format
-                d = new Date(timestamp);
-            }
+            const utcDateOfDigits = new Date(Date.UTC(year, month, date, hours, minutes, seconds));
+            return new Date(utcDateOfDigits.getTime() - (330 * 60 * 1000));
         }
 
-        // At this point, d.getHours(), d.getMinutes() etc represent the exact digits shown on the physical clock
-        const utcDateOfDigits = new Date(Date.UTC(
-            d.getFullYear(), d.getMonth(), d.getDate(),
-            d.getHours(), d.getMinutes(), d.getSeconds()
-        ));
+        const str = String(timestamp).trim();
+        
+        // Match standard ZkLib string output OR YYYY-MM-DD HH:MM:SS OR ISO strings
+        // E.g. "Wed Jul 01 2026 09:31:24", "2026-07-01 09:31:24", "2026-07-01T09:31:24.000Z"
+        const timeMatch = str.match(/(\d{2}):(\d{2}):(\d{2})/);
+        const dateMatch = str.match(/(\d{4})[-/](\d{2})[-/](\d{2})/) || str.match(/([A-Za-z]{3}) (\d{2}) (\d{4})/);
 
-        // Subtract 5 hours and 30 minutes to convert those IST digits back into actual UTC time
-        const IST_OFFSET_MS = 19800000; // 5.5 * 60 * 60 * 1000
-        return new Date(utcDateOfDigits.getTime() - IST_OFFSET_MS);
+        if (timeMatch && dateMatch) {
+            let year, month, date;
+            if (dateMatch.length === 4 && (str.includes('-') || str.includes('/'))) {
+                // 2026-07-01
+                year = parseInt(dateMatch[1], 10);
+                month = parseInt(dateMatch[2], 10) - 1;
+                date = parseInt(dateMatch[3], 10);
+            } else {
+                // Jul 01 2026
+                const months: any = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
+                month = months[dateMatch[1]];
+                date = parseInt(dateMatch[2], 10);
+                year = parseInt(dateMatch[3], 10);
+            }
+
+            let hours = parseInt(timeMatch[1], 10);
+            const minutes = parseInt(timeMatch[2], 10);
+            const seconds = parseInt(timeMatch[3], 10);
+
+            if (/PM$/i.test(str) && hours < 12) hours += 12;
+            if (/AM$/i.test(str) && hours === 12) hours = 0;
+
+            const utcDateOfDigits = new Date(Date.UTC(year, month, date, hours, minutes, seconds));
+            return new Date(utcDateOfDigits.getTime() - (330 * 60 * 1000));
+        }
+
+        return new Date(str);
     }
 
     // Biometric Sync (Sanitized & Idempotent)
     static async processBiometricLogs(logs: { staff_number: string; timestamp: string | Date; type?: string }[]) {
         const results = { success: 0, failed: 0, errors: [] as string[] };
 
-        for (const log of logs) {
+        // Sort logs chronologically to ensure check-in is processed before check-out
+        const sortedLogs = [...logs].sort((a, b) => {
+            const timeA = AttendanceService.normalizeBiometricTimestamp(a.timestamp).getTime();
+            const timeB = AttendanceService.normalizeBiometricTimestamp(b.timestamp).getTime();
+            return timeA - timeB;
+        });
+
+        for (const log of sortedLogs) {
             try {
                 const timestamp = AttendanceService.normalizeBiometricTimestamp(log.timestamp);
                 const IST_OFFSET = 330 * 60 * 1000;
@@ -549,7 +565,7 @@ export class AttendanceService {
     static async getTeamAttendance(startDate: Date, endDate: Date, requestor?: any) {
         // Fetch all active staff
         const whereClause: any = {
-            status: { not: 'RELIEVED' },
+            status: 'ACTIVE',
             role: { notIn: ['ADMIN', 'CLIENT'] },
             staffProfile: {
                 staff_number: { notIn: ['QIX0001', 'QIX0002'] }
@@ -1164,6 +1180,7 @@ export class AttendanceService {
         const staffQuery: any = {
             role: { not: 'CLIENT' },
             full_name: { not: 'Biometric Bridge Agent' }, // Explicitly exclude Bridge Agent
+            status: 'ACTIVE', // Exclude Relieved/Resigned Staff
             staffProfile: {
                 staff_number: { notIn: ['QIX0001', 'QIX0002'] } // Exclude Co-founders (Implicitly checks isNot null)
             },
@@ -1389,6 +1406,7 @@ export class AttendanceService {
             { rule_type: 'HALF_DAY', rule_code: 'C4', name: 'Single Punch Missing', description: 'Either check-in or check-out is missing on a past day.', parameters: {} },
             { rule_type: 'HALF_DAY', rule_code: 'C5', name: 'Extreme Late Arrival', description: 'Arrival after the allowed grace time (Processed as Half Day).', parameters: {} },
             { rule_type: 'HALF_DAY', rule_code: 'C6', name: 'Early Departure', description: 'Leaving before shift end time (Min 4 hours worked).', parameters: { min_hours: 4 } },
+            { rule_type: 'HALF_DAY', rule_code: 'C7', name: 'Late / Early / Insufficient Hours', description: 'Late arrival, early departure, or working less than 7.45 hours.', parameters: { min_hours: 7.45 } },
         ];
 
         let createdCount = 0;

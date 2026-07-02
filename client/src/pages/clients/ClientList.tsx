@@ -58,6 +58,7 @@ const ClientList = ({ defaultOpenCreate = false }: ClientListProps) => {
     const [clientToEdit, setClientToEdit] = useState<any>(null);
     const [clientToView, setClientToView] = useState<any>(null);
     const [confirmAction, setConfirmAction] = useState<{ type: 'DELETE' | 'EDIT', id?: string, client?: any } | null>(null);
+    const [filterStatus, setFilterStatus] = useState<'ACTIVE' | 'ALL'>('ACTIVE');
 
     React.useEffect(() => {
         const params = new URLSearchParams(location.search);
@@ -136,10 +137,31 @@ const ClientList = ({ defaultOpenCreate = false }: ClientListProps) => {
     const onHoldCount = clients?.filter((c: any) => c.status === 'ON_HOLD').length || 0;
     const inactiveCount = clients?.filter((c: any) => c.status === 'INACTIVE').length || 0;
 
+    const filteredClients = clients?.filter((c: any) => {
+        if (filterStatus === 'ALL') return true;
+        return c.status === 'ACTIVE';
+    });
+
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold">Clients</h2>
+                <div className="flex items-center gap-6">
+                    <h2 className="text-2xl font-bold">Clients</h2>
+                    <div className="flex bg-gray-100 p-1 rounded-lg">
+                        <button 
+                            onClick={() => setFilterStatus('ACTIVE')}
+                            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${filterStatus === 'ACTIVE' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            Active
+                        </button>
+                        <button 
+                            onClick={() => setFilterStatus('ALL')}
+                            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${filterStatus === 'ALL' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            All
+                        </button>
+                    </div>
+                </div>
                 <button
                     onClick={handleCreate}
                     className="bg-primary text-primary-foreground px-4 py-2 rounded-md font-medium text-sm flex items-center gap-2 hover:bg-primary/90 transition-colors"
@@ -198,7 +220,7 @@ const ClientList = ({ defaultOpenCreate = false }: ClientListProps) => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
-                            {clients?.map((client: any) => {
+                            {filteredClients?.map((client: any) => {
                                 const services = client.service_engagement ? (typeof client.service_engagement === 'string' ? JSON.parse(client.service_engagement) : client.service_engagement) : [];
                                 return (
                                     <tr
@@ -282,7 +304,7 @@ const ClientList = ({ defaultOpenCreate = false }: ClientListProps) => {
                             })}
                         </tbody>
                     </table>
-                    {clients?.length === 0 && (
+                    {filteredClients?.length === 0 && (
                         <div className="p-8 text-center text-gray-500">
                             No clients found.
                         </div>

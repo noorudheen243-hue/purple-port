@@ -94,6 +94,7 @@ const AttendanceSummaryPage = () => {
                         'Total Days': s.totalDays,
                         'Holidays': s.totalHolidays,
                         'Present (Effective)': s.totalPresentValue,
+                        'Absent Days': s.totalAbsent,
                         'Half Days': s.totalHalfDaysCount,
                         'Leaves': s.totalLeaves,
                         'LOP Days': s.totalLOP
@@ -147,6 +148,7 @@ const AttendanceSummaryPage = () => {
                         s.totalDays,
                         s.totalHolidays,
                         s.totalPresentValue,
+                        s.totalAbsent,
                         s.totalHalfDaysCount,
                         s.totalLeaves,
                         s.totalLOP
@@ -155,7 +157,7 @@ const AttendanceSummaryPage = () => {
 
                 (doc as any).autoTable({
                     startY: 35,
-                    head: [['Name', 'Dept', 'Days', 'Hol', 'Pres', 'HD', 'Leave', 'LOP']],
+                    head: [['Name', 'Dept', 'Days', 'Hol', 'Pres', 'Abs', 'HD', 'Leave', 'LOP']],
                     body: tableData,
                     theme: 'grid',
                     headStyles: { fillColor: [128, 0, 128] }
@@ -296,6 +298,7 @@ const AttendanceSummaryPage = () => {
         let totalPresentValue = 0;
         let totalLeaves = 0;
         let totalLOP = 0;
+        let totalAbsent = 0;
         let totalHalfDaysCount = 0;
 
         daysInMonth.forEach(day => {
@@ -322,7 +325,10 @@ const AttendanceSummaryPage = () => {
                     totalHalfDaysCount++;
                     totalPresentValue += value;
                     totalLOP += 0.5; // Count half-day as 0.5 LOP
-                } else if (status === 'ABSENT' || status === 'LOP') {
+                } else if (status === 'ABSENT') {
+                    totalLOP++;
+                    totalAbsent++;
+                } else if (status === 'LOP') {
                     totalLOP++;
                 } else {
                     // PRESENT, LATE, REGULARIZED
@@ -333,6 +339,7 @@ const AttendanceSummaryPage = () => {
                 today.setHours(0, 0, 0, 0);
                 if (dateObj < today) {
                     totalLOP++;
+                    totalAbsent++;
                 }
             }
         });
@@ -341,6 +348,7 @@ const AttendanceSummaryPage = () => {
             totalDays: daysInMonth.length,
             totalHolidays,
             totalPresentValue,
+            totalAbsent,
             totalLeaves,
             totalLOP,
             totalHalfDaysCount
@@ -596,6 +604,7 @@ const AttendanceSummaryPage = () => {
                                     <TableHead className="text-center">Total Days</TableHead>
                                     <TableHead className="text-center text-blue-600">Holidays</TableHead>
                                     <TableHead className="text-center text-green-600">Present (Effective)</TableHead>
+                                    <TableHead className="text-center text-red-700">Absent Days</TableHead>
                                     <TableHead className="text-center text-orange-600">Half Days</TableHead>
                                     <TableHead className="text-center text-purple-600">Approved Leaves</TableHead>
                                     <TableHead className="text-center text-red-600">LOP Days</TableHead>
@@ -613,6 +622,7 @@ const AttendanceSummaryPage = () => {
                                             <TableCell className="text-center">{summary.totalDays}</TableCell>
                                             <TableCell className="text-center font-medium text-blue-700">{summary.totalHolidays}</TableCell>
                                             <TableCell className="text-center font-bold text-green-700">{summary.totalPresentValue}</TableCell>
+                                            <TableCell className="text-center font-bold text-red-700">{summary.totalAbsent}</TableCell>
                                             <TableCell className="text-center text-orange-700">{summary.totalHalfDaysCount}</TableCell>
                                             <TableCell className="text-center text-purple-700">{summary.totalLeaves}</TableCell>
                                             <TableCell className="text-center font-bold text-red-600">{summary.totalLOP}</TableCell>

@@ -338,6 +338,7 @@ const AttendanceSummaryPage = () => {
                     totalAbsent++;
                 } else if (status === 'LOP') {
                     totalLOP++;
+                    totalApprovedLOP++;
                 } else {
                     // PRESENT, LATE, REGULARIZED
                     totalPresentValue += value;
